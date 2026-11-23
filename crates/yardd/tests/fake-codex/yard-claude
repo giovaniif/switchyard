@@ -45,6 +45,14 @@
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { CHART_URI, chartCall, rpc } from "./chart.mjs";
 
+// An agent's session hands the engine a preamble, then the user's message;
+// the host agent's question comes after its evidence. Only what the user
+// typed controls the scripted behaviour.
+const AGENT_MARK = "\nThe user's message:\n";
+const hostQuestion = (text) => text.includes("\nEvidence: ") && text.includes("\nQuestion: ");
+const typed = (text) =>
+  hostQuestion(text) ? text.slice(text.lastIndexOf("\nQuestion: ") + 11) : text.includes(AGENT_MARK) ? text.slice(text.lastIndexOf(AGENT_MARK) + AGENT_MARK.length) : text;
+
 const dir = process.env.FAKE_CODEX_DIR;
 const log = (line) => {
   if (dir) appendFileSync(`${dir}/sidecar.log`, `${line}\n`);
@@ -234,7 +242,7 @@ for await (const line of console) {
     continue;
   }
   if (msg.type === "start") {
-    log(`start pid=${process.pid} config=${process.env.CLAUDE_CONFIG_DIR ?? ""} resume=${msg.resume ?? ""}${msg.switchy ? " switchy=true" : ""}`);
+    log(`start pid=${process.pid} config=${process.env.CLAUDE_CONFIG_DIR ?? ""} resume=${msg.resume ?? ""}${msg.restricted ? " restricted=true" : ""}`);
     out({ type: "session", claudeSessionId: msg.resume ?? `fake-claude-${process.pid}` });
     // The shape the real sidecar sends (sidecar/yard-claude/src/usage.ts):
     // utilization is a fraction, resetsAt epoch seconds.
@@ -262,7 +270,7 @@ for await (const line of console) {
       emit({ type: "turn_completed", status: "completed" });
       continue;
     }
-    const behaviorText = text.startsWith("You are Switchy,") ? text.slice(text.lastIndexOf("\nQuestion: ") + 11) : text;
+    const behaviorText = typed(text);
     if (behaviorText.includes("[steps]")) {
       runSteps(text);
       continue;
@@ -282,7 +290,7 @@ for await (const line of console) {
       emit({ type: "assistant_delta", itemId, text: "Stuck" });
       continue;
     }
-    emit({ type: "assistant_message", itemId, text: text.startsWith("You are Switchy,") ? "Scripted Claude Switchy answer [local:1]." : `Echo: ${text}` });
+    emit({ type: "assistant_message", itemId, text: hostQuestion(text) ? "Scripted Claude host agent answer [local:1]." : `Echo: ${typed(text)}` });
     emit({ type: "turn_completed", status: "completed" });
   } else if (msg.type === "mcp_reconnect") {
     log(`reconnect ${msg.server}`);

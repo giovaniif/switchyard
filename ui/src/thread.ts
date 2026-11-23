@@ -160,6 +160,8 @@ const PLURAL: Record<string, [string, string, string]> = {
   edit: ["Edited", "file", "files"],
   command: ["Ran", "command", "commands"],
   search: ["Searched", "time", "times"],
+  // The host agent reading its evidence (yardd agents.rs).
+  context: ["Read", "host snapshot", "host snapshots"],
 };
 
 /** A call whose approval was denied or never answered: it did not run. */

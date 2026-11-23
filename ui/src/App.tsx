@@ -2,13 +2,14 @@ import { loadDefaults } from "./launchDefaults";
 import { createContext, Fragment, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { LoginProvider, LoginState } from "./protocol";
-import type { AccountEntry, Attachment, PendingMessage, ChangedFile, Engine, EngineState, EngineStates, Host, HostEntry, Item, ModelInfo, Models, SessionMeta, Status, ToolItem, Usage } from "./protocol";
+import type { AccountEntry, Agent, Attachment, PendingMessage, ChangedFile, Engine, EngineState, EngineStates, Host, HostEntry, Item, ModelInfo, Models, SessionMeta, Status, ToolItem, Usage } from "./protocol";
 import { ROW_LABEL, type RowState, rowState, useSeen } from "./rowState";
 import { Subscriptions, UsageStrip, type UsageAccount } from "./UsageMeters";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
-import { AssistantPage } from "./AssistantPage";
+import { AgentAvatar, AgentForm, AgentsPage, AgentStart } from "./AgentsPage";
+import { agentOf, insertMention, leadingMention, matchAgents, mentionAt } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
 import { accountChoices, accountLabel, accountName, accountOf, choiceOnEngine, DEFAULT_ACCOUNT } from "./accounts";
@@ -127,6 +128,8 @@ const RIGHT_PANEL = "M3 5h18v14H3ZM15 5v14";
 const MIC = "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3ZM19 10v2a7 7 0 0 1-14 0v-2M12 19v3";
 const STOP = "M7 7h10v10H7Z";
 const WAVES = "M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3";
+/** An at sign: agents, which a message names as @Name. */
+const AT = "M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1";
 /** A plug: the Connectors page. */
 const PLUG = "M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0ZM12 18v4";
 
@@ -352,7 +355,20 @@ export function App() {
               <NewSession state={state} actions={actions} onUsageAccount={setDraftUsageAccount} />
             </>
           )}
-          {route.page === "assistant" && <AssistantPage state={state} actions={actions} />}
+          {route.page === "agents" && <AgentsPage state={state} actions={actions} />}
+          {route.page === "agent" &&
+            (state.agents.some((a) => a.id === route.id) ? (
+              <AgentStart key={route.id} state={state} actions={actions} agent={state.agents.find((a) => a.id === route.id)!} />
+            ) : (
+              <AgentsPage state={state} actions={actions} />
+            ))}
+          {route.page === "agentEdit" &&
+            // Like the automation form: read once on mount, so it waits for the snapshot's list.
+            (route.id === "new" || state.agents.some((a) => a.id === route.id) ? (
+              <AgentForm key={route.id} state={state} actions={actions} id={route.id} />
+            ) : (
+              <AgentsPage state={state} actions={actions} />
+            ))}
           {route.page === "hosts" && <Hosts state={state} actions={actions} />}
           {route.page === "subscriptions" && <SubscriptionsPage state={state} actions={actions} />}
           {route.page === "sessions" && <SessionsPage state={state} actions={actions} />}
@@ -576,6 +592,7 @@ function SessionRow({ state, actions, session: s, active, groups, seenAt, unread
     };
   }, [menu]);
   const rowAccount = accountLabel(accountsOn(state, host), s);
+  const rowAgent = agentOf(state.agents, s);
   const worktree = !!(s.branch && s.repo);
   const remove = (removeWorktree: boolean) => {
     close();
@@ -612,7 +629,15 @@ function SessionRow({ state, actions, session: s, active, groups, seenAt, unread
         <span className="session-text">
           <span className="session-title">{s.title}</span>
           <span className="session-sub">
-            {modelName(modelsOn(state, host), s.engine, s.model)} · <span className={`row-status row-status-${mark}`}>{ROW_LABEL[mark]}</span>
+            {rowAgent ? (
+              <span className="row-agent">
+                <AgentAvatar agent={rowAgent} size="xs" />
+                {rowAgent.name}
+              </span>
+            ) : (
+              modelName(modelsOn(state, host), s.engine, s.model)
+            )}{" "}
+            · <span className={`row-status row-status-${mark}`}>{ROW_LABEL[mark]}</span>
             {rowAccount && <span className="row-account"> · {rowAccount}</span>}
           </span>
         </span>
@@ -1032,9 +1057,9 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
           <Icon d={PLUS} />
           New session
         </button>
-        <button className={`nav-row ${route.page === "assistant" ? "active" : ""}`} onClick={() => actions.go({ page: "assistant" })}>
-          <Icon d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" />
-          Switchy
+        <button className={`nav-row ${route.page === "agents" || route.page === "agent" || route.page === "agentEdit" ? "active" : ""}`} onClick={() => actions.go({ page: "agents" })}>
+          <Icon d={AT} />
+          Agents
         </button>
         <button className={`nav-row ${route.page === "automations" || route.page === "automation" || inRun ? "active" : ""}`} onClick={() => actions.go({ page: "automations" })}>
           <Icon d={CLOCK} />
@@ -1614,6 +1639,10 @@ export function Composer(props: {
   /** Hands-free voice mode for a session: what it has to say, numbered. */
   voice?: { scope: string; cue: { n: number; cue: Cue } | null; approval: boolean; carry?: boolean };
   settings?: { label: string; model: string; effort: string; full: boolean };
+  /** Agents an `@` offers. A message starting with one goes to it (the caller routes it). */
+  mentions?: Agent[];
+  /** What a leading `@Name` does with this message, shown above the box; null says nothing. */
+  mentionHint?(agent: Agent): string | null;
   children: ReactNode;
 }) {
   const toolbar = useRef<HTMLDivElement>(null);
@@ -1812,7 +1841,47 @@ export function Composer(props: {
     carry: props.voice?.carry,
   });
   const voiceOn = voice.mode.phase !== "off";
+  // `@` offers the agents; the pick replaces what was typed after it.
+  const [caret, setCaret] = useState(0);
+  const [pick, setPick] = useState(0);
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const mention = props.mentions?.length ? mentionAt(text, caret) : null;
+  const offered = mention && dismissed !== text ? matchAgents(props.mentions!, mention.query) : [];
+  useEffect(() => setPick(0), [mention?.query, offered.length]);
+  const routed = props.mentions ? leadingMention(text, props.mentions) : null;
+  const hint = routed && props.mentionHint ? props.mentionHint(routed.agent) : null;
+  const choose = (agent: Agent) => {
+    if (!mention) return;
+    const next = insertMention(text, mention.start, caret, agent.name);
+    setText(next.text);
+    setCaret(next.caret);
+    requestAnimationFrame(() => {
+      const el = area.current;
+      if (!el) return;
+      el.focus();
+      el.selectionStart = el.selectionEnd = next.caret;
+    });
+  };
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (offered.length && !e.nativeEvent.isComposing) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setPick((p) => (p + (e.key === "ArrowDown" ? 1 : offered.length - 1)) % offered.length);
+        return;
+      }
+      if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
+        e.preventDefault();
+        choose(offered[Math.min(pick, offered.length - 1)]);
+        return;
+      }
+      if (e.key === "Escape") {
+        // Only the list closes, not the page or the drawer behind it.
+        e.preventDefault();
+        e.stopPropagation();
+        setDismissed(text);
+        return;
+      }
+    }
     if (e.key === "ArrowUp" && text === "" && props.onEditLastQueued?.()) {
       e.preventDefault();
       return;
@@ -1892,6 +1961,31 @@ export function Composer(props: {
           ))}
         </div>
       )}
+      {hint && (
+        <div className="mention-route small" role="status">
+          <AgentAvatar agent={routed!.agent} size="xs" />
+          {hint}
+        </div>
+      )}
+      {offered.length > 0 && (
+        <div className="mention-list" id="mention-list" role="listbox" aria-label="Agents">
+          {offered.map((a, i) => (
+            <button className={`picker-item menu-item ${i === pick ? "active" : ""}`}
+              key={a.id}
+              id={`mention-${a.id}`}
+              role="option"
+              aria-selected={i === pick}
+              // Keep the caret in the box while the pick is made.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => choose(a)}
+            >
+              <AgentAvatar agent={a} size="sm" />
+              <span className="mention-name">{a.name}</span>
+              {a.about && <span className="muted small mention-about">{a.about}</span>}
+            </button>
+          ))}
+        </div>
+      )}
       <textarea
         ref={area}
         aria-label="Message"
@@ -1899,10 +1993,16 @@ export function Composer(props: {
         maxLength={props.maxLength}
         placeholder={props.placeholder}
         value={text}
+        aria-autocomplete={props.mentions ? "list" : undefined}
+        aria-expanded={props.mentions ? offered.length > 0 : undefined}
+        aria-controls={offered.length ? "mention-list" : undefined}
+        aria-activedescendant={offered.length ? `mention-${offered[Math.min(pick, offered.length - 1)].id}` : undefined}
         onChange={(e) => {
           setText(e.target.value);
+          setCaret(e.target.selectionStart ?? e.target.value.length);
           voice.typed(e.target.value);
         }}
+        onSelect={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
         onKeyDown={onKeyDown}
         onPaste={(e) => {
           if (!props.upload) return;
@@ -2225,11 +2325,26 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
   // A remembered folder can be deleted since; Send would only be refused.
   const gone = !!branchList?.missing;
 
-  const start = (text: string, attachments: Attachment[]) => {
+  const start = async (text: string, attachments: Attachment[]) => {
     if (/^\/login\s*$/.test(text.trim()) && !attachments.length) {
       setLoggingIn(true);
       return;
     }
+    // "@Scout what is running?" goes to the agent's chat, not a new session.
+    const routed = leadingMention(text, state.agents);
+    if (routed) {
+      if (!routed.rest && !attachments.length) return false;
+      setPending(true);
+      const r = await actions.askAgent(routed.agent.id, routed.rest, attachments.map((a) => a.id));
+      setPending(false);
+      if (r.error) {
+        setAgentError(r.error);
+        return false;
+      }
+      keepDraft(NEW_TASK_DRAFT, null);
+      return;
+    }
+    setAgentError(null);
     rememberSession({ ...choice, host: target, cwd });
     localStorage.setItem("yard.permission", permission);
     setPending(true);
@@ -2247,6 +2362,8 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
     });
   };
   const uploadTarget = useMemo<UploadTarget>(() => (target === "local" ? {} : { host: target }), [target]);
+  const [agentError, setAgentError] = useState<string | null>(null);
+  const toAgent = (agent: Agent) => (agent.chat && state.sessions[agent.chat] ? `Goes to ${agent.name}'s chat` : `Starts a chat with ${agent.name}`);
 
   return (
     <div className="new">
@@ -2262,6 +2379,8 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
           upload={actions.upload}
           onSubmit={start}
           voice={{ scope: NEW_TASK_DRAFT, cue: null, approval: false, carry: true }}
+          mentions={state.agents}
+          mentionHint={toAgent}
           settings={setupSettings(modelName(models, choice.engine, choice.model), accountName(accounts, choice.engine, selectedAccount), shownEffort(models, choice.engine, choice.model, choice.effort), permission)}
           busy={pending || !online || !choice.model || !cwd || gone}
         >
@@ -2295,6 +2414,11 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
             <span className="muted small">{isRepo ? "New worktree" : "Works in the folder itself"}</span>
           ))}
         </div>
+        {agentError && (
+          <div className="small error-line" role="alert">
+            {agentError}
+          </div>
+        )}
         <EngineNotice state={state} host={target} engine={choice.engine} account={picks[choice.engine]} onLogin={() => setLoggingIn(true)} />
         {loggingIn && (
           <LoginDialog state={state} actions={actions} host={target} engine={choice.engine} account={picks[choice.engine]} onClose={() => setLoggingIn(false)} />
@@ -2720,10 +2844,37 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
   const accounts = accountsOn(state, host);
   const sessionAccount = accountLabel(accounts, meta);
   // The engines' own /login cannot run inside a session; the app's does it.
-  const submit = (text: string, attachments: Attachment[]) => {
-    if (/^\/login\s*$/.test(text.trim()) && !attachments.length) setLoggingIn(true);
-    else actions.send(meta.id, text, attachments.map((a) => a.id));
+  const agent = agentOf(state.agents, meta);
+  const restricted = !!agent?.builtin;
+  const submit = async (text: string, attachments: Attachment[]) => {
+    if (/^\/login\s*$/.test(text.trim()) && !attachments.length) {
+      setLoggingIn(true);
+      return;
+    }
+    // A reply that starts with another agent's @Name goes to that agent's chat.
+    const routed = host === "local" ? leadingMention(text, state.agents) : null;
+    if (routed && routed.agent.id !== agent?.id) {
+      if (!routed.rest && !attachments.length) return false;
+      const r = await actions.askAgent(routed.agent.id, routed.rest, attachments.map((a) => a.id));
+      return r.error ? false : undefined;
+    }
+    actions.send(meta.id, text, attachments.map((a) => a.id));
   };
+  const toAgent = (other: Agent) => (other.id === agent?.id ? null : `Goes to ${other.name}'s chat, not this session`);
+  // Whose answers these are: the agent's face and name over each turn's answer.
+  const answerKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (!agent) return keys;
+    let waiting = false;
+    for (const it of items) {
+      if (it.kind === "user" && !it.steered) waiting = true;
+      else if (it.kind === "assistant" && waiting) {
+        keys.add(it.key);
+        waiting = false;
+      }
+    }
+    return keys;
+  }, [items, agent?.id]);
   const loadAttachment = (a: Attachment) => actions.attachmentUrl(meta.id, a);
   // Start anyway is out: hold the button until the session leaves the queue or
   // yardd refuses, or a double click sends a second startNow that yardd
@@ -2731,8 +2882,14 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
   const [starting, setStarting] = useState(false);
   useEffect(() => setStarting(false), [meta.status, state.errorCount, state.connected]);
   const renderItem = (item: Item) => (
+    <Fragment key={item.key}>
+      {agent && answerKeys.has(item.key) && (
+        <div className="agent-says">
+          <AgentAvatar agent={agent} size="sm" />
+          <strong>{agent.name}</strong>
+        </div>
+      )}
     <ItemView
-      key={item.key}
       item={item}
       link={handoffs[item.key]}
       onOpen={(id) => actions.go({ page: "session", id })}
@@ -2746,6 +2903,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
       }}
       onDecide={(id, d) => actions.approve(meta.id, id, d)}
     />
+    </Fragment>
   );
 
   return (
@@ -2753,8 +2911,14 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
       <main className="thread">
         <header className="bar">
           <MenuButton />
+          {agent && (
+            <button className="btn-quiet agent-chip" title={`A chat with ${agent.name}. Start another`} onClick={() => actions.go({ page: "agent", id: agent.id })}>
+              <AgentAvatar agent={agent} size="sm" />
+              <span>{agent.name}</span>
+            </button>
+          )}
           <h1>{meta.title}</h1>
-          <code className="muted">{meta.branch || changes?.branch || tilde(meta.cwd, homeOn(state, host))}</code>
+          {!agent && <code className="muted">{meta.branch || changes?.branch || tilde(meta.cwd, homeOn(state, host))}</code>}
           <SessionPullRequest sessionId={meta.id} online={online} busy={busy} pr={state.pr[meta.id]} load={actions.loadPr} />
           {sessionAccount && (
             <span className="muted small session-account" title="The account this session runs under. It can't be changed mid-session.">
@@ -2824,7 +2988,9 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
             />
           )}
           <Composer
-            placeholder={!online ? "Offline" : busy ? "Queue a message for the agent" : "Reply"}
+            placeholder={!online ? "Offline" : busy ? "Queue a message for the agent" : agent ? `Reply to ${agent.name}` : "Reply"}
+            mentions={host === "local" ? state.agents : undefined}
+            mentionHint={toAgent}
             rows={1}
             busy={meta.status === "queued" || !online}
             queueing={busy ? queuedHint(meta.engine) : undefined}
@@ -2851,7 +3017,13 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
             />
             <AccountPicker state={state} host={host} engine={meta.engine} account={accountOf(meta)} onManage={() => actions.go({ page: "new" })} />
             <EffortPicker models={models} value={{ engine: meta.engine, model: meta.model, effort: meta.effort }} onChange={(effort) => actions.setModel(meta.id, meta.model, effort)} />
-            <PermissionPicker engine={meta.engine} value={meta.permission ?? "ask"} onChange={(p) => actions.setPermission(meta.id, p)} />
+            {restricted ? (
+              <span className="muted small agent-runs-chip" title={`${agent!.name} only reads: it answers from your hosts without tools`}>
+                Read-only
+              </span>
+            ) : (
+              <PermissionPicker engine={meta.engine} value={meta.permission ?? "ask"} onChange={(p) => actions.setPermission(meta.id, p)} />
+            )}
           </Composer>
         </div>
       </main>

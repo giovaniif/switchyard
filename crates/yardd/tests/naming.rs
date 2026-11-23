@@ -64,7 +64,7 @@ async fn a_session_is_named_from_its_conversation_after_its_first_and_third_turn
     let starts = fs::read_to_string(sb.fake_state().join("thread-starts.jsonl")).unwrap();
     let naming: Value = starts.lines().map(|l| serde_json::from_str::<Value>(l).unwrap()).find(|s| s["ephemeral"] == true).expect("a naming thread");
     assert_eq!((naming["sandbox"].as_str(), naming["approvalPolicy"].as_str()), (Some("read-only"), Some("never")));
-    assert!(!c.log.iter().any(|m| m["op"] == "session" && m["session"]["id"].as_str().is_some_and(|id| id.starts_with("switchy-"))));
+    assert!(!c.log.iter().any(|m| m["op"] == "session" && m["session"]["id"].as_str().is_some_and(|id| crate_private(id))));
 
     // Not after the second turn; again after the third, with more context.
     turn(&mut c, &sid, "and the group header too").await;
@@ -110,8 +110,8 @@ async fn haiku_names_the_session_when_codex_fails() {
     assert_eq!(naming_inputs(&sb).len(), 1, "Codex was asked first");
     // Haiku, in a tool-less private sidecar.
     let log = fs::read_to_string(sb.fake_state().join("sidecar.log")).unwrap_or_default();
-    assert!(log.lines().any(|l| l.contains("start pid=") && l.contains("switchy=true")), "{log}");
-    assert!(!c.log.iter().any(|m| m["op"] == "session" && m["session"]["id"].as_str().is_some_and(|id| id.starts_with("switchy-"))));
+    assert!(log.lines().any(|l| l.contains("start pid=") && l.contains("restricted=true")), "{log}");
+    assert!(!c.log.iter().any(|m| m["op"] == "session" && m["session"]["id"].as_str().is_some_and(|id| crate_private(id))));
 }
 
 #[tokio::test]
@@ -140,4 +140,9 @@ async fn naming_can_be_turned_off() {
     c.drain_for(Duration::from_millis(800)).await;
     assert!(naming_inputs(&sb).is_empty());
     assert_eq!(saved_meta(&sb, &sid).unwrap()["title"], "[name] anything");
+}
+
+/// A private engine thread's id (crates/yardd/src/private.rs).
+fn crate_private(id: &str) -> bool {
+    id.starts_with("private-") || id.starts_with("switchy-")
 }

@@ -220,7 +220,7 @@ Scheduled work, built into yardd (`crates/yardd/src/automations.rs`, UI in `ui/s
   archived sessions and automation runs; an empty search shows the eight most
   recent sessions the sidebar lists (no archived sessions or runs) and the
   pages. Arrow keys select, Enter opens, Escape closes and
-  returns focus. Pages include New session, Automations, Connectors, Settings,
+  returns focus. Pages include New session, Agents, Automations, Connectors, Settings,
   Hosts and Import; Import opens the existing dialog.
 - **Mac app menu:** Settings… (Cmd-,), Import Sessions… and Go to… (Cmd-K)
   live under Switchyard. The shell dispatches fixed `switchyard:navigate`
@@ -237,7 +237,7 @@ Scheduled work, built into yardd (`crates/yardd/src/automations.rs`, UI in `ui/s
 - **Row marks** (`ui/src/rowState.ts`): a turning ring while running, an amber "!" that breathes while it waits for approval, a blue dot with a bold title and "Answered" for a finished turn not opened yet, red for a failure (live, or an unseen failed turn), a hollow ring when idle; shapes differ so they read without color. yardd stamps every session with `turnEndedAt` and `lastTurn` (`completed`, `failed`, `interrupted`) when a turn ends. Which answers were seen is per browser (`yard.seen` in localStorage, the `turnEndedAt` last had open while the window was in front; other windows follow through `storage`). Turns that ended before the browser first kept track (`yard.seen.since`) count as seen, and a stopped turn never stands out.
 - Archived is a dock under the scrolling list, just above the host rows, so it never scrolls away. It is shown whenever something is archived, collapsed by default; opened, its rows expand upward in a list with its own scroll (max 40% of the window height, at most 320 px). Archived sessions still open and run.
 - The sessions sidebar and the workspace pane are resizable; widths are per browser.
-- The top nav: New session, Hosts, Sessions, Subscriptions, Switchy, Automations, Connectors, Import and Settings. **Settings** (`#/settings`, `ui/src/SettingsPage.tsx`) holds what the browser keeps for itself: the Notifications switch and, under Sidebar, a "Show in sidebar" switch per host, This Mac included. The bottom block lists a row per shown host (CPU · memory, opens Hosts) under the compact Usage popover trigger, which reads only the shown hosts. Hidden hosts are per browser (`yard.sidebar.hiddenHosts`, host ids; `ui/src/sidebarHosts.ts`); the Hosts page, the pickers and the session list still show every host, and Settings links to Hosts for when every row is hidden.
+- The top nav: New session, Hosts, Sessions, Subscriptions, Agents, Automations, Connectors, Import and Settings. **Settings** (`#/settings`, `ui/src/SettingsPage.tsx`) holds what the browser keeps for itself: the Notifications switch and, under Sidebar, a "Show in sidebar" switch per host, This Mac included. The bottom block lists a row per shown host (CPU · memory, opens Hosts) under the compact Usage popover trigger, which reads only the shown hosts. Hidden hosts are per browser (`yard.sidebar.hiddenHosts`, host ids; `ui/src/sidebarHosts.ts`); the Hosts page, the pickers and the session list still show every host, and Settings links to Hosts for when every row is hidden.
 - Below 700 px (phones on the web version) the sidebar is a drawer over the page, so the page keeps the full width: a menu button first in each page's bar opens it; picking anything in it, any route change, the backdrop or Escape closes it. The workspace pane is already hidden below 1100 px.
 
 ## Notifications
@@ -446,95 +446,139 @@ Next:
 
 ## Saved launch defaults
 
-Settings offers separate defaults for New sessions and Switchy, using the shared
-host/model/effort pickers. `launchDefaults.ts` stores explicit `{ host, choice }`
-preferences in `yard.defaults.sessions` and `yard.defaults.switchy` in this browser.
-One-off selections and `rememberSession` never overwrite them. New-session models
-are validated against the selected host, retaining the intended default while
-catalogs load; configured offline hosts remain selected and cannot silently run
-on another host. Removed hosts/models fall back to available choices without
-rewriting the saved preference. Switchy's model runs locally; its default host
-selects context scope and may be All hosts. Clearing a default restores the prior
-last-used behavior. Existing sessions are unaffected.
+Settings offers defaults for New sessions, using the shared host/model/effort
+pickers. `launchDefaults.ts` stores an explicit `{ host, choice }` preference in
+`yard.defaults.sessions` in this browser. One-off selections and
+`rememberSession` never overwrite it. New-session models are validated against
+the selected host, retaining the intended default while catalogs load;
+configured offline hosts remain selected and cannot silently run on another
+host. Removed hosts/models fall back to available choices without rewriting the
+saved preference. Clearing the default restores the prior last-used behavior.
+Existing sessions are unaffected. Agents keep their own model and effort in
+yardd (see Agents); Switchy's browser default (`yard.defaults.switchy`) is no
+longer read.
 
-## Switchy
+## Agents
 
-`#/assistant` is Switchy, a persistent quick-question conversation separate from
-coding sessions. It uses the session `Composer` and `ModelPicker` components, including auto-grow,
-dictation, hands-free voice, draft retention, effort/access pickers and the send control.
-The shared host picker sits below the composer, as on New session;
-attachments remain disabled because the Switchy protocol accepts text only. Context
-opens the host rail. Model and host scope are independent: inference runs on the
-hub's default Claude or Codex account; evidence comes from Local, a selected
-remote, or All hosts. Other engines are omitted until a supported tool restriction
-path is implemented. No worktree, sidebar session or engine resume is created.
+Named agents, after Orca's Bots: each has a name it is mentioned by
+(`@Reviewer`), a colour, what it is for, how it runs, and two notes the user
+writes for it. Talking to one is an ordinary session tagged with it. One agent
+is built in: **Scout**, the host agent, which took over Switchy's quick
+questions. `crates/yardd/src/agents.rs`; UI `ui/src/AgentsPage.tsx` (page,
+start page, form), `ui/src/agents.ts` (mentions, card words), the composer and
+session view in `App.tsx`.
 
-- `switchy.get` returns `switchy.state`; `switchy.send { text, engine, model,
-  scope, permission, effort, ref }` acknowledges `switchy.accepted` and broadcasts versioned state as
-  the answer arrives. `switchy.stop` cancels the current question. One question
-  runs at a time across windows; concurrent submissions are refused. Host pressure
-  accepts a queued question, starts it when capacity returns, and exposes Stop and
-  `switchy.startNow` (the explicit Start anyway override). Waiting does not consume
-  the answer timeout. The UI keeps
-  a rejected question in the composer. Reload/reconnect fetches the conversation.
-- `crates/yardd/src/switchy.rs` owns `switchy.json` in the data directory. Atomic
-  writes persist the question before inference, its evidence, and the completed
-  answer/error. A restart marks unfinished work interrupted. The UI receives the
-  latest 50 exchanges; older exchanges remain available for query-based retrieval.
-- Every question builds a fresh input capped at 32,000 UTF-8 bytes: recent
-  exchanges and matching older exchanges, at most 16,000 bytes of selected
-  evidence, coverage notes and the question. There is no growing engine context
-  or background model summarization. Answers are capped at 32,000 bytes and the
-  complete operation times out after three minutes. Sources are untrusted records,
-  with host, stable per-snapshot ID, timestamp, text and availability, displayed
-  in expandable disclosures. No source is interpreted as HTML.
-- `switchy_context.rs` collects read-only host resources, CPU-sorted process
-  names (not arguments/environment), services, Docker container status/ports,
-  listening TCP ports, recent saved bash/zsh history and relevant session
-  passages. It discovers repositories from session folders, the workspace,
-  common home work folders, and optional `YARD_CONTEXT_ROOTS` (OS path-list
-  syntax). Up to four relevant repos supply status, recent commits and matching
-  tracked source/documentation lines. Commands use fixed programs/arguments,
-  never a shell or model-provided command. Each command has a three-second
-  timeout and an 8 KB output cap; evidence passages are capped further. Obvious
-  credential-bearing lines are omitted. This is not guaranteed secret detection.
-- `switchy.context { query, ref }` collects only the receiving host. The hub uses
-  daemon-owned WebSockets through configured remote connections, independently
-  of the browser, with a 20-second deadline and up to 16 remote hosts. Sources
-  are merged round-robin under a global byte budget. Offline hosts, old daemons,
-  denied reads and omitted evidence are explicitly reported. A remote hub's own
-  Switchy broadcasts are never substituted for this hub's conversation.
-- Each host keeps up to 2,000 distinct observations in `switchy-context.db`
-  (SQLite FTS5), searches earlier observations by question, and records new
-  observations on demand. This cache is not continuous monitoring. Session
-  history is searched from its canonical event log, not duplicated in the index.
-  Open-shell activity and arbitrary external agent transcripts are not captured.
-  Repositories outside the discovery roots need `YARD_CONTEXT_ROOTS`; this is
-  not a full filesystem crawl. Saved conversation evidence remains a historical
-  snapshot even if its original file or session is later changed/deleted.
-- Engine sessions use private `switchy-` IDs in memory only. They are excluded
-  from snapshots, normal session operations and the session event store, then
-  removed after each answer. In Plan only, Codex receives an ephemeral, read-only
-  thread with approvals disabled, along with shell/exec, apps, browser, computer, JS/code-mode, hooks,
-  multi-agent and configured MCP/plugin tools disabled by thread-local overrides.
-  Null optional fields from `config/read` are omitted from copied overrides: Codex
-  converts JSON nulls to empty TOML strings, which breaks typed fields such as MCP
-  timeouts. Transport settings and concrete values are retained.
-  Claude receives a fresh sidecar with no tools, strict empty MCP configuration,
-  no setting sources/plugins/hooks, no persisted engine session, and a denying
-  permission callback in Plan only. Ask first, Accept edits and Full access use
-  the coding-session engine policies, with fresh ephemeral threads and the same
-  bounded evidence. `switchy.approve` validates the active turn/request and routes
-  Allow once/Always allow/Deny; persisted approvals also survive UI reconnects.
-  Tools execute on the inference host, not automatically on context hosts. Voice
-  announces approvals and speaks completed answers, using the shared speech engine.
-  Coding-session settings are untouched. Grok/OpenCode,
-  account selection and running the inference engine on a remote host are not
-  implemented for Switchy.
-- Tests use scripted engines and isolated host command fixtures via
-  `YARD_CONTEXT_COMMAND_DIR`, which overrides only collector executables. The
-  integration suite proves persistence, scoped remote evidence, offline coverage,
-  cancellation, concurrent-send refusal, fresh restricted threads, history
-  budgets, external repository discovery and prior observation retrieval. The
-  `switchy` feature map drives send/source disclosure/reload/context at both
-  viewports. These do not prove a live Claude/Codex turn or model answer quality.
+- **The record** is saved in `agents.json` in the data dir (an unreadable file
+  is kept as `.json.bad`): `name` (one word: a letter, then letters, digits,
+  `-` or `_`, at most 24; unique ignoring case), `color` (one of eight, a token
+  each in `styles.css`), `about` (one line), `engine`, `model` (empty: the
+  host's default for the engine, picked when a chat starts), `effort`,
+  `account`, `cwd` (empty: its own folder, `<data dir>/agents/<id>/`),
+  `permission` (Ask first unless the user picks another; Full access only when
+  picked), `instructions` (who it is: Orca's SOUL.md), `memory` (what to keep
+  in mind: MEMORY.md), `chat` (its ongoing chat). Agents live on the hub: they
+  run their chats on this host, and a remote yardd's own `agents` broadcast is
+  dropped by the hub, as is the `agent` tag of a remote's sessions in the UI.
+- **Ops:** `agent.list`, `agent.save { agent }` (an `id` edits; only the fields
+  sent change; answers `agent.saved`), `agent.delete { id }` (its chats stay as
+  plain sessions with `agent` cleared; refused for Scout), `agent.ask { agentId,
+  text, attachments?, fresh? }`. Every change broadcasts `agents`; the snapshot
+  carries the list.
+- **A message to an agent** (`agent.ask`) goes to its ongoing chat: queued
+  while a turn runs, like any reply (`sessions::send_message`), the chat
+  unarchived. With no chat (or `fresh`) it is a `session.create` in the
+  agent's folder, tagged `Meta.agent`, which becomes its `chat`. yardd answers
+  `created { sessionId, ref }` as soon as the session is known, so the window
+  opens it while the turn starts. A chat in the agent's own folder does not
+  hold the folder: another chat can start while one runs; a chat in a folder
+  the user chose runs in place, one writer at a time.
+- **The preamble:** the first turn of an agent's session hands the engine "You
+  are <name>, an agent the user set up in Switchyard…", what it is for, its
+  instructions and memory, then "The user's message:" and the text
+  (`agents::prepare`, called from `sessions::start_turn`). The thread and the
+  event log keep only what the user typed. A chat already going keeps the
+  notes it started with.
+- **@mentions:** the composer (New session, any local session's reply box, an
+  agent's start page) offers the agents when `@` starts a word, filtered by
+  what follows (names that start with it first); arrows, Enter or Tab pick,
+  Escape closes only the list. A message that starts with an agent's `@Name`
+  goes to that agent instead (the mention dropped), and the box says so above
+  the text ("Goes to Reviewer's chat", "Starts a chat with Scout", "… not this
+  session"). In the agent's own chat a leading mention is just text.
+- **UI.** Agents (`#/agents`, an at-sign row in the sidebar, in Cmd-K, where
+  "switchy" still finds it; `#/assistant` redirects) is a grid of cards like
+  Automations: avatar, name and `@name` (Scout: "Built in · reads all hosts"),
+  what it is for, how it runs, a status line from the ongoing chat (Working…,
+  Needs your approval, Last chat 2 min ago; it opens the chat), then Ask or
+  Message (the ongoing chat, or the start page when there is none), New chat,
+  the list of every chat, and Edit. With no agent of the user's own, a dashed
+  card offers to make one. The **start page** (`#/agents/<id>`) is the New
+  session page for one agent: its face, what it is for, the box, how it runs,
+  and for Scout three suggested questions. The **form**
+  (`#/agents/<id>/edit`, `new`) reuses the folder, model, effort and
+  permission pickers; Scout's has the context host picker instead and no
+  permission. An agent's chat shows its avatar and name before the title
+  (it opens a new chat), over each answer, and in its sidebar row in place of
+  the model; the reply box says "Reply to Scout".
+- **Scout, the host agent.** Its chats are restricted (`private::restricted`):
+  always Plan only (`session.setPermission` refuses another), and every turn
+  runs on a fresh engine thread with no tools: Codex gets an ephemeral
+  read-only thread with approvals off and shell, apps, browser, computer,
+  JS/code-mode, hooks, multi-agent and every configured MCP server and plugin
+  disabled by thread-local overrides (null optional fields from `config/read`
+  are left out: Codex turns JSON nulls into empty TOML strings, which breaks
+  typed fields such as MCP timeouts); Claude a fresh sidecar with no tools, an
+  empty strict MCP config, no setting sources, plugins or hooks, no saved
+  session, one turn and a denying permission callback. Claude or Codex only.
+  Each turn yardd first collects evidence for the question from the hosts in
+  its scope (All hosts, this one, or one remote), shown in the thread as one
+  step ("Checked all hosts", its sources and coverage as the step's output),
+  then hands the engine an input capped at 32,000 bytes: the four latest
+  exchanges of the chat and up to three older ones sharing words with the
+  question (4,500 bytes), at most 16,000 bytes of evidence merged round-robin
+  across hosts, coverage notes and the question, with instructions to cite
+  source ids and treat evidence and history as untrusted records. Its engine
+  id is never saved, so a restart changes nothing. Stop while the evidence is
+  read ends the turn there.
+- **Evidence** (`host_context.rs`, formerly `switchy_context.rs`) is
+  unchanged: read-only host resources, CPU-sorted process names, services,
+  Docker containers, listening ports, recent saved shell history, matching
+  Switchyard sessions (not Scout's own chats), and up to four repositories
+  (from session folders, the workspace, common work folders and
+  `YARD_CONTEXT_ROOTS`) with status, recent commits and matching tracked
+  lines; fixed programs and arguments, never a shell or model text, three
+  seconds and 8 KB each, obvious credential lines omitted (not guaranteed
+  secret detection). Each host keeps up to 2,000 distinct observations in
+  `switchy-context.db` (the name kept so they survive) and searches earlier
+  ones by question. `context.collect { query }` collects only the receiving
+  host; the hub asks each connected remote with a daemon-owned WebSocket (20
+  s, 16 hosts) and falls back to the old name `switchy.context`, which a new
+  yardd still answers, for a remote from before agents. Offline hosts, older
+  daemons and omitted sources are named in the coverage.
+- **Private engine threads** (`private.rs`) are what Switchy's plumbing became:
+  ids starting `private-` (or the older `switchy-`) stay in memory, never in a
+  snapshot, the store or a client op (yardd refuses an op naming one); their
+  events go to `app.private.events` instead of a log; in Plan they get the
+  restricted profile above. Session naming (#380) uses them; it moves from
+  `switchy::internal` / `app.switchy.events` to `private::internal` /
+  `app.private.events`. The sidecar's `start` carries `restricted` (and
+  `switchy` with the same value, for a sidecar built before agents).
+- **Switchy's conversation** (`switchy.json`) is moved once at startup into a
+  Scout chat titled "Earlier questions (Switchy)": each question, its evidence
+  as the step's output, its answer or error, as the thread's events; Scout
+  takes its engine, model, effort and scope if Scout had no model yet, and it
+  becomes Scout's ongoing chat. The file is renamed `switchy.json.migrated`,
+  not deleted. Switchy's access modes (Ask first, Accept edits, Full access
+  with approvals) are gone: Scout only reads; a task that needs tools is a
+  session or another agent.
+- Tests (`tests/agents.rs`, scripted engines): the registry and its refusals,
+  the preamble on the first turn only, the ongoing chat and `fresh`, deleting
+  an agent, Scout's evidence step, fresh restricted threads on both engines,
+  history in the second input, Plan only, a restart, remote scope and offline
+  coverage, Stop, the queue, the old op name, and the migration. The `agents`
+  feature map drives the page, the start page, the form, mentions and chats at
+  both viewports. Not proven: a real model's answer to a preamble or to
+  evidence.
+- Not built yet: agents' own tools (reaching the owner with "needs you",
+  messaging another agent), Slack, agents on a remote host, per-agent
+  accounts in the form, editing an agent's memory from its chats.

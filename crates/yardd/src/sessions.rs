@@ -27,12 +27,33 @@ pub async fn begin(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value])
         app.guard.enqueue(sid, &reason);
         return;
     }
-    if let Err(e) = start_engine(app, sid).await {
-        app.emit(sid, user_message(text, attachments));
-        fail_turn(app, sid, &e);
-        return;
+    // A restricted session gets a fresh engine with each turn (agents::prepare).
+    if !crate::private::restricted(app, sid) {
+        if let Err(e) = start_engine(app, sid).await {
+            app.emit(sid, user_message(text, attachments));
+            fail_turn(app, sid, &e);
+            return;
+        }
     }
     send_turn(app, sid, text, attachments).await;
+}
+
+/// A message for a session: queued while a turn runs (see Meta::pending),
+/// else the next turn, with anything still queued going first.
+pub async fn send_message(app: &Arc<App>, sid: &str, text: &str, files: &[Value]) -> anyhow::Result<()> {
+    let meta = app.meta(sid).ok_or_else(|| anyhow::anyhow!("no such session"))?;
+    if meta.status == "running" || meta.status == "needs_approval" {
+        app.queue_message(sid, text, files);
+        return Ok(());
+    }
+    if meta.status == "queued" {
+        anyhow::bail!("this session is queued; start it first");
+    }
+    let mut items = app.take_all_queued(sid, |_| true);
+    items.push(json!({ "text": text, "attachments": files }));
+    let (text, files) = combine(&items);
+    send_turn(app, sid, &text, &files).await;
+    Ok(())
 }
 
 /// The `user_message` event. Attachments ride along (metadata only) so the
@@ -56,9 +77,11 @@ pub async fn start_queued(app: &Arc<App>, sid: &str) {
         fail_turn(app, sid, &anyhow::anyhow!("the queued prompt was lost"));
         return;
     };
-    if let Err(e) = start_engine(app, sid).await {
-        fail_turn(app, sid, &e);
-        return;
+    if !crate::private::restricted(app, sid) {
+        if let Err(e) = start_engine(app, sid).await {
+            fail_turn(app, sid, &e);
+            return;
+        }
     }
     let attachments = queued.and_then(|e| e["attachments"].as_array().cloned()).unwrap_or_default();
     start_turn(app, sid, &text, &attachments).await;
@@ -140,6 +163,16 @@ pub async fn send_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Val
 
 async fn start_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) {
     app.emit(sid, json!({ "type": "turn_started" }));
+    // An agent's session gives its engine more than the user typed.
+    let text = match crate::agents::prepare(app, sid, text).await {
+        Ok(crate::agents::Prepared::Send(input)) => input,
+        Ok(crate::agents::Prepared::Stopped) => return,
+        Err(e) => {
+            fail_turn(app, sid, &e);
+            return;
+        }
+    };
+    let text = text.as_str();
     let engine = app.meta(sid).map(|m| m.engine).unwrap_or_default();
     let sent = match engine.as_str() {
         "codex" => codex::send(app, sid, text, attachments).await,

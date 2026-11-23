@@ -325,10 +325,18 @@ async function handle(msg) {
   }
 }
 
+// An agent's session hands the engine a preamble, then the user's message;
+// the host agent's question comes after its evidence. Only what the user
+// typed controls the scripted behaviour.
+const AGENT_MARK = "\nThe user's message:\n";
+const hostQuestion = (text) => text.includes("\nEvidence: ") && text.includes("\nQuestion: ");
+const typed = (text) =>
+  hostQuestion(text) ? text.slice(text.lastIndexOf("\nQuestion: ") + 11) : text.includes(AGENT_MARK) ? text.slice(text.lastIndexOf(AGENT_MARK) + AGENT_MARK.length) : text;
+
 async function runTurn(threadId, cwd, turn, text) {
   // Retrieved records may contain markers from other sessions. Only this
   // question controls the scripted engine's behavior.
-  const behaviorText = text.startsWith("You are Switchy,") ? text.slice(text.lastIndexOf("\nQuestion: ") + 11) : text;
+  const behaviorText = typed(text);
   const turnId = turn.id;
   const item = (method, it) => notify(method, { threadId, turnId, item: it, startedAtMs: 0, completedAtMs: 0 });
   const finish = (status, error = null) => {
@@ -490,7 +498,7 @@ async function runTurn(threadId, cwd, turn, text) {
     return finish("completed");
   }
 
-  const answer = text.startsWith("You are Switchy,") ? "The host snapshot is available [local:1]. This is a scripted Switchy answer." : `Echo: ${text}`;
+  const answer = hostQuestion(text) ? "The host snapshot is available [local:1]. This is a scripted host agent answer." : `Echo: ${typed(text)}`;
   const third = Math.ceil(answer.length / 3);
   say(answer, [answer.slice(0, third), answer.slice(third, 2 * third), answer.slice(2 * third)]);
   finish("completed");

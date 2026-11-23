@@ -1,9 +1,9 @@
 # Launch defaults
 
-Settings saves independent model/effort and host defaults for New sessions and
-Switchy. Explicit defaults beat last-used choices and survive reloads. Switchy
-uses local models with a separate context-host scope. Reset restores last-used
-behavior. Configured offline session hosts stay selected; removed hosts fall back.
+Settings saves model/effort and host defaults for New sessions. Explicit
+defaults beat last-used choices and survive reloads. Reset restores last-used
+behavior. Configured offline session hosts stay selected; removed hosts fall
+back. Switchy's defaults are gone: agents keep their own model (see agents).
 
 ## Setup
 
@@ -25,37 +25,36 @@ yv iso down --name map-launch-defaults-remote
 
 ### independent-defaults
 Viewports: both
-Save different model/host defaults, reload Settings and New session, then make a
-one-off Switchy request. Reopening Switchy restores its defaults.
+Save a model/host default, reload Settings and New session: both show it.
+There is no Switchy defaults row any more.
 
 ```sh
 M_DESKTOP='[{"expect":"role:button:Model Fake Deep"}]'
 M_MOBILE='[{"click":"role:button:Session setup"},{"expect":"role:button:Model Fake Deep"},{"press":"Escape"}]'
-A='[{"eval":"localStorage.removeItem(\"yard.defaults.sessions\"); localStorage.removeItem(\"yard.defaults.switchy\"); true"},{"reload":true},{"click":"css:section[aria-labelledby=\"defaults-sessions\"] .chip"},{"expect":"css:.chip-popover","inViewport":true},{"click":{"css":".chip-popover .menu-item","hasText":"TEST-default-host"}},{"click":"css:section[aria-labelledby=\"defaults-sessions\"] button[aria-label^=\"Model \"]"},{"click":{"css":".picker-fold","hasText":"Codex"}},{"click":"role:button:Fake Deep"},{"press":"Escape"},{"click":{"css":"section[aria-labelledby=\"defaults-sessions\"] .btn-primary","hasText":"Save defaults"}},{"expect":"css:section[aria-labelledby=\"defaults-sessions\"] [role=status]","text":"Defaults saved."},{"click":"css:section[aria-labelledby=\"defaults-switchy\"] .chip"},{"click":{"css":".chip-popover .menu-item","hasText":"iso-host"}},{"expect":"css:section[aria-labelledby=\"defaults-switchy\"] button[aria-label^=\"Model \"]","text":"Fake Fast"},{"click":{"css":"section[aria-labelledby=\"defaults-switchy\"] .btn-primary","hasText":"Save defaults"}},{"reload":true},{"expect":"css:section[aria-labelledby=\"defaults-sessions\"] .chip","text":"TEST-default-host"},{"expect":"css:section[aria-labelledby=\"defaults-sessions\"] button[aria-label^=\"Model \"]","text":"Fake Deep"},{"expect":"css:section[aria-labelledby=\"defaults-switchy\"] .chip","text":"iso-host"},{"expect":"css:section[aria-labelledby=\"defaults-switchy\"] button[aria-label^=\"Model \"]","text":"Fake Fast"},{"shot":"saved-defaults"},{"goto":"new"}]'
+A='[{"eval":"localStorage.removeItem(\"yard.defaults.sessions\"); true"},{"reload":true},{"click":"css:section[aria-labelledby=\"defaults-sessions\"] .chip"},{"expect":"css:.chip-popover","inViewport":true},{"click":{"css":".chip-popover .menu-item","hasText":"TEST-default-host"}},{"click":"css:section[aria-labelledby=\"defaults-sessions\"] button[aria-label^=\"Model \"]"},{"click":{"css":".picker-fold","hasText":"Codex"}},{"click":"role:button:Fake Deep"},{"press":"Escape"},{"click":{"css":"section[aria-labelledby=\"defaults-sessions\"] .btn-primary","hasText":"Save defaults"}},{"expect":"css:section[aria-labelledby=\"defaults-sessions\"] [role=status]","text":"Defaults saved."},{"reload":true},{"expect":"css:section[aria-labelledby=\"defaults-sessions\"] .chip","text":"TEST-default-host"},{"expect":"css:section[aria-labelledby=\"defaults-sessions\"] button[aria-label^=\"Model \"]","text":"Fake Deep"},{"expect":"css:section[aria-labelledby=\"defaults-switchy\"]","count":0},{"shot":"saved-defaults"},{"goto":"new"}]'
 B='[{"expect":"role:button:TEST-default-host"},{"reload":true}]'
-C='[{"expect":"role:button:TEST-default-host"},{"shot":"session-defaults"},{"goto":"switchy"},{"expect":"role:button:Model Fake Fast"},{"expect":"css:.composer-chips .chip","text":"iso-host"},{"click":"role:button:Model Fake Fast"},{"click":"role:button:Fake Deep"},{"press":"Escape"},{"click":"css:.composer-chips .chip"},{"click":{"css":".chip-popover .menu-item","hasText":"All hosts"}},{"fill":"label:Message","value":"TEST-one-off Switchy model and host"},{"click":"role:button:Send"},{"wait":"text:This is a scripted Switchy answer."},{"goto":"new"}]'
-D='[{"goto":"switchy"},{"expect":"role:button:Model Fake Fast"},{"expect":"css:.composer-chips .chip","text":"iso-host"},{"shot":"switchy-defaults"}]'
-yv drive settings --viewport desktop --steps "$(jq -nc --argjson a "$A" --argjson b "$B" --argjson c "$C" --argjson d "$D" --argjson m "$M_DESKTOP" '$a + $m + $b + $m + $c + $m + $d')"
-yv drive settings --viewport mobile --steps "$(jq -nc --argjson a "$A" --argjson b "$B" --argjson c "$C" --argjson d "$D" --argjson m "$M_MOBILE" '$a + $m + $b + $m + $c + $m + $d')"
+C='[{"expect":"role:button:TEST-default-host"},{"shot":"session-defaults"}]'
+yv drive settings --viewport desktop --steps "$(jq -nc --argjson a "$A" --argjson b "$B" --argjson c "$C" --argjson m "$M_DESKTOP" '$a + $m + $b + $m + $c')"
+yv drive settings --viewport mobile --steps "$(jq -nc --argjson a "$A" --argjson b "$B" --argjson c "$C" --argjson m "$M_MOBILE" '$a + $m + $b + $m + $c')"
 ```
 
 ### effort-menu-stays-on-screen
 Viewports: both
-The effort menu opens fully on screen in both defaults rows. (On a 390 px
+The effort menu opens fully on screen in the defaults row. (On a 390 px
 phone the effort chip comes last in the row, and its menu hung from the chip's
 left edge to x ≈ 393-398, past the screen's right edge, cutting off the menu's
 right side.)
 
 ```sh
-yv drive settings --steps '[{"click":"css:section[aria-labelledby=\"defaults-sessions\"] button[aria-label^=\"Effort \"]"},{"expect":"css:.effort-menu"},{"shot":"sessions-effort-menu"},{"eval":"(() => { const r = document.querySelector(\".effort-menu\").getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })()","equals":true},{"press":"Escape"},{"click":"css:section[aria-labelledby=\"defaults-switchy\"] button[aria-label^=\"Effort \"]"},{"expect":"css:.effort-menu"},{"shot":"switchy-effort-menu"},{"eval":"(() => { const r = document.querySelector(\".effort-menu\").getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })()","equals":true}]'
+yv drive settings --steps '[{"click":"css:section[aria-labelledby=\"defaults-sessions\"] button[aria-label^=\"Effort \"]"},{"expect":"css:.effort-menu"},{"shot":"sessions-effort-menu"},{"eval":"(() => { const r = document.querySelector(\".effort-menu\").getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })()","equals":true}]'
 ```
 
 ### reset-defaults
 Viewports: both
-Explicit defaults can be cleared independently without changing the conversation.
+Explicit defaults can be cleared.
 
 ```sh
-yv drive settings --steps '[{"eval":"for (const target of [\"sessions\",\"switchy\"]) localStorage.setItem(\"yard.defaults.\"+target,JSON.stringify({host:\"local\",choice:{engine:\"codex\",model:\"fake-fast\",effort:\"low\"}})); true"},{"reload":true},{"click":{"css":"section[aria-labelledby=defaults-sessions] button","hasText":"Use last used"}},{"eval":"localStorage.getItem(\"yard.defaults.sessions\")","equals":null},{"eval":"localStorage.getItem(\"yard.defaults.switchy\") !== null","equals":true},{"click":{"css":"section[aria-labelledby=defaults-switchy] button","hasText":"Use last used"}},{"eval":"localStorage.getItem(\"yard.defaults.switchy\")","equals":null},{"shot":"reset-defaults"}]'
+yv drive settings --steps '[{"eval":"localStorage.setItem(\"yard.defaults.sessions\",JSON.stringify({host:\"local\",choice:{engine:\"codex\",model:\"fake-fast\",effort:\"low\"}})); true"},{"reload":true},{"click":{"css":"section[aria-labelledby=defaults-sessions] button","hasText":"Use last used"}},{"eval":"localStorage.getItem(\"yard.defaults.sessions\")","equals":null},{"shot":"reset-defaults"}]'
 ```
 
 ### removed-default-host-keeps-the-model

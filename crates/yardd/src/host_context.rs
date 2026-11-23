@@ -1,4 +1,5 @@
-//! Bounded, read-only evidence collection. No model-generated command reaches a shell.
+//! Bounded, read-only evidence about a host, for the built-in host agent (see
+//! `agents`). No model-generated command reaches a shell.
 use crate::state::{now_ms, App};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -149,7 +150,7 @@ fn repositories(app: &App, query: &str) -> Vec<PathBuf> {
         .lock()
         .unwrap()
         .values()
-        .filter(|s| !s.meta.id.starts_with("switchy-"))
+        .filter(|s| !crate::private::internal(&s.meta.id))
         .map(|s| PathBuf::from(&s.meta.cwd))
         .collect();
     let home = PathBuf::from(std::env::var("HOME").unwrap_or_default());
@@ -184,7 +185,9 @@ fn sessions(app: &App, query: &str) -> String {
     let words = keywords(query);
     let map = app.sessions.lock().unwrap();
     let mut hits = Vec::new();
-    for s in map.values().filter(|s| !s.meta.id.starts_with("switchy-")) {
+    // The host agent's own chats would only quote its earlier answers back.
+    let quoted = |s: &crate::state::Session| s.meta.agent.as_deref().is_some_and(|a| app.agents.is_builtin(a));
+    for s in map.values().filter(|s| !crate::private::internal(&s.meta.id) && !quoted(s)) {
         let mut snippets: Vec<_> = s
             .events
             .iter()
@@ -427,7 +430,7 @@ pub async fn collect(app: &Arc<App>, query: &str) -> Value {
         bytes += serde_json::to_string(s).map(|v| v.len()).unwrap_or(2000);
         bytes < 20_000
     });
-    json!({"op":"switchy.context", "hostName":crate::hosts::local_name(), "sources": sources,
+    json!({"op":"context.collect", "hostName":crate::hosts::local_name(), "sources": sources,
         "coverage":"Bounded snapshot: up to four repositories under known work folders and YARD_CONTEXT_ROOTS. Saved shell history may lag. Earlier observations exist only from previous questions. No environment, credential files or full filesystem crawl."})
 }
 
@@ -435,6 +438,8 @@ pub async fn collect(app: &Arc<App>, query: &str) -> Value {
 /// their host; the hub only receives a few ranked passages for this question.
 fn record_and_search(sources: &[Source], query: &str) -> Result<String> {
     use rusqlite::{params, Connection};
+    // Named for Switchy, the assistant this served first; kept so earlier
+    // observations survive the move to the host agent.
     let mut conn = Connection::open(crate::store::data_dir().join("switchy-context.db"))?;
     conn.busy_timeout(Duration::from_millis(500))?;
     conn.execute_batch(
@@ -484,7 +489,7 @@ fn record_and_search(sources: &[Source], query: &str) -> Result<String> {
         }
     }
     // Bound disk use as well as model context. These are cached observations,
-    // not the canonical session logs or Switchy conversation.
+    // not the canonical session logs.
     tx.execute("DELETE FROM observations WHERE rowid NOT IN (SELECT rowid FROM observations ORDER BY rowid DESC LIMIT 2000)", [])?;
     tx.commit()?;
     Ok(prior)

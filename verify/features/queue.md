@@ -51,14 +51,14 @@ yv drive 'session:{{q3_sid}}' --viewport desktop --steps '[{"expect":"role:butto
 yv state --expect '{"sessions":[{"id":"{{q3_sid}}","status":"idle"}]}'
 ```
 
-### switchy-queues-and-starts-anyway
+### host-agent-queues-and-starts-anyway
 Viewports: desktop
-Switchy goes through the same guard: under pressure a question waits with
-"Queued: …" and Start anyway above the composer, and Start anyway answers it.
-The notice is gone afterwards.
+Scout goes through the same guard: under pressure a new chat waits with
+"Queued: …" and Start anyway, and Start anyway answers it.
 
 ```sh
-yv drive switchy --viewport desktop --steps '[{"expect":"role:heading:Switchy"},{"fill":"label:Message","value":"TEST-Switchy under pressure"},{"click":"role:button:Send"},{"expect":"css:.assistant-compose-wrap .queued-line","text":"Queued:"},{"shot":"switchy-queued"},{"click":"role:button:Start anyway"},{"expect":{"css":".assistant-answer","hasText":"TEST-Switchy under pressure"},"text":"This is a scripted Switchy answer."},{"expect":"css:.queued-line","count":0},{"shot":"switchy-started"}]'
+yv api '{"op":"agent.save","agent":{"id":"scout","model":"fake-fast","effort":"low","scope":"local"}}' --wait '{"op":"agent.saved"}'
+yv drive new --viewport desktop --steps '[{"click":"role:button:Agents"},{"click":"role:button:New chat with Scout"},{"fill":"label:Message","value":"TEST-Scout under pressure"},{"press":"Enter"},{"expect":"css:.queued-line","text":"Queued:"},{"shot":"scout-queued"},{"click":"role:button:Start anyway"},{"expect":"css:.thread","text":"scripted host agent answer"},{"expect":"role:button:Start anyway","count":0}]'
 ```
 
 ### hosts-page-shows-pressure

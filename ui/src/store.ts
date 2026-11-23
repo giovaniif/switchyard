@@ -1,4 +1,3 @@
-import type { SwitchyConversation } from "./protocol";
 import { useEffect, useMemo, useReducer, useRef } from "react";
 import { rememberSession } from "./sessionDefaults";
 import { returnToComposer } from "./compose";
@@ -29,6 +28,7 @@ import {
   type QueueReturned,
   type AccountEntry,
   type Automation,
+  type Agent,
   type McpAuthState,
   type McpStatus,
 } from "./protocol";
@@ -52,7 +52,12 @@ export type Route =
   | { page: "hosts"; host?: string; tab?: "sessions" | "engines" | "system" }
   | { page: "subscriptions" }
   | { page: "sessions" }
-  | { page: "assistant" }
+  /** Every agent, as cards. */
+  | { page: "agents" }
+  /** An agent's chat before it has one: the agent's own start page. */
+  | { page: "agent"; id: string }
+  /** The create/edit form; `id` is `new` for a new agent. */
+  | { page: "agentEdit"; id: string }
   | { page: "settings" }
   | { page: "session"; id: string }
   | { page: "automations" }
@@ -66,8 +71,12 @@ export function routeHash(route: Route): string {
   switch (route.page) {
     case "session":
       return `#/s/${encodeURIComponent(route.id)}`;
-    case "assistant":
-      return "#/assistant";
+    case "agents":
+      return "#/agents";
+    case "agent":
+      return `#/agents/${encodeURIComponent(route.id)}`;
+    case "agentEdit":
+      return `#/agents/${encodeURIComponent(route.id)}/edit`;
     case "hosts": {
       const query = new URLSearchParams();
       if (route.host) query.set("host", route.host);
@@ -95,6 +104,10 @@ export function parseHash(hash: string): Route {
   try {
     const s = /^#\/s\/(.+)$/.exec(hash);
     if (s) return { page: "session", id: decodeURIComponent(s[1]) };
+    const e = /^#\/agents\/([^/]+)\/edit$/.exec(hash);
+    if (e) return { page: "agentEdit", id: decodeURIComponent(e[1]) };
+    const g = /^#\/agents\/([^/]+)$/.exec(hash);
+    if (g) return { page: "agent", id: decodeURIComponent(g[1]) };
     const a = /^#\/automations\/([^/]+)\/([^/]+)$/.exec(hash);
     if (a) return { page: "automation", host: decodeURIComponent(a[1]), id: decodeURIComponent(a[2]) };
   } catch {
@@ -108,7 +121,8 @@ export function parseHash(hash: string): Route {
   }
   if (hash === "#/subscriptions") return { page: "subscriptions" };
   if (hash === "#/sessions") return { page: "sessions" };
-  if (hash === "#/assistant") return { page: "assistant" };
+  // Switchy's page became the agents; its question box is the host agent's.
+  if (hash === "#/agents" || hash === "#/assistant") return { page: "agents" };
   if (hash === "#/automations") return { page: "automations" };
   if (hash === "#/settings") return { page: "settings" };
   if (hash === "#/connectors") return { page: "connectors" };
@@ -125,8 +139,8 @@ interface Thread {
 
 export interface State {
   mobile: MobileStatus;
-  switchy: SwitchyConversation | null;
-  switchyTotal: number;
+  /** The hub's agents (agents live on this yardd only). */
+  agents: Agent[];
   connected: boolean;
   route: Route;
   /** A session the URL named before it was listed (sessions arrive with the
@@ -197,8 +211,7 @@ const emptyThread = (): Thread => ({ next: -1, items: [], early: [] });
 
 export const initial: State = {
   mobile: { configured: false },
-  switchy: null,
-  switchyTotal: 0,
+  agents: [],
   connected: false,
   route: { page: "new" },
   restore: null,
@@ -366,9 +379,8 @@ function reduceServer(state: State, msg: any): State {
   switch (msg.op) {
     case "mobile.status":
       return msg.hostId ? state : { ...state, mobile: msg.mobile };
-    case "switchy.state":
-      if (msg.hostId || (state.switchy && msg.state.revision < state.switchy.revision)) return state;
-      return { ...state, switchy: msg.state, switchyTotal: msg.total ?? msg.state.turns.length };
+    case "agents":
+      return msg.hostId ? state : { ...state, agents: (msg.agents as Agent[] | undefined) ?? [] };
     case "snapshot": {
       const hosts = (msg.hosts ?? []) as HostEntry[];
       const known = new Set(hosts.map((h) => h.id));
@@ -384,8 +396,7 @@ function reduceServer(state: State, msg: any): State {
       return {
         ...next,
         mobile: msg.mobile ?? { configured: false },
-        switchy: null,
-        switchyTotal: 0,
+        agents: (msg.agents as Agent[] | undefined) ?? [],
         sessions,
         route,
         linkDown: {},
@@ -588,7 +599,13 @@ function reduceServer(state: State, msg: any): State {
 }
 
 export interface Actions {
-  switchySend(text: string, engine: string, model: string, scope: string, permission?: string, effort?: string): Promise<{ error?: string }>;
+  /** A message for an agent: its ongoing chat, or a new one (always with `fresh`).
+   *  Opens the chat; resolves with an error fit to show when yardd refused it. */
+  askAgent(agentId: string, text: string, attachments?: string[], fresh?: boolean): Promise<{ sessionId?: string; error?: string }>;
+  /** Create (no `id`) or change an agent; only the fields given change. */
+  saveAgent(agent: Partial<Agent>): Promise<{ agent?: Agent; error?: string }>;
+  /** Its chats stay, as plain sessions. The built-in agent cannot be deleted. */
+  deleteAgent(id: string): void;
 
   go(route: Route): void;
   dismissError(): void;
@@ -893,10 +910,18 @@ export function useYard(): { state: State; actions: Actions } {
 
   const actions = useMemo<Actions>(
     () => ({
-      switchySend: async (text, engine, model, scope, permission, effort) => {
-        const reply = await ask({ op: "switchy.send", text, engine, model, scope, permission, effort }, 30_000);
-        return reply.error ? { error: reply.error } : {};
+      askAgent: async (agentId, text, attachments, fresh) => {
+        // Answered as soon as the chat is known; the turn goes on after.
+        const reply = await ask({ op: "agent.ask", agentId, text, attachments, ...(fresh ? { fresh: true } : {}) }, 60_000);
+        if (reply.op !== "created" || typeof reply.sessionId !== "string") return { error: reply.error ?? "The message was not sent." };
+        dispatch({ t: "route", route: { page: "session", id: reply.sessionId } });
+        return { sessionId: reply.sessionId };
       },
+      saveAgent: async (agent) => {
+        const reply = await ask({ op: "agent.save", agent }, 30_000);
+        return reply.error || !reply.agent ? { error: reply.error ?? "The agent was not saved." } : { agent: reply.agent as Agent };
+      },
+      deleteAgent: (id) => post({ op: "agent.delete", id }),
       go: (route) => dispatch({ t: "route", route }),
       dismissError: () => dispatch({ t: "dismiss" }),
       create: (input) => post({ op: "session.create", ...input }),

@@ -599,7 +599,7 @@ async fn run(app: &Arc<App>, a: &Automation, force: bool, over: &RunOverride) ->
     if let Some(base) = base {
         create["base"] = json!(base);
     }
-    let sid = crate::ws::create_session(app, None, &create, Some(&title), Some(&a.id)).await?;
+    let sid = crate::ws::create_session(app, None, &create, Some(&title), Some(&a.id), None).await?;
     Ok(Ok(sid))
 }
 
