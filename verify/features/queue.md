@@ -51,6 +51,16 @@ yv drive 'session:{{q3_sid}}' --viewport desktop --steps '[{"expect":"role:butto
 yv state --expect '{"sessions":[{"id":"{{q3_sid}}","status":"idle"}]}'
 ```
 
+### switchy-queues-and-starts-anyway
+Viewports: desktop
+Switchy goes through the same guard: under pressure a question waits with
+"Queued: …" and Start anyway above the composer, and Start anyway answers it.
+The notice is gone afterwards.
+
+```sh
+yv drive switchy --viewport desktop --steps '[{"expect":"role:heading:Switchy"},{"fill":"label:Message","value":"TEST-Switchy under pressure"},{"click":"role:button:Send"},{"expect":"css:.assistant-compose-wrap .queued-line","text":"Queued:"},{"shot":"switchy-queued"},{"click":"role:button:Start anyway"},{"expect":{"css":".assistant-answer","hasText":"TEST-Switchy under pressure"},"text":"This is a scripted Switchy answer."},{"expect":"css:.queued-line","count":0},{"shot":"switchy-started"}]'
+```
+
 ### hosts-page-shows-pressure
 The Hosts page says the host is under pressure on its card, and its Details
 say why new sessions wait.
