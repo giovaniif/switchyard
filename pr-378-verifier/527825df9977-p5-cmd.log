@@ -1,0 +1,15 @@
+$ verify/yv api '{"op":"mcp.reconnect","engine":"claude","server":"plugin:engineering:gmail"}' --wait '{"op":"mcp",...gmail failed}'
+# exit 1 after 32 ms at 204425d07140f8dd9dcacae2851dce55fe60d7d7
+
+{
+  "command": "api {\"op\":\"mcp.reconnect\",\"engine\":\"claude\",\"server\":\"plugin:engineering:gmail\"}",
+  "ok": false,
+  "problems": [
+    {
+      "code": "iso-not-running",
+      "msg": "no isolated environment named default",
+      "hint": "verify/yv iso up"
+    }
+  ]
+}
+

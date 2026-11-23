@@ -1,0 +1,51 @@
+{
+  "command": "api",
+  "ok": true,
+  "sent": {
+    "op": "mcp.reconnect",
+    "engine": "claude",
+    "server": "plugin:engineering:gmail"
+  },
+  "reply": {
+    "account": "default",
+    "at": 1795416055519,
+    "engine": "claude",
+    "op": "mcp",
+    "servers": [
+      {
+        "appTools": 0,
+        "name": "claude.ai Datadog",
+        "origin": "https://mcp-proxy.anthropic.com",
+        "source": "claudeai",
+        "status": "needs-auth",
+        "tools": 0
+      },
+      {
+        "appTools": 0,
+        "name": "plugin:engineering:sentry",
+        "origin": "https://mcp.sentry.dev",
+        "source": "plugin",
+        "status": "needs-auth",
+        "tools": 0
+      },
+      {
+        "appTools": 2,
+        "name": "chart",
+        "source": "user",
+        "status": "connected",
+        "tools": 3
+      },
+      {
+        "appTools": 0,
+        "error": "No URL configured for this server",
+        "name": "plugin:engineering:gmail",
+        "source": "plugin",
+        "status": "failed",
+        "tools": 0
+      }
+    ]
+  },
+  "saved": {},
+  "received": 1,
+  "problems": []
+}

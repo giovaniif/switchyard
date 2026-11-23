@@ -1,0 +1,46 @@
+{
+  "command": "drive",
+  "ok": true,
+  "route": "switchy",
+  "build": {
+    "sha": "204425d07140f8dd9dcacae2851dce55fe60d7d7",
+    "short": "204425d",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-23T06:36:25.058Z"
+  },
+  "dir": "/home/giovani/.yard/wt/switchyard/yard-loop-verify-378-2026-11-8065/.verify/drives/2026-11-23T06-40-56-198Z",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4757,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/.yard/wt/switchyard/yard-loop-verify-378-2026-11-8065/.verify/drives/2026-11-23T06-40-56-198Z/switchy-queued-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/.yard/wt/switchyard/yard-loop-verify-378-2026-11-8065/.verify/drives/2026-11-23T06-40-56-198Z/switchy-started-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

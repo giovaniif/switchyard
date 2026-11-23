@@ -1,0 +1,206 @@
+{
+  "v": 1,
+  "claim": "The feature map had no recipe for connector Retry on a Not working row (mcp.reconnect) or for Switchy's Start anyway under pressure (switchy.startNow). This PR adds connectors/retry-a-failed-server and queue/switchy-queues-and-starts-anyway.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-verify-378-2026-11-8065",
+  "base": "602dc11b4aeae046682a6dcf61fea52f883f9f5c",
+  "head": "204425d07140f8dd9dcacae2851dce55fe60d7d7",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/features/connectors.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/queue.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-23T06:40:43.517Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "204425d07140f8dd9dcacae2851dce55fe60d7d7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-23T06:40:43.558Z",
+      "text": "no-repro: map-only PR (verify/features markdown); there is no product behaviour to reproduce on base"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "204425d07140f8dd9dcacae2851dce55fe60d7d7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-23T06:40:43.598Z",
+      "text": "no-failing-test: map-only PR. Negative control instead: on an iso without --pressure, switchy-queues-and-starts-anyway fails at its 'Queued:' step (timeout), so the recipe discriminates"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "204425d07140f8dd9dcacae2851dce55fe60d7d7",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-rc-drive.json",
+          "sha256": "9c5d680165ce4fdd06352edd888b6c6bebb911a4c8e4024a19d87dbdd8dff078"
+        },
+        {
+          "path": "p3-retry-failed-mobile.png",
+          "sha256": "676fd8e9c23f8614354c0a376315f5686a2f2fa5dcecb215a0e61f62b52c5ce6"
+        },
+        {
+          "path": "p3-retry-failed-desktop.png",
+          "sha256": "14c4172f5695a8489d7a11604602479aa7e02bb66ea36052c7b454e761f9350c"
+        }
+      ],
+      "addedAt": "2026-11-23T06:41:57.321Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "204425d07140f8dd9dcacae2851dce55fe60d7d7",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-pq-drive.json",
+          "sha256": "32abffc73e024a63dcd0be0ba797f7fbf15af92c0056c79b29e47852e3b780e0"
+        },
+        {
+          "path": "p4-switchy-queued-desktop.png",
+          "sha256": "20375beb60f5671a1f7abfaa90c923364ef48e0fc0c2287eadb0b342cf107d49"
+        },
+        {
+          "path": "p4-switchy-started-desktop.png",
+          "sha256": "b97fea9feebc57c3b46143f159990d229a24551f1e6b8080f1a1b3df1ad42c64"
+        }
+      ],
+      "addedAt": "2026-11-23T06:41:57.498Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "regression",
+      "at": "204425d07140f8dd9dcacae2851dce55fe60d7d7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-rc-api.json",
+          "sha256": "32889f6d72134b97d929c69ef6e5441ee4b57f47d2471a76cc27e63731aa03b3"
+        },
+        {
+          "path": "p5-cmd.log",
+          "sha256": "527825df9977489b3b59b973938fc0d1bee9c51407261df07640331287ebaa11"
+        }
+      ],
+      "addedAt": "2026-11-23T06:41:57.670Z",
+      "failedApi": [],
+      "cmd": "verify/yv api '{\"op\":\"mcp.reconnect\",\"engine\":\"claude\",\"server\":\"plugin:engineering:gmail\"}' --wait '{\"op\":\"mcp\",...gmail failed}'",
+      "exit": 1
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "204425d07140f8dd9dcacae2851dce55fe60d7d7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-test.log",
+          "sha256": "a580a1984d3ed1907175162636ece873ce00a4ae05b7653609ed57f9517d1331"
+        },
+        {
+          "path": "p6-cmd.log",
+          "sha256": "efb91a723cbc43ef2fe572f063be12bbaa9a8abf687ba5a83e2d8420e843b5f4"
+        }
+      ],
+      "addedAt": "2026-11-23T06:41:57.746Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "204425d07140f8dd9dcacae2851dce55fe60d7d7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-queue.json",
+          "sha256": "a7b41edb8d64b244ce4e510a575d20a794f874ddc1c84ea88c38f78acd72d038"
+        },
+        {
+          "path": "p7-cmd.log",
+          "sha256": "d7aab6a19dfdbeb5cdf4bbce32ec85d67476394be2d12748950825e4803c636a"
+        }
+      ],
+      "addedAt": "2026-11-23T06:42:44.151Z",
+      "failedApi": [],
+      "failingRecipes": [],
+      "passingRecipes": [
+        "queue/new-session-queues",
+        "queue/start-anyway",
+        "queue/double-click-start-anyway",
+        "queue/switchy-queues-and-starts-anyway",
+        "queue/hosts-page-shows-pressure"
+      ],
+      "cmd": "verify/yv map run queue",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "204425d07140f8dd9dcacae2851dce55fe60d7d7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-connectors.json",
+          "sha256": "e3472b2373e32e8666afee0ad8967d6cb5a24ec9005c9dfd050f1b23ed4b5a48"
+        },
+        {
+          "path": "p8-cmd.log",
+          "sha256": "21baf4840a59292fa39d60846a1181585bfd928e68be48b4efe701d593bf5f1d"
+        }
+      ],
+      "addedAt": "2026-11-23T06:43:07.778Z",
+      "failedApi": [],
+      "failingRecipes": [],
+      "passingRecipes": [
+        "connectors/connectors-list",
+        "connectors/focused-search-and-status",
+        "connectors/filters-stay-on-one-row",
+        "connectors/retry-a-failed-server",
+        "connectors/claude-sign-in",
+        "connectors/codex-sign-in-pasted",
+        "connectors/add-linear",
+        "connectors/codex-chart",
+        "connectors/claude-chart",
+        "connectors/large-catalog-stays-bounded",
+        "connectors/disabled-button-looks-disabled",
+        "connectors/rows-meet-header-and-footer"
+      ],
+      "cmd": "verify/yv map run connectors",
+      "exit": 0
+    }
+  ]
+}
