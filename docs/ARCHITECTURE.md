@@ -54,7 +54,7 @@ Every engine is normalized to one event list per session. The UI replays it on o
 
 | Event | Meaning |
 |---|---|
-| `user_message` | My prompt, with any attachments' details |
+| `user_message` | My prompt, with any attachments' details; a message I did not type carries its `origin` (see Agents) |
 | `turn_started`, `turn_completed` | Turn boundaries, with yardd's clock in `at` (ms) |
 | `assistant_delta`, `assistant_message` | Streamed text, then the final text |
 | `reasoning_delta`, `reasoning` | Thinking: Claude's summarized thinking (`--thinking-display summarized`), Codex's reasoning summary (parts become paragraphs) |
@@ -552,12 +552,85 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   model, effort and permission pickers; Scout's has the context host picker
   instead and no permission. Deleting asks once more and says the
   conversation goes too.
+- **Origins** (`origins.rs`). A message into a conversation that the owner
+  did not type carries an `origin`, kept on its `user_message` (and on the
+  queued message before that) and shown in the thread as a small badge above
+  the bubble, the sender's face and words (`originLabel` in agents.ts; React
+  text only): `{ kind: "agent", agentId, name, hops }` is "From @Name",
+  `{ kind: "agentReply", agentId, name, hops }` is "Reply from @Name". None,
+  or `{ kind: "user" }`, is the owner (no badge); a kind the UI does not know
+  shows none. Origins are set by yardd only, never read from a client's op.
+  The engine reads such a message framed with where it came from
+  (`origins::engine_text`: `<message from="@Builder">…</message>` and that the
+  answer goes back; `<reply from="@Reviewer">…</reply>`); the thread shows only
+  the text. Queued messages from several origins become one turn but stay
+  separate `user_message`s, each with its badge. `Meta.answering` keeps the
+  origins of the messages the running turn answers: set when it starts, grown
+  by steered messages (before the engine reads them, so a turn that ends at
+  once still owes them). When the turn ends, `App::emit` hands them with its
+  final answer, or its error, to the **reply hook** (`origins::reply`, run off
+  a channel by a task in main): one match on `kind`, where `agent` delivers
+  the answer into the sender's conversation as an `agentReply` (which starts
+  its turn) and a reply is not answered back. A failed turn sends "<Name>'s
+  turn failed before it answered: …", a stopped one "<Name> was stopped before
+  it answered"; Stop also takes such messages out of the queue (they never
+  land in the owner's reply box) and their senders hear "… stopped before it
+  read your message". A yardd restart mid-turn fails the turn, so the sender
+  hears that too. Slack adds one arm (and its badge).
+- **Agents' own tools** (`agent_tools.rs`). Every user-made agent gets five
+  tools in its conversation on every engine: `notify_owner { message }`,
+  `message_agent { to, text }`, `list_agents`, `remember { text }` (adds a
+  line) and `set_memory { text }` (replaces it). Scout, private threads and
+  the owner's own sessions never get them.
+  - **How they reach the engines.** yardd is also a stdio MCP server:
+    `yardd agent-tools`. An agent's conversation hands its engine that server
+    with two variables, `YARD_TOOLS_URL` (`http://127.0.0.1:<port>/agent-tools`)
+    and `YARD_TOOLS_KEY` (32 random bytes, one per conversation for this
+    yardd's life, dropped with the session): Claude through the sidecar's
+    `start.tools` (the SDK's `mcpServers.switchyard`, with `allowedTools:
+    ["mcp__switchyard"]` so they run unasked); Codex as a thread-local
+    `config` override `mcp_servers.switchyard` on `thread/start` and
+    `thread/resume` (never written to the user's config); OpenCode, Grok and
+    Gemini in `mcpServers` on ACP `session/new`, `session/resume` and
+    `session/load`. The server answers `initialize` itself and passes
+    `tools/list` and `tools/call` to yardd: `POST /agent-tools`, which answers
+    only loopback peers, never a request with an `Origin` header, and only a
+    key it made, and acts for the one conversation the key names. One
+    implementation for four engines, and the key, not the model, decides who
+    is calling. Chosen over Codex's dynamic tools and an SDK in-process server
+    (one engine each). Without a loopback bind (`YARD_BIND` lists only other
+    addresses) no engine is offered the tools. Our tools never ask for
+    approval: Codex's MCP elicitation from `switchyard` is accepted, and an
+    ACP permission request for a `switchyard_*` call is allowed; they act only
+    on the agent's own conversation and are capped. Each engine shows a call
+    as a normal step, labelled by `agent_tools::label` (and its twin in the
+    sidecar's `agentTools.ts`): "Asked for you", "Messaged @Reviewer",
+    "Remembered", "Updated memory", "Listed agents".
+  - **Needs you.** `notify_owner` broadcasts the `notify` op (as `yv notify`
+    does) titled "<Name> needs you", with the message and the conversation's
+    id, so a click opens the conversation; and sets `Meta.needsYou { message,
+    at }`. The card reads "Needs you · <message>" with the amber "!" mark and
+    the Agents row gets a breathing amber dot (after a pending approval, before
+    working), until a focused window shows the conversation and sends
+    `agent.seen { agentId }`, which clears it for every window. At most 3 per
+    agent per hour; the 4th says when it may try again.
+  - **Message another agent.** `to` is a name (case and a leading `@`
+    ignored); the description of `message_agent` lists the agents there are.
+    The message goes into the target's one conversation with origin `agent`
+    (made with it if it had none; queued while it works) and the call
+    answers at once; delivery that fails comes back as a reply. Hops: one
+    more than the longest chain among the messages the sender's turn answers;
+    a 4th hop, a message to oneself or an unknown name is refused in the tool
+    result. At most 30 messages per agent per hour.
+  - **Memory.** `remember` and `set_memory` change `memory` (the 20,000
+    character cap, refused past it) and broadcast `agents`. The engine knows
+    already, so it is not a notes change. An open form follows the new memory
+    unless the user has typed in it, and Save leaves an untouched memory out.
 - **Slack (planned, step 3).** A Slack thread is not a session of its own:
-  a message from Slack goes into the agent's one conversation, tagged with
-  its source (shown inline as a Slack badge with channel and person), and the
-  answer to that message is posted back to the Slack thread it came from.
-  yardd records, per message, the Slack team, channel, thread and message it
-  came from, so each answer knows where to go.
+  a message from Slack goes into the agent's one conversation with origin
+  `{ kind: "slack", … }` (the team, channel, thread and message it came from,
+  shown as a Slack badge with channel and person), and the reply hook's
+  `slack` arm posts the answer to that message back to the Slack thread.
 - **Scout, the host agent.** Its conversation is restricted (`private::restricted`):
   always Plan only (`session.setPermission` refuses another), and every turn
   runs on a fresh engine thread with no tools: Codex gets an ephemeral
@@ -617,6 +690,21 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   form, mentions, the one conversation and the Agents row's mark at both
   viewports. Not proven: a real model's answer to a preamble or to
   evidence.
-- Not built yet: agents' own tools (reaching the owner with "needs you",
-  messaging another agent), Slack (see above), agents on a remote host,
-  per-agent accounts in the form, an agent editing its own memory.
+- Tests for the tools (`tests/agent_tools.rs`): the scripted engines call the
+  real `yardd agent-tools` over stdio for a `[[tool NAME {json}]]` marker
+  (`tests/fake-codex/agent-tools.mjs`, on Codex, the Claude sidecar and ACP):
+  needs you with its cap and `agent.seen`, a message and its answer back with
+  both origins kept across a restart, the hop limit and a message to oneself,
+  failed and stopped answers, memory edits and the cap, OpenCode running them
+  unasked, Scout and plain sessions without them, and the endpoint's key
+  check. The `agents` map drives the badges, the Needs-you card and row, and
+  memory in the form at both viewports. Checked against the real CLIs
+  without a turn: Codex 0.171 takes the `mcp_servers.switchyard` override,
+  starts the server and runs `mcpServer/tool/call` through it; the real
+  sidecar with Claude Code starts it from `start.tools` and runs `mcp_call`.
+  Not proven: a real model choosing to call them, Codex's approval prompt for
+  an MCP call during a real turn (answered by the elicitation accept, not
+  seen live), and how OpenCode, Grok and Gemini name the calls (matched by
+  `switchyard` plus the tool name).
+- Not built yet: Slack (see above), agents on a remote host, per-agent
+  accounts in the form.

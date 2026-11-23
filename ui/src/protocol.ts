@@ -46,6 +46,10 @@ export interface SessionMeta {
   lastMessage?: string | null;
   /** An agent's conversation starts a fresh engine thread with its next turn, and why. */
   freshContext?: string | null;
+  /** The agent asked for the owner (`notify_owner`): kept until a window opens its conversation (`agent.seen`). */
+  needsYou?: { message: string; at: number } | null;
+  /** Where the messages the running turn answers came from (yardd owes them its answer). */
+  answering?: MessageOrigin[];
   /** When a run's first turn ended; `updatedAt` moves on any later change. */
   finishedAt?: number;
   /** When the latest turn ended (yardd's clock), and how. Missing before the first, and from an older yardd. */
@@ -62,7 +66,18 @@ export interface PendingMessage {
   text: string;
   attachments?: Attachment[];
   at: number;
+  origin?: MessageOrigin;
 }
+
+/** Where a message into a conversation came from, when the owner did not
+ *  type it (yardd's origins.rs): another agent's `message_agent` (`agent`),
+ *  or the answer to one delivered back (`agentReply`). `hops` counts the
+ *  chain of agents messaging agents. Slack will add `slack`. Absent, or
+ *  `user`: typed by the owner. */
+export type MessageOrigin =
+  | { kind: "user" }
+  | { kind: "agent" | "agentReply"; agentId: string; name: string; hops: number }
+  | { kind: string; [field: string]: unknown };
 
 export type ModelServiceTier = { id: string; name: string; description: string };
 
@@ -456,7 +471,7 @@ export type AgentEvent =
   /** `session.create` and `session.send` take `attachments: string[]` (ids
    *  from `attach.put`) and may then have empty text; the event carries
    *  the attachments' records. */
-  | { type: "user_message"; text: string; attachments?: Attachment[]; steered?: boolean; at?: number }
+  | { type: "user_message"; text: string; attachments?: Attachment[]; steered?: boolean; at?: number; origin?: MessageOrigin }
   /** `at` is yardd's clock in ms; older logs lack it. */
   | { type: "turn_started"; at?: number }
   | { type: "turn_completed"; status: string; at?: number }
@@ -552,7 +567,7 @@ export interface McpAuthState {
 /** What the thread renders. Built from events by `applyEvent`. */
 export type Item =
   /** `steered`: sent while the agent worked and given to it mid-turn, at `at`. */
-  | { kind: "user"; key: string; text: string; attachments?: Attachment[]; steered?: boolean; at?: number }
+  | { kind: "user"; key: string; text: string; attachments?: Attachment[]; steered?: boolean; at?: number; origin?: MessageOrigin }
   | { kind: "assistant"; key: string; itemId: string; text: string; streaming: boolean }
   | { kind: "reasoning"; key: string; itemId: string; text: string; streaming: boolean }
   /** A turn's span, for "Worked for 1m 12s". Not drawn by itself. */
@@ -634,6 +649,7 @@ export function applyEvent(items: Item[], ev: AgentEvent, seq: number): Item[] {
           text: ev.text,
           ...(ev.attachments?.length ? { attachments: ev.attachments } : {}),
           ...(ev.steered ? { steered: true, at: ev.at } : {}),
+          ...(ev.origin && ev.origin.kind !== "user" ? { origin: ev.origin } : {}),
         },
       ];
     case "reasoning_delta":

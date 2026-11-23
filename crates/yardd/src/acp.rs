@@ -343,6 +343,11 @@ impl Client {
             if kind == "command" {
                 app.guard.command_started(sid, id, &cwd);
             }
+            // Switchyard's own tools read as what they did ("Messaged @Reviewer").
+            let (title, detail) = match own_tool(u).and_then(|t| crate::agent_tools::label(t, &u["rawInput"])) {
+                Some(own) => own,
+                None => (title.to_string(), detail),
+            };
             app.emit(sid, json!({ "type": "tool_started", "itemId": id, "kind": kind, "title": title, "detail": detail }));
         }
         self.diffs(app, sid, id, &u["content"], &cwd);
@@ -403,6 +408,12 @@ impl Client {
             "edit" => "edit",
             _ => "other",
         };
+        // Switchyard's own tools act only on the agent's own conversation and
+        // are capped, so they run unasked.
+        if own_tool(call).is_some() && crate::agent_tools::offered(app, &sid) {
+            self.reply(id, json!({ "outcome": answer(&options, "allow") }));
+            return;
+        }
         let permission = app.meta(&sid).map(|m| m.permission).unwrap_or_default();
         if let Some(decision) = policy(&permission, approval_kind) {
             self.reply(id, json!({ "outcome": answer(&options, decision) }));
@@ -721,7 +732,7 @@ async fn attached(app: &Arc<App>, sid: &str) -> Result<(Arc<Client>, String)> {
         return Ok((c, acp_sid));
     };
     let caps = c.info.lock().unwrap()["agentCapabilities"].clone();
-    let params = json!({ "sessionId": acp_sid, "cwd": meta.cwd, "mcpServers": [] });
+    let params = json!({ "sessionId": acp_sid, "cwd": meta.cwd, "mcpServers": mcp_servers(app, sid) });
     let answer = if !caps["sessionCapabilities"]["resume"].is_null() {
         c.request("session/resume", params).await?
     } else if caps["loadSession"].as_bool() == Some(true) {
@@ -740,10 +751,21 @@ async fn attached(app: &Arc<App>, sid: &str) -> Result<(Arc<Client>, String)> {
     Ok((c, acp_sid))
 }
 
+/// The MCP servers a session opens with: Switchyard's tools for an agent's
+/// conversation, none otherwise (the agent loads the user's own config).
+fn mcp_servers(app: &App, sid: &str) -> Value {
+    json!(crate::agent_tools::launch(app, sid).map(|l| vec![l.acp()]).unwrap_or_default())
+}
+
+/// One of Switchyard's own tools, from an ACP tool call.
+fn own_tool(call: &Value) -> Option<&'static str> {
+    [&call["title"], &call["_meta"]["toolName"], &call["_meta"]["name"]].into_iter().filter_map(Value::as_str).find_map(crate::agent_tools::own_tool)
+}
+
 pub async fn create(app: &Arc<App>, sid: &str) -> Result<()> {
     let meta = app.meta(sid).context("no such session")?;
     let c = client(app, &meta.engine, &meta.account).await?;
-    let answer = c.request("session/new", json!({ "cwd": meta.cwd, "mcpServers": [] })).await?;
+    let answer = c.request("session/new", json!({ "cwd": meta.cwd, "mcpServers": mcp_servers(app, sid) })).await?;
     let acp_sid = answer["sessionId"].as_str().context("session/new returned no session id")?.to_string();
     c.attach(app, sid, &acp_sid, &answer);
     Ok(())

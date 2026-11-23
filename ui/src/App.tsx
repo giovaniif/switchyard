@@ -9,7 +9,7 @@ import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
 import { AgentAvatar, AgentBar, AgentForm, AgentsPage, AgentStart } from "./AgentsPage";
-import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt } from "./agents";
+import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
 import { accountChoices, accountLabel, accountName, accountOf, choiceOnEngine, DEFAULT_ACCOUNT } from "./accounts";
@@ -129,13 +129,28 @@ const MIC = "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3ZM19 10v2a7 7 0 
 const STOP = "M7 7h10v10H7Z";
 const WAVES = "M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3";
 /** What the dot on the Agents row says. */
-const AGENTS_MARK = { approval: "An agent needs you", working: "An agent is working", failed: "An agent's turn failed", answered: "An agent answered" } as const;
+const AGENTS_MARK = { approval: "An agent needs approval", needsYou: "An agent needs you", working: "An agent is working", failed: "An agent's turn failed", answered: "An agent answered" } as const;
 
 /** An agent's place: its one conversation, or the empty one before its first message. */
 function AgentView({ state, actions, id }: { state: State; actions: Actions; id: string }) {
   const agent = state.agents.find((a) => a.id === id);
+  const chat = agent ? conversationOf(agent, state.sessions) : undefined;
+  // The agent asked for the user: seen once its conversation is in front of them.
+  const asked = chat?.needsYou?.at;
+  useEffect(() => {
+    if (!asked) return;
+    const look = () => {
+      if (document.visibilityState === "visible" && document.hasFocus()) actions.agentSeen(id);
+    };
+    look();
+    window.addEventListener("focus", look);
+    document.addEventListener("visibilitychange", look);
+    return () => {
+      window.removeEventListener("focus", look);
+      document.removeEventListener("visibilitychange", look);
+    };
+  }, [asked, id]);
   if (!agent) return <AgentsPage state={state} actions={actions} />;
-  const chat = conversationOf(agent, state.sessions);
   if (!chat) return <AgentStart key={agent.id} state={state} actions={actions} agent={agent} />;
   return (
     <PeekScope sessionId={chat.id} peek={actions.peekPr}>
@@ -2925,6 +2940,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
         actions.startNow(meta.id);
       }}
       onDecide={(id, d) => actions.approve(meta.id, id, d)}
+      agents={state.agents}
     />
     </Fragment>
   );
@@ -3516,21 +3532,34 @@ function ItemView(props: {
   loadAttachment(a: Attachment): Promise<string>;
   onStart(): void;
   onDecide(requestId: string, decision: "allow" | "allow_always" | "deny"): void;
+  /** Whose face goes on a message from another agent. */
+  agents: Agent[];
 }) {
   const { item, onDecide } = props;
   switch (item.kind) {
-    case "user":
-      if (!item.attachments?.length) return <UserBubble text={item.text} />;
+    case "user": {
+      const origin = originLabel(item.origin);
+      if (!item.attachments?.length && !origin) return <UserBubble text={item.text} />;
+      const from = origin && props.agents.find((a) => a.id === origin.agentId);
       return (
         <div className="user-message">
-          <div className="attachments attachments-sent">
+          {origin && (
+            <div className={`origin-badge origin-${item.origin!.kind}`}>
+              {from ? <AgentAvatar agent={from} size="xs" /> : <span className="origin-dot" aria-hidden="true" />}
+              {origin.text}
+            </div>
+          )}
+          {item.attachments?.length ? (
+            <div className="attachments attachments-sent">
             {item.attachments.map((a) => (
               <SentAttachment key={a.id} attachment={a} load={props.loadAttachment} />
             ))}
-          </div>
+            </div>
+          ) : null}
           {item.text && <UserBubble text={item.text} />}
         </div>
       );
+    }
     case "note":
       return (
         <div className="note">

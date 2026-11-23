@@ -2,6 +2,7 @@
 //! Serves the UI and a WebSocket on 127.0.0.1 by default.
 
 mod accounts;
+mod agent_tools;
 mod agents;
 mod acp;
 mod attachments;
@@ -21,6 +22,7 @@ mod login;
 mod mcp;
 mod mobile;
 mod naming;
+mod origins;
 mod opencode;
 mod pr;
 mod private;
@@ -41,7 +43,7 @@ use axum::{
     http::{header, HeaderValue, StatusCode},
     middleware::{self, Next},
     response::Response,
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use tower_http::services::ServeDir;
@@ -61,6 +63,10 @@ async fn health() -> &'static str {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // An agent's engine starts this binary as its Switchyard tools' MCP server.
+    if std::env::args().nth(1).as_deref() == Some("agent-tools") {
+        return agent_tools::serve_stdio().await;
+    }
     let port: u16 = std::env::var("YARD_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
@@ -78,6 +84,14 @@ async fn main() -> anyhow::Result<()> {
 
     let (store, loaded) = store::open(&store::data_dir())?;
     let app = Arc::new(App::new(root.clone(), port, store));
+    // Agents' tools call back over loopback only, so they need yardd there.
+    let loopback = binds.iter().find_map(|b| match b {
+        b if b.is_loopback() => Some(*b),
+        std::net::IpAddr::V4(v4) if v4.is_unspecified() => Some(std::net::Ipv4Addr::LOCALHOST.into()),
+        std::net::IpAddr::V6(v6) if v6.is_unspecified() => Some(std::net::Ipv6Addr::LOCALHOST.into()),
+        _ => None,
+    });
+    app.tools.set_url(loopback.map(|ip| format!("http://{}/agent-tools", std::net::SocketAddr::new(ip, port))));
     app.restore(loaded);
     remote::start(&app);
 
@@ -118,6 +132,7 @@ async fn main() -> anyhow::Result<()> {
     });
 
     tokio::spawn(naming::run(app.clone(), app.take_naming()));
+    tokio::spawn(origins::run(app.clone(), app.take_replies()));
 
     // Start Codex in the background so the model list is ready early.
     let boot = app.clone();
@@ -149,6 +164,7 @@ async fn main() -> anyhow::Result<()> {
     let router = Router::new()
         .route("/ws", get(ws::handler))
         .route("/health", get(health))
+        .route("/agent-tools", post(agent_tools::http))
         .fallback_service(ServeDir::new(root.join("ui/dist")))
         .layer(middleware::from_fn(cache_headers))
         .with_state(app);
@@ -172,7 +188,8 @@ async fn main() -> anyhow::Result<()> {
     let mut servers = tokio::task::JoinSet::new();
     for listener in listeners {
         let router = router.clone();
-        servers.spawn(async move { axum::serve(listener, router).await });
+        // The peer address lets /agent-tools answer local processes only.
+        servers.spawn(async move { axum::serve(listener, router.into_make_service_with_connect_info::<std::net::SocketAddr>()).await });
     }
     // A server only returns on error; one that stops takes yardd down with it.
     if let Some(done) = servers.join_next().await {
