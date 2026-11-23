@@ -208,18 +208,21 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
         // A dead sidecar left in place swallows the next message, and that
         // turn never ends. Pending makes the next message start a new one
         // that resumes the conversation.
+        let mut current = false;
         if let Some(s) = reader_app.sessions.lock().unwrap().get_mut(&reader_sid) {
             if matches!(&s.backend, Backend::Claude { tx, .. } if tx.same_channel(&own)) {
                 s.backend = Backend::Pending;
+                current = true;
             }
         }
         drop(own);
-        // The sidecar is gone: close out whatever turn was open.
+        // The sidecar is gone: close out whatever turn was open. One already
+        // replaced (the host agent starts a fresh one per question) had none.
         let running = reader_app
             .meta(&reader_sid)
             .map(|m| m.status != "idle")
             .unwrap_or(false);
-        if running {
+        if running && current {
             reader_app.emit(
                 &reader_sid,
                 json!({ "type": "error", "message": "The Claude sidecar exited. The next message starts it again." }),
@@ -228,10 +231,14 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
         }
     });
 
+    let restricted = crate::private::restricted(app, sid);
     let _ = tx.send(
         json!({
             "type": "start",
-            "switchy": crate::switchy::internal(sid),
+            "restricted": restricted,
+            // What a sidecar from before agents reads; it restricts only in Plan,
+            // which a restricted session always is.
+            "switchy": restricted,
             "cwd": meta.cwd,
             "model": meta.model,
             "effort": meta.effort,

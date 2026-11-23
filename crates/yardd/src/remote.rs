@@ -784,7 +784,8 @@ fn rewrite(host: &str, name: &str, text: &str) -> Option<Value> {
             });
         }
         // A remote's own remotes are not ours to show.
-        "hosts" | "host.snapshot" | "host.down" | "switchy.state" => return None,
+        // Agents live on the hub: a remote's own are not offered here.
+        "hosts" | "host.snapshot" | "host.down" | "switchy.state" | "agents" => return None,
         "session" => rewrite_session(host, &mut msg["session"]),
         "host" => {
             rewrite_stats(host, name, &mut msg["host"]);
@@ -905,14 +906,14 @@ mod tests {
     }
 }
 
-/// A daemon-owned read request, independent of any browser connection. Switchy
-/// must keep collecting if the user closes its tab. Never accepts arbitrary URLs.
+/// A daemon-owned read request, independent of any browser connection: the
+/// host agent keeps collecting if the user closes its tab. Never accepts arbitrary URLs.
 pub async fn request(app: &Arc<App>, host: &str, mut msg: Value) -> Result<Value> {
     let (conn, _, _) = app.remotes.lookup(host).context("unknown host")?;
     let connection = conn.borrow().clone();
     anyhow::ensure!(connection.status == "connected", "host is offline");
     let url = connection.url.context("host has no connection")?;
-    let reference = app.id("switchy-read-");
+    let reference = app.id("context-read-");
     msg["ref"] = json!(reference);
     tokio::time::timeout(Duration::from_secs(20), async {
         let (mut socket, _) = tokio_tungstenite::connect_async(url).await?;

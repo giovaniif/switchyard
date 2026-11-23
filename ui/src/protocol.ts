@@ -40,6 +40,12 @@ export interface SessionMeta {
   group?: string | null;
   /** The automation that started this session: a run, kept out of the sidebar. */
   automation?: string | null;
+  /** The agent this session is a chat with (see agents.ts). */
+  agent?: string | null;
+  /** An agent's conversation: the start of its last answer, for its card. */
+  lastMessage?: string | null;
+  /** An agent's conversation starts a fresh engine thread with its next turn, and why. */
+  freshContext?: string | null;
   /** When a run's first turn ended; `updatedAt` moves on any later change. */
   finishedAt?: number;
   /** When the latest turn ended (yardd's clock), and how. Missing before the first, and from an older yardd. */
@@ -831,16 +837,38 @@ export interface Automation {
 /** Hub setup discovery; `mobile.connected` records a successful iOS UI connection. */
 export type { MobileStatus } from "./mobile";
 
-/** Switchy's own conversation; engine threads never appear in the session list. */
-export interface SwitchySource {
-  id: string; host: string; title: string; at: number; text: string; unavailable: boolean;
-}
-export interface SwitchyTurn {
-  id: string; question: string; answer: string; engine: string; model: string;
-  at: number; status: string; sources: SwitchySource[]; coverage: string[]; error: string | null;
-  approvals?: { requestId: string; kind: string; title: string; detail: string; decision?: "allow" | "allow_always" | "deny" | null }[];
-}
-export interface SwitchyConversation {
-  status: string; turns: SwitchyTurn[]; engine: string; model: string; scope: string; revision: number;
-  permission?: Permission; effort?: string; queue_reason?: string | null;
+/** An avatar colour; styles.css has a token for each. */
+export type AgentColor = "blue" | "green" | "amber" | "rose" | "violet" | "teal" | "orange" | "slate";
+/** An avatar face; agents.ts draws each. */
+export type AgentFace = "smile" | "grin" | "wink" | "calm" | "glasses" | "bot" | "happy" | "curious";
+
+/** A named agent, mentioned as `@name`. Agents live on the hub (yardd's agents.rs). */
+export interface Agent {
+  id: string;
+  name: string;
+  color: AgentColor;
+  /** Empty: one picked from its id (faceOf). */
+  face: AgentFace | "";
+  /** One line: what it is for. */
+  about: string;
+  engine: Engine;
+  /** Empty: the host's default model for the engine. */
+  model: string;
+  effort: string;
+  account: string;
+  /** Empty: its own folder in yardd's data dir. */
+  cwd: string;
+  permission: Permission;
+  /** Who it is and how it works, given at the start of each chat. */
+  instructions: string;
+  /** What it keeps in mind across chats. */
+  memory: string;
+  /** The built-in host agent: read-only, answers from host evidence. */
+  builtin: boolean;
+  /** The built-in agent's evidence hosts: `all`, `local` or a host id. */
+  scope: string;
+  /** Its one conversation (a session id), made with its first message; every message to the agent goes there. */
+  chat?: string | null;
+  createdAt: number;
+  updatedAt: number;
 }

@@ -354,13 +354,3 @@ describe("connectors", () => {
   });
 });
 
-describe("Switchy conversation", () => {
-  test("keeps the hub conversation separate from sessions and ignores older updates", () => {
-    const conversation = { status: "idle", turns: [], engine: "codex", model: "fake-fast", scope: "all", revision: 2 };
-    const loaded = reduce(initial, { t: "server", msg: { op: "switchy.state", state: conversation, total: 0 } });
-    expect(loaded.switchy).toEqual(conversation);
-    expect(loaded.sessions).toEqual({});
-    expect(reduce(loaded, { t: "server", msg: { op: "switchy.state", state: { ...conversation, revision: 1 } } }).switchy).toEqual(conversation);
-    expect(reduce(loaded, { t: "server", msg: { op: "switchy.state", hostId: "remote", state: { ...conversation, revision: 99 } } }).switchy).toEqual(conversation);
-  });
-});

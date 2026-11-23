@@ -69,6 +69,20 @@ pub struct Meta {
     /// first turn ends.
     #[serde(default)]
     pub automation: Option<String>,
+    /// The agent this session is a chat with (see `agents`): its first turn
+    /// carries the agent's preamble, and the row and thread show who it is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
+    /// An agent's conversation needs a new engine thread before its next
+    /// turn, and why (see `agents::prepare`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fresh_context: Option<String>,
+    /// The agent's instructions or memory changed: its next turn carries them.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub notes_changed: bool,
+    /// The start of an agent's last answer, for its card.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_message: Option<String>,
     /// When an automation run's first turn ended: the run took this minus
     /// `created_at`. `updated_at` is no good for that, it moves on any later
     /// change (a pin, a rename, a reply in the reopened run).
@@ -167,7 +181,9 @@ pub struct App {
     pub terms: crate::pty::Terms,
     pub guard: crate::guard::Guard,
     pub store: crate::store::Store,
-    pub switchy: crate::switchy::Switchy,
+    /// Engine threads yardd runs for itself (see `private`).
+    pub private: crate::private::Private,
+    pub agents: crate::agents::Agents,
     pub remotes: crate::remote::Remotes,
     pub automations: crate::automations::Automations,
     pub logins: crate::login::Logins,
@@ -224,7 +240,9 @@ impl App {
             terms: crate::pty::Terms::default(),
             guard: crate::guard::Guard::default(),
             store,
-            switchy: crate::switchy::Switchy::load(crate::store::data_dir()),            remotes: crate::remote::Remotes::new(crate::store::data_dir()),
+            private: crate::private::Private::default(),
+            agents: crate::agents::Agents::load(crate::store::data_dir()),
+            remotes: crate::remote::Remotes::new(crate::store::data_dir()),
             automations: crate::automations::Automations::load(crate::store::data_dir()),
             logins: crate::login::Logins::default(),
             mcp: crate::mcp::Connectors::default(),
@@ -333,7 +351,7 @@ impl App {
         worktree: Option<Worktree>,
         account: &str,
     ) -> String {
-        self.insert_session(engine, model, effort, cwd, title, worktree, false, account, None)
+        self.insert_session(engine, model, effort, cwd, title, worktree, false, account, None, None)
             .expect("a non-exclusive insert cannot be refused")
     }
 
@@ -349,6 +367,7 @@ impl App {
         exclusive: bool,
         account: &str,
         automation: Option<&str>,
+        agent: Option<&str>,
     ) -> anyhow::Result<String> {
         let id = self.id("s");
         let now = now_ms();
@@ -376,6 +395,10 @@ impl App {
             archived: false,
             group: None,
             automation: automation.map(str::to_string),
+            agent: agent.map(str::to_string),
+            fresh_context: None,
+            notes_changed: false,
+            last_message: None,
             finished_at: None,
             turn_ended_at: None,
             last_turn: None,
@@ -437,11 +460,11 @@ impl App {
     /// Append a normalized event to the session log and fan it out.
     /// Session status is derived here so both engines behave the same.
     pub fn emit(&self, sid: &str, mut event: Value) {
-        if crate::switchy::internal(sid) {
+        if crate::private::internal(sid) {
             let mut map = self.sessions.lock().unwrap();
             let Some(session) = map.get_mut(sid) else { return };
             if event["type"] == "turn_completed" { session.meta.status = "idle".into(); }
-            let _ = self.switchy.events.send((sid.to_string(), event));
+            let _ = self.private.events.send((sid.to_string(), event));
             return;
         }
         // A widget's HTML and data go to a file; the log keeps its id.
@@ -477,6 +500,16 @@ impl App {
             // from another and leave the UI showing `running` on an idle session.
             self.store.event(sid, &event);
             self.broadcast(json!({ "op": "event", "sessionId": sid, "seq": seq, "event": event }));
+            // An agent's card quotes its last answer; a context that ran out
+            // is replaced before the conversation's next turn.
+            if let Some(agent) = s.meta.agent.as_deref() {
+                if event["type"] == "assistant_message" {
+                    let line: String = event["text"].as_str().unwrap_or("").split_whitespace().collect::<Vec<_>>().join(" ");
+                    s.meta.last_message = Some(line.chars().take(160).collect());
+                } else if event["type"] == "error" && !self.agents.is_builtin(agent) && crate::agents::context_ran_out(event["message"].as_str().unwrap_or("")) {
+                    s.meta.fresh_context = Some("the engine's context was full".into());
+                }
+            }
             s.events.push(event);
             s.meta.updated_at = now_ms();
             if turn_completed {
@@ -532,7 +565,11 @@ impl App {
         let Some(s) = map.get_mut(sid) else { return };
         if s.engine_ref.as_deref() != Some(engine_ref) {
             s.engine_ref = Some(engine_ref.to_string());
-            if !crate::switchy::internal(sid) { self.store.engine_ref(sid, engine_ref); }
+            // A restricted thread starts fresh every turn and never resumes.
+            let fresh = crate::private::internal(sid) || s.meta.agent.as_deref().is_some_and(|a| self.agents.is_builtin(a));
+            if !fresh {
+                self.store.engine_ref(sid, engine_ref);
+            }
         }
     }
 
@@ -629,7 +666,7 @@ impl App {
             .lock()
             .unwrap()
             .values()
-            .filter(|s| !crate::switchy::internal(&s.meta.id))
+            .filter(|s| !crate::private::internal(&s.meta.id))
             .map(|s| s.meta.clone())
             .collect();
         sessions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
@@ -647,6 +684,7 @@ impl App {
             "hosts": self.remotes.list(),
             "accounts": self.accounts.list(),
             "automations": self.automations.list(),
+            "agents": self.agents.list(),
             "mobile": self.mobile.status(),
         })
     }

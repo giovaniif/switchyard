@@ -218,14 +218,16 @@ fn list_dirs(path: &str) -> Result<Vec<Value>> {
 }
 
 /// Start a session from a `session.create` message. `direct` gets `created`
-/// as soon as the session exists (the UI opens it); automations pass `None`
-/// and a title of their own, and tag the session with their id.
+/// as soon as the session exists (the UI opens it), with the message's `ref`;
+/// automations pass `None` and a title of their own, and tag the session with
+/// their id; an agent's chat is tagged with the agent's.
 pub async fn create_session(
     app: &Arc<App>,
     direct: Option<&mpsc::UnboundedSender<String>>,
     msg: &Value,
     title: Option<&str>,
     automation: Option<&str>,
+    agent: Option<&str>,
 ) -> Result<String> {
     let engine = str_field(msg, "engine")?;
     let model = str_field(msg, "model")?;
@@ -270,10 +272,15 @@ pub async fn create_session(
         let suffix = &unique[unique.len().saturating_sub(4)..];
         let wt = git::add_worktree(cwd, msg["branch"].as_str(), msg["base"].as_str(), &title, suffix).await?;
         let worktree = Worktree { branch: wt.branch, repo: wt.repo };
-        (app.insert_session(engine, model, effort, &wt.cwd, &title, Some(worktree), false, account, automation)?, wt.setup)
+        (app.insert_session(engine, model, effort, &wt.cwd, &title, Some(worktree), false, account, automation, agent)?, wt.setup)
     } else {
-        (app.insert_session(engine, model, effort, cwd, &title, None, true, account, automation)?, None)
+        // An agent's own folder holds no code: a new chat may start while another runs.
+        let exclusive = !agent.is_some_and(|a| Path::new(cwd).starts_with(crate::agents::home(a)));
+        (app.insert_session(engine, model, effort, cwd, &title, None, exclusive, account, automation, agent)?, None)
     };
+    if let Some(agent) = agent {
+        crate::agents::set_chat(app, agent, &sid);
+    }
     if let Some(script) = setup {
         app.emit(&sid, json!({ "type": "note", "text": format!("Worktree setup ran: {script}") }));
     }
@@ -286,18 +293,33 @@ pub async fn create_session(
         m.service_tier = service_tier.map(str::to_string);
     });
     if let Some(direct) = direct {
-        let _ = direct.send(json!({ "op": "created", "sessionId": sid }).to_string());
+        let mut created = json!({ "op": "created", "sessionId": sid });
+        if !msg["ref"].is_null() {
+            created["ref"] = msg["ref"].clone();
+        }
+        let _ = direct.send(created.to_string());
     }
     sessions::begin(app, &sid, text, &files).await;
     Ok(sid)
 }
 
 async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value) -> Result<()> {
-    if msg["op"].as_str().is_some_and(|op| op.starts_with("switchy.")) {
-        return crate::switchy::handle(app, direct, msg).await;
+    if msg["sessionId"].as_str().is_some_and(crate::private::internal) {
+        bail!("that engine thread is private to yardd");
     }
-    if msg["sessionId"].as_str().is_some_and(crate::switchy::internal) {
-        bail!("Switchy engine threads are private; use switchy operations");
+    if msg["op"].as_str().is_some_and(|op| op.starts_with("agent.")) {
+        return crate::agents::handle(app, direct, msg).await;
+    }
+    // A hub asks for this host's evidence for its host agent; a hub from
+    // before agents asks with the old name.
+    if matches!(msg["op"].as_str(), Some("context.collect" | "switchy.context")) {
+        let query = msg["query"].as_str().unwrap_or("");
+        anyhow::ensure!(query.len() <= 8000, "question is too long");
+        let mut reply = crate::host_context::collect(app, query).await;
+        reply["op"] = msg["op"].clone();
+        reply["ref"] = msg["ref"].clone();
+        let _ = direct.send(reply.to_string());
+        return Ok(());
     }
     if msg["op"].as_str().is_some_and(|op| op.starts_with("pr.")) {
         return pr::handle(app, direct, msg).await;
@@ -320,7 +342,7 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             app.broadcast(json!({ "op": "mobile.status", "mobile": app.mobile.status() }));
         }
         "session.create" => {
-            create_session(app, Some(direct), msg, None, None).await?;
+            create_session(app, Some(direct), msg, None, None, None).await?;
         }
         "git.branches" => {
             let cwd = str_field(msg, "cwd")?;
@@ -444,21 +466,7 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             if text.is_empty() && files.is_empty() {
                 bail!("the message is empty");
             }
-            let meta = app.meta(sid).context("no such session")?;
-            // A message sent during a turn is queued for the agent's next step
-            // (see Meta::pending).
-            if meta.status == "running" || meta.status == "needs_approval" {
-                app.queue_message(sid, text, &files);
-                return Ok(());
-            }
-            if meta.status == "queued" {
-                bail!("this session is queued; start it first");
-            }
-            // Anything still queued (the last turn failed) goes along, first.
-            let mut items = app.take_all_queued(sid, |_| true);
-            items.push(json!({ "text": text, "attachments": files }));
-            let (text, files) = sessions::combine(&items);
-            sessions::send_turn(app, sid, &text, &files).await;
+            sessions::send_message(app, sid, text, &files).await?;
         }
         // Taken back to edit (or dropped): the asking window gets it, if it
         // had not reached the agent yet.
@@ -513,6 +521,9 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
                 bail!("unknown permission mode {permission}");
             }
             let meta = app.meta(sid).context("no such session")?;
+            if permission != "plan" && crate::private::restricted(app, sid) {
+                bail!("The host agent only reads: its chats stay in Plan only.");
+            }
             // Codex and the ACP engines take the mode with their next turn (yardd
             // answers an ACP engine's later questions by the new mode at once); a
             // running Claude sidecar switches now, a queued one starts in it.
@@ -728,7 +739,7 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
 }
 
 /// Stop the session's engine and terminal and forget it.
-async fn delete_session(app: &Arc<App>, sid: &str, meta: &crate::state::Meta) {
+pub async fn delete_session(app: &Arc<App>, sid: &str, meta: &crate::state::Meta) {
     // A queued session has no engine yet: this just drops it from the queue.
     app.guard.forget(sid);
     match meta.engine.as_str() {

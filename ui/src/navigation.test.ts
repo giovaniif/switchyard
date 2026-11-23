@@ -11,7 +11,7 @@ describe("navigationEntries", () => {
   test("recent sessions come first, followed by every page and Import", () => {
     const entries = navigationEntries([session("old"), session("new", { updatedAt: 5 })], context, "");
     expect(entries.slice(0, 2).map((e) => e.title)).toEqual(["new", "old"]);
-    expect(entries.filter((e) => e.group === "Pages").map((e) => e.title)).toEqual(["New session", "Switchy", "Automations", "Connectors", "Settings", "Hosts", "Subscriptions", "Sessions", "Import"]);
+    expect(entries.filter((e) => e.group === "Pages").map((e) => e.title)).toEqual(["New session", "Agents", "Automations", "Connectors", "Settings", "Hosts", "Subscriptions", "Sessions", "Import"]);
   });
   test("search includes archived sessions and runs, matching every word across metadata", () => {
     const s = session("investigation", { host: "remote", archived: true, automation: "a", branch: "fix/login", group: "Backend" });
@@ -35,8 +35,16 @@ describe("navigationEntries", () => {
     expect(entries[1].route).toEqual({ page: "session", id: "Settings work" });
     expect(navigationEntries([], context, "import")[0].action).toBe("import");
   });
-  test("every sidebar page is a destination, Switchy included", () => {
-    expect(navigationEntries([], context, "switchy")[0]?.route).toEqual({ page: "assistant" });
+  test("agents are destinations; their conversations are not listed apart", () => {
+    const withAgents = { ...context, agents: [{ id: "scout", name: "Scout", about: "", builtin: true }, { id: "g1", name: "Reviewer", about: "Reviews", builtin: false }] };
+    const rows = navigationEntries([session("chat", { agent: "g1" }), session("mine")], withAgents, "");
+    expect(rows.filter((e) => e.group === "Sessions").map((e) => e.title)).toEqual(["mine"]);
+    expect(rows.filter((e) => e.group === "Agents").map((e) => e.route)).toEqual([{ page: "agent", id: "scout" }, { page: "agent", id: "g1" }]);
+    expect(navigationEntries([session("chat", { agent: "g1" })], withAgents, "review").map((e) => e.title)).toEqual(["Reviewer"]);
+  });
+  test("every sidebar page is a destination; Switchy's old name finds the agents", () => {
+    expect(navigationEntries([], context, "agents")[0]?.route).toEqual({ page: "agents" });
+    expect(navigationEntries([], context, "switchy")[0]?.route).toEqual({ page: "agents" });
   });
   test("the recent list leaves out archived sessions and runs, as the sidebar does, but search finds them", () => {
     const runs = Array.from({ length: 9 }, (_, i) => session(`Loop patrol · ${i}`, { automation: "patrol", archived: true, updatedAt: 100 + i }));

@@ -7,7 +7,7 @@ new certificates or assuming the repository's secrets are the only source.
 An iOS shell around the **same live UI served by your yardd**. The editor,
 attachments, model/engine switching, approvals, queued messages, terminals,
 changes, pull requests, processes, hosts, accounts, connectors and automations
-use their existing implementation. Switchy uses that same host UI, including
+use their existing implementation. Agents (Scout included) use that same host UI, including
 its shared editor and voice controls. On narrow screens, **Workspace** opens the workspace tabs and its
 close button returns to the conversation.
 

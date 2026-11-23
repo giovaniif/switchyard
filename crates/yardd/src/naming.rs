@@ -4,8 +4,8 @@
 //! then), a small model reads the conversation and writes a short title.
 //!
 //! The model is Codex's `gpt-5.6-luna` at effort low, else Claude's Haiku when
-//! Codex is missing or fails, each in a private thread with no tools (Switchy's
-//! `switchy-` plumbing: never saved, never in the sidebar). These spend the
+//! Codex is missing or fails, each in a private thread with no tools
+//! (`private.rs`: never saved, never in the sidebar). These spend the
 //! plans a little: a few hundred tokens per name. `YARD_NAMING_CODEX_MODEL`
 //! and `YARD_NAMING_CLAUDE_MODEL` pick other models; `YARD_SESSION_NAMES=off`
 //! turns naming off. When nothing answers, the title stays.
@@ -38,7 +38,7 @@ pub fn may_name(meta: &Meta) -> bool {
 
 /// Called with the number of completed turns when one completes.
 pub fn due(meta: &Meta, completed_turns: usize) -> bool {
-    NAME_AFTER.contains(&completed_turns) && may_name(meta) && !crate::switchy::internal(&meta.id)
+    NAME_AFTER.contains(&completed_turns) && may_name(meta) && !crate::private::internal(&meta.id)
 }
 
 fn off() -> bool {
@@ -146,9 +146,9 @@ async fn name(app: &Arc<App>, transcript: &str) -> Result<String> {
     bail!(errors.join("; "))
 }
 
-/// One answer from a private, tool-less engine thread (Switchy's plumbing).
+/// One answer from a private, tool-less engine thread (see `private`).
 async fn once(app: &Arc<App>, engine: &str, model: &str, transcript: &str) -> Result<String> {
-    let id = app.id("switchy-name-");
+    let id = app.id("private-name-");
     let cwd = crate::store::data_dir().join("naming").join("work");
     std::fs::create_dir_all(&cwd)?;
     let meta: Meta = serde_json::from_value(json!({
@@ -157,7 +157,7 @@ async fn once(app: &Arc<App>, engine: &str, model: &str, transcript: &str) -> Re
         "permission": "plan", "createdAt": now_ms(), "updatedAt": now_ms(),
     }))?;
     app.sessions.lock().unwrap().insert(id.clone(), Session { meta, events: vec![], backend: Backend::Pending, engine_ref: None });
-    let mut events = app.switchy.events.subscribe();
+    let mut events = app.private.events.subscribe();
     let answer = async {
         let input = format!("{INSTRUCTIONS}\n\n{transcript}");
         if engine == "codex" {
@@ -277,6 +277,6 @@ mod tests {
         // Automation runs keep `<name> · <time>`, which the loops look runs up by.
         assert!(!due(&meta(json!({ "automation": "a1" })), 1));
         assert!(!due(&meta(json!({ "parent": "s0" })), 1));
-        assert!(!due(&meta(json!({ "id": "switchy-name-1" })), 1));
+        assert!(!due(&meta(json!({ "id": "private-name-1" })), 1));
     }
 }

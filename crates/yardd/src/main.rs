@@ -2,6 +2,7 @@
 //! Serves the UI and a WebSocket on 127.0.0.1 by default.
 
 mod accounts;
+mod agents;
 mod acp;
 mod attachments;
 mod automations;
@@ -13,6 +14,7 @@ mod git;
 mod grok;
 mod handoff;
 mod guard;
+mod host_context;
 mod hosts;
 mod import;
 mod login;
@@ -21,12 +23,11 @@ mod mobile;
 mod naming;
 mod opencode;
 mod pr;
+mod private;
 mod pty;
 mod remote;
 mod sessions;
 mod state;
-mod switchy;
-mod switchy_context;
 mod store;
 mod sweep;
 mod widgets;

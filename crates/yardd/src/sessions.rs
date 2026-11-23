@@ -27,12 +27,33 @@ pub async fn begin(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value])
         app.guard.enqueue(sid, &reason);
         return;
     }
-    if let Err(e) = start_engine(app, sid).await {
-        app.emit(sid, user_message(text, attachments));
-        fail_turn(app, sid, &e);
-        return;
+    // A restricted session gets a fresh engine with each turn (agents::prepare).
+    if !crate::private::restricted(app, sid) {
+        if let Err(e) = start_engine(app, sid).await {
+            app.emit(sid, user_message(text, attachments));
+            fail_turn(app, sid, &e);
+            return;
+        }
     }
     send_turn(app, sid, text, attachments).await;
+}
+
+/// A message for a session: queued while a turn runs (see Meta::pending),
+/// else the next turn, with anything still queued going first.
+pub async fn send_message(app: &Arc<App>, sid: &str, text: &str, files: &[Value]) -> anyhow::Result<()> {
+    let meta = app.meta(sid).ok_or_else(|| anyhow::anyhow!("no such session"))?;
+    if meta.status == "running" || meta.status == "needs_approval" {
+        app.queue_message(sid, text, files);
+        return Ok(());
+    }
+    if meta.status == "queued" {
+        anyhow::bail!("this session is queued; start it first");
+    }
+    let mut items = app.take_all_queued(sid, |_| true);
+    items.push(json!({ "text": text, "attachments": files }));
+    let (text, files) = combine(&items);
+    send_turn(app, sid, &text, &files).await;
+    Ok(())
 }
 
 /// The `user_message` event. Attachments ride along (metadata only) so the
@@ -56,15 +77,17 @@ pub async fn start_queued(app: &Arc<App>, sid: &str) {
         fail_turn(app, sid, &anyhow::anyhow!("the queued prompt was lost"));
         return;
     };
-    if let Err(e) = start_engine(app, sid).await {
-        fail_turn(app, sid, &e);
-        return;
+    if !crate::private::restricted(app, sid) {
+        if let Err(e) = start_engine(app, sid).await {
+            fail_turn(app, sid, &e);
+            return;
+        }
     }
     let attachments = queued.and_then(|e| e["attachments"].as_array().cloned()).unwrap_or_default();
     start_turn(app, sid, &text, &attachments).await;
 }
 
-async fn start_engine(app: &Arc<App>, sid: &str) -> anyhow::Result<()> {
+pub async fn start_engine(app: &Arc<App>, sid: &str) -> anyhow::Result<()> {
     let engine = app.meta(sid).map(|m| m.engine).unwrap_or_default();
     match engine.as_str() {
         "codex" => codex::create(app, sid).await,
@@ -140,14 +163,41 @@ pub async fn send_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Val
 
 async fn start_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) {
     app.emit(sid, json!({ "type": "turn_started" }));
+    let original = text;
+    // An agent's session gives its engine more than the user typed.
+    let text = match crate::agents::prepare(app, sid, text).await {
+        Ok(crate::agents::Prepared::Send(input)) => input,
+        Ok(crate::agents::Prepared::Stopped) => return,
+        Err(e) => {
+            fail_turn(app, sid, &e);
+            return;
+        }
+    };
     let engine = app.meta(sid).map(|m| m.engine).unwrap_or_default();
-    let sent = match engine.as_str() {
+    let mut sent = send_to(app, sid, &engine, &text, attachments).await;
+    // An agent's conversation outlives its engine thread: one that cannot
+    // be resumed is replaced, with the conversation so far, and tried again.
+    if let Err(e) = &sent {
+        if crate::agents::may_refresh(app, sid) {
+            eprintln!("yardd: {sid}: {e:#}; starting a fresh context");
+            app.update_meta(sid, |m| m.fresh_context = Some("the engine could not continue the conversation".into()));
+            sent = match crate::agents::prepare(app, sid, original).await {
+                Ok(crate::agents::Prepared::Send(input)) => send_to(app, sid, &engine, &input, attachments).await,
+                Ok(crate::agents::Prepared::Stopped) => return,
+                Err(e) => Err(e),
+            };
+        }
+    }
+    if let Err(e) = sent {
+        fail_turn(app, sid, &e);
+    }
+}
+
+async fn send_to(app: &Arc<App>, sid: &str, engine: &str, text: &str, attachments: &[Value]) -> anyhow::Result<()> {
+    match engine {
         "codex" => codex::send(app, sid, text, attachments).await,
         "opencode" | "grok" | "gemini" => acp::send(app, sid, text, attachments).await,
         _ => claude::send(app, sid, text, attachments),
-    };
-    if let Err(e) = sent {
-        fail_turn(app, sid, &e);
     }
 }
 
