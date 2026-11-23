@@ -1,0 +1,460 @@
+{
+  "v": 1,
+  "claim": "There was no way to set up named agents: Switchy was one fixed assistant on a page of its own. Agents adds named agents you @mention (each with its own model, folder, permission, instructions and memory) and makes Switchy's quick questions the built-in Scout agent.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-abe6dac675fa0d772",
+  "base": "a007ce163547758241935410854762e15de404b4",
+  "head": "85ba179a553a4828229887bf5ce29f6f39015ca6",
+  "changed": [
+    {
+      "status": "A",
+      "path": "crates/yardd/src/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/automations.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/claude.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/codex.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/handoff.rs"
+    },
+    {
+      "status": "R",
+      "path": "crates/yardd/src/switchy_context.rs"
+    },
+    {
+      "status": "R",
+      "path": "crates/yardd/src/host_context.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/naming.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/yardd/src/private.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/sessions.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "D",
+      "path": "crates/yardd/src/switchy.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/yardd/tests/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/codex"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/yard-claude"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/naming.rs"
+    },
+    {
+      "status": "D",
+      "path": "crates/yardd/tests/switchy.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "mobile/README.md"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/main.ts"
+    },
+    {
+      "status": "A",
+      "path": "sidecar/yard-claude/src/restricted.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "sidecar/yard-claude/src/restricted.ts"
+    },
+    {
+      "status": "D",
+      "path": "sidecar/yard-claude/src/switchy.test.ts"
+    },
+    {
+      "status": "D",
+      "path": "sidecar/yard-claude/src/switchy.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/AgentsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "D",
+      "path": "ui/src/AssistantPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SettingsPage.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/agents.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/agents.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/launchDefaults.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/launchDefaults.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "D",
+      "path": "ui/src/switchy.test.ts"
+    },
+    {
+      "status": "D",
+      "path": "ui/src/switchy.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/thread.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/README.md"
+    },
+    {
+      "status": "A",
+      "path": "verify/features/agents.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/launch-defaults.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/navigation.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/queue.md"
+    },
+    {
+      "status": "D",
+      "path": "verify/features/switchy.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/src/api.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/src/browser.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/src/cli.ts"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-23T13:54:52.334Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "85ba179a553a4828229887bf5ce29f6f39015ca6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-23T13:54:52.372Z",
+      "text": "no-repro: a new feature; at base #/assistant is Switchy's page and there is no Agents page, agent registry or @mention"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "85ba179a553a4828229887bf5ce29f6f39015ca6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-23T13:54:52.409Z",
+      "text": "no-failing-test: new feature; tests/agents.rs and ui/src/agents.test.ts use ops (agent.*) and modules that do not exist at base"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "85ba179a553a4828229887bf5ce29f6f39015ca6",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "6e06ac86cb0ce1d96998052ae2f0241bdbaa65723698e12b03145030963148cc"
+        },
+        {
+          "path": "p3-agents-mobile.png",
+          "sha256": "c777b72f89597048ed7f9e40ed8a37e6292404faea13963f0f733e164906e607"
+        },
+        {
+          "path": "p3-scout-start-mobile.png",
+          "sha256": "97c7a3659f170fd1d7c6dd3da8af083f253f0efe8eb14de082b57617e610d899"
+        },
+        {
+          "path": "p3-scout-chat-mobile.png",
+          "sha256": "d13bdfb6df52e41a875adcfb1edfefb119cc5c893d058c456045eb7e732e652b"
+        },
+        {
+          "path": "p3-mention-mobile.png",
+          "sha256": "894e2846a6772af6ca02ef615644473fecd4ccd8a5a94593ca6b6d35a7efcd74"
+        },
+        {
+          "path": "p3-routed-mobile.png",
+          "sha256": "86d76726e5678629686e6a528add07bf6c8b23727c9fa59897f9832b4a48cfe0"
+        },
+        {
+          "path": "p3-reviewer-chat-mobile.png",
+          "sha256": "bc78c248472aac289a35286862cf20f798a4c72b328b1cddc2e9a5d0a917170c"
+        },
+        {
+          "path": "p3-form-mobile.png",
+          "sha256": "0261e3373119aaabf99318f1ef876153c0e666058222cb7608a654e67a7a22ca"
+        },
+        {
+          "path": "p3-agents-desktop.png",
+          "sha256": "2897a26f735979e0c331b88c462f448402f26c421c85b42bab3843b60be8bb19"
+        },
+        {
+          "path": "p3-scout-start-desktop.png",
+          "sha256": "389c9013fa90af2967b222fe7f239b0a83e7edbe604acf775c91eb2cd544626b"
+        },
+        {
+          "path": "p3-scout-chat-desktop.png",
+          "sha256": "83fac0582607c529d450bcd069339d79af1ad0be2ab033e59f00cce857f67d03"
+        },
+        {
+          "path": "p3-mention-desktop.png",
+          "sha256": "7295297cbc8d6c485e65c119bd9db3e433c94fdf4ba4bd382389ccf7006408e0"
+        },
+        {
+          "path": "p3-routed-desktop.png",
+          "sha256": "093d3b7ee8da2c1397ea8011a5ce931f4c58bfb30ea6a26b6fe2e73410c97ce0"
+        },
+        {
+          "path": "p3-reviewer-chat-desktop.png",
+          "sha256": "299db3dfd367a087e4230d47e634c2728184daf9d7d2a078cb5014af9fcb503f"
+        },
+        {
+          "path": "p3-form-desktop.png",
+          "sha256": "64a8cfc58f5a174068f07a87d8f58b43c105e6ad5e226cec8859cecf3cfc11c4"
+        }
+      ],
+      "addedAt": "2026-11-23T13:55:11.247Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "85ba179a553a4828229887bf5ce29f6f39015ca6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "b1b71f0dab280756d3b004c04dd5a0d7b5e8a544764351ba79480f0be4781fc2"
+        }
+      ],
+      "addedAt": "2026-11-23T13:55:11.298Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test) && (cd sidecar/yard-claude && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "85ba179a553a4828229887bf5ce29f6f39015ca6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "d4465684d9ceeae8380c636f322805504ba704178b672f553512f45253b3031d"
+        }
+      ],
+      "addedAt": "2026-11-23T13:56:01.827Z",
+      "cmd": "verify/yv design-check --base a007ce163547",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "85ba179a553a4828229887bf5ce29f6f39015ca6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-agents.json",
+          "sha256": "9e0e4baeae575d758070f563302e139080181d8a1be99219f5e5d4e6f18e908f"
+        }
+      ],
+      "addedAt": "2026-11-23T13:56:01.922Z",
+      "cmd": "verify/yv map run agents",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "agents/cards-show-scout-and-the-users-agents",
+        "agents/scout-answers-from-host-evidence-in-a-chat",
+        "agents/scout-on-a-phone",
+        "agents/create-an-agent-from-the-form",
+        "agents/at-mention-from-new-session-starts-the-agents-chat",
+        "agents/at-mention-in-a-session-goes-to-the-agents-ongoing-chat",
+        "agents/new-chat-and-the-chats-list",
+        "agents/switchys-address-lands-on-the-agents",
+        "agents/deleting-an-agent-keeps-its-chats"
+      ]
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "85ba179a553a4828229887bf5ce29f6f39015ca6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-navigation.json",
+          "sha256": "b0557679ed7569ef7e508017d2b0e064c2ddb239ddfb66e6b7362f902343e3ad"
+        }
+      ],
+      "addedAt": "2026-11-23T13:56:43.666Z",
+      "cmd": "verify/yv map run navigation",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "navigation/command-k-navigation",
+        "navigation/command-k-finds-agents",
+        "navigation/command-k-rows-name-repo-and-branch",
+        "navigation/recent-list-skips-automation-runs",
+        "navigation/native-app-menu"
+      ]
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "85ba179a553a4828229887bf5ce29f6f39015ca6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-launch-defaults.json",
+          "sha256": "d832d87e953ae559e2e41e98c40fa033d11c93325023bebeee238226c287f27e"
+        }
+      ],
+      "addedAt": "2026-11-23T13:57:22.385Z",
+      "cmd": "verify/yv map run launch-defaults",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "launch-defaults/independent-defaults",
+        "launch-defaults/effort-menu-stays-on-screen",
+        "launch-defaults/reset-defaults",
+        "launch-defaults/removed-default-host-keeps-the-model",
+        "launch-defaults/offline-host-skips-branch-loading"
+      ]
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "regression",
+      "at": "85ba179a553a4828229887bf5ce29f6f39015ca6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-map-queue.json",
+          "sha256": "03e2a224495f35ae707eb7a19e6f2608834284ddeafbefcb58af31cceff093fd"
+        }
+      ],
+      "addedAt": "2026-11-23T13:58:14.433Z",
+      "cmd": "verify/yv map run queue",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "queue/new-session-queues",
+        "queue/start-anyway",
+        "queue/double-click-start-anyway",
+        "queue/host-agent-queues-and-starts-anyway",
+        "queue/hosts-page-shows-pressure"
+      ]
+    }
+  ]
+}

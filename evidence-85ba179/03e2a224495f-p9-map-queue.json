@@ -1,0 +1,42 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "queue",
+      "at": "2026-11-23T13:58:37.173Z",
+      "counts": {
+        "pass": 5
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "new-session-queues",
+          "status": "pass",
+          "ms": 6283
+        },
+        {
+          "label": "start-anyway",
+          "status": "pass",
+          "ms": 3896
+        },
+        {
+          "label": "double-click-start-anyway",
+          "status": "pass",
+          "ms": 3725
+        },
+        {
+          "label": "host-agent-queues-and-starts-anyway",
+          "status": "pass",
+          "ms": 4991
+        },
+        {
+          "label": "hosts-page-shows-pressure",
+          "status": "pass",
+          "ms": 3478
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

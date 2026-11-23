@@ -1,0 +1,42 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "launch-defaults",
+      "at": "2026-11-23T13:58:14.389Z",
+      "counts": {
+        "pass": 5
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "independent-defaults",
+          "status": "pass",
+          "ms": 17211
+        },
+        {
+          "label": "effort-menu-stays-on-screen",
+          "status": "pass",
+          "ms": 5127
+        },
+        {
+          "label": "reset-defaults",
+          "status": "pass",
+          "ms": 6992
+        },
+        {
+          "label": "removed-default-host-keeps-the-model",
+          "status": "pass",
+          "ms": 11665
+        },
+        {
+          "label": "offline-host-skips-branch-loading",
+          "status": "pass",
+          "ms": 9733
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
