@@ -920,6 +920,10 @@ export interface Agent {
   scope: string;
   /** Its one conversation (a session id), made with its first message; every message to the agent goes there. */
   chat?: string | null;
+  /** Where its conversation runs: `local`, or a remote host's id (older yardds send none). */
+  host?: string;
+  /** Conversations it left on a host it moved away from, oldest first: readable, not answered from. */
+  previous?: string[];
   createdAt: number;
   updatedAt: number;
 }

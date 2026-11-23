@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Agent, SessionMeta } from "./protocol";
-import { AGENT_FACES, agentOf, agentStatus, agentsAttention, faceOf, initial, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt, nameProblem, originLabel, runsOn } from "./agents";
+import { AGENT_FACES, agentOf, agentStatus, agentWhere, agentsAttention, faceOf, initial, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, moveNote, nameProblem, originLabel, runsOn } from "./agents";
 import { initial as empty, parseHash, reduce, routeHash } from "./store";
 
 const agent = (id: string, name: string, extra: Partial<Agent> = {}): Agent => ({
@@ -60,11 +60,40 @@ test("names: one mentionable word, unique, the rule said before yardd refuses", 
 
 test("an agent's conversation is the hub's, and stays out of the sidebar", () => {
   expect(agentOf(agents, session("s1", { agent: "g1" }))?.name).toBe("Reviewer");
-  expect(agentOf(agents, session("s2", { agent: "g1", host: "box" }))).toBeUndefined();
+  // A remote's tag may name one of its own agents: not looked up by tag.
+  expect(agentOf(agents, session("box~s2", { agent: "g1", host: "box" }))).toBeUndefined();
   expect(agentOf(agents, session("s3"))).toBeUndefined();
-  expect(isAgentConversation(session("s1", { agent: "g1" }))).toBe(true);
-  expect(isAgentConversation(session("s2", { agent: "g1", host: "box" }))).toBe(false);
-  expect(isAgentConversation(session("s3"))).toBe(false);
+  expect(isAgentConversation(session("s1", { agent: "g1" }), agents)).toBe(true);
+  expect(isAgentConversation(session("box~s2", { agent: "g1", host: "box" }), agents)).toBe(false);
+  expect(isAgentConversation(session("s3"), agents)).toBe(false);
+  // A hub's agent that runs here is not one this window knows: an ordinary session.
+  expect(isAgentConversation(session("s4", { agent: "g-hub" }), agents)).toBe(false);
+});
+
+test("an agent on a remote host: its conversation and the ones it left are found by id", () => {
+  const far = agent("g9", "Far", { host: "box", chat: "box~s7", previous: ["s1", "box~s5"] });
+  const list = [...agents, far];
+  expect(agentOf(list, session("box~s7", { host: "box", agent: "g9" }))?.name).toBe("Far");
+  expect(agentOf(list, session("box~s5", { host: "box" }))?.name).toBe("Far");
+  expect(isAgentConversation(session("box~s7", { host: "box", agent: "g9" }), list)).toBe(true);
+  expect(isAgentConversation(session("box~s8", { host: "box", agent: "g9" }), list)).toBe(false);
+  expect(isEarlierConversation(far, "box~s7")).toBe(false);
+  expect(isEarlierConversation(far, "box~s5")).toBe(true);
+  expect(isEarlierConversation(far, "s1")).toBe(true);
+  expect(isEarlierConversation(agents[1], "s1")).toBe(false);
+});
+
+test("where it works and what a move does, in words that name the host only when it is not this one", () => {
+  const name = (h: string) => (h === "local" ? "This Mac" : h === "box" ? "TEST-box" : h);
+  expect(agentWhere(agent("g1", "A"), name, "~/app")).toBe("its own folder");
+  expect(agentWhere(agent("g1", "A", { cwd: "/w/app" }), name, "~/app")).toBe("~/app");
+  expect(agentWhere(agent("g1", "A", { host: "box" }), name, "")).toBe("its own folder on TEST-box");
+  expect(agentWhere(agent("g1", "A", { host: "box", cwd: "/srv/app" }), name, "/srv/app")).toBe("/srv/app on TEST-box");
+  expect(moveNote(undefined, "box", name)).toBeNull();
+  expect(moveNote(agent("g1", "A"), "local", name)).toBeNull();
+  expect(moveNote(agent("g1", "A", { host: "box" }), "box", name)).toBeNull();
+  expect(moveNote(agent("g1", "A"), "box", name)).toBe("It moves to TEST-box.");
+  expect(moveNote(agent("g1", "A", { chat: "s1" }), "box", name)).toBe("Its conversation stays on This Mac, readable. The next message starts a new one on TEST-box with its notes and the latest messages.");
 });
 
 test("the card's status line reads from the one conversation", () => {
@@ -80,6 +109,9 @@ test("the card's status line reads from the one conversation", () => {
   expect(agentStatus(a, { s1: session("s1", { turnEndedAt: now, lastTurn: "failed" }) }, now).text).toBe("Failed just now");
   // A deleted conversation leaves the agent with none.
   expect(agentStatus(a, {}, now).text).toBe("No messages yet");
+  // Its host offline: said instead of a stale state, whatever the conversation last did.
+  expect(agentStatus(a, { s1: session("s1", { status: "running" }) }, now, Infinity, "TEST-box")).toEqual({ tone: "offline", text: "TEST-box is offline", sessionId: "s1" });
+  expect(agentStatus(agent("g1", "Reviewer"), {}, now, Infinity, "TEST-box")).toEqual({ tone: "offline", text: "TEST-box is offline", sessionId: null });
 });
 
 test("the Agents row shows the most pressing state of any conversation", () => {
@@ -126,6 +158,7 @@ test("how it runs, in the pickers' words", () => {
   // No model of its own: the host's default, named; none listed yet, the engine's.
   expect(runsOn(agent("g", "A"), models, "Plan only")).toBe("Fake Fast · Plan only");
   expect(runsOn(agent("g", "A"), {}, "Plan only")).toBe("Codex default · Plan only");
+  expect(runsOn(agent("g", "A", { model: "fake-fast", effort: "low" }), models, "Ask first", "TEST-Work")).toBe("Fake Fast · TEST-Work · Low · Ask first");
 });
 
 test("routes and the agents broadcast", () => {

@@ -8,8 +8,8 @@ import { Subscriptions, UsageStrip, type UsageAccount } from "./UsageMeters";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
-import { AgentAvatar, AgentBar, AgentForm, AgentsPage, AgentStart } from "./AgentsPage";
-import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
+import { AgentAvatar, AgentBar, AgentForm, AgentsPage, AgentStart, EarlierConversations } from "./AgentsPage";
+import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
 import { accountChoices, accountLabel, accountName, accountOf, choiceOnEngine, DEFAULT_ACCOUNT } from "./accounts";
@@ -153,10 +153,12 @@ function AgentView({ state, actions, id }: { state: State; actions: Actions; id:
     };
   }, [asked, id]);
   if (!agent) return <AgentsPage state={state} actions={actions} />;
-  if (!chat) return <AgentStart key={agent.id} state={state} actions={actions} agent={agent} />;
+  // What it said on a host it moved away from stays there, a click away.
+  const earlier = <EarlierConversations state={state} actions={actions} agent={agent} />;
+  if (!chat) return <AgentStart key={agent.id} state={state} actions={actions} agent={agent} earlier={earlier} />;
   return (
     <PeekScope sessionId={chat.id} peek={actions.peekPr}>
-      <SessionView key={chat.id} meta={chat} state={state} actions={actions} />
+      <SessionView key={chat.id} meta={chat} state={state} actions={actions} before={earlier} />
     </PeekScope>
   );
 }
@@ -951,7 +953,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   // Runs of automations live on the Automations page, and agents'
   // conversations on the Agents page, not in this list.
   const everything = Object.values(state.sessions);
-  const all = everything.filter((s) => !hiddenFromSidebar(s) && !isAgentConversation(s));
+  const all = everything.filter((s) => !hiddenFromSidebar(s) && !isAgentConversation(s, state.agents));
   const { pinned, ungrouped: active, groups, archived } = sidebarLayout(all);
   // Every group a session can be moved to, including ones whose only live
   // members are pinned.
@@ -1019,7 +1021,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   const seen = useSeen(state.sessions, route.page === "session" ? route.id : agentOpen, state.restore);
   // The Agents row carries what the sidebar would show for their conversations.
   const agentsMark = agentsAttention(state.agents, state.sessions, seen.seenAt);
-  const inAgent = route.page === "session" && isAgentConversation(state.sessions[route.id] ?? {});
+  const inAgent = route.page === "session" && !!state.sessions[route.id] && isAgentConversation(state.sessions[route.id], state.agents);
   // Going to an archived session shows the section, so its row stays in
   // view. Only on going there: archiving the session already open leaves the
   // section as it was (it used to spring open on every archive).
@@ -1300,11 +1302,12 @@ export function EffortPicker({ models, value, onChange }: { models: Models; valu
   );
 }
 
-function AccountPicker({
+export function AccountPicker({
   state,
   host,
   engine,
   account,
+  engines,
   onPick,
   onManage,
 }: {
@@ -1312,6 +1315,8 @@ function AccountPicker({
   host: string;
   engine: Engine;
   account: string;
+  /** The engines whose accounts may be picked; every engine the host lists when left out. */
+  engines?: Engine[];
   onPick?(engine: Engine, account: string): void;
   onManage(): void;
 }) {
@@ -1351,7 +1356,7 @@ function AccountPicker({
           </div>
           {onPick ? (
             <div role="menu" aria-label="Engine accounts">
-              {pickerEngines(modelsOn(state, host), engine).flatMap((e) =>
+              {(engines ?? pickerEngines(modelsOn(state, host), engine)).flatMap((e) =>
                 accountChoices(accounts, e).map((a) => (
                   <button
                     key={`${e}:${a.id}`}
@@ -2794,7 +2799,7 @@ export function BranchPicker(props: { current: string; branches: string[]; value
 
 /* ---------- session ---------- */
 
-function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State; actions: Actions }) {
+function SessionView({ meta, state, actions, before }: { meta: SessionMeta; state: State; actions: Actions; before?: React.ReactNode }) {
   const [workspace, setWorkspace] = useState(false);
   const [workspaceCollapsed, setWorkspaceCollapsed] = usePanelCollapsed("yard.workspaceCollapsed");
   const wide = !useMedia(WORKSPACE_NARROW);
@@ -2883,6 +2888,11 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
   const sessionAccount = accountLabel(accounts, meta);
   // The engines' own /login cannot run inside a session; the app's does it.
   const agent = agentOf(state.agents, meta);
+  // A conversation an agent left behind when it moved: read, not answered.
+  const earlier = !!agent && isEarlierConversation(agent, meta.id);
+  // The agents live on the hub: a remote session's box offers them only in
+  // an agent's own conversation.
+  const mentionable = host === "local" || !!agent;
   const restricted = !!agent?.builtin;
   // Scout only reads, and an agent in its own folder has no project: no
   // terminal, subagents or processes to show.
@@ -2893,7 +2903,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
       return;
     }
     // A reply that starts with another agent's @Name goes to that agent's chat.
-    const routed = host === "local" ? leadingMention(text, state.agents) : null;
+    const routed = mentionable ? leadingMention(text, state.agents) : null;
     if (routed && routed.agent.id !== agent?.id) {
       if (!routed.rest && !attachments.length) return false;
       const r = await actions.askAgent(routed.agent.id, routed.rest, attachments.map((a) => a.id));
@@ -2952,7 +2962,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
     <div className={`session ${!wide && workspace ? "workspace-open" : ""}`}>
       <main className="thread">
         {agent ? (
-          <AgentBar agent={agent} actions={actions}>
+          <AgentBar state={state} agent={agent} actions={actions} host={host}>
             {busy && online && (
               <button className="btn-text" onClick={() => actions.interrupt(meta.id)}>
                 Stop
@@ -3018,15 +3028,30 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
           }}
         >
           <div className="column">
+            {before}
             {rows.map((row) => (
               <RowView key={row.key} row={row} render={renderItem} widget={(t) => t.app && <WidgetFrame sessionId={meta.id} app={t.app} actions={actions} />} />
             ))}
             {working && <Working since={turnStart} />}
           </div>
         </div>
-        {online && <QuoteReply sessionId={meta.id} />}
+        {online && !earlier && <QuoteReply sessionId={meta.id} />}
+        {earlier ? (
+          <div className="dock">
+            <div className="muted small offline-note agent-earlier-dock">
+              {agent!.name} moved to {hostName(state, agent!.host || "local")}; this conversation stays here to read.
+              <button className="btn-text note-link" onClick={() => actions.go({ page: "agent", id: agent!.id })}>
+                Open its conversation
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="dock">
-          {!online && <div className="muted small offline-note">{hostName(state, host)} is offline. This session comes back when it reconnects.</div>}
+          {!online && (
+            <div className="muted small offline-note">
+              {agent ? `${agent.name} runs on ${hostName(state, host)}, which is offline. Messages can't be sent until it is back.` : `${hostName(state, host)} is offline. This session comes back when it reconnects.`}
+            </div>
+          )}
           {online && <EngineNotice state={state} host={host} engine={meta.engine} account={accountOf(meta)} onLogin={() => setLoggingIn(true)} />}
           {loggingIn && (
             <LoginDialog state={state} actions={actions} host={host} engine={meta.engine} account={accountOf(meta)} onClose={() => setLoggingIn(false)} />
@@ -3043,7 +3068,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
           )}
           <Composer
             placeholder={!online ? "Offline" : busy ? "Queue a message for the agent" : agent ? `Reply to ${agent.name}` : "Reply"}
-            mentions={host === "local" ? state.agents : undefined}
+            mentions={mentionable ? state.agents : undefined}
             mentionHint={toAgent}
             rows={1}
             busy={meta.status === "queued" || !online}
@@ -3080,6 +3105,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
             )}
           </Composer>
         </div>
+        )}
       </main>
       {!noPane && <WorkPane key={meta.id} shown={workspaceShown} connected={online} actions={actions} meta={meta} state={state} items={items} closeButton={workspaceCloseButton} onClose={closeWorkspace} />}
     </div>

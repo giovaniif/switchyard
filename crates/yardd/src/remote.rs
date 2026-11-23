@@ -907,8 +907,10 @@ mod tests {
     }
 }
 
-/// A daemon-owned read request, independent of any browser connection: the
-/// host agent keeps collecting if the user closes its tab. Never accepts arbitrary URLs.
+/// A daemon-owned request, independent of any browser connection: the host
+/// agent keeps collecting if the user closes its tab, and a remote agent's
+/// message reaches its host whoever sent it. Answered by the first reply with
+/// its `ref`. Never accepts arbitrary URLs.
 pub async fn request(app: &Arc<App>, host: &str, mut msg: Value) -> Result<Value> {
     let (conn, _, _) = app.remotes.lookup(host).context("unknown host")?;
     let connection = conn.borrow().clone();
@@ -928,6 +930,6 @@ pub async fn request(app: &Arc<App>, host: &str, mut msg: Value) -> Result<Value
                 }
             }
         }
-        bail!("host disconnected during context collection")
-    }).await.context("host context request timed out")?
+        bail!("the host disconnected before it answered")
+    }).await.context("the host did not answer in time")?
 }
