@@ -1,7 +1,8 @@
-import type { HostEntry, SessionMeta } from "./protocol";
+import type { Agent, HostEntry, SessionMeta } from "./protocol";
 import type { Route } from "./store";
 import { ENGINE_NAME } from "./engines";
 import { hiddenFromSidebar } from "./automations";
+import { isAgentConversation } from "./agents";
 
 export interface NavigationEntry {
   id: string;
@@ -9,7 +10,7 @@ export interface NavigationEntry {
   detail: string;
   /** Matched by search but not shown. */
   search?: string;
-  group: "Sessions" | "Pages";
+  group: "Sessions" | "Agents" | "Pages";
   route?: Route;
   action?: "import";
 }
@@ -30,10 +31,12 @@ const PAGES: NavigationEntry[] = [
 /** Search the whole session catalog, including archived conversations and runs.
  *  The empty query lists recent sessions the sidebar shows: an hourly
  *  automation's archived runs would otherwise be all of them. */
-export function navigationEntries(sessions: SessionMeta[], context: { localName: string; hosts: Pick<HostEntry, "id" | "name">[] }, query: string): NavigationEntry[] {
+export function navigationEntries(sessions: SessionMeta[], context: { localName: string; hosts: Pick<HostEntry, "id" | "name">[]; agents?: Pick<Agent, "id" | "name" | "about" | "builtin">[] }, query: string): NavigationEntry[] {
   const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
   const matches = (e: NavigationEntry) => words.every((word) => `${e.title} ${e.detail} ${e.search ?? ""}`.toLowerCase().includes(word));
-  const listed = words.length ? sessions : sessions.filter((s) => !s.archived && !hiddenFromSidebar(s));
+  // Agents' conversations are reached through their agent, below.
+  const own = sessions.filter((s) => !isAgentConversation(s));
+  const listed = words.length ? own : own.filter((s) => !s.archived && !hiddenFromSidebar(s));
   const recent = [...listed].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
   const rows = recent.map((s): NavigationEntry => {
     const host = s.host === "local" ? context.localName : context.hosts.find((h) => h.id === s.host)?.name ?? s.host;
@@ -47,8 +50,11 @@ export function navigationEntries(sessions: SessionMeta[], context: { localName:
       search: [s.cwd, s.repo].filter(Boolean).join(" "),
     };
   }).filter(matches).slice(0, words.length ? 40 : 8);
+  const agents = (context.agents ?? [])
+    .map((a): NavigationEntry => ({ id: `agent-${a.id}`, title: a.name, detail: a.about || (a.builtin ? "Questions about your hosts" : "Agent"), search: `@${a.name} agent`, group: "Agents", route: { page: "agent", id: a.id } }))
+    .filter(matches);
   const pages = PAGES.filter(matches);
-  return words.length ? [...pages, ...rows] : [...rows, ...pages];
+  return words.length ? [...pages, ...agents, ...rows] : [...rows, ...agents, ...pages];
 }
 
 /** Keep the Mac's Ctrl-K editing shortcut and composition keys intact. */

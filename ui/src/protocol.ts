@@ -42,6 +42,10 @@ export interface SessionMeta {
   automation?: string | null;
   /** The agent this session is a chat with (see agents.ts). */
   agent?: string | null;
+  /** An agent's conversation: the start of its last answer, for its card. */
+  lastMessage?: string | null;
+  /** An agent's conversation starts a fresh engine thread with its next turn, and why. */
+  freshContext?: string | null;
   /** When a run's first turn ended; `updatedAt` moves on any later change. */
   finishedAt?: number;
   /** When the latest turn ended (yardd's clock), and how. Missing before the first, and from an older yardd. */
@@ -859,7 +863,7 @@ export interface Agent {
   builtin: boolean;
   /** The built-in agent's evidence hosts: `all`, `local` or a host id. */
   scope: string;
-  /** The ongoing chat, where a message to the agent goes. */
+  /** Its one conversation (a session id), made with its first message; every message to the agent goes there. */
   chat?: string | null;
   createdAt: number;
   updatedAt: number;

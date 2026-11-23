@@ -87,7 +87,7 @@ pub async fn start_queued(app: &Arc<App>, sid: &str) {
     start_turn(app, sid, &text, &attachments).await;
 }
 
-async fn start_engine(app: &Arc<App>, sid: &str) -> anyhow::Result<()> {
+pub async fn start_engine(app: &Arc<App>, sid: &str) -> anyhow::Result<()> {
     let engine = app.meta(sid).map(|m| m.engine).unwrap_or_default();
     match engine.as_str() {
         "codex" => codex::create(app, sid).await,
@@ -163,6 +163,7 @@ pub async fn send_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Val
 
 async fn start_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) {
     app.emit(sid, json!({ "type": "turn_started" }));
+    let original = text;
     // An agent's session gives its engine more than the user typed.
     let text = match crate::agents::prepare(app, sid, text).await {
         Ok(crate::agents::Prepared::Send(input)) => input,
@@ -172,15 +173,31 @@ async fn start_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]
             return;
         }
     };
-    let text = text.as_str();
     let engine = app.meta(sid).map(|m| m.engine).unwrap_or_default();
-    let sent = match engine.as_str() {
+    let mut sent = send_to(app, sid, &engine, &text, attachments).await;
+    // An agent's conversation outlives its engine thread: one that cannot
+    // be resumed is replaced, with the conversation so far, and tried again.
+    if let Err(e) = &sent {
+        if crate::agents::may_refresh(app, sid) {
+            eprintln!("yardd: {sid}: {e:#}; starting a fresh context");
+            app.update_meta(sid, |m| m.fresh_context = Some("the engine could not continue the conversation".into()));
+            sent = match crate::agents::prepare(app, sid, original).await {
+                Ok(crate::agents::Prepared::Send(input)) => send_to(app, sid, &engine, &input, attachments).await,
+                Ok(crate::agents::Prepared::Stopped) => return,
+                Err(e) => Err(e),
+            };
+        }
+    }
+    if let Err(e) = sent {
+        fail_turn(app, sid, &e);
+    }
+}
+
+async fn send_to(app: &Arc<App>, sid: &str, engine: &str, text: &str, attachments: &[Value]) -> anyhow::Result<()> {
+    match engine {
         "codex" => codex::send(app, sid, text, attachments).await,
         "opencode" | "grok" | "gemini" => acp::send(app, sid, text, attachments).await,
         _ => claude::send(app, sid, text, attachments),
-    };
-    if let Err(e) = sent {
-        fail_turn(app, sid, &e);
     }
 }
 

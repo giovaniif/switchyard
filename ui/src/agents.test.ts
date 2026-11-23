@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Agent, SessionMeta } from "./protocol";
-import { agentOf, agentStatus, chatsOf, initial, insertMention, leadingMention, matchAgents, mentionAt, nameProblem, runsOn } from "./agents";
+import { agentOf, agentStatus, agentsAttention, initial, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt, nameProblem, runsOn } from "./agents";
 import { initial as empty, parseHash, reduce, routeHash } from "./store";
 
 const agent = (id: string, name: string, extra: Partial<Agent> = {}): Agent => ({
@@ -47,24 +47,39 @@ test("names: one mentionable word, unique, the rule said before yardd refuses", 
   expect(initial(" scout")).toBe("S");
 });
 
-test("a chat's agent is the hub's; a remote session's tag is not looked up", () => {
+test("an agent's conversation is the hub's, and stays out of the sidebar", () => {
   expect(agentOf(agents, session("s1", { agent: "g1" }))?.name).toBe("Reviewer");
   expect(agentOf(agents, session("s2", { agent: "g1", host: "box" }))).toBeUndefined();
   expect(agentOf(agents, session("s3"))).toBeUndefined();
-  const sessions = { a: session("a", { agent: "g1", updatedAt: 1 }), b: session("b", { agent: "g1", updatedAt: 5 }), c: session("c") };
-  expect(chatsOf(sessions, "g1").map((s) => s.id)).toEqual(["b", "a"]);
+  expect(isAgentConversation(session("s1", { agent: "g1" }))).toBe(true);
+  expect(isAgentConversation(session("s2", { agent: "g1", host: "box" }))).toBe(false);
+  expect(isAgentConversation(session("s3"))).toBe(false);
 });
 
-test("the card's status line follows its ongoing chat", () => {
+test("the card's status line reads from the one conversation", () => {
   const now = 10 * 60_000;
   const a = agent("g1", "Reviewer", { chat: "s1" });
-  expect(agentStatus(agent("g1", "Reviewer"), {}, now)).toEqual({ tone: "quiet", text: "No chat yet", sessionId: null });
+  expect(agentStatus(agent("g1", "Reviewer"), {}, now)).toEqual({ tone: "quiet", text: "No messages yet", sessionId: null });
   expect(agentStatus(a, { s1: session("s1", { status: "running" }) }, now).text).toBe("Working…");
-  expect(agentStatus(a, { s1: session("s1", { status: "needs_approval" }) }, now).tone).toBe("approval");
-  expect(agentStatus(a, { s1: session("s1", { turnEndedAt: 8 * 60_000, lastTurn: "completed" }) }, now)).toEqual({ tone: "ok", text: "Last chat 2 min ago", sessionId: "s1" });
+  expect(agentStatus(a, { s1: session("s1", { status: "needs_approval" }) }, now)).toMatchObject({ tone: "approval", text: "Needs approval" });
+  const answered = session("s1", { turnEndedAt: 5 * 60_000, lastTurn: "completed", lastMessage: "Merged it." });
+  expect(agentStatus(a, { s1: answered }, now, 0)).toEqual({ tone: "answered", text: "Answered 5 min ago · Merged it.", sessionId: "s1" });
+  // Once opened, the same answer is quiet.
+  expect(agentStatus(a, { s1: answered }, now, 5 * 60_000).tone).toBe("ok");
   expect(agentStatus(a, { s1: session("s1", { turnEndedAt: now, lastTurn: "failed" }) }, now).text).toBe("Failed just now");
-  // A deleted chat leaves the agent with none.
-  expect(agentStatus(a, {}, now).text).toBe("No chat yet");
+  // A deleted conversation leaves the agent with none.
+  expect(agentStatus(a, {}, now).text).toBe("No messages yet");
+});
+
+test("the Agents row shows the most pressing state of any conversation", () => {
+  const two = [agent("g1", "A", { chat: "s1" }), agent("g2", "B", { chat: "s2" })];
+  const never = () => 0;
+  const idle = session("s2");
+  expect(agentsAttention(two, { s1: session("s1"), s2: idle }, never)).toBeNull();
+  expect(agentsAttention(two, { s1: session("s1", { turnEndedAt: 5, lastTurn: "completed" }), s2: idle }, never)).toBe("answered");
+  expect(agentsAttention(two, { s1: session("s1", { turnEndedAt: 5, lastTurn: "completed" }), s2: idle }, () => 5)).toBeNull();
+  expect(agentsAttention(two, { s1: session("s1", { status: "running" }), s2: session("s2", { status: "needs_approval" }) }, never)).toBe("approval");
+  expect(agentsAttention(two, { s1: session("s1", { status: "running" }), s2: idle }, never)).toBe("working");
 });
 
 test("how it runs, in the pickers' words", () => {

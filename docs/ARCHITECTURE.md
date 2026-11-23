@@ -462,65 +462,96 @@ longer read.
 
 Named agents, after Orca's Bots: each has a name it is mentioned by
 (`@Reviewer`), a colour, what it is for, how it runs, and two notes the user
-writes for it. Talking to one is an ordinary session tagged with it. One agent
-is built in: **Scout**, the host agent, which took over Switchy's quick
-questions. `crates/yardd/src/agents.rs`; UI `ui/src/AgentsPage.tsx` (page,
-start page, form), `ui/src/agents.ts` (mentions, card words), the composer and
-session view in `App.tsx`.
+writes for it. **Each agent has exactly one conversation, for its whole
+life**, and agent conversations never mix with the owner's coding sessions in
+the sidebar. One agent is built in: **Scout**, the host agent, which took
+over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
+`ui/src/AgentsPage.tsx` (page, empty conversation, form), `ui/src/agents.ts`
+(mentions, card words, attention), the composer and session view in
+`App.tsx`.
 
 - **The record** is saved in `agents.json` in the data dir (an unreadable file
   is kept as `.json.bad`): `name` (one word: a letter, then letters, digits,
   `-` or `_`, at most 24; unique ignoring case), `color` (one of eight, a token
   each in `styles.css`), `about` (one line), `engine`, `model` (empty: the
-  host's default for the engine, picked when a chat starts), `effort`,
-  `account`, `cwd` (empty: its own folder, `<data dir>/agents/<id>/`),
-  `permission` (Ask first unless the user picks another; Full access only when
-  picked), `instructions` (who it is: Orca's SOUL.md), `memory` (what to keep
-  in mind: MEMORY.md), `chat` (its ongoing chat). Agents live on the hub: they
-  run their chats on this host, and a remote yardd's own `agents` broadcast is
+  host's default for the engine), `effort`, `account`, `cwd` (empty: its own
+  folder, `<data dir>/agents/<id>/`), `permission` (Ask first unless the user
+  picks another; Full access only when picked), `instructions` (who it is:
+  Orca's SOUL.md), `memory` (what to keep in mind: MEMORY.md), `chat` (its
+  conversation's session id, made with its first message). Agents live on the
+  hub and run on this host; a remote yardd's own `agents` broadcast is
   dropped by the hub, as is the `agent` tag of a remote's sessions in the UI.
 - **Ops:** `agent.list`, `agent.save { agent }` (an `id` edits; only the fields
-  sent change; answers `agent.saved`), `agent.delete { id }` (its chats stay as
-  plain sessions with `agent` cleared; refused for Scout), `agent.ask { agentId,
-  text, attachments?, fresh? }`. Every change broadcasts `agents`; the snapshot
-  carries the list.
-- **A message to an agent** (`agent.ask`) goes to its ongoing chat: queued
-  while a turn runs, like any reply (`sessions::send_message`), the chat
-  unarchived. With no chat (or `fresh`) it is a `session.create` in the
-  agent's folder, tagged `Meta.agent`, which becomes its `chat`. yardd answers
-  `created { sessionId, ref }` as soon as the session is known, so the window
-  opens it while the turn starts. A chat in the agent's own folder does not
-  hold the folder: another chat can start while one runs; a chat in a folder
-  the user chose runs in place, one writer at a time.
-- **The preamble:** the first turn of an agent's session hands the engine "You
-  are <name>, an agent the user set up in Switchyard…", what it is for, its
-  instructions and memory, then "The user's message:" and the text
-  (`agents::prepare`, called from `sessions::start_turn`). The thread and the
-  event log keep only what the user typed. A chat already going keeps the
-  notes it started with.
+  sent change; answers `agent.saved`), `agent.delete { id }` (deletes its
+  conversation too, after a confirm in the UI; refused for Scout),
+  `agent.ask { agentId, text, attachments? }`. Every change broadcasts
+  `agents`; the snapshot carries the list.
+- **The one conversation.** Every message to an agent goes into its
+  conversation, queued while a turn runs (`sessions::send_message`): from its
+  page, from an `@mention` in any message box, and later from other agents
+  and Slack. The first message makes it (a `session.create` in the agent's
+  folder tagged `Meta.agent`); yardd answers `created { sessionId, ref }` as
+  soon as it is known. In the agent's own folder it does not hold the folder;
+  in a folder the user chose it runs in place, one writer at a time.
+- **Long life.** The engine thread resumes after a restart like any session's.
+  When it cannot continue, the next turn starts a fresh engine thread in the
+  same conversation: the preamble again, then the latest exchanges as records
+  (`<earlier_in_this_conversation>`, newest that fit 8,000 bytes), then the
+  message; the thread shows a note, "Started a fresh context: <why>". Why:
+  the engine reported a full context (an `error` mentioning the context
+  window, prompt length or compaction sets `Meta.fresh_context`), the engine
+  could not continue the thread (a send that fails, such as a lost thread,
+  is retried once this way), or the agent's engine, model, account or folder
+  changed in Edit (`agent.save` moves the conversation's metadata with it and
+  refuses while a turn runs). Changed instructions, memory, name or
+  description keep the thread and reach the agent with its next message
+  (`<notes_changed>`, `Meta.notes_changed`); effort and permission apply from
+  the next turn. The user sees one continuous thread.
+- **The preamble:** the first turn hands the engine "You are <name>, an agent
+  the user set up in Switchyard…", what it is for, its instructions and
+  memory, then "The user's message:" and the text (`agents::prepare`, called
+  from `sessions::start_turn`). The thread and the event log keep only what
+  the user typed.
 - **@mentions:** the composer (New session, any local session's reply box, an
-  agent's start page) offers the agents when `@` starts a word, filtered by
+  agent's conversation) offers the agents when `@` starts a word, filtered by
   what follows (names that start with it first); arrows, Enter or Tab pick,
   Escape closes only the list. A message that starts with an agent's `@Name`
-  goes to that agent instead (the mention dropped), and the box says so above
-  the text ("Goes to Reviewer's chat", "Starts a chat with Scout", "… not this
-  session"). In the agent's own chat a leading mention is just text.
-- **UI.** Agents (`#/agents`, an at-sign row in the sidebar, in Cmd-K, where
-  "switchy" still finds it; `#/assistant` redirects) is a grid of cards like
-  Automations: avatar, name and `@name` (Scout: "Built in · reads all hosts"),
-  what it is for, how it runs, a status line from the ongoing chat (Working…,
-  Needs your approval, Last chat 2 min ago; it opens the chat), then Ask or
-  Message (the ongoing chat, or the start page when there is none), New chat,
-  the list of every chat, and Edit. With no agent of the user's own, a dashed
-  card offers to make one. The **start page** (`#/agents/<id>`) is the New
-  session page for one agent: its face, what it is for, the box, how it runs,
-  and for Scout three suggested questions. The **form**
+  goes to that agent's conversation instead (the mention dropped), and the
+  box says so above the text ("Goes to Reviewer", "… not this session"). In
+  the agent's own conversation a leading mention is just text.
+- **Not in the sidebar.** Agent conversations are left out of the sidebar's
+  list, its groups, Pinned and Archived, and of Cmd-K's session rows
+  (`isAgentConversation`). Their attention shows on the **Agents** nav row
+  instead: a dot for the most pressing state of any agent's conversation
+  (needs approval, working, an unseen failure, an unseen answer; seen as in
+  the sidebar, `yard.seen`), and on each agent's card. Cmd-K lists the agents
+  themselves (group Agents), each opening its conversation. An OS
+  notification about an agent's turn opens its conversation.
+- **UI.** Agents (`#/agents`, an at-sign row in the sidebar; `#/assistant`
+  redirects; Cmd-K "switchy" finds it) is a grid of cards like Automations,
+  rows sharing their height so status lines and buttons line up: avatar,
+  name and `@name` (Scout: "Built in · reads all hosts"), what it is for, how
+  it runs, a status line from the conversation ("Working…", "Needs
+  approval", "Answered 5 min ago · <start of the last answer>", "Failed …",
+  "No messages yet"), then Ask or Message and Edit; the avatar and name open
+  the conversation too. With no agent of the user's own, a dashed card offers
+  to make one. An agent's place is `#/agents/<id>`: its header (avatar, name,
+  what it is for, Stop, Edit) and the thread, the reply box saying "Reply to
+  Scout"; before the first message the New-session-like page with its face,
+  the box, how it runs and, for Scout, three suggested questions. Scout's
+  view, and the view of an agent working in its own folder, have no Terminal,
+  Subagents or Processes pane; an agent given a project folder keeps them.
+  Each answer carries the agent's face and name. The **form**
   (`#/agents/<id>/edit`, `new`) reuses the folder, model, effort and
   permission pickers; Scout's has the context host picker instead and no
-  permission. An agent's chat shows its avatar and name before the title
-  (it opens a new chat), over each answer, and in its sidebar row in place of
-  the model; the reply box says "Reply to Scout".
-- **Scout, the host agent.** Its chats are restricted (`private::restricted`):
+  permission. Deleting asks once more and says the conversation goes too.
+- **Slack (planned, step 3).** A Slack thread is not a session of its own:
+  a message from Slack goes into the agent's one conversation, tagged with
+  its source (shown inline as a Slack badge with channel and person), and the
+  answer to that message is posted back to the Slack thread it came from.
+  yardd records, per message, the Slack team, channel, thread and message it
+  came from, so each answer knows where to go.
+- **Scout, the host agent.** Its conversation is restricted (`private::restricted`):
   always Plan only (`session.setPermission` refuses another), and every turn
   runs on a fresh engine thread with no tools: Codex gets an ephemeral
   read-only thread with approvals off and shell, apps, browser, computer,
@@ -543,7 +574,7 @@ session view in `App.tsx`.
 - **Evidence** (`host_context.rs`, formerly `switchy_context.rs`) is
   unchanged: read-only host resources, CPU-sorted process names, services,
   Docker containers, listening ports, recent saved shell history, matching
-  Switchyard sessions (not Scout's own chats), and up to four repositories
+  Switchyard sessions (not Scout's own conversation), and up to four repositories
   (from session folders, the workspace, common work folders and
   `YARD_CONTEXT_ROOTS`) with status, recent commits and matching tracked
   lines; fixed programs and arguments, never a shell or model text, three
@@ -569,14 +600,16 @@ session view in `App.tsx`.
   edits, Full access with approvals) are gone: Scout only reads; a task that
   needs tools is a session or another agent.
 - Tests (`tests/agents.rs`, scripted engines): the registry and its refusals,
-  the preamble on the first turn only, the ongoing chat and `fresh`, deleting
-  an agent, Scout's evidence step, fresh restricted threads on both engines,
+  the preamble on the first turn only, one conversation per agent, deleting
+  an agent with its conversation, a fresh context after a full context, a
+  model change and a lost thread, changed notes reaching the thread, Scout's evidence step, fresh restricted threads on both engines,
   history in the second input, Plan only, a restart, remote scope and offline
   coverage, Stop, the queue, the old op name, and an old `switchy.json` left
   alone. The `agents`
-  feature map drives the page, the start page, the form, mentions and chats at
-  both viewports. Not proven: a real model's answer to a preamble or to
+  feature map drives the page, card alignment, the empty conversation, the
+  form, mentions, the one conversation and the Agents row's mark at both
+  viewports. Not proven: a real model's answer to a preamble or to
   evidence.
 - Not built yet: agents' own tools (reaching the owner with "needs you",
-  messaging another agent), Slack, agents on a remote host, per-agent
-  accounts in the form, editing an agent's memory from its chats.
+  messaging another agent), Slack (see above), agents on a remote host,
+  per-agent accounts in the form, an agent editing its own memory.

@@ -120,7 +120,7 @@ async fn the_host_agent_answers_in_a_chat_from_evidence_with_a_fresh_restricted_
 }
 
 #[tokio::test]
-async fn an_agents_first_turn_carries_its_preamble_and_messages_go_to_its_ongoing_chat() {
+async fn an_agents_first_turn_carries_its_preamble_and_every_message_goes_to_its_one_conversation() {
     let sb = Sandbox::new("agents-chat");
     let daemon = sb.start();
     let mut c = daemon.client().await;
@@ -158,12 +158,9 @@ async fn an_agents_first_turn_carries_its_preamble_and_messages_go_to_its_ongoin
     assert_eq!(meta["cwd"], folder.as_str());
     assert_eq!(meta["permission"], "acceptEdits");
 
-    // A new chat on request; it becomes the ongoing one.
-    let fresh = ask(&mut c, &id, "TEST-start over", json!({ "fresh": true })).await.unwrap();
-    assert_ne!(fresh, sid);
-    c.wait_turn_done(&fresh, 0).await;
-    assert!(sb.turn_inputs()[2][0]["text"].as_str().unwrap().starts_with("You are Reviewer,"));
-    assert_eq!(agent_of(&c, &id)["chat"], fresh.as_str());
+    // One conversation: asking for a new one changes nothing.
+    assert_eq!(ask(&mut c, &id, "TEST-still here?", json!({ "fresh": true })).await.unwrap(), sid);
+    assert_eq!(agent_of(&c, &id)["chat"], sid.as_str());
 
     // An empty message, an unknown agent and deleting the built-in one are refused.
     assert!(ask(&mut c, &id, "  ", json!({})).await.unwrap_err().contains("empty"));
@@ -172,9 +169,10 @@ async fn an_agents_first_turn_carries_its_preamble_and_messages_go_to_its_ongoin
     c.send(json!({ "op": "agent.delete", "id": "scout" })).await;
     assert!(c.wait_error(from, "agent.delete").await.contains("built in"));
 
-    // Deleting an agent keeps its chats, as plain sessions.
+    // Deleting an agent deletes its conversation.
+    c.wait_status(&sid, "idle").await;
     c.send(json!({ "op": "agent.delete", "id": id })).await;
-    c.wait_for("the chat released", |m| m["op"] == "session" && m["session"]["id"] == sid.as_str() && m["session"]["agent"].is_null()).await;
+    c.wait_for("the conversation deleted", |m| m["op"] == "session.deleted" && m["sessionId"] == sid.as_str()).await;
     let list = c.wait_for("agents without it", |m| m["op"] == "agents" && m["agents"].as_array().unwrap().len() == 1).await;
     assert_eq!(list["agents"][0]["id"], "scout");
     let saved: Value = serde_json::from_str(&std::fs::read_to_string(sb.data().join("agents.json")).unwrap()).unwrap();
@@ -371,4 +369,78 @@ async fn discovers_work_outside_sessions_and_indexes_prior_observations() {
         .iter()
         .any(|s| s["title"] == "Earlier host observations"
             && s["text"].as_str().unwrap().contains("FIRST_NEBULA_DEPLOY")));
+}
+
+/// The turn inputs' texts, in order.
+fn texts(sb: &Sandbox) -> Vec<String> {
+    sb.turn_inputs().iter().map(|i| i[0]["text"].as_str().unwrap_or("").to_string()).collect()
+}
+
+#[tokio::test]
+async fn a_fresh_context_continues_the_same_conversation() {
+    let sb = Sandbox::new("agents-fresh");
+    let daemon = sb.start();
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    let agent = save(&mut c, json!({ "name": "Keeper", "engine": "codex", "model": MODEL, "effort": EFFORT, "memory": "TEST-remember" })).await.unwrap();
+    let id = agent["id"].as_str().unwrap().to_string();
+    let sid = ask(&mut c, &id, "TEST-first", json!({})).await.unwrap();
+    c.wait_turn_done(&sid, 0).await;
+
+    // Its context runs out: the next message gets a new thread with the
+    // preamble and the latest exchanges, and the thread says so.
+    let seq = c.next_seq(&sid);
+    ask(&mut c, &id, "[context] TEST-too much", json!({})).await.unwrap();
+    assert_eq!(c.wait_turn_done(&sid, seq).await["status"], "failed");
+    let seq = c.next_seq(&sid);
+    assert_eq!(ask(&mut c, &id, "TEST-after the limit", json!({})).await.unwrap(), sid);
+    assert_eq!(c.wait_turn_done(&sid, seq).await["status"], "completed");
+    let note = c.events(&sid).into_iter().filter(|e| e["type"] == "note").last().expect("a note");
+    assert!(note["text"].as_str().unwrap().starts_with("Started a fresh context: the engine's context was full."), "{note}");
+    let input = texts(&sb).last().unwrap().clone();
+    assert!(input.starts_with("You are Keeper,") && input.contains("TEST-remember"), "{input}");
+    assert!(input.contains("<earlier_in_this_conversation>") && input.contains("User: TEST-first") && input.contains("You: Echo: TEST-first"), "{input}");
+    assert!(input.ends_with("The user's message:\nTEST-after the limit"), "{input}");
+    assert_eq!(std::fs::read_to_string(sb.fake_state().join("thread-starts.jsonl")).unwrap().lines().count(), 2);
+    // The turn after that goes on in the new thread, as is.
+    let seq = c.next_seq(&sid);
+    ask(&mut c, &id, "TEST-plain", json!({})).await.unwrap();
+    c.wait_turn_done(&sid, seq).await;
+    assert_eq!(texts(&sb).last().unwrap(), "TEST-plain");
+
+    // New notes reach the same thread with the next message, once.
+    save(&mut c, json!({ "id": id, "memory": "TEST-remember more" })).await.unwrap();
+    for (n, text) in ["TEST-noted?", "TEST-and again"].iter().enumerate() {
+        let seq = c.next_seq(&sid);
+        ask(&mut c, &id, text, json!({})).await.unwrap();
+        c.wait_turn_done(&sid, seq).await;
+        let input = texts(&sb).last().unwrap().clone();
+        assert_eq!(input.contains("<notes_changed>") && input.contains("TEST-remember more"), n == 0, "{input}");
+    }
+    assert_eq!(std::fs::read_to_string(sb.fake_state().join("thread-starts.jsonl")).unwrap().lines().count(), 2);
+
+    // A new model in Edit: the conversation follows it, in a fresh context.
+    save(&mut c, json!({ "id": id, "model": "fake-deep" })).await.unwrap();
+    c.wait_for("the conversation on the new model", |m| m["op"] == "session" && m["session"]["id"] == sid.as_str() && m["session"]["model"] == "fake-deep").await;
+    let seq = c.next_seq(&sid);
+    ask(&mut c, &id, "TEST-on the new model", json!({})).await.unwrap();
+    c.wait_turn_done(&sid, seq).await;
+    let starts: Vec<Value> = std::fs::read_to_string(sb.fake_state().join("thread-starts.jsonl")).unwrap().lines().map(|l| serde_json::from_str(l).unwrap()).collect();
+    assert_eq!(starts.last().unwrap()["model"], "fake-deep");
+    assert!(c.events(&sid).iter().any(|e| e["type"] == "note" && e["text"].as_str().unwrap().contains("its model changed")));
+    assert!(texts(&sb).last().unwrap().starts_with("You are Keeper,"));
+
+    // The engine lost the thread (here: its state is gone after a restart):
+    // the message still gets an answer, in a fresh context.
+    drop(c);
+    daemon.stop();
+    std::fs::remove_file(sb.fake_state().join("threads.json")).unwrap();
+    let daemon = sb.start();
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    let seq = c.history(&sid).await.len() as u64;
+    assert_eq!(ask(&mut c, &id, "TEST-after a restart", json!({})).await.unwrap(), sid);
+    assert_eq!(c.wait_turn_done(&sid, seq).await["status"], "completed");
+    assert!(c.events(&sid).iter().any(|e| e["type"] == "note" && e["text"].as_str().unwrap().contains("could not continue")));
+    assert!(texts(&sb).last().unwrap().contains("User: TEST-on the new model"));
 }

@@ -73,6 +73,16 @@ pub struct Meta {
     /// carries the agent's preamble, and the row and thread show who it is.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
+    /// An agent's conversation needs a new engine thread before its next
+    /// turn, and why (see `agents::prepare`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fresh_context: Option<String>,
+    /// The agent's instructions or memory changed: its next turn carries them.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub notes_changed: bool,
+    /// The start of an agent's last answer, for its card.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_message: Option<String>,
     /// When an automation run's first turn ended: the run took this minus
     /// `created_at`. `updated_at` is no good for that, it moves on any later
     /// change (a pin, a rename, a reply in the reopened run).
@@ -386,6 +396,9 @@ impl App {
             group: None,
             automation: automation.map(str::to_string),
             agent: agent.map(str::to_string),
+            fresh_context: None,
+            notes_changed: false,
+            last_message: None,
             finished_at: None,
             turn_ended_at: None,
             last_turn: None,
@@ -487,6 +500,16 @@ impl App {
             // from another and leave the UI showing `running` on an idle session.
             self.store.event(sid, &event);
             self.broadcast(json!({ "op": "event", "sessionId": sid, "seq": seq, "event": event }));
+            // An agent's card quotes its last answer; a context that ran out
+            // is replaced before the conversation's next turn.
+            if let Some(agent) = s.meta.agent.as_deref() {
+                if event["type"] == "assistant_message" {
+                    let line: String = event["text"].as_str().unwrap_or("").split_whitespace().collect::<Vec<_>>().join(" ");
+                    s.meta.last_message = Some(line.chars().take(160).collect());
+                } else if event["type"] == "error" && !self.agents.is_builtin(agent) && crate::agents::context_ran_out(event["message"].as_str().unwrap_or("")) {
+                    s.meta.fresh_context = Some("the engine's context was full".into());
+                }
+            }
             s.events.push(event);
             s.meta.updated_at = now_ms();
             if turn_completed {

@@ -12,6 +12,7 @@
 //           so the Changes pane has a real git diff to show)
 //   [slow]  streams one chunk, then waits for turn/interrupt
 //   [stuck] streams one chunk, then never ends, whatever it is asked
+//   [context] fails as a thread whose context window is full
 //   [fail]  the turn fails with an error
 //   [think] a two-part reasoning summary, then a reply
 //   [tail]  one command, then 1 s of thinking before "Echo: <prompt>":
@@ -430,6 +431,10 @@ async function runTurn(threadId, cwd, turn, text) {
     item("item/completed", { ...base, status: "completed", result: { content: result.content, structuredContent: result.structuredContent, _meta: null }, error: null, durationMs: 5 });
     say("Here is the chart.", ["Here is the chart."]);
     return finish("completed");
+  }
+
+  if (behaviorText.includes("[context]")) {
+    return finish("failed", { message: "Codex ran out of room in the model's context window. Start a new thread.", codexErrorInfo: "contextWindowExceeded", additionalDetails: null });
   }
 
   if (behaviorText.includes("[fail]")) {

@@ -53,12 +53,12 @@ yv state --expect '{"sessions":[{"id":"{{q3_sid}}","status":"idle"}]}'
 
 ### host-agent-queues-and-starts-anyway
 Viewports: desktop
-Scout goes through the same guard: under pressure a new chat waits with
+Scout goes through the same guard: under pressure its first question waits with
 "Queued: …" and Start anyway, and Start anyway answers it.
 
 ```sh
 yv api '{"op":"agent.save","agent":{"id":"scout","model":"fake-fast","effort":"low","scope":"local"}}' --wait '{"op":"agent.saved"}'
-yv drive new --viewport desktop --steps '[{"click":"role:button:Agents"},{"click":"role:button:New chat with Scout"},{"fill":"label:Message","value":"TEST-Scout under pressure"},{"press":"Enter"},{"expect":"css:.queued-line","text":"Queued:"},{"shot":"scout-queued"},{"click":"role:button:Start anyway"},{"expect":"css:.thread","text":"scripted host agent answer"},{"expect":"role:button:Start anyway","count":0}]'
+yv drive new --viewport desktop --steps '[{"click":"role:button:Agents"},{"click":"role:button:Ask"},{"fill":"label:Message","value":"TEST-Scout under pressure"},{"press":"Enter"},{"expect":"css:.queued-line","text":"Queued:"},{"shot":"scout-queued"},{"click":"role:button:Start anyway"},{"expect":"css:.thread","text":"scripted host agent answer"},{"expect":"role:button:Start anyway","count":0}]'
 ```
 
 ### hosts-page-shows-pressure

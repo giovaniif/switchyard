@@ -60,15 +60,13 @@ export function agentOf(agents: Agent[], s: Pick<SessionMeta, "agent" | "host"> 
   return agents.find((a) => a.id === s.agent);
 }
 
-/** An agent's chats, newest first. */
-export function chatsOf(sessions: Record<string, SessionMeta>, id: string): SessionMeta[] {
-  return Object.values(sessions)
-    .filter((s) => s.agent === id && (!s.host || s.host === "local"))
-    .sort((a, b) => b.updatedAt - a.updatedAt);
-}
+/** An agent's one conversation: kept out of the sidebar, shown on the
+ *  Agents page and its nav row. Only the hub's own (a remote's tag names one
+ *  of its own agents). */
+export const isAgentConversation = (s: Pick<SessionMeta, "agent" | "host">): boolean => !!s.agent && (!s.host || s.host === "local");
 
-/** The ongoing chat, if it still exists. */
-export function ongoing(agent: Agent, sessions: Record<string, SessionMeta>): SessionMeta | undefined {
+/** The agent's conversation, if it has one yet. */
+export function conversationOf(agent: Agent, sessions: Record<string, SessionMeta>): SessionMeta | undefined {
   return agent.chat ? sessions[agent.chat] : undefined;
 }
 
@@ -81,18 +79,38 @@ const ago = (ms: number) => {
   return `${Math.round(h / 24)} d ago`;
 };
 
-export type AgentTone = "live" | "approval" | "ok" | "bad" | "quiet";
+/** `answered`: an answer the user has not opened yet. */
+export type AgentTone = "live" | "approval" | "answered" | "ok" | "bad" | "quiet";
 
-/** The card's one status line, from its ongoing chat. */
-export function agentStatus(agent: Agent, sessions: Record<string, SessionMeta>, now: number): { tone: AgentTone; text: string; sessionId: string | null } {
-  const chat = ongoing(agent, sessions);
-  if (!chat) return { tone: "quiet", text: "No chat yet", sessionId: null };
+/** The card's one status line, from the agent's conversation. `seenAt`: the
+ *  turn end the user last had open (rowState's `yard.seen`). */
+export function agentStatus(agent: Agent, sessions: Record<string, SessionMeta>, now: number, seenAt = Infinity): { tone: AgentTone; text: string; sessionId: string | null } {
+  const chat = conversationOf(agent, sessions);
+  if (!chat) return { tone: "quiet", text: "No messages yet", sessionId: null };
   const at = { sessionId: chat.id };
   if (chat.status === "running") return { tone: "live", text: "Working…", ...at };
-  if (chat.status === "needs_approval") return { tone: "approval", text: "Needs your approval", ...at };
+  if (chat.status === "needs_approval") return { tone: "approval", text: "Needs approval", ...at };
   if (chat.status === "queued") return { tone: "approval", text: "Waiting for room on the host", ...at };
-  if (chat.lastTurn === "failed") return { tone: "bad", text: `Failed ${ago(now - (chat.turnEndedAt ?? chat.updatedAt))}`, ...at };
-  return { tone: "ok", text: `Last chat ${ago(now - (chat.turnEndedAt ?? chat.updatedAt))}`, ...at };
+  const when = ago(now - (chat.turnEndedAt ?? chat.updatedAt));
+  if (chat.lastTurn === "failed") return { tone: "bad", text: `Failed ${when}`, ...at };
+  if (chat.lastTurn === "interrupted") return { tone: "ok", text: `Stopped ${when}`, ...at };
+  const unseen = (chat.turnEndedAt ?? 0) > seenAt;
+  return { tone: unseen ? "answered" : "ok", text: `Answered ${when}${chat.lastMessage ? ` · ${chat.lastMessage}` : ""}`, ...at };
+}
+
+/** What the Agents nav row shows: the most pressing state of any agent's
+ *  conversation, as the sidebar marks a session. */
+export function agentsAttention(agents: Agent[], sessions: Record<string, SessionMeta>, seenAt: (id: string) => number): "approval" | "working" | "failed" | "answered" | null {
+  const tones = agents.map((a) => agentStatus(a, sessions, 0, conversationOf(a, sessions) ? seenAt(a.chat!) : Infinity).tone);
+  const failedUnseen = agents.some((a) => {
+    const c = conversationOf(a, sessions);
+    return c?.lastTurn === "failed" && (c.turnEndedAt ?? 0) > seenAt(c.id);
+  });
+  if (tones.includes("approval")) return "approval";
+  if (tones.includes("live")) return "working";
+  if (failedUnseen) return "failed";
+  if (tones.includes("answered")) return "answered";
+  return null;
 }
 
 /** "Fake Fast · Low · Plan only": how the agent runs, in the picker's words. */

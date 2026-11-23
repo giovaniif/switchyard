@@ -8,8 +8,8 @@ import { Subscriptions, UsageStrip, type UsageAccount } from "./UsageMeters";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
-import { AgentAvatar, AgentForm, AgentsPage, AgentStart } from "./AgentsPage";
-import { agentOf, insertMention, leadingMention, matchAgents, mentionAt } from "./agents";
+import { AgentAvatar, AgentBar, AgentForm, AgentsPage, AgentStart } from "./AgentsPage";
+import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
 import { accountChoices, accountLabel, accountName, accountOf, choiceOnEngine, DEFAULT_ACCOUNT } from "./accounts";
@@ -128,6 +128,22 @@ const RIGHT_PANEL = "M3 5h18v14H3ZM15 5v14";
 const MIC = "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3ZM19 10v2a7 7 0 0 1-14 0v-2M12 19v3";
 const STOP = "M7 7h10v10H7Z";
 const WAVES = "M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3";
+/** What the dot on the Agents row says. */
+const AGENTS_MARK = { approval: "An agent needs you", working: "An agent is working", failed: "An agent's turn failed", answered: "An agent answered" } as const;
+
+/** An agent's place: its one conversation, or the empty one before its first message. */
+function AgentView({ state, actions, id }: { state: State; actions: Actions; id: string }) {
+  const agent = state.agents.find((a) => a.id === id);
+  if (!agent) return <AgentsPage state={state} actions={actions} />;
+  const chat = conversationOf(agent, state.sessions);
+  if (!chat) return <AgentStart key={agent.id} state={state} actions={actions} agent={agent} />;
+  return (
+    <PeekScope sessionId={chat.id} peek={actions.peekPr}>
+      <SessionView key={chat.id} meta={chat} state={state} actions={actions} />
+    </PeekScope>
+  );
+}
+
 /** An at sign: agents, which a message names as @Name. */
 const AT = "M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1";
 /** A plug: the Connectors page. */
@@ -161,7 +177,8 @@ export function App() {
   const { route } = state;
   const [draftUsageAccount, setDraftUsageAccount] = useState<UsageAccount>();
   const visibleHosts = shownHosts(["local", ...state.hosts.map((host) => host.id)], useHiddenHosts());
-  const selectedSession = route.page === "session" ? state.sessions[route.id] : undefined;
+  const agentChat = route.page === "agent" ? state.agents.find((a) => a.id === route.id)?.chat : undefined;
+  const selectedSession = route.page === "session" ? state.sessions[route.id] : agentChat ? state.sessions[agentChat] : undefined;
   const selectedUsageAccount = selectedSession ? { host: hostOf(selectedSession), engine: selectedSession.engine, account: accountOf(selectedSession) }
     : route.page === "new" ? draftUsageAccount : undefined;
   const usage = {
@@ -356,12 +373,7 @@ export function App() {
             </>
           )}
           {route.page === "agents" && <AgentsPage state={state} actions={actions} />}
-          {route.page === "agent" &&
-            (state.agents.some((a) => a.id === route.id) ? (
-              <AgentStart key={route.id} state={state} actions={actions} agent={state.agents.find((a) => a.id === route.id)!} />
-            ) : (
-              <AgentsPage state={state} actions={actions} />
-            ))}
+          {route.page === "agent" && <AgentView state={state} actions={actions} id={route.id} />}
           {route.page === "agentEdit" &&
             // Like the automation form: read once on mount, so it waits for the snapshot's list.
             (route.id === "new" || state.agents.some((a) => a.id === route.id) ? (
@@ -919,9 +931,10 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   onNavigate(): void;
   collapseControl: ReactNode;
 }) {
-  // Runs of automations live on the Automations page, not in this list.
+  // Runs of automations live on the Automations page, and agents'
+  // conversations on the Agents page, not in this list.
   const everything = Object.values(state.sessions);
-  const all = everything.filter((s) => !hiddenFromSidebar(s));
+  const all = everything.filter((s) => !hiddenFromSidebar(s) && !isAgentConversation(s));
   const { pinned, ungrouped: active, groups, archived } = sidebarLayout(all);
   // Every group a session can be moved to, including ones whose only live
   // members are pinned.
@@ -984,7 +997,11 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   // Runs of automations live on the Automations page, not in this list.
   const runs = everything.filter(hiddenFromSidebar);
   const inRun = route.page === "session" && !!state.sessions[route.id]?.automation;
-  const seen = useSeen(state.sessions, route.page === "session" ? route.id : null, state.restore);
+  const agentOpen = route.page === "agent" ? state.agents.find((a) => a.id === route.id)?.chat ?? null : null;
+  const seen = useSeen(state.sessions, route.page === "session" ? route.id : agentOpen, state.restore);
+  // The Agents row carries what the sidebar would show for their conversations.
+  const agentsMark = agentsAttention(state.agents, state.sessions, seen.seenAt);
+  const inAgent = route.page === "session" && isAgentConversation(state.sessions[route.id] ?? {});
   // Going to an archived session shows the section, so its row stays in
   // view. Only on going there: archiving the session already open leaves the
   // section as it was (it used to spring open on every archive).
@@ -1057,9 +1074,10 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
           <Icon d={PLUS} />
           New session
         </button>
-        <button className={`nav-row ${route.page === "agents" || route.page === "agent" || route.page === "agentEdit" ? "active" : ""}`} onClick={() => actions.go({ page: "agents" })}>
+        <button className={`nav-row ${route.page === "agents" || route.page === "agent" || route.page === "agentEdit" || inAgent ? "active" : ""}`} onClick={() => actions.go({ page: "agents" })}>
           <Icon d={AT} />
           Agents
+          {agentsMark && <span className={`dot dot-agents dot-${agentsMark}`} role="img" aria-label={AGENTS_MARK[agentsMark]} title={AGENTS_MARK[agentsMark]} />}
         </button>
         <button className={`nav-row ${route.page === "automations" || route.page === "automation" || inRun ? "active" : ""}`} onClick={() => actions.go({ page: "automations" })}>
           <Icon d={CLOCK} />
@@ -2363,7 +2381,7 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
   };
   const uploadTarget = useMemo<UploadTarget>(() => (target === "local" ? {} : { host: target }), [target]);
   const [agentError, setAgentError] = useState<string | null>(null);
-  const toAgent = (agent: Agent) => (agent.chat && state.sessions[agent.chat] ? `Goes to ${agent.name}'s chat` : `Starts a chat with ${agent.name}`);
+  const toAgent = (agent: Agent) => `Goes to ${agent.name}`;
 
   return (
     <div className="new">
@@ -2537,6 +2555,8 @@ export function FolderPicker(props: {
   dirs: State["dirs"];
   listDirs(path: string, host: string): void;
   onChange(path: string): void;
+  /** Shown when no folder is chosen. */
+  placeholder?: string;
 }) {
   const { host, home, workspace, value, recent } = props;
   const [open, setOpen] = useState(false);
@@ -2636,7 +2656,7 @@ export function FolderPicker(props: {
   };
 
   return (
-    <ChipMenu icon={<Icon d={FOLDER} />} label={value ? baseName(value) : "Choose a folder"} menuLabel="Folders" title={value} open={open} setOpen={setOpen} wide>
+    <ChipMenu icon={<Icon d={FOLDER} />} label={value ? baseName(value) : (props.placeholder ?? "Choose a folder")} menuLabel="Folders" title={value} open={open} setOpen={setOpen} wide>
       <input
         className="menu-search"
         autoFocus
@@ -2846,6 +2866,9 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
   // The engines' own /login cannot run inside a session; the app's does it.
   const agent = agentOf(state.agents, meta);
   const restricted = !!agent?.builtin;
+  // Scout only reads, and an agent in its own folder has no project: no
+  // terminal, subagents or processes to show.
+  const noPane = !!agent && (agent.builtin || !agent.cwd);
   const submit = async (text: string, attachments: Attachment[]) => {
     if (/^\/login\s*$/.test(text.trim()) && !attachments.length) {
       setLoggingIn(true);
@@ -2860,7 +2883,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
     }
     actions.send(meta.id, text, attachments.map((a) => a.id));
   };
-  const toAgent = (other: Agent) => (other.id === agent?.id ? null : `Goes to ${other.name}'s chat, not this session`);
+  const toAgent = (other: Agent) => (other.id === agent?.id ? null : `Goes to ${other.name}, not this ${agent ? "conversation" : "session"}`);
   // Whose answers these are: the agent's face and name over each turn's answer.
   const answerKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -2909,16 +2932,27 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
   return (
     <div className={`session ${!wide && workspace ? "workspace-open" : ""}`}>
       <main className="thread">
+        {agent ? (
+          <AgentBar agent={agent} actions={actions}>
+            {busy && online && (
+              <button className="btn-text" onClick={() => actions.interrupt(meta.id)}>
+                Stop
+              </button>
+            )}
+            {!noPane &&
+              (wide ? (
+                <button className="btn-icon workspace-toggle-desktop" aria-label={workspaceLabel} title={workspaceLabel} aria-controls="session-workspace" aria-expanded={workspaceShown} onClick={() => setWorkspaceCollapsed(!workspaceCollapsed)}>
+                  <Icon d={RIGHT_PANEL} size={18} />
+                </button>
+              ) : (
+                <button className="btn-text workspace-toggle" ref={workspaceOpenButton} aria-controls="session-workspace" aria-expanded={workspaceShown} onClick={openWorkspace}>Workspace</button>
+              ))}
+          </AgentBar>
+        ) : (
         <header className="bar">
           <MenuButton />
-          {agent && (
-            <button className="btn-quiet agent-chip" title={`A chat with ${agent.name}. Start another`} onClick={() => actions.go({ page: "agent", id: agent.id })}>
-              <AgentAvatar agent={agent} size="sm" />
-              <span>{agent.name}</span>
-            </button>
-          )}
           <h1>{meta.title}</h1>
-          {!agent && <code className="muted">{meta.branch || changes?.branch || tilde(meta.cwd, homeOn(state, host))}</code>}
+          <code className="muted">{meta.branch || changes?.branch || tilde(meta.cwd, homeOn(state, host))}</code>
           <SessionPullRequest sessionId={meta.id} online={online} busy={busy} pr={state.pr[meta.id]} load={actions.loadPr} />
           {sessionAccount && (
             <span className="muted small session-account" title="The account this session runs under. It can't be changed mid-session.">
@@ -2954,6 +2988,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
             />
           )}
         </header>
+        )}
         <div
           className="scroll"
           ref={scroller}
@@ -3027,7 +3062,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
           </Composer>
         </div>
       </main>
-      <WorkPane key={meta.id} shown={workspaceShown} connected={online} actions={actions} meta={meta} state={state} items={items} closeButton={workspaceCloseButton} onClose={closeWorkspace} />
+      {!noPane && <WorkPane key={meta.id} shown={workspaceShown} connected={online} actions={actions} meta={meta} state={state} items={items} closeButton={workspaceCloseButton} onClose={closeWorkspace} />}
     </div>
   );
 }

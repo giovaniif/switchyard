@@ -739,7 +739,7 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
 }
 
 /// Stop the session's engine and terminal and forget it.
-async fn delete_session(app: &Arc<App>, sid: &str, meta: &crate::state::Meta) {
+pub async fn delete_session(app: &Arc<App>, sid: &str, meta: &crate::state::Meta) {
     // A queued session has no engine yet: this just drops it from the queue.
     app.guard.forget(sid);
     match meta.engine.as_str() {

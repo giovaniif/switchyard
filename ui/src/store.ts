@@ -54,7 +54,7 @@ export type Route =
   | { page: "sessions" }
   /** Every agent, as cards. */
   | { page: "agents" }
-  /** An agent's chat before it has one: the agent's own start page. */
+  /** An agent's one conversation (or, before its first message, the empty one). */
   | { page: "agent"; id: string }
   /** The create/edit form; `id` is `new` for a new agent. */
   | { page: "agentEdit"; id: string }
@@ -599,9 +599,9 @@ function reduceServer(state: State, msg: any): State {
 }
 
 export interface Actions {
-  /** A message for an agent: its ongoing chat, or a new one (always with `fresh`).
-   *  Opens the chat; resolves with an error fit to show when yardd refused it. */
-  askAgent(agentId: string, text: string, attachments?: string[], fresh?: boolean): Promise<{ sessionId?: string; error?: string }>;
+  /** A message for an agent: into its one conversation, which opens.
+   *  Resolves with an error fit to show when yardd refused it. */
+  askAgent(agentId: string, text: string, attachments?: string[]): Promise<{ sessionId?: string; error?: string }>;
   /** Create (no `id`) or change an agent; only the fields given change. */
   saveAgent(agent: Partial<Agent>): Promise<{ agent?: Agent; error?: string }>;
   /** Its chats stay, as plain sessions. The built-in agent cannot be deleted. */
@@ -742,11 +742,22 @@ export function useYard(): { state: State; actions: Actions } {
   routeRef.current = state.route;
   const sessionsRef = useRef(state.sessions);
   sessionsRef.current = state.sessions;
+  const agentsRef = useRef(state.agents);
+  agentsRef.current = state.agents;
   const notifier = useRef<((msg: any) => void) | null>(null);
   notifier.current ??= createNotifier({
-    openSessionId: () => (routeRef.current.page === "session" ? routeRef.current.id : null),
+    openSessionId: () => {
+      const route = routeRef.current;
+      if (route.page === "session") return route.id;
+      // An agent's page shows its conversation.
+      return route.page === "agent" ? (agentsRef.current.find((a) => a.id === route.id)?.chat ?? null) : null;
+    },
     open: (id) => {
-      if (sessionsRef.current[id]) dispatch({ t: "route", route: { page: "session", id } });
+      const session = sessionsRef.current[id];
+      if (!session) return;
+      // A banner about an agent's turn opens the agent's conversation.
+      const agent = session.agent && (!session.host || session.host === "local") ? agentsRef.current.find((a) => a.id === session.agent) : undefined;
+      dispatch({ t: "route", route: agent ? { page: "agent", id: agent.id } : { page: "session", id } });
     },
   });
 
@@ -856,7 +867,9 @@ export function useYard(): { state: State; actions: Actions } {
 
   // Load a session's history the first time it is shown on this connection.
   // A host snapshot drops that host's threads, so reload whatever is gone.
-  const routeId = state.route.page === "session" ? state.route.id : null;
+  // An agent's page shows its conversation.
+  const agentChat = state.route.page === "agent" ? (state.agents.find((a) => a.id === (state.route as { id: string }).id)?.chat ?? null) : null;
+  const routeId = state.route.page === "session" ? state.route.id : agentChat && state.sessions[agentChat] ? agentChat : null;
   const routeHost = routeId ? hostOf(state.sessions[routeId]) : "local";
   const online = routeId ? hostOnline(state, routeHost) : false;
   const loaded = routeId ? !!state.threads[routeId] : false;
@@ -910,11 +923,11 @@ export function useYard(): { state: State; actions: Actions } {
 
   const actions = useMemo<Actions>(
     () => ({
-      askAgent: async (agentId, text, attachments, fresh) => {
-        // Answered as soon as the chat is known; the turn goes on after.
-        const reply = await ask({ op: "agent.ask", agentId, text, attachments, ...(fresh ? { fresh: true } : {}) }, 60_000);
+      askAgent: async (agentId, text, attachments) => {
+        // Answered as soon as the conversation is known; the turn goes on after.
+        const reply = await ask({ op: "agent.ask", agentId, text, attachments }, 60_000);
         if (reply.op !== "created" || typeof reply.sessionId !== "string") return { error: reply.error ?? "The message was not sent." };
-        dispatch({ t: "route", route: { page: "session", id: reply.sessionId } });
+        dispatch({ t: "route", route: { page: "agent", id: agentId } });
         return { sessionId: reply.sessionId };
       },
       saveAgent: async (agent) => {

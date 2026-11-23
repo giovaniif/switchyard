@@ -1,12 +1,13 @@
-// Agents: the page of cards, an agent's start page (a chat not begun yet) and
-// the create/edit form. An agent's chats are ordinary sessions tagged with it
-// (yardd's agents.rs); the session view shows whose they are.
+// Agents: the page of cards, an agent's conversation before its first message,
+// and the create/edit form. Each agent has one conversation, an ordinary
+// session tagged with it (yardd's agents.rs), kept out of the sidebar: this
+// page and the Agents nav row show its state.
 import { useEffect, useMemo, useState } from "react";
-import type { Agent, AgentColor, Attachment, Permission, SessionMeta } from "./protocol";
+import type { Agent, AgentColor, Attachment, Permission } from "./protocol";
 import { hostName, hostOnline, homeOn, modelsOn, type Actions, type State, type UploadTarget } from "./store";
-import { AGENT_COLORS, agentStatus, chatsOf, initial, leadingMention, nameProblem, ongoing, runsOn, scopeLabel, type AgentTone } from "./agents";
+import { AGENT_COLORS, agentStatus, conversationOf, initial, leadingMention, nameProblem, runsOn, scopeLabel, type AgentTone } from "./agents";
 import { ENGINE_NAME, pickerEngines } from "./engines";
-import { duration } from "./thread";
+import { useSeen } from "./rowState";
 import {
   Composer,
   EffortPicker,
@@ -25,11 +26,10 @@ import {
 } from "./App";
 
 const PENCIL = "M4 20h4L19 9l-4-4L4 16ZM13.5 6.5l4 4";
-const LIST = "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01";
-const MARK: Record<AgentTone, string> = { live: "working", approval: "approval", ok: "done", bad: "failed", quiet: "idle" };
+const MARK: Record<AgentTone, string> = { live: "working", approval: "approval", answered: "answered", ok: "done", bad: "failed", quiet: "idle" };
 const HOST_QUESTIONS = ["What’s happening on my server?", "What changed since yesterday?", "Where is the API deployed?"];
 
-const permissionLabel = (p: Permission) => PERMISSIONS.find((x) => x.id === p)?.label ?? p;
+export const permissionLabel = (p: Permission) => PERMISSIONS.find((x) => x.id === p)?.label ?? p;
 
 /** The agent's face: its initial on its colour. Decorative; its name is always beside it. */
 export function AgentAvatar({ agent, size = "md" }: { agent: Pick<Agent, "name" | "color">; size?: "xs" | "sm" | "md" | "lg" }) {
@@ -49,87 +49,45 @@ function useNow(every: number): number {
   return now;
 }
 
-/** Open the agent's ongoing chat, or its start page when it has none. */
-export function openAgent(agent: Agent, state: State, actions: Actions) {
-  const chat = ongoing(agent, state.sessions);
-  actions.go(chat ? { page: "session", id: chat.id } : { page: "agent", id: agent.id });
-}
+/** An agent's place: its conversation, or the empty one before its first message. */
+export const openAgent = (agent: Agent, actions: Actions) => actions.go({ page: "agent", id: agent.id });
 
-function ChatList({ chats, actions, now }: { chats: SessionMeta[]; actions: Actions; now: number }) {
-  return (
-    <ul className="automation-runs" aria-label="Chats, newest first">
-      {chats.map((s) => (
-        <li key={s.id} className="automation-run-item">
-          <button className="btn-quiet automation-run" title={s.title} onClick={() => actions.go({ page: "session", id: s.id })}>
-            <span className={`mark mark-${s.status === "running" ? "working" : s.lastTurn === "failed" ? "failed" : "done"}`} aria-hidden="true" />
-            <span className="automation-run-when">{s.title}</span>
-            <span className="automation-run-time">{duration(Math.max(0, now - s.updatedAt))} ago</span>
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function AgentCard({ state, actions, agent, now }: { state: State; actions: Actions; agent: Agent; now: number }) {
-  const [open, setOpen] = useState(false);
-  const chats = useMemo(() => chatsOf(state.sessions, agent.id), [state.sessions, agent.id]);
-  const status = agentStatus(agent, state.sessions, now);
-  const body = (
-    <>
-      <span className={`mark mark-${MARK[status.tone]}`} aria-hidden="true">
-        {status.tone === "approval" && <span className="mark-bang">!</span>}
-      </span>
-      <span className="automation-status-text">
-        {status.text}
-        {status.sessionId && state.sessions[status.sessionId] && <span className="muted"> · {state.sessions[status.sessionId].title}</span>}
-      </span>
-    </>
-  );
+function AgentCard({ state, actions, agent, now, seenAt }: { state: State; actions: Actions; agent: Agent; now: number; seenAt(id: string): number }) {
+  const chat = conversationOf(agent, state.sessions);
+  const status = agentStatus(agent, state.sessions, now, chat ? seenAt(chat.id) : Infinity);
   return (
     <section className="automation agent-card" aria-label={agent.name}>
-      <div className="agent-card-head">
+      <button className="btn-quiet agent-card-head" title={`Open ${agent.name}'s conversation`} onClick={() => openAgent(agent, actions)}>
         <AgentAvatar agent={agent} />
-        <div className="agent-card-name">
-          <strong className="automation-name" title={agent.name}>
-            {agent.name}
-          </strong>
+        <span className="agent-card-name">
+          <strong className="automation-name">{agent.name}</strong>
           <span className="muted small">{agent.builtin ? `Built in · reads ${scopeLabel(agent.scope, (h) => hostName(state, h)).toLowerCase()}` : `@${agent.name}`}</span>
-        </div>
-      </div>
+        </span>
+      </button>
       {agent.about && <p className="agent-about small">{agent.about}</p>}
       <div className="automation-when muted small">{runsOn(agent, modelsOn(state, "local"), agent.builtin ? "Read-only" : permissionLabel(agent.permission))}</div>
-      {status.sessionId ? (
-        <button className={`btn-quiet automation-status status-${status.tone}`} title="Open the chat" onClick={() => actions.go({ page: "session", id: status.sessionId! })}>
-          {body}
-        </button>
-      ) : (
-        <div className={`automation-status status-${status.tone}`}>{body}</div>
-      )}
+      <div className={`automation-status status-${status.tone}`} title={status.text}>
+        <span className={`mark mark-${MARK[status.tone]}`} aria-hidden="true">
+          {status.tone === "approval" && <span className="mark-bang">!</span>}
+        </span>
+        <span className="automation-status-text">{status.text}</span>
+      </div>
       <div className="automation-foot">
-        <button className="btn agent-message" onClick={() => openAgent(agent, state, actions)}>
+        <button className="btn agent-message" onClick={() => openAgent(agent, actions)}>
           {agent.builtin ? "Ask" : "Message"}
         </button>
         <span className="spacer" />
-        <button className="btn-icon" aria-label={`New chat with ${agent.name}`} title="New chat" onClick={() => actions.go({ page: "agent", id: agent.id })}>
-          <Icon d={PLUS} size={14} />
-        </button>
-        {chats.length > 0 && (
-          <button className="btn-icon" aria-label={`Chats with ${agent.name}`} aria-expanded={open} title={open ? "Hide the chats" : `All ${chats.length} ${chats.length === 1 ? "chat" : "chats"}`} onClick={() => setOpen(!open)}>
-            <Icon d={LIST} size={14} />
-          </button>
-        )}
         <button className="btn-icon" aria-label={`Edit: ${agent.name}`} title="Edit" onClick={() => actions.go({ page: "agentEdit", id: agent.id })}>
           <Icon d={PENCIL} size={14} />
         </button>
       </div>
-      {open && chats.length > 0 && <ChatList chats={chats} actions={actions} now={now} />}
     </section>
   );
 }
 
 export function AgentsPage({ state, actions }: { state: State; actions: Actions }) {
   const now = useNow(30_000);
+  const seen = useSeen(state.sessions, null);
   const custom = state.agents.filter((a) => !a.builtin);
   return (
     <div className="hosts automations agents">
@@ -146,10 +104,10 @@ export function AgentsPage({ state, actions }: { state: State; actions: Actions 
         <div className="hosts-inner automation-list">
           <div className="automation-grid">
             {state.agents.map((a) => (
-              <AgentCard key={a.id} state={state} actions={actions} agent={a} now={now} />
+              <AgentCard key={a.id} state={state} actions={actions} agent={a} now={now} seenAt={seen.seenAt} />
             ))}
             {custom.length === 0 && state.connected && (
-              <button className="host-empty agent-empty" onClick={() => actions.go({ page: "agentEdit", id: "new" })}>
+              <button className="btn-quiet host-empty agent-empty" onClick={() => actions.go({ page: "agentEdit", id: "new" })}>
                 <Icon d={PLUS} size={16} />
                 <span>
                   <strong>Make an agent of your own</strong>
@@ -164,11 +122,29 @@ export function AgentsPage({ state, actions }: { state: State; actions: Actions 
   );
 }
 
-/** A new chat with an agent: its face, what it is for, and the box. */
+/** The agent's header in its conversation and before it: face, name, what it
+ *  is for, Edit. */
+export function AgentBar({ agent, actions, children }: { agent: Agent; actions: Actions; children?: React.ReactNode }) {
+  return (
+    <header className="bar agent-bar">
+      <MenuButton />
+      <AgentAvatar agent={agent} size="sm" />
+      <h1>{agent.name}</h1>
+      {agent.about && <span className="muted small agent-bar-about">{agent.about}</span>}
+      <span className="spacer" />
+      {children}
+      <button className="btn-text" onClick={() => actions.go({ page: "agentEdit", id: agent.id })}>
+        Edit
+      </button>
+    </header>
+  );
+}
+
+/** An agent's conversation before its first message: its face, what it is
+ *  for, and the box. */
 export function AgentStart({ state, actions, agent }: { state: State; actions: Actions; agent: Agent }) {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const chat = ongoing(agent, state.sessions);
   const target = useMemo<UploadTarget>(() => ({}), []);
   const send = async (text: string, attachments: Attachment[]) => {
     // A message that names another agent first goes to that one.
@@ -178,35 +154,23 @@ export function AgentStart({ state, actions, agent }: { state: State; actions: A
     if (!body && !attachments.length) return false;
     setSending(true);
     setError(null);
-    const r = await actions.askAgent(to.id, body, attachments.map((a) => a.id), to.id === agent.id);
+    const r = await actions.askAgent(to.id, body, attachments.map((a) => a.id));
     setSending(false);
     if (r.error) {
       setError(r.error);
       return false;
     }
   };
-  const where = agent.builtin ? scopeLabel(agent.scope, (h) => hostName(state, h)) : agent.cwd ? tilde(agent.cwd, homeOn(state, "local")) : "Its own folder";
+  const where = agent.builtin ? scopeLabel(agent.scope, (h) => hostName(state, h)) : agent.cwd ? tilde(agent.cwd, homeOn(state, "local")) : "its own folder";
   return (
-    <>
-      <header className="bar new-bar">
-        <MenuButton />
-        <h2 className="label-narrow">{agent.name}</h2>
-        <span className="spacer" />
-        {chat && (
-          <button className="btn-text" onClick={() => actions.go({ page: "session", id: chat.id })}>
-            Current chat
-          </button>
-        )}
-        <button className="btn-text" onClick={() => actions.go({ page: "agentEdit", id: agent.id })}>
-          Edit
-        </button>
-      </header>
+    <div className="agent-page">
+      <AgentBar agent={agent} actions={actions} />
       <div className="new agent-start">
         <div className="new-inner">
           <div className="agent-start-face">
             <AgentAvatar agent={agent} size="lg" />
           </div>
-          <h1>{agent.builtin ? "What would you like to know?" : `New chat with ${agent.name}`}</h1>
+          <h1>{agent.builtin ? "What would you like to know?" : `Message ${agent.name}`}</h1>
           {agent.about && <p className="agent-start-about muted">{agent.about}</p>}
           <Composer
             placeholder={agent.builtin ? `Ask ${agent.name} about your servers or your work` : `Message ${agent.name}`}
@@ -218,6 +182,7 @@ export function AgentStart({ state, actions, agent }: { state: State; actions: A
             busy={sending || !state.connected}
             onSubmit={send}
             mentions={state.agents}
+            mentionHint={(other) => (other.id === agent.id ? null : `Goes to ${other.name}`)}
           >
             <span className="muted small agent-runs-chip" title="Set in the agent's settings">
               {runsOn(agent, modelsOn(state, "local"), agent.builtin ? "Read-only" : permissionLabel(agent.permission))}
@@ -225,8 +190,6 @@ export function AgentStart({ state, actions, agent }: { state: State; actions: A
           </Composer>
           <div className="new-chips">
             <span className="muted small">{agent.builtin ? `Reads ${where.toLowerCase()}; runs no tools` : `Works in ${where}`}</span>
-            <span className="spacer" />
-            {chat && <span className="muted small">Starts a new chat; the current one stays</span>}
           </div>
           {error && (
             <div className="small automation-message" role="alert">
@@ -245,7 +208,7 @@ export function AgentStart({ state, actions, agent }: { state: State; actions: A
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -315,7 +278,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
         <h1>{existing ? `Edit ${existing.name}` : "New agent"}</h1>
       </header>
       <div className="scroll">
-        <div className="hosts-inner automation-form">
+        <div className="hosts-inner automation-form agent-form">
           <div className="agent-form-identity">
             <AgentAvatar agent={{ name: name || "?", color }} size="lg" />
             <div className="automation-field agent-form-name">
@@ -341,12 +304,12 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
           <div className="automation-field">
             <label htmlFor="agent-instructions">Instructions</label>
             <textarea id="agent-instructions" className="field automation-prompt" rows={5} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Who it is and how it works: tone, what to check, what never to do" />
-            <span className="muted small">Given at the start of every chat.</span>
+            <span className="muted small">Given at the start of its conversation; a change reaches it with the next message.</span>
           </div>
           <div className="automation-field">
             <label htmlFor="agent-memory">Memory</label>
             <textarea id="agent-memory" className="field automation-prompt" rows={4} value={memory} onChange={(e) => setMemory(e.target.value)} placeholder="Facts to keep in mind: names, conventions, where things live" />
-            <span className="muted small">Notes it carries into every chat. A chat already going keeps the notes it started with.</span>
+            <span className="muted small">Facts it keeps in mind; a change reaches it with the next message.</span>
           </div>
           <div className="automation-field">
             <span className="automation-label">Where and how</span>
@@ -355,7 +318,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
                 <HostPicker state={state} value={scope} contextScope onChange={setScope} onAddHost={() => actions.go({ page: "hosts" })} />
               ) : (
                 <>
-                  <FolderPicker host="local" home={home} workspace={workspace} value={cwd} recent={recent} dirs={state.dirs} listDirs={actions.listDirs} onChange={setCwd} />
+                  <FolderPicker host="local" home={home} workspace={workspace} value={cwd} recent={recent} dirs={state.dirs} listDirs={actions.listDirs} onChange={setCwd} placeholder="Its own folder" />
                   {cwd && (
                     <button className="btn-text" onClick={() => setCwd("")}>
                       Use its own folder
@@ -373,8 +336,8 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
               {builtin
                 ? `Reads ${scopeLabel(scope, (h) => hostName(state, h)).toLowerCase()} for each question and answers without tools: it cannot change anything. Runs on ${ENGINE_NAME[choice.engine]} on ${hostName(state, "local")}.`
                 : cwd
-                  ? `Its chats work in ${tilde(cwd, home)}, one writer at a time.`
-                  : `Its chats work in a folder of its own on ${hostName(state, "local")}.`}
+                  ? `It works in ${tilde(cwd, home)}, one writer at a time.`
+                  : `It works in a folder of its own on ${hostName(state, "local")}.`}
               {!builtin && permission === "full" && " Full access: it runs anything without asking."}
             </span>
           </div>
@@ -398,7 +361,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
             )}
             {existing && confirmDelete && (
               <>
-                <span className="muted small">Its chats stay as sessions.</span>
+                <span className="muted small">Its conversation is deleted too.</span>
                 <button
                   type="button"
                   className="btn danger"
