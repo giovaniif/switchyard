@@ -55,8 +55,8 @@ async fn a_session_is_named_from_its_conversation_after_its_first_and_third_turn
 
     let session = titled(&mut c, &sid, "Fake named session").await;
     assert_eq!(session["titleSource"], "auto");
-    let saved = saved_meta(&sb, &sid).unwrap();
-    assert_eq!((saved["title"].as_str(), saved["titleSource"].as_str()), (Some("Fake named session"), Some("auto")));
+    // The store writes behind the broadcast.
+    until("the title on disk", || saved_meta(&sb, &sid).is_some_and(|m| m["title"] == "Fake named session" && m["titleSource"] == "auto")).await;
 
     let input = &naming_inputs(&sb)[0];
     assert!(input.contains("\n\nUser: [name] hey can you look at the sidebar it overflows\nAssistant: Echo:"), "{input}");
