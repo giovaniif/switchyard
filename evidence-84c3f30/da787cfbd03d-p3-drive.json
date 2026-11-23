@@ -1,0 +1,161 @@
+{
+  "ok": false,
+  "route": "agents",
+  "build": {
+    "sha": "84c3f30a571da03e81d685070f6901663bbfb071",
+    "short": "84c3f30",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-23T13:28:19.824Z"
+  },
+  "dir": ".verify/evidence/agents-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 5800,
+      "steps": 23,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agents-head/agents-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agents-head/scout-start-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agents-head/scout-chat-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agents-head/mention-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agents-head/routed-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agents-head/reviewer-chat-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agents-head/form-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 17632,
+      "steps": 23,
+      "failed": {
+        "step": 21,
+        "action": {
+          "expect": "role:heading:Edit TEST-Reviewer"
+        },
+        "reason": "for: Timeout 10000ms exceeded.",
+        "screenshot": ".verify/evidence/agents-head/fail-desktop-step21.png",
+        "aria": "- navigation \"Sessions\":\n  - button \"Go to session or page\": Switchyard Ctrl K\n  - button \"Collapse sessions sidebar\" [expanded]\n  - button \"New session\"\n  - button \"Agents\"\n  - button \"Automations\"\n  - button \"Connectors\"\n  - button \"Import\"\n  - button \"Settings\"\n  - button \"TEST-look at the diff TEST-Reviewer · Idle\"\n  - button \"Actions for TEST-look at the diff\"\n  - button \"TEST-what is running here? Scout · Idle\"\n  - button \"Actions for TEST-what is running here?\"\n  - button \"[cmd] TEST-run the migration Fake Fast · Needs approval\"\n  - button \"Actions for [cmd] TEST-run the migration\"\n  - button \"TEST-hello from Claude Haiku 5.5 · Idle\"\n  - button \"Actions for TEST-hello from Claude\"\n  - button \"[edit] TEST-fix the greeting Fake Fast · Idle\"\n  - button \"Actions for [edit] TEST-fix the greeting\"\n  - button \"TEST-say hello Fake Fast · Idle\"\n  - button \"Actions for TEST-say hello\"\n  - button \"[think] TEST-plan the refactor Fake Fast · Idle\"\n  - button \"Actions for [think] TEST-plan the refactor\"\n  - button \"[fail] TEST-failing turn Fake Fast · Idle\"\n  - button \"Actions for [fail] TEST-failing turn\"\n  - button \"Subscription usage\": Usage 47% used\n  - button \"iso-host 5% · 50%\"\n- separator \"Resize the sessions sidebar\"\n- main:\n  - heading \"[edit] TEST-fix the greeting\" [level=1]\n  - code: yard/edit-test-fix-the-greeting-e0e7\n  - 'link \"Pull request #4242\"':\n    - /url: https://github.com/test-owner/test-demo-app/pull/4242\n    - text: \"PR #4242\"\n  - button \"Set up iPhone app\"\n  - button \"Collapse workspace\" [expanded]\n  - button \"Delete\"\n  - text: \"[edit] TEST-fix the greeting\"\n  - code: src/lib.rs\n  - text: \"@@ -1 +1,2 @@ fn kept() {} +fn added() {}\"\n  - paragraph: Edited src/lib.rs.\n  - textbox \"Message\":\n    - /placeholder: Reply\n  - button \"Attach files\"\n  - button \"Dictate\"\n  - button \"Voice mode\"\n  - button \"Model Fake Fast\": Fake Fast\n  - 'button \"Account: Codex, Default\"'\n  - button \"Effort Low\": Low\n  - button \"Ask first\"\n  - button \"Send\" [disabled]\n- region \"Workspace\":\n  - separator \"Resize the workspace pane\"\n  - button \"Terminal\" [pressed]\n  - button \"Subagents\"\n  - button \"Processes\"\n  - tablist \"Terminals\":\n    - tab \"1\" [selected]\n    - button \"Close terminal\"\n    - button \"New terminal\"\n    - button \"Attach\"\n  - textbox \"Terminal input\""
+      },
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agents-head/agents-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agents-head/scout-start-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agents-head/scout-chat-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agents-head/mention-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agents-head/routed-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agents-head/reviewer-chat-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "desktop: step 21 {\"expect\":\"role:heading:Edit TEST-Reviewer\"}: for: Timeout 10000ms exceeded.",
+      "hint": "see .verify/evidence/agents-head/fail-desktop-step21.png and the aria snapshot"
+    }
+  ]
+}

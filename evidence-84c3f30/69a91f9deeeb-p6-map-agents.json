@@ -1,0 +1,62 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "agents",
+      "at": "2026-11-23T13:30:14.358Z",
+      "counts": {
+        "pass": 9
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "cards-show-scout-and-the-users-agents",
+          "status": "pass",
+          "ms": 4951
+        },
+        {
+          "label": "scout-answers-from-host-evidence-in-a-chat",
+          "status": "pass",
+          "ms": 3727
+        },
+        {
+          "label": "scout-on-a-phone",
+          "status": "pass",
+          "ms": 3594
+        },
+        {
+          "label": "create-an-agent-from-the-form",
+          "status": "pass",
+          "ms": 7102
+        },
+        {
+          "label": "at-mention-from-new-session-starts-the-agents-chat",
+          "status": "pass",
+          "ms": 3972
+        },
+        {
+          "label": "at-mention-in-a-session-goes-to-the-agents-ongoing-chat",
+          "status": "pass",
+          "ms": 4447
+        },
+        {
+          "label": "new-chat-and-the-chats-list",
+          "status": "pass",
+          "ms": 5940
+        },
+        {
+          "label": "switchys-address-lands-on-the-agents",
+          "status": "pass",
+          "ms": 1895
+        },
+        {
+          "label": "deleting-an-agent-keeps-its-chats",
+          "status": "pass",
+          "ms": 3311
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
