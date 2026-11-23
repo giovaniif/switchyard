@@ -41,6 +41,8 @@ use crate::{
 pub const BUILTIN: &str = "scout";
 /// Avatar colours, named; the UI maps each to a token in styles.css.
 pub const COLORS: [&str; 8] = ["blue", "green", "amber", "rose", "violet", "teal", "orange", "slate"];
+/// Avatar faces, named; the UI draws each (agents.ts). Empty: one picked from the id.
+pub const FACES: [&str; 8] = ["smile", "grin", "wink", "calm", "glasses", "bot", "happy", "curious"];
 pub const NAME_MAX: usize = 24;
 const ABOUT_MAX: usize = 160;
 const NOTES_MAX: usize = 20_000;
@@ -55,6 +57,8 @@ pub struct Agent {
     pub name: String,
     #[serde(default = "default_color")]
     pub color: String,
+    #[serde(default)]
+    pub face: String,
     /// One line: what it is for. Shown on its card and given to it.
     #[serde(default)]
     pub about: String,
@@ -109,6 +113,7 @@ fn scout() -> Agent {
         id: BUILTIN.into(),
         name: "Scout".into(),
         color: "teal".into(),
+        face: "glasses".into(),
         about: "Answers quick questions about your hosts and sessions. Read-only.".into(),
         engine: "codex".into(),
         model: String::new(),
@@ -250,6 +255,9 @@ fn save(app: &App, input: &Value) -> Result<Agent> {
     }
     if !COLORS.contains(&a.color.as_str()) {
         a.color = default_color();
+    }
+    if !FACES.contains(&a.face.as_str()) {
+        a.face = String::new();
     }
     if !crate::engines::is_engine(&a.engine) {
         bail!("unknown engine {}", a.engine);

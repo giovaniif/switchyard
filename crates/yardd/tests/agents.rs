@@ -131,7 +131,7 @@ async fn an_agents_first_turn_carries_its_preamble_and_every_message_goes_to_its
     }
     let agent = save(
         &mut c,
-        json!({ "name": "Reviewer", "engine": "codex", "model": MODEL, "effort": EFFORT, "color": "rose", "about": "Reviews  pull\nrequests",
+        json!({ "name": "Reviewer", "engine": "codex", "model": MODEL, "effort": EFFORT, "color": "rose", "face": "wink", "about": "Reviews  pull\nrequests",
             "instructions": "Be terse.", "memory": "Main is trunk.", "cwd": folder, "permission": "acceptEdits" }),
     )
     .await
@@ -139,6 +139,11 @@ async fn an_agents_first_turn_carries_its_preamble_and_every_message_goes_to_its
     let id = agent["id"].as_str().unwrap().to_string();
     assert_eq!(agent["about"], "Reviews pull requests");
     assert_eq!(agent["builtin"], false);
+    assert_eq!(agent["face"], "wink");
+    // A face yardd does not know falls back to the one the UI picks from the id.
+    let unknown = save(&mut c, json!({ "id": id, "face": "moustache" })).await.unwrap();
+    assert_eq!(unknown["face"], "");
+    assert_eq!(unknown["color"], "rose");
 
     let sid = ask(&mut c, &id, "TEST-look at the diff", json!({})).await.unwrap();
     c.wait_turn_done(&sid, 0).await;

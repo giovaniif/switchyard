@@ -839,12 +839,16 @@ export type { MobileStatus } from "./mobile";
 
 /** An avatar colour; styles.css has a token for each. */
 export type AgentColor = "blue" | "green" | "amber" | "rose" | "violet" | "teal" | "orange" | "slate";
+/** An avatar face; agents.ts draws each. */
+export type AgentFace = "smile" | "grin" | "wink" | "calm" | "glasses" | "bot" | "happy" | "curious";
 
 /** A named agent, mentioned as `@name`. Agents live on the hub (yardd's agents.rs). */
 export interface Agent {
   id: string;
   name: string;
   color: AgentColor;
+  /** Empty: one picked from its id (faceOf). */
+  face: AgentFace | "";
   /** One line: what it is for. */
   about: string;
   engine: Engine;

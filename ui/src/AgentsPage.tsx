@@ -3,9 +3,9 @@
 // session tagged with it (yardd's agents.rs), kept out of the sidebar: this
 // page and the Agents nav row show its state.
 import { useEffect, useMemo, useState } from "react";
-import type { Agent, AgentColor, Attachment, Permission } from "./protocol";
+import type { Agent, AgentColor, AgentFace, Attachment, Permission } from "./protocol";
 import { hostName, hostOnline, homeOn, modelsOn, type Actions, type State, type UploadTarget } from "./store";
-import { AGENT_COLORS, agentStatus, conversationOf, initial, leadingMention, nameProblem, runsOn, scopeLabel, type AgentTone } from "./agents";
+import { AGENT_COLORS, AGENT_FACES, FACE_PATHS, agentStatus, conversationOf, faceOf, leadingMention, nameProblem, runsOn, scopeLabel, type AgentTone } from "./agents";
 import { ENGINE_NAME, pickerEngines } from "./engines";
 import { useSeen } from "./rowState";
 import {
@@ -31,11 +31,16 @@ const HOST_QUESTIONS = ["What’s happening on my server?", "What changed since 
 
 export const permissionLabel = (p: Permission) => PERMISSIONS.find((x) => x.id === p)?.label ?? p;
 
-/** The agent's face: its initial on its colour. Decorative; its name is always beside it. */
-export function AgentAvatar({ agent, size = "md" }: { agent: Pick<Agent, "name" | "color">; size?: "xs" | "sm" | "md" | "lg" }) {
+const AVATAR_PX = { xs: 14, sm: 20, md: 32, lg: 48, xl: 88 } as const;
+// Small avatars draw thicker lines, so the eyes stay visible at 14px.
+const FACE_STROKE = { xs: 2.6, sm: 2.3, md: 2, lg: 1.8, xl: 1.6 } as const;
+
+/** The agent's face, drawn on its colour. Decorative; its name is always beside it. */
+export function AgentAvatar({ agent, size = "md" }: { agent: Pick<Agent, "color"> & Partial<Pick<Agent, "face" | "id" | "builtin">>; size?: keyof typeof AVATAR_PX }) {
+  const face = faceOf({ face: agent.face ?? "", id: agent.id ?? "", builtin: !!agent.builtin });
   return (
     <span className={`agent-avatar agent-avatar-${size} agent-${agent.color}`} aria-hidden="true">
-      {initial(agent.name)}
+      <Icon d={FACE_PATHS[face]} size={AVATAR_PX[size]} width={FACE_STROKE[size]} />
     </span>
   );
 }
@@ -220,6 +225,13 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
   const workspace = state.workspace.local || home;
   const [name, setName] = useState(existing?.name ?? "");
   const [color, setColor] = useState<AgentColor>(existing?.color ?? AGENT_COLORS[state.agents.length % AGENT_COLORS.length]);
+  // A new agent's face steps differently from its colour, so the pairs vary,
+  // and skips Scout's glasses.
+  const [face, setFace] = useState<AgentFace>(() => {
+    if (existing) return faceOf(existing);
+    const pool = AGENT_FACES.filter((f) => f !== "glasses");
+    return pool[(state.agents.length * 3) % pool.length];
+  });
   const [about, setAbout] = useState(existing?.about ?? "");
   const [instructions, setInstructions] = useState(existing?.instructions ?? "");
   const [memory, setMemory] = useState(existing?.memory ?? "");
@@ -259,6 +271,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
       ...(existing ? { id: existing.id } : {}),
       name: name.trim(),
       color,
+      face,
       about,
       instructions,
       memory,
@@ -271,6 +284,32 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
     if (r.error) setError(r.error);
     else actions.go({ page: "agents" });
   };
+  const deleteControls = existing && !builtin && (
+    <div className="row agent-form-delete">
+      {confirmDelete ? (
+        <>
+          <span className="muted small">Its conversation is deleted too.</span>
+          <button
+            type="button"
+            className="btn danger"
+            onClick={() => {
+              actions.deleteAgent(existing.id);
+              actions.go({ page: "agents" });
+            }}
+          >
+            Confirm delete
+          </button>
+          <button type="button" className="btn-text" onClick={() => setConfirmDelete(false)}>
+            Keep it
+          </button>
+        </>
+      ) : (
+        <button type="button" className="btn-text danger" onClick={() => setConfirmDelete(true)}>
+          Delete agent
+        </button>
+      )}
+    </div>
+  );
   return (
     <div className="hosts automations agents">
       <header className="bar">
@@ -279,108 +318,113 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
       </header>
       <div className="scroll">
         <div className="hosts-inner automation-form agent-form">
-          <div className="agent-form-identity">
-            <AgentAvatar agent={{ name: name || "?", color }} size="lg" />
-            <div className="automation-field agent-form-name">
-              <label htmlFor="agent-name">Name</label>
-              <input id="agent-name" className="field" value={name} maxLength={24} onChange={(e) => setName(e.target.value)} placeholder="Reviewer" autoFocus={!existing} />
+          <div className="agent-form-hero">
+            <AgentAvatar agent={{ color, face }} size="xl" />
+            <div className="agent-form-name">
+              <label htmlFor="agent-name" className="sr-only">
+                Name
+              </label>
+              <input id="agent-name" className="field agent-name-input" value={name} maxLength={24} onChange={(e) => setName(e.target.value)} placeholder="Name it" autoFocus={!existing} />
               <span className="muted small">{name.trim() && !nameProblem(name, state.agents, existing?.id) ? `Mention it as @${name.trim()} in any message.` : "One word, so it can be @mentioned."}</span>
             </div>
           </div>
-          <div className="automation-field">
-            <span className="automation-label">Colour</span>
-            <div className="row agent-colors" role="group" aria-label="Colour">
-              {AGENT_COLORS.map((c) => (
-                <button key={c} className="btn-icon agent-swatch" aria-label={`Colour: ${c}`} aria-pressed={color === c} title={c} onClick={() => setColor(c)}>
-                  <span className={`agent-swatch-dot agent-${c}`} />
-                </button>
-              ))}
+          <section className="agent-form-card" aria-labelledby="agent-form-look">
+            <div className="agent-form-card-head">
+              <h2 id="agent-form-look">Look</h2>
+              <p className="muted small">How it shows on its card, in mentions and in its conversation.</p>
             </div>
-          </div>
-          <div className="automation-field">
-            <label htmlFor="agent-about">What it is for</label>
-            <input id="agent-about" className="field" value={about} maxLength={160} onChange={(e) => setAbout(e.target.value)} placeholder="Reviews my pull requests" />
-          </div>
-          <div className="automation-field">
-            <label htmlFor="agent-instructions">Instructions</label>
-            <textarea id="agent-instructions" className="field automation-prompt" rows={5} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Who it is and how it works: tone, what to check, what never to do" />
-            <span className="muted small">Given at the start of its conversation; a change reaches it with the next message.</span>
-          </div>
-          <div className="automation-field">
-            <label htmlFor="agent-memory">Memory</label>
-            <textarea id="agent-memory" className="field automation-prompt" rows={4} value={memory} onChange={(e) => setMemory(e.target.value)} placeholder="Facts to keep in mind: names, conventions, where things live" />
-            <span className="muted small">Facts it keeps in mind; a change reaches it with the next message.</span>
-          </div>
-          <div className="automation-field">
-            <span className="automation-label">Where and how</span>
-            <div className="new-chips">
-              {builtin ? (
-                <HostPicker state={state} value={scope} contextScope onChange={setScope} onAddHost={() => actions.go({ page: "hosts" })} />
-              ) : (
-                <>
-                  <FolderPicker host="local" home={home} workspace={workspace} value={cwd} recent={recent} dirs={state.dirs} listDirs={actions.listDirs} onChange={setCwd} placeholder="Its own folder" />
-                  {cwd && (
-                    <button className="btn-text" onClick={() => setCwd("")}>
-                      Use its own folder
-                    </button>
-                  )}
-                </>
-              )}
+            <div className="automation-field">
+              <span className="automation-label">Face</span>
+              <div className="agent-faces" role="group" aria-label="Face">
+                {AGENT_FACES.map((f) => (
+                  <button key={f} type="button" className="btn-icon agent-face-option" aria-label={`Face: ${f}`} aria-pressed={face === f} title={f} onClick={() => setFace(f)}>
+                    <AgentAvatar agent={{ color, face: f }} size="lg" />
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="automation-pickers">
-              <ModelPicker models={models} value={choice} engines={engines} onChange={setChoice} />
-              <EffortPicker models={models} value={choice} onChange={(effort) => setChoice({ ...choice, effort })} />
-              {!builtin && <PermissionPicker engine={choice.engine} value={permission} onChange={setPermission} />}
+            <div className="automation-field">
+              <span className="automation-label">Colour</span>
+              <div className="row agent-colors" role="group" aria-label="Colour">
+                {AGENT_COLORS.map((c) => (
+                  <button key={c} type="button" className="btn-icon agent-swatch" aria-label={`Colour: ${c}`} aria-pressed={color === c} title={c} onClick={() => setColor(c)}>
+                    <span className={`agent-swatch-dot agent-${c}`} />
+                  </button>
+                ))}
+              </div>
             </div>
-            <span className="muted small">
-              {builtin
-                ? `Reads ${scopeLabel(scope, (h) => hostName(state, h)).toLowerCase()} for each question and answers without tools: it cannot change anything. Runs on ${ENGINE_NAME[choice.engine]} on ${hostName(state, "local")}.`
-                : cwd
-                  ? `It works in ${tilde(cwd, home)}, one writer at a time.`
-                  : `It works in a folder of its own on ${hostName(state, "local")}.`}
-              {!builtin && permission === "full" && " Full access: it runs anything without asking."}
-            </span>
-          </div>
+          </section>
+          <section className="agent-form-card" aria-labelledby="agent-form-role">
+            <div className="agent-form-card-head">
+              <h2 id="agent-form-role">Role</h2>
+              <p className="muted small">What it does and what it knows. A change reaches it with its next message.</p>
+            </div>
+            <div className="automation-field">
+              <label htmlFor="agent-about">What it is for</label>
+              <input id="agent-about" className="field" value={about} maxLength={160} onChange={(e) => setAbout(e.target.value)} placeholder="Reviews my pull requests" />
+            </div>
+            <div className="automation-field">
+              <label htmlFor="agent-instructions">Instructions</label>
+              <textarea id="agent-instructions" className="field automation-prompt" rows={5} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Who it is and how it works: tone, what to check, what never to do" />
+              <span className="muted small">Given at the start of its conversation.</span>
+            </div>
+            <div className="automation-field">
+              <label htmlFor="agent-memory">Memory</label>
+              <textarea id="agent-memory" className="field automation-prompt" rows={4} value={memory} onChange={(e) => setMemory(e.target.value)} placeholder="Facts to keep in mind: names, conventions, where things live" />
+              <span className="muted small">Facts it keeps in mind.</span>
+            </div>
+          </section>
+          <section className="agent-form-card" aria-labelledby="agent-form-where">
+            <div className="agent-form-card-head">
+              <h2 id="agent-form-where">Where and how</h2>
+              <p className="muted small">
+                {builtin
+                  ? `Reads ${scopeLabel(scope, (h) => hostName(state, h)).toLowerCase()} for each question and answers without tools: it cannot change anything. Runs on ${ENGINE_NAME[choice.engine]} on ${hostName(state, "local")}.`
+                  : cwd
+                    ? `It works in ${tilde(cwd, home)}, one writer at a time.`
+                    : `It works in a folder of its own on ${hostName(state, "local")}.`}
+                {!builtin && permission === "full" && " Full access: it runs anything without asking."}
+              </p>
+            </div>
+            <div className="agent-form-where">
+              <div className="new-chips">
+                {builtin ? (
+                  <HostPicker state={state} value={scope} contextScope onChange={setScope} onAddHost={() => actions.go({ page: "hosts" })} />
+                ) : (
+                  <>
+                    <FolderPicker host="local" home={home} workspace={workspace} value={cwd} recent={recent} dirs={state.dirs} listDirs={actions.listDirs} onChange={setCwd} placeholder="Its own folder" />
+                    {cwd && (
+                      <button className="btn-text" onClick={() => setCwd("")}>
+                        Use its own folder
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="automation-pickers">
+                <ModelPicker models={models} value={choice} engines={engines} onChange={setChoice} />
+                <EffortPicker models={models} value={choice} onChange={(effort) => setChoice({ ...choice, effort })} />
+                {!builtin && <PermissionPicker engine={choice.engine} value={permission} onChange={setPermission} />}
+              </div>
+            </div>
+          </section>
           {(error || (name && problem)) && (
             <div className="small automation-reason" role="alert">
               {error ?? problem}
             </div>
           )}
-          <div className="row">
-            <button type="button" className="btn-primary" disabled={!!problem || saving || !state.connected || !hostOnline(state, "local")} onClick={() => void save()}>
-              {saving ? "Saving" : existing ? "Save agent" : "Create agent"}
-            </button>
+          <div className="agent-form-foot">
+            {deleteControls}
+            <span className="spacer" />
             <button type="button" className="btn-text" onClick={() => actions.go({ page: "agents" })}>
               Cancel
             </button>
-            <span className="spacer" />
-            {existing && !builtin && !confirmDelete && (
-              <button type="button" className="btn-text danger" onClick={() => setConfirmDelete(true)}>
-                Delete agent
-              </button>
-            )}
-            {existing && confirmDelete && (
-              <>
-                <span className="muted small">Its conversation is deleted too.</span>
-                <button
-                  type="button"
-                  className="btn danger"
-                  onClick={() => {
-                    actions.deleteAgent(existing.id);
-                    actions.go({ page: "agents" });
-                  }}
-                >
-                  Confirm delete
-                </button>
-                <button type="button" className="btn-text" onClick={() => setConfirmDelete(false)}>
-                  Keep it
-                </button>
-              </>
-            )}
+            <button type="button" className="btn-primary" disabled={!!problem || saving || !state.connected || !hostOnline(state, "local")} onClick={() => void save()}>
+              {saving ? "Saving" : existing ? "Save agent" : "Create agent"}
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
 }
-

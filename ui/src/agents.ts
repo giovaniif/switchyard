@@ -1,6 +1,6 @@
 // Words and rules for agents (yardd's agents.rs): @mentions in a message,
 // the card's status line, the avatar's letter. Pure, so bun test covers them.
-import type { Agent, AgentColor, Models, SessionMeta } from "./protocol";
+import type { Agent, AgentColor, AgentFace, Models, SessionMeta } from "./protocol";
 import { ENGINE_NAME } from "./engines";
 
 export const AGENT_COLORS: AgentColor[] = ["blue", "green", "amber", "rose", "violet", "teal", "orange", "slate"];
@@ -10,6 +10,31 @@ export const HOST_AGENT = "scout";
 
 /** The avatar's letter. */
 export const initial = (name: string) => (name.trim()[0] ?? "?").toUpperCase();
+
+/** Avatar faces as one stroked path each, drawn white on the avatar's colour in
+ *  a 24-unit box. Eyes are zero-length strokes: round caps make them dots. */
+export const FACE_PATHS: Record<AgentFace, string> = {
+  smile: "M9 10v.01M15 10v.01M8.5 14q3.5 3.5 7 0",
+  grin: "M9 9.5v.01M15 9.5v.01M8 13h8a4 4 0 0 1-8 0Z",
+  wink: "M9 10v.01M13.5 10.5q1.5-1.5 3 0M8.5 14q3.5 3.5 7 0",
+  calm: "M7.5 10q1.5 1.5 3 0M13.5 10q1.5 1.5 3 0M10 15.5h4",
+  glasses: "M6 10.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M13 10.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M11 10.5h2M9.5 16q2.5 1.5 5 0",
+  bot: "M7.5 9h3v2.5h-3ZM13.5 9h3v2.5h-3ZM9 15.5h6",
+  happy: "M7.5 10.5q1.5-2 3 0M13.5 10.5q1.5-2 3 0M8 13h8a4 4 0 0 1-8 0Z",
+  curious: "M13.5 7.8q1.5-1.4 3 0M9 10.5v.01M15 10.5v.01M12 14.2a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6Z",
+};
+export const AGENT_FACES = Object.keys(FACE_PATHS) as AgentFace[];
+
+/** The face an agent shows: its own, or a steady one picked from its id.
+ *  Glasses are Scout's unless someone picks them, so no agent looks like it by chance. */
+export function faceOf(agent: Pick<Agent, "face" | "id" | "builtin">): AgentFace {
+  if (agent.face && agent.face in FACE_PATHS) return agent.face;
+  if (agent.builtin) return "glasses";
+  const pool = AGENT_FACES.filter((f) => f !== "glasses");
+  let h = 0;
+  for (const ch of agent.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return pool[h % pool.length];
+}
 
 /** yardd's rule, said before it refuses: one word that reads as `@Name`. */
 export function nameProblem(name: string, agents: Agent[], id?: string): string | null {

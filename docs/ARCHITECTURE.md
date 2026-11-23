@@ -541,10 +541,17 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   the box, how it runs and, for Scout, three suggested questions. Scout's
   view, and the view of an agent working in its own folder, have no Terminal,
   Subagents or Processes pane; an agent given a project folder keeps them.
-  Each answer carries the agent's face and name. The **form**
-  (`#/agents/<id>/edit`, `new`) reuses the folder, model, effort and
-  permission pickers; Scout's has the context host picker instead and no
-  permission. Deleting asks once more and says the conversation goes too.
+  Each answer carries the agent's face and name. The **face** is one of
+  eight drawn ones (`FACE_PATHS` in agents.ts, white strokes on the agent's
+  colour; yardd keeps the name and drops one it does not know). An agent with
+  none shows one picked from its id; glasses are Scout's and never picked by
+  chance. The **form** (`#/agents/<id>/edit`, `new`) is one centred column:
+  the face large with the name under it, then cards for Look (face, colour),
+  Role (what it is for, instructions, memory) and Where and how, and a footer
+  that stays in reach with Delete, Cancel and Save. It reuses the folder,
+  model, effort and permission pickers; Scout's has the context host picker
+  instead and no permission. Deleting asks once more and says the
+  conversation goes too.
 - **Slack (planned, step 3).** A Slack thread is not a session of its own:
   a message from Slack goes into the agent's one conversation, tagged with
   its source (shown inline as a Slack badge with channel and person), and the

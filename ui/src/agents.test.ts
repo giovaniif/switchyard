@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { Agent, SessionMeta } from "./protocol";
-import { agentOf, agentStatus, agentsAttention, initial, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt, nameProblem, runsOn } from "./agents";
+import { AGENT_FACES, agentOf, agentStatus, agentsAttention, faceOf, initial, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt, nameProblem, runsOn } from "./agents";
 import { initial as empty, parseHash, reduce, routeHash } from "./store";
 
 const agent = (id: string, name: string, extra: Partial<Agent> = {}): Agent => ({
-  id, name, color: "blue", about: "", engine: "codex", model: "", effort: "", account: "default", cwd: "", permission: "ask",
+  id, name, color: "blue", face: "", about: "", engine: "codex", model: "", effort: "", account: "default", cwd: "", permission: "ask",
   instructions: "", memory: "", builtin: false, scope: "all", chat: null, createdAt: 0, updatedAt: 0, ...extra,
 });
 const agents = [agent("scout", "Scout", { builtin: true }), agent("g1", "Reviewer"), agent("g2", "Release-bot")];
@@ -35,6 +35,17 @@ describe("mentions", () => {
     expect(leadingMention("ask @scout later", agents)).toBeNull();
     expect(leadingMention("@scouting", agents)).toBeNull();
   });
+});
+
+test("faces: its own, else a steady one from its id; Scout wears glasses", () => {
+  expect(faceOf(agent("g1", "Reviewer", { face: "wink" }))).toBe("wink");
+  expect(faceOf(agent("scout", "Scout", { builtin: true }))).toBe("glasses");
+  const picked = faceOf(agent("g7", "Docs"));
+  expect(AGENT_FACES).toContain(picked);
+  expect(faceOf(agent("g7", "Renamed"))).toBe(picked);
+  for (const id of ["g1", "g2", "g3", "g4", "g5", "g6", "g8", "g9"]) expect(faceOf(agent(id, "X"))).not.toBe("glasses");
+  // An unknown face from a newer yardd falls back instead of drawing nothing.
+  expect(AGENT_FACES).toContain(faceOf(agent("g7", "Docs", { face: "moustache" as Agent["face"] })));
 });
 
 test("names: one mentionable word, unique, the rule said before yardd refuses", () => {

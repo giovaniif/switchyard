@@ -78,14 +78,14 @@ yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label
 ```
 
 ### create-an-agent-from-the-form
-The form names the rule before saving (one word, unique), takes a colour,
+The form names the rule before saving (one word, unique), takes a face and a colour,
 what it is for, instructions and memory, and the folder, model, effort and
 permission pickers. Saved, it is a card. Each viewport makes its own.
 
 ```sh
-yv drive agents --viewport desktop --steps '[{"click":"role:button:New agent"},{"fill":"label:Name","value":"two words"},{"expect":"role:alert","text":"One word"},{"fill":"label:Name","value":"test-reviewer"},{"expect":"role:alert","text":"already called"},{"fill":"label:Name","value":"TEST-Desk"},{"expect":"css:.agent-form-name","text":"Mention it as @TEST-Desk"},{"click":"role:button:Colour: rose"},{"fill":"label:What it is for","value":"TEST-desk work"},{"fill":"label:Instructions","value":"TEST-plan first"},{"fill":"label:Memory","value":"TEST-remember this"},{"expect":{"css":".agent-form .chip","hasText":"Its own folder"}},{"shot":"form"},{"click":"role:button:Create agent"},{"expect":{"css":".agent-card","hasText":"@TEST-Desk"}},{"shot":"saved"}]'
+yv drive agents --viewport desktop --steps '[{"click":"role:button:New agent"},{"fill":"label:Name","value":"two words"},{"expect":"role:alert","text":"One word"},{"fill":"label:Name","value":"test-reviewer"},{"expect":"role:alert","text":"already called"},{"fill":"label:Name","value":"TEST-Desk"},{"expect":"css:.agent-form-name","text":"Mention it as @TEST-Desk"},{"click":"role:button:Colour: rose"},{"click":"role:button:Face: wink"},{"expect":"css:.agent-face-option[aria-pressed=\"true\"][aria-label=\"Face: wink\"]"},{"fill":"label:What it is for","value":"TEST-desk work"},{"fill":"label:Instructions","value":"TEST-plan first"},{"fill":"label:Memory","value":"TEST-remember this"},{"expect":{"css":".agent-form .chip","hasText":"Its own folder"}},{"shot":"form"},{"click":"role:button:Create agent"},{"expect":{"css":".agent-card","hasText":"@TEST-Desk"}},{"shot":"saved"}]'
 yv drive agents --viewport mobile --steps '[{"click":"role:button:New agent"},{"fill":"label:Name","value":"TEST-Phone"},{"click":"role:button:Colour: teal"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"form"},{"click":"role:button:Create agent"},{"expect":{"css":".agent-card","hasText":"@TEST-Phone"}}]'
-yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"name":"TEST-Desk","color":"rose","instructions":"TEST-plan first","memory":"TEST-remember this","permission":"ask"},{"name":"TEST-Phone","color":"teal"}]}'
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"name":"TEST-Desk","color":"rose","face":"wink","instructions":"TEST-plan first","memory":"TEST-remember this","permission":"ask"},{"name":"TEST-Phone","color":"teal"}]}'
 ```
 
 ### at-mention-from-new-session-goes-to-the-agents-conversation
