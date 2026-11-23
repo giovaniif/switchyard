@@ -1,0 +1,42 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "navigation",
+      "at": "2026-11-23T14:25:41.207Z",
+      "counts": {
+        "pass": 5
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "command-k-navigation",
+          "status": "pass",
+          "ms": 12685
+        },
+        {
+          "label": "command-k-finds-agents",
+          "status": "pass",
+          "ms": 4565
+        },
+        {
+          "label": "command-k-rows-name-repo-and-branch",
+          "status": "pass",
+          "ms": 4762
+        },
+        {
+          "label": "recent-list-skips-automation-runs",
+          "status": "pass",
+          "ms": 6610
+        },
+        {
+          "label": "native-app-menu",
+          "status": "pass",
+          "ms": 9311
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

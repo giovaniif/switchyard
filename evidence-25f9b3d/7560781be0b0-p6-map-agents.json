@@ -1,0 +1,67 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "agents",
+      "at": "2026-11-23T14:25:02.356Z",
+      "counts": {
+        "pass": 10
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "cards-show-scout-and-the-users-agents",
+          "status": "pass",
+          "ms": 4933
+        },
+        {
+          "label": "cards-in-a-row-line-up",
+          "status": "pass",
+          "ms": 2296
+        },
+        {
+          "label": "scout-answers-in-its-one-conversation",
+          "status": "pass",
+          "ms": 3799
+        },
+        {
+          "label": "agent-views-on-a-phone",
+          "status": "pass",
+          "ms": 7451
+        },
+        {
+          "label": "create-an-agent-from-the-form",
+          "status": "pass",
+          "ms": 7725
+        },
+        {
+          "label": "at-mention-from-new-session-goes-to-the-agents-conversation",
+          "status": "pass",
+          "ms": 3618
+        },
+        {
+          "label": "at-mention-in-a-session-goes-to-the-agents-conversation",
+          "status": "pass",
+          "ms": 3986
+        },
+        {
+          "label": "one-conversation-and-the-agents-mark",
+          "status": "pass",
+          "ms": 9578
+        },
+        {
+          "label": "switchys-address-lands-on-the-agents",
+          "status": "pass",
+          "ms": 3205
+        },
+        {
+          "label": "deleting-an-agent-deletes-its-conversation",
+          "status": "pass",
+          "ms": 3153
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

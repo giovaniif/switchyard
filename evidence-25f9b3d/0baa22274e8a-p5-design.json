@@ -1,0 +1,113 @@
+{
+  "command": "design-check",
+  "ok": true,
+  "base": "a007ce163547758241935410854762e15de404b4",
+  "ui": true,
+  "touched": [
+    {
+      "status": "A",
+      "paths": [
+        "ui/src/AgentsPage.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/App.tsx"
+      ]
+    },
+    {
+      "status": "D",
+      "paths": [
+        "ui/src/AssistantPage.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/SettingsPage.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "paths": [
+        "ui/src/agents.test.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "paths": [
+        "ui/src/agents.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/launchDefaults.test.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/launchDefaults.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/navigation.test.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/navigation.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/protocol.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/store.test.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/store.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/styles.css"
+      ]
+    },
+    {
+      "status": "D",
+      "paths": [
+        "ui/src/switchy.test.ts"
+      ]
+    },
+    {
+      "status": "D",
+      "paths": [
+        "ui/src/switchy.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/thread.ts"
+      ]
+    }
+  ],
+  "findings": [],
+  "problems": [],
+  "hint": "screenshot the reference screen next to your after-shots, and cover empty, loading, error and long-text states at both viewports"
+}
