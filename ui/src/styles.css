@@ -762,9 +762,18 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .pending-row .pending-action { flex: none; height: 26px; padding: 0 8px; }
 .pending-row .pending-steer { color: var(--ink); font-weight: 600; }
 .subagents-pane { min-height: 0; overflow: auto; gap: 8px; }
-.subagents-pane > .agent { flex: none; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
-.subagents-pane .agent > .tool-row { width: 100%; flex-wrap: wrap; gap: 4px 8px; padding-block: 5px; }
-.subagents-pane .agent-what { white-space: normal; overflow-wrap: anywhere; }
+/* One card per subagent. Cards drop the thread's negative tool margins (which
+   made them overlap); a two-column grid keeps the chevron in its own column
+   and the title, its type and state, and the latest step on one left edge. */
+.subagents-pane > .subagent { flex: none; gap: 0; margin: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.tool-row.subagent-head { display: grid; grid-template-columns: 12px minmax(0, 1fr); align-items: start; gap: 6px 8px; width: 100%; padding: 10px 12px; border-radius: 10px; }
+.tool-row.subagent-head:hover:not(:disabled) { background: var(--side); }
+.subagent-head > .tool-chevron { align-items: center; height: 20px; }
+.subagent-title { grid-column: 2; color: var(--ink); font-weight: 500; line-height: 20px; overflow-wrap: anywhere; }
+.subagent-meta { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.subagent-latest { grid-column: 2; display: flex; min-width: 0; }
+.subagent-latest > code { min-width: 0; color: var(--muted); }
+.subagents-pane .subagent > .agent-body { margin: 0 12px 10px 32px; }
 
 /* import from Claude Code */
 .import-modal { width: min(560px, 100%); }
