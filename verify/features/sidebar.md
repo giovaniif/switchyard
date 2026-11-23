@@ -2,7 +2,7 @@
 
 Pinned sessions, then ungrouped ones newest first, then one collapsible
 section per group, each row with title, model and status. A row's … menu (or
-right-click) marks read or unread, pins, moves to a group, archives or restores, and deletes after one
+right-click) marks read or unread, renames, pins, moves to a group, archives or restores, and deletes after one
 confirmation; a worktree session also offers to remove its worktree. On a
 desktop-width window a row can also be dragged onto a group, the ungrouped
 Sessions rows or Pinned; on the phone drawer the menu is the only way. A group
@@ -11,10 +11,16 @@ of them. Pinned, archived and group live in yardd, so every window agrees;
 which groups are collapsed is per browser. The Archived header is pinned to the
 bottom of the session area and never scrolls away.
 
+A session starts titled with its task's first line; after its first completed
+turn (and again after its third) yardd names it from the conversation with a
+small model (Codex `gpt-5.6-luna`, else Haiku). Scripted environments have naming
+off; Setup turns it on with the fake Codex model, which answers a title only when
+the conversation has `[name]`. A title typed through Rename is never replaced.
+
 ## Setup
 
 ```sh
-yv iso up
+yv iso up --env YARD_SESSION_NAMES=on,YARD_NAMING_CODEX_MODEL=fake-fast
 yv iso seed
 ```
 
@@ -238,6 +244,14 @@ row), so the steps scroll the list first and let it settle before the click.
 for i in 1 2 3 4 5 6 7 8; do yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-filler '$i'"}' --wait '{"op":"event","event":{"type":"turn_completed"}}'; done
 yv drive new --viewport desktop --steps '[{"expect":{"css":".session-row","hasText":"TEST-filler 8"}},{"eval":"(()=>{const l=document.querySelector(\".session-list\");const b=document.querySelector(\"[aria-label=\\\"Actions for [edit] TEST-fix the greeting\\\"]\");const below=b.getBoundingClientRect().top>=l.getBoundingClientRect().bottom;b.scrollIntoView({block:\"center\"});return below})()","equals":true},{"wait":400},{"click":"role:button:Actions for [edit] TEST-fix the greeting"},{"expect":"role:menuitem:Rename","inViewport":true},{"shot":"menu-below-fold"},{"click":"role:menuitem:Rename"},{"expect":"label:Session name","value":"[edit] TEST-fix the greeting"},{"press":"Escape"}]'
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":{"css":".session-row","hasText":"TEST-filler 8"}},{"eval":"(()=>{const l=document.querySelector(\".session-list\");const b=document.querySelector(\"[aria-label=\\\"Actions for [edit] TEST-fix the greeting\\\"]\");const below=b.getBoundingClientRect().top>=l.getBoundingClientRect().bottom;b.scrollIntoView({block:\"center\"});return below})()","equals":true},{"wait":400},{"click":"role:button:Actions for [edit] TEST-fix the greeting"},{"expect":"role:menuitem:Rename","inViewport":true},{"shot":"menu-below-fold"},{"click":"role:menuitem:Rename"},{"expect":"label:Session name","value":"[edit] TEST-fix the greeting"},{"press":"Escape"}]'
+```
+
+### session-named-from-the-conversation
+After the first turn the row shows the generated title instead of the task's first line.
+
+```sh
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{work}}","text":"[name] TEST-hey can you look at this"}' --wait '{"op":"session","session":{"title":"Fake named session"}}'
+yv drive new --viewport desktop --steps '[{"expect":{"css":".session-title","hasText":"Fake named session"}},{"expect":{"css":".session-title","hasText":"TEST-hey can you look"},"visible":false}]'
 ```
 
 ## Gotchas

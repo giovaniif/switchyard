@@ -530,7 +530,11 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             {
                 bail!("Enter a session name on one line with 1 to {SESSION_TITLE_LIMIT} characters.");
             }
-            if !app.update_meta(sid, |m| m.title = title.to_string()) {
+            // A typed title is the user's: never replaced by a generated one (see `naming`).
+            if !app.update_meta(sid, |m| {
+                m.title = title.to_string();
+                m.title_source = Some("user".into());
+            }) {
                 bail!("no such session");
             }
             if !msg["ref"].is_null() {

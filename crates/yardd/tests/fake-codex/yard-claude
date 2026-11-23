@@ -255,6 +255,13 @@ for await (const line of console) {
     steps.folded.push(String(msg.text ?? ""));
   } else if (msg.type === "user") {
     const text = String(msg.text ?? "");
+    // Session naming, before any marker: its prompt quotes the conversation.
+    // Claude is the fallback, so it answers a title for "[name-fail]" (Codex failed it).
+    if (text.startsWith("Name this coding session")) {
+      emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: text.includes("[name-fail]") ? "Claude named session" : "" });
+      emit({ type: "turn_completed", status: "completed" });
+      continue;
+    }
     const behaviorText = text.startsWith("You are Switchy,") ? text.slice(text.lastIndexOf("\nQuestion: ") + 11) : text;
     if (behaviorText.includes("[steps]")) {
       runSteps(text);

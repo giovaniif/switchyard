@@ -43,7 +43,7 @@ prompt).
 | [terminal](terminal.md) | The Terminal tab: shells per session, tabs, closing a tab, scrollback, attaching output to a reply |
 | [approved-design](approved-design.md) | The right pane, single-row composer, account connector cards and usage panel |
 | [pr-pane](pr-pane.md) | The conversation header’s external pull request link |
-| [sidebar](sidebar.md) | Session rows: order, status, pin, archive, restore, delete |
+| [sidebar](sidebar.md) | Session rows: order, status, names (generated, renamed), pin, archive, restore, delete |
 | [navigation](navigation.md) | Command-K: sessions and pages, Switchy, repo and branch names, automation runs left out; the macOS app menu |
 | [persistence](persistence.md) | Sessions and history across a yardd restart |
 | [focused-pages](focused-pages.md) | Approved host, session (search, Active/All/Archived tabs) and subscription pages, account identity and compact usage popover |

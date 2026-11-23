@@ -185,6 +185,13 @@ impl Daemon {
             // A busy test machine must not queue sessions on its own; the
             // queue test forces pressure instead.
             .env("YARD_MIN_FREE_GB", "0")
+            // Naming would add engine turns other tests count; tests/naming.rs turns it on.
+            .env("YARD_SESSION_NAMES", "off")
+            // A test run from inside a Switchyard session inherits its account's
+            // folders; the fakes would then read and write the real ones under ~/.yard.
+            .env_remove("CLAUDE_CONFIG_DIR")
+            .env_remove("CODEX_HOME")
+            .env_remove("GROK_HOME")
             // No background Claude usage reads, except where a test asks for them.
             .env("YARD_CLAUDE_USAGE_EVERY_MS", "0")
             .env_remove("YARD_FORCE_PRESSURE")

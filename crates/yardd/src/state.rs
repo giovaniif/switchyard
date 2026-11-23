@@ -24,6 +24,11 @@ pub fn now_ms() -> u64 {
 pub struct Meta {
     pub id: String,
     pub title: String,
+    /// Where the title came from: absent for the task's first line, `auto`
+    /// when a model named the session from its conversation (see `naming`),
+    /// `user` when typed in. Only the first two are ever replaced.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_source: Option<String>,
     pub engine: String,
     pub model: String,
     pub effort: String,
@@ -173,6 +178,9 @@ pub struct App {
     /// (emit cannot talk to an engine itself).
     next_turns: mpsc::UnboundedSender<(String, Delivery)>,
     next_turns_rx: Mutex<Option<mpsc::UnboundedReceiver<(String, Delivery)>>>,
+    /// Sessions to name from their conversation (see `naming`).
+    naming: mpsc::UnboundedSender<String>,
+    naming_rx: Mutex<Option<mpsc::UnboundedReceiver<String>>>,
     next: AtomicU64,
 }
 
@@ -200,6 +208,7 @@ impl App {
     pub fn new(root: PathBuf, port: u16, store: crate::store::Store) -> Self {
         let (tx, _) = broadcast::channel(2048);
         let (next_turns, next_turns_rx) = mpsc::unbounded_channel();
+        let (naming, naming_rx) = mpsc::unbounded_channel();
         App {
             root,
             port,
@@ -222,6 +231,8 @@ impl App {
             mobile: crate::mobile::Mobile::load(crate::store::data_dir()),
             next_turns,
             next_turns_rx: Mutex::new(Some(next_turns_rx)),
+            naming,
+            naming_rx: Mutex::new(Some(naming_rx)),
             next: AtomicU64::new(1),
         }
     }
@@ -229,6 +240,11 @@ impl App {
     /// The queue of sessions with messages to deliver. Taken once, by main.
     pub fn take_next_turns(&self) -> mpsc::UnboundedReceiver<(String, Delivery)> {
         self.next_turns_rx.lock().unwrap().take().expect("next_turns taken twice")
+    }
+
+    /// The queue of sessions to name. Taken once, by main.
+    pub fn take_naming(&self) -> mpsc::UnboundedReceiver<String> {
+        self.naming_rx.lock().unwrap().take().expect("naming taken twice")
     }
 
     /// Queue a message sent while a turn runs.
@@ -343,6 +359,7 @@ impl App {
         let meta = Meta {
             id: id.clone(),
             title: title.to_string(),
+            title_source: None,
             engine: engine.to_string(),
             model: model.to_string(),
             effort: effort.to_string(),
@@ -487,6 +504,12 @@ impl App {
                 }
                 self.store.meta(&s.meta);
                 self.broadcast(json!({ "op": "session", "session": s.meta }));
+            }
+            if completed {
+                let done = s.events.iter().filter(|e| e["type"] == "turn_completed" && e["status"] == "completed").count();
+                if crate::naming::due(&s.meta, done) {
+                    let _ = self.naming.send(sid.to_string());
+                }
             }
             if s.meta.pending.is_empty() {
                 None

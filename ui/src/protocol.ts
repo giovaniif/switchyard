@@ -12,6 +12,9 @@ export const SESSION_TITLE_LIMIT = 60;
 export interface SessionMeta {
   id: string;
   title: string;
+  /** Where the title came from: absent for the task's first line, `auto` when
+   *  a small model named it from the conversation, `user` when typed in. */
+  titleSource?: "auto" | "user";
   engine: Engine;
   model: string;
   effort: string;
