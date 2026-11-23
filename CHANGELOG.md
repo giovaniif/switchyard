@@ -2,6 +2,18 @@
 
 Each version is a [GitHub release](https://github.com/giovaniif/better-than-claude-code/releases) with the signed Mac app and the Linux packages. The section for a version becomes its release notes.
 
+## 0.17.0 (2026-11-23)
+
+- **Sessions name themselves.** A new session no longer stays titled with the first line of its task. After its first reply, and again after its third, a small model reads the conversation and gives it a short, clear name such as "Fix login redirect loop". It uses Codex `gpt-5.6-luna` at low effort, else Claude Haiku: a few hundred tokens of your plan per name, in a private thread with no tools. A name you set with Rename is never changed, and automation runs keep their names. `YARD_SESSION_NAMES=off` turns it off.
+- **Remote and offline hosts.** Sessions on an offline remote host stay listed after a reload, and New session says when the remembered host is offline.
+- **Usage.** The usage popover opens on the account whose percent the trigger shows, and an account that needs sign-in shows no stale percent.
+- **Phone improvements.** A long account name no longer pushes Log in or the Session setup rows off screen, and tapping a command in Processes shows all of it.
+- **Fixed:**
+  - Numbered steps split by code blocks keep their numbers.
+  - Opening a session with a diagram lands on the latest reply.
+  - Tab on a Recent folder in the folder menu opens it.
+  - Switchy's All hosts scope shows the cloud icon, not this machine's.
+
 ## 0.16.1 (2026-11-20)
 
 - **Clickable links in bold replies.** Markdown links keep their labels and open the right destination when they appear inside bold text. GitHub PR links keep their hover cards.
