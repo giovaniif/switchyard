@@ -343,6 +343,16 @@ async function runTurn(threadId, cwd, turn, text) {
 
   notify("turn/started", { threadId, turn });
 
+  // Session naming, before any marker: its prompt quotes the conversation.
+  // A title when the conversation has "[name]", none otherwise; "[name-fail]"
+  // fails the turn, so the namer falls back to Claude.
+  if (text.startsWith("Name this coding session")) {
+    if (text.includes("[name-fail]")) return finish("failed", { message: "scripted naming failure" });
+    const title = text.includes("[name]") ? '"Fake named session."' : "";
+    say(title, [title]);
+    return finish("completed");
+  }
+
   if (behaviorText.includes("[subagent]")) {
     const child = newId("agent");
     const activity = { type: "subAgentActivity", agentThreadId: child, agentPath: "reviewer", model: "fake-fast" };

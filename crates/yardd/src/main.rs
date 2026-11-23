@@ -18,6 +18,7 @@ mod import;
 mod login;
 mod mcp;
 mod mobile;
+mod naming;
 mod opencode;
 mod pr;
 mod pty;
@@ -114,6 +115,8 @@ async fn main() -> anyhow::Result<()> {
             });
         }
     });
+
+    tokio::spawn(naming::run(app.clone(), app.take_naming()));
 
     // Start Codex in the background so the model list is ready early.
     let boot = app.clone();
