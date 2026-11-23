@@ -563,19 +563,17 @@ session view in `App.tsx`.
   `switchy::internal` / `app.switchy.events` to `private::internal` /
   `app.private.events`. The sidecar's `start` carries `restricted` (and
   `switchy` with the same value, for a sidecar built before agents).
-- **Switchy's conversation** (`switchy.json`) is moved once at startup into a
-  Scout chat titled "Earlier questions (Switchy)": each question, its evidence
-  as the step's output, its answer or error, as the thread's events; Scout
-  takes its engine, model, effort and scope if Scout had no model yet, and it
-  becomes Scout's ongoing chat. The file is renamed `switchy.json.migrated`,
-  not deleted. Switchy's access modes (Ask first, Accept edits, Full access
-  with approvals) are gone: Scout only reads; a task that needs tools is a
-  session or another agent.
+- **Switchy's conversation** (`switchy.json`) is no longer read: Scout starts
+  with no history, and the file is left where it is, untouched (the owner's
+  call: Switchy was not in use). Switchy's access modes (Ask first, Accept
+  edits, Full access with approvals) are gone: Scout only reads; a task that
+  needs tools is a session or another agent.
 - Tests (`tests/agents.rs`, scripted engines): the registry and its refusals,
   the preamble on the first turn only, the ongoing chat and `fresh`, deleting
   an agent, Scout's evidence step, fresh restricted threads on both engines,
   history in the second input, Plan only, a restart, remote scope and offline
-  coverage, Stop, the queue, the old op name, and the migration. The `agents`
+  coverage, Stop, the queue, the old op name, and an old `switchy.json` left
+  alone. The `agents`
   feature map drives the page, the start page, the form, mentions and chats at
   both viewports. Not proven: a real model's answer to a preamble or to
   evidence.

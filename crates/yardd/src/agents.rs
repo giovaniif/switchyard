@@ -13,8 +13,9 @@
 //! answers quick questions about the user's hosts and sessions. Its turns run
 //! on a fresh, tool-restricted engine thread each (see `private::restricted`),
 //! with a bounded selection of the chat so far and read-only host evidence
-//! (`host_context`) collected for the question. It took over from Switchy,
-//! whose saved conversation is moved into a Scout chat once (`migrate`).
+//! (`host_context`) collected for the question. It took over from Switchy;
+//! Switchy's saved conversation (`switchy.json`) is not read, and Scout starts
+//! with no history.
 
 use std::{
     path::PathBuf,
@@ -666,91 +667,6 @@ async fn remote_context(app: &Arc<App>, id: &str, query: &str) -> Result<Value> 
         Err(e) if format!("{e:#}").contains("unknown op") => crate::remote::request(app, id, json!({ "op": "switchy.context", "query": query })).await,
         other => other,
     }
-}
-
-/// Switchy's saved conversation (`switchy.json`) becomes a chat with the host
-/// agent, once: questions, answers, errors and evidence as the thread's
-/// events, so it reads like any other chat. The file is renamed, not deleted.
-pub fn migrate(app: &App) {
-    let dir = crate::store::data_dir();
-    let file = dir.join("switchy.json");
-    let Ok(bytes) = std::fs::read(&file) else { return };
-    let done = || {
-        if let Err(e) = std::fs::rename(&file, dir.join("switchy.json.migrated")) {
-            eprintln!("yardd: cannot rename {}: {e}", file.display());
-        }
-    };
-    let Ok(old) = serde_json::from_slice::<Value>(&bytes) else {
-        eprintln!("yardd: {} is unreadable; left as it is", file.display());
-        return;
-    };
-    let turns = old["turns"].as_array().cloned().unwrap_or_default();
-    if turns.is_empty() {
-        done();
-        return;
-    }
-    let mut events = Vec::new();
-    for (i, t) in turns.iter().enumerate() {
-        let at = t["at"].as_u64().unwrap_or(0);
-        events.push(json!({ "type": "user_message", "text": t["question"] }));
-        events.push(json!({ "type": "turn_started", "at": at }));
-        let sources: Vec<Source> = serde_json::from_value(t["sources"].clone()).unwrap_or_default();
-        let coverage: Vec<String> = serde_json::from_value(t["coverage"].clone()).unwrap_or_default();
-        if !sources.is_empty() || !coverage.is_empty() {
-            let item = format!("context-m{i}");
-            events.push(json!({ "type": "tool_started", "itemId": item, "kind": "context", "title": "Checked", "detail": "hosts" }));
-            events.push(json!({ "type": "tool_completed", "itemId": item, "ok": true, "output": render_sources(&sources, &coverage), "note": format!("{} sources", sources.len()) }));
-        }
-        if let Some(answer) = t["answer"].as_str().filter(|a| !a.is_empty()) {
-            events.push(json!({ "type": "assistant_message", "itemId": format!("answer-m{i}"), "text": answer }));
-        }
-        let status = t["status"].as_str().unwrap_or("completed");
-        if let Some(error) = t["error"].as_str().filter(|_| status != "completed") {
-            if error == "Stopped by you." {
-                events.push(json!({ "type": "turn_completed", "status": "interrupted", "at": at }));
-                continue;
-            }
-            events.push(json!({ "type": "error", "message": error }));
-        }
-        events.push(json!({ "type": "turn_completed", "status": if status == "completed" { "completed" } else { "failed" }, "at": at }));
-    }
-    let engine = old["engine"].as_str().filter(|e| matches!(*e, "codex" | "claude")).unwrap_or("codex");
-    let first = turns.first().and_then(|t| t["at"].as_u64()).unwrap_or_else(now_ms);
-    let last = turns.last().and_then(|t| t["at"].as_u64()).unwrap_or_else(now_ms);
-    let home = home(BUILTIN);
-    let _ = std::fs::create_dir_all(&home);
-    let sid = app.id("s");
-    let meta: crate::state::Meta = match serde_json::from_value(json!({
-        "id": sid, "title": "Earlier questions (Switchy)", "engine": engine, "model": old["model"].as_str().unwrap_or(""),
-        "effort": old["effort"].as_str().unwrap_or(""), "cwd": home.to_string_lossy(), "status": "idle", "host": "local",
-        "branch": null, "repo": null, "permission": "plan", "agent": BUILTIN, "lastTurn": "completed", "turnEndedAt": last,
-        "createdAt": first, "updatedAt": last,
-    })) {
-        Ok(m) => m,
-        Err(e) => {
-            eprintln!("yardd: cannot move Switchy's conversation: {e}");
-            return;
-        }
-    };
-    app.store.meta(&meta);
-    for e in &events {
-        app.store.event(&sid, e);
-    }
-    app.sessions.lock().unwrap().insert(sid.clone(), crate::state::Session { meta, events, backend: crate::state::Backend::Pending, engine_ref: None });
-    app.agents.update(BUILTIN, |a| {
-        if a.chat.is_none() {
-            a.chat = Some(sid.clone());
-        }
-        if a.model.is_empty() {
-            a.engine = engine.to_string();
-            a.model = old["model"].as_str().unwrap_or("").to_string();
-            a.effort = old["effort"].as_str().unwrap_or("").to_string();
-        }
-        if let Some(scope) = old["scope"].as_str() {
-            a.scope = scope.to_string();
-        }
-    });
-    done();
 }
 
 #[cfg(test)]

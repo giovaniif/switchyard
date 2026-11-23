@@ -79,7 +79,6 @@ async fn main() -> anyhow::Result<()> {
     let (store, loaded) = store::open(&store::data_dir())?;
     let app = Arc::new(App::new(root.clone(), port, store));
     app.restore(loaded);
-    agents::migrate(&app);
     remote::start(&app);
 
     // On a normal stop, let the writer finish what is queued before exiting.

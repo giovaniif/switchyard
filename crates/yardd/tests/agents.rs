@@ -182,39 +182,17 @@ async fn an_agents_first_turn_carries_its_preamble_and_messages_go_to_its_ongoin
 }
 
 #[tokio::test]
-async fn switchys_saved_conversation_becomes_a_chat_with_the_host_agent() {
-    let sb = Sandbox::new("agents-migrate");
-    let old = json!({
-        "status": "idle", "engine": "codex", "model": MODEL, "scope": "local", "revision": 4, "permission": "plan", "effort": "low",
-        "turns": [
-            { "id": "switchy-1", "question": "TEST-what runs?", "answer": "Nginx runs [local:2].", "engine": "codex", "model": MODEL, "at": 1_700_000_000_000u64,
-              "status": "completed", "sources": [{ "id": "local:2", "host": "local", "title": "Services", "at": 1_700_000_000_000u64, "text": "nginx running", "unavailable": false }],
-              "coverage": ["iso: bounded"], "error": null },
-            { "id": "switchy-2", "question": "TEST-and now?", "answer": "", "engine": "codex", "model": MODEL, "at": 1_700_000_100_000u64,
-              "status": "failed", "sources": [], "coverage": [], "error": "Switchy timed out." }
-        ]
-    });
+async fn switchys_old_conversation_is_left_alone_and_scout_starts_empty() {
+    let sb = Sandbox::new("agents-no-migration");
+    let old = json!({ "status": "idle", "engine": "codex", "model": MODEL, "scope": "local", "revision": 1,
+        "turns": [{ "id": "switchy-1", "question": "TEST-what runs?", "answer": "nginx", "engine": "codex", "model": MODEL, "at": 1, "status": "completed", "sources": [], "coverage": [], "error": null }] });
     std::fs::write(sb.data().join("switchy.json"), old.to_string()).unwrap();
     let daemon = sb.start();
-    let mut c = daemon.client().await;
-    let snap = c.log[0].clone();
-    let chat = snap["sessions"].as_array().unwrap().iter().find(|s| s["agent"] == "scout").cloned().expect("migrated chat");
-    assert_eq!(chat["title"], "Earlier questions (Switchy)");
-    assert_eq!(snap["agents"][0]["chat"], chat["id"]);
-    assert_eq!(snap["agents"][0]["scope"], "local");
-    let sid = chat["id"].as_str().unwrap().to_string();
-    let events = c.history(&sid).await;
-    let kinds: Vec<&str> = events.iter().map(|e| e["type"].as_str().unwrap()).collect();
-    assert_eq!(kinds, ["user_message", "turn_started", "tool_started", "tool_completed", "assistant_message", "turn_completed", "user_message", "turn_started", "error", "turn_completed"]);
-    assert!(events[3]["output"].as_str().unwrap().contains("nginx running"));
-    assert!(!sb.data().join("switchy.json").exists());
-    assert!(sb.data().join("switchy.json.migrated").exists());
-    // Only once: a restart does not make a second chat.
-    drop(c);
-    daemon.stop();
-    let daemon = sb.start();
     let c = daemon.client().await;
-    assert_eq!(c.log[0]["sessions"].as_array().unwrap().iter().filter(|s| s["agent"] == "scout").count(), 1);
+    assert!(c.log[0]["sessions"].as_array().unwrap().is_empty());
+    assert!(c.log[0]["agents"][0]["chat"].is_null());
+    // Not read, renamed or deleted.
+    assert_eq!(std::fs::read_to_string(sb.data().join("switchy.json")).unwrap(), old.to_string());
 }
 
 #[tokio::test]

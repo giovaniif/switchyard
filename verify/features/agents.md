@@ -5,8 +5,8 @@ Named agents the user talks to by name. The Agents page is a grid of cards
 `@name`, what it is for, how it runs, a status line from its ongoing chat, and
 Ask or Message, New chat, the list of its chats and Edit. Scout is built in:
 it answers questions about the hosts from read-only evidence, without tools,
-and took over Switchy (`#/assistant` lands here; Switchy's conversation is
-moved into a Scout chat, covered by `tests/agents.rs`). A message to an agent
+and took over Switchy (`#/assistant` lands here; Switchy's old conversation
+is not read, so Scout starts with no history). A message to an agent
 is an ordinary session tagged with it: its avatar and name are before the
 title, over each answer and in its sidebar row. Typing `@` in a message box
 offers the agents; a message that starts with `@Name` goes to that agent's
