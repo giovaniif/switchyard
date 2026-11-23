@@ -79,6 +79,17 @@ clips their 3 px focus ring (a scrolling row did, on the first try of #225).
 yv drive connectors --steps '[{"click":{"role":"button","name":"Claude","exact":true}},{"click":{"role":"button","name":"Filter tools","exact":true}},{"expect":"role:heading:Connectors"},{"expect":{"role":"button","name":"All","exact":true}},{"eval":"(() => { const group = document.querySelector(\".connector-filters\"); const box = group.getBoundingClientRect(); const tabs = [...group.querySelectorAll(\"button\")].map((b) => b.getBoundingClientRect()); return tabs.length === 4 && tabs.every((t) => t.top === tabs[0].top && t.left >= box.left && t.right <= box.right + 0.5); })()","equals":true},{"eval":"[...document.querySelectorAll(\".connector-filters button\")].every((tab) => { const r = tab.getBoundingClientRect(); for (let el = tab.parentElement; el && !el.classList.contains(\"connectors-card\"); el = el.parentElement) { const cs = getComputedStyle(el); if (cs.overflowX === \"visible\" && cs.overflowY === \"visible\") continue; const b = el.getBoundingClientRect(); if (r.top - 3 < b.top || r.bottom + 3 > b.bottom || r.left - 3 < b.left || r.right + 3 > b.right) return false; } return true; })","equals":true},{"shot":"filters"}]'
 ```
 
+### retry-a-failed-server
+Retry on a Not working row asks the account to dial the server again and
+lists the servers afresh. The fake's gmail has no URL, so it stays Not working
+with the same error, and the click raises no error. The daemon's side is read
+back: `mcp.reconnect` answers with a new `mcp` listing for the account.
+
+```sh
+yv drive connectors --steps '[{"click":{"role":"button","name":"Claude","exact":true}},{"expect":{"css":".connector","hasText":"gmail"},"text":"Not working"},{"click":{"css":".connector:has-text(\"gmail\") button","hasText":"Retry"}},{"wait":1500},{"expect":{"css":".connector","hasText":"gmail"},"text":"No URL configured for this server"},{"expect":{"css":".connector:has-text(\"gmail\") button","hasText":"Retry"}},{"shot":"retry-failed"}]'
+yv api '{"op":"mcp.reconnect","engine":"claude","server":"plugin:engineering:gmail"}' --wait '{"op":"mcp","engine":"claude","servers":[{"name":"plugin:engineering:gmail","status":"failed"}]}'
+```
+
 ### claude-sign-in
 Viewports: desktop
 Datadog connects by itself after Connect. sentry asks for the address: one
