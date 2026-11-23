@@ -424,6 +424,14 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
             broadcast(app);
         }
         "agent.ask" => ask(app, direct, msg).await?,
+        // A window opened the agent's conversation: its call for the owner was seen.
+        "agent.seen" => {
+            let id = msg["agentId"].as_str().context("missing `agentId`")?;
+            let a = app.agents.get(id).context("no such agent")?;
+            if let Some(sid) = a.chat.filter(|sid| app.meta(sid).is_some_and(|m| m.needs_you.is_some())) {
+                app.update_meta(&sid, |m| m.needs_you = None);
+            }
+        }
         other => bail!("unknown op `{other}`"),
     }
     Ok(())
@@ -446,9 +454,40 @@ async fn ask(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value
             bail!("{} is waiting for room on the host. Open its conversation to start it.", a.name);
         }
         let _ = direct.send(json!({ "op": "created", "sessionId": sid, "agentId": id, "ref": msg["ref"] }).to_string());
-        return crate::sessions::send_message(app, &sid, &text, &files).await;
+        return crate::sessions::send_message(app, &sid, &text, &files, None).await;
     }
-    let (engine, model, effort) = launch(app, &a)?;
+    start_chat(app, Some(direct), &a, &text, &msg["attachments"], &msg["ref"], None).await?;
+    Ok(())
+}
+
+/// A message for an agent that did not come from the owner (another agent's,
+/// or an answer to one): into its one conversation like any message, with its
+/// origin. A conversation waiting for room on the host keeps it queued.
+/// Answers the conversation's session id.
+pub async fn deliver(app: &Arc<App>, id: &str, text: &str, origin: &Value) -> Result<String> {
+    let a = app.agents.get(id).context("no such agent")?;
+    if let Some(sid) = a.chat.clone().filter(|sid| app.meta(sid).is_some()) {
+        if app.meta(&sid).is_some_and(|m| m.status == "queued") {
+            app.queue_message(&sid, text, &[], Some(origin));
+        } else {
+            crate::sessions::send_message(app, &sid, text, &[], Some(origin)).await?;
+        }
+        return Ok(sid);
+    }
+    start_chat(app, None, &a, text, &Value::Null, &Value::Null, Some(origin)).await
+}
+
+/// Make the agent's conversation with its first message.
+async fn start_chat(
+    app: &Arc<App>,
+    direct: Option<&mpsc::UnboundedSender<String>>,
+    a: &Agent,
+    text: &str,
+    attachments: &Value,
+    reference: &Value,
+    origin: Option<&Value>,
+) -> Result<String> {
+    let (engine, model, effort) = launch(app, a)?;
     let cwd = if a.cwd.is_empty() {
         let dir = home(&a.id);
         std::fs::create_dir_all(&dir).with_context(|| format!("cannot create {}", dir.display()))?;
@@ -462,13 +501,37 @@ async fn ask(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value
         "effort": effort,
         "cwd": cwd,
         "text": text,
-        "attachments": msg["attachments"],
+        "attachments": attachments,
         "permission": a.permission,
         "account": if engine == a.engine { a.account.as_str() } else { crate::accounts::DEFAULT },
-        "ref": msg["ref"],
+        "ref": reference,
     });
-    crate::ws::create_session(app, Some(direct), &create, None, None, Some(&a.id)).await?;
-    Ok(())
+    crate::ws::create_session(app, direct, &create, None, None, Some(&a.id), origin).await
+}
+
+/// The agent changes its own memory (`remember`, `set_memory`): `append`
+/// adds a line, else the text replaces it. Same cap as the form; every
+/// window hears of it. Its engine already knows, so this is no notes change.
+pub fn edit_memory(app: &App, id: &str, text: &str, append: bool) -> Result<String> {
+    let text = text.trim();
+    let a = app.agents.get(id).context("no such agent")?;
+    let memory = if append {
+        if text.is_empty() {
+            bail!("Nothing to remember: the text is empty.");
+        }
+        if a.memory.is_empty() { text.to_string() } else { format!("{}\n{text}", a.memory) }
+    } else {
+        text.to_string()
+    };
+    if memory.len() > NOTES_MAX {
+        bail!("Memory is at most 20,000 characters; this would make it {}. Shorten it with set_memory first.", memory.len());
+    }
+    app.agents.update(id, |a| {
+        a.memory = memory.clone();
+        a.updated_at = now_ms();
+    });
+    broadcast(app);
+    Ok(memory)
 }
 
 /// The session is now the agent's conversation. Called when it is created.
@@ -500,7 +563,7 @@ pub async fn prepare(app: &Arc<App>, sid: &str, text: &str) -> Result<Prepared> 
     };
     if !agent.builtin {
         if turns <= 1 {
-            return Ok(Prepared::Send(preamble(&agent, "", text)));
+            return Ok(Prepared::Send(preamble(&agent, "", crate::agent_tools::offered(app, sid), text)));
         }
         let Some(why) = meta.fresh_context.clone() else {
             if meta.notes_changed {
@@ -515,7 +578,7 @@ pub async fn prepare(app: &Arc<App>, sid: &str, text: &str) -> Result<Prepared> 
         crate::sessions::start_engine(app, sid).await?;
         app.update_meta(sid, |m| m.fresh_context = None);
         app.emit(sid, json!({ "type": "note", "text": format!("Started a fresh context: {why}. {} keeps its notes and the latest messages.", agent.name) }));
-        return Ok(Prepared::Send(preamble(&agent, &recap(&history), text)));
+        return Ok(Prepared::Send(preamble(&agent, &recap(&history), crate::agent_tools::offered(app, sid), text)));
     }
     let turn = turns;
     let item = app.id("context-");
@@ -595,13 +658,17 @@ fn scope_label(app: &App, scope: &str) -> String {
 /// The preamble of an agent's first turn: who it is, then the user's notes.
 /// The notes are the user's own words, so they are given as instructions.
 /// `earlier`: the latest exchanges, when a fresh engine thread takes over.
-pub fn preamble(a: &Agent, earlier: &str, text: &str) -> String {
+/// `tools`: its engine was given Switchyard's tools (see `agent_tools`).
+pub fn preamble(a: &Agent, earlier: &str, tools: bool, text: &str) -> String {
     let mut out = format!(
         "You are {}, an agent the user set up in Switchyard, the app that runs their coding agents. Keep this role for the whole conversation.\n",
         a.name
     );
     if !a.about.is_empty() {
         out.push_str(&format!("What you are for: {}\n", a.about));
+    }
+    if tools {
+        out.push_str("Switchyard's tools let you reach the user when you need them (notify_owner), message another agent and get its answer back (message_agent, list_agents), and keep your memory up to date (remember, set_memory).\n");
     }
     if !a.instructions.is_empty() {
         out.push_str(&format!("\n<instructions>\n{}\n</instructions>\n", a.instructions));
@@ -813,13 +880,13 @@ mod tests {
         a.about = "Reviews pull requests".into();
         a.instructions = "Be terse.".into();
         a.memory = "The main branch is trunk.".into();
-        let p = preamble(&a, "", "Look at #12");
+        let p = preamble(&a, "", true, "Look at #12");
         assert!(p.starts_with("You are Reviewer,"));
         assert!(p.contains("What you are for: Reviews pull requests"));
         assert!(p.contains("<instructions>\nBe terse.\n</instructions>"));
         assert!(p.contains("The main branch is trunk."));
         assert!(p.ends_with("\nThe user's message:\nLook at #12"));
-        let bare = preamble(&agent(), "", "hi");
+        let bare = preamble(&agent(), "", false, "hi");
         assert!(!bare.contains("<instructions>") && !bare.contains("<memory>"));
     }
 

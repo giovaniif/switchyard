@@ -232,6 +232,8 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
     });
 
     let restricted = crate::private::restricted(app, sid);
+    // An agent's conversation gets Switchyard's tools as an MCP server.
+    let tools = crate::agent_tools::launch(app, sid).filter(|_| !restricted).map(|l| l.claude());
     let _ = tx.send(
         json!({
             "type": "start",
@@ -244,6 +246,7 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
             "effort": meta.effort,
             "permission": meta.permission,
             "resume": resume,
+            "tools": tools,
         })
         .to_string(),
     );

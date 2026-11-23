@@ -20,6 +20,18 @@ describe("applyEvent", () => {
     expect(tool).toMatchObject({ state: "ok", output: "one" });
   });
 
+  test("a message's origin rides on its item; the owner's own carries none", () => {
+    const origin = { kind: "agent", agentId: "g1", name: "Builder", hops: 1 } as const;
+    const items = fold([
+      { type: "user_message", text: "check #12", origin },
+      { type: "user_message", text: "mine", origin: { kind: "user" } },
+      { type: "user_message", text: "also mine" },
+    ]);
+    expect(items[0]).toEqual({ kind: "user", key: "e0", text: "check #12", origin });
+    expect(items[1]).toEqual({ kind: "user", key: "e1", text: "mine" });
+    expect(items[2]).toEqual({ kind: "user", key: "e2", text: "also mine" });
+  });
+
   test("an id reused in a later turn makes a new item under its own question", () => {
     // A restarted Claude sidecar used to count its ids from 1 again.
     const items = fold([

@@ -83,6 +83,15 @@ pub struct Meta {
     /// The start of an agent's last answer, for its card.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_message: Option<String>,
+    /// An agent asked for the owner (`notify_owner`): `{ message, at }`, kept
+    /// until a window opens the conversation (`agent.seen`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub needs_you: Option<Value>,
+    /// Where the messages the running (or last) turn answers came from, when
+    /// the owner did not type them (see `origins`). Set when a turn starts,
+    /// grown by steered messages, handed to the reply hook when it ends.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub answering: Vec<Value>,
     /// When an automation run's first turn ended: the run took this minus
     /// `created_at`. `updated_at` is no good for that, it moves on any later
     /// change (a pin, a rename, a reply in the reopened run).
@@ -190,6 +199,8 @@ pub struct App {
     /// Connectors processes and replies owed by sidecars (see mcp.rs).
     pub mcp: crate::mcp::Connectors,
     pub mobile: crate::mobile::Mobile,
+    /// Agents' own tools: per-conversation keys and rate limits (see agent_tools).
+    pub tools: crate::agent_tools::Tools,
     /// Sessions with queued messages to deliver; drained by a task in main
     /// (emit cannot talk to an engine itself).
     next_turns: mpsc::UnboundedSender<(String, Delivery)>,
@@ -197,6 +208,10 @@ pub struct App {
     /// Sessions to name from their conversation (see `naming`).
     naming: mpsc::UnboundedSender<String>,
     naming_rx: Mutex<Option<mpsc::UnboundedReceiver<String>>>,
+    /// Turns that ended owing an answer to where their messages came from
+    /// (see `origins::reply`); drained by a task in main.
+    replies: mpsc::UnboundedSender<crate::origins::Owed>,
+    replies_rx: Mutex<Option<mpsc::UnboundedReceiver<crate::origins::Owed>>>,
     next: AtomicU64,
 }
 
@@ -225,6 +240,7 @@ impl App {
         let (tx, _) = broadcast::channel(2048);
         let (next_turns, next_turns_rx) = mpsc::unbounded_channel();
         let (naming, naming_rx) = mpsc::unbounded_channel();
+        let (replies, replies_rx) = mpsc::unbounded_channel();
         App {
             root,
             port,
@@ -247,10 +263,13 @@ impl App {
             logins: crate::login::Logins::default(),
             mcp: crate::mcp::Connectors::default(),
             mobile: crate::mobile::Mobile::load(crate::store::data_dir()),
+            tools: crate::agent_tools::Tools::default(),
             next_turns,
             next_turns_rx: Mutex::new(Some(next_turns_rx)),
             naming,
             naming_rx: Mutex::new(Some(naming_rx)),
+            replies,
+            replies_rx: Mutex::new(Some(replies_rx)),
             next: AtomicU64::new(1),
         }
     }
@@ -265,10 +284,24 @@ impl App {
         self.naming_rx.lock().unwrap().take().expect("naming taken twice")
     }
 
-    /// Queue a message sent while a turn runs.
-    pub fn queue_message(&self, sid: &str, text: &str, attachments: &[Value]) -> String {
+    /// Turns that owe an answer. Taken once, by main.
+    pub fn take_replies(&self) -> mpsc::UnboundedReceiver<crate::origins::Owed> {
+        self.replies_rx.lock().unwrap().take().expect("replies taken twice")
+    }
+
+    /// Hand an answer owed to messages' origins to the reply hook.
+    pub fn owe(&self, owed: crate::origins::Owed) {
+        let _ = self.replies.send(owed);
+    }
+
+    /// Queue a message sent while a turn runs. `origin`: where it came from,
+    /// when the owner did not type it (see `origins`).
+    pub fn queue_message(&self, sid: &str, text: &str, attachments: &[Value], origin: Option<&Value>) -> String {
         let id = self.id("q");
-        let item = json!({ "id": id, "text": text, "attachments": attachments, "at": now_ms() });
+        let mut item = json!({ "id": id, "text": text, "attachments": attachments, "at": now_ms() });
+        if let Some(origin) = origin {
+            item["origin"] = origin.clone();
+        }
         self.update_meta(sid, |m| m.pending.push(item));
         id
     }
@@ -399,6 +432,8 @@ impl App {
             fresh_context: None,
             notes_changed: false,
             last_message: None,
+            needs_you: None,
+            answering: Vec::new(),
             finished_at: None,
             turn_ended_at: None,
             last_turn: None,
@@ -515,6 +550,12 @@ impl App {
             if turn_completed {
                 s.meta.turn_ended_at = Some(s.meta.updated_at);
                 s.meta.last_turn = turn_end.clone();
+                // Whoever sent the messages this turn answered gets its answer.
+                if !s.meta.answering.is_empty() {
+                    let origins = std::mem::take(&mut s.meta.answering);
+                    let status = turn_end.clone().unwrap_or_else(|| "completed".into());
+                    let _ = self.replies.send(crate::origins::Owed::of_turn(sid, origins, &status, &s.events));
+                }
             }
             let moved = status.is_some_and(|st| s.meta.status != st);
             if let Some(st) = status {

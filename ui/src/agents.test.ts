@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Agent, SessionMeta } from "./protocol";
-import { AGENT_FACES, agentOf, agentStatus, agentsAttention, faceOf, initial, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt, nameProblem, runsOn } from "./agents";
+import { AGENT_FACES, agentOf, agentStatus, agentsAttention, faceOf, initial, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt, nameProblem, originLabel, runsOn } from "./agents";
 import { initial as empty, parseHash, reduce, routeHash } from "./store";
 
 const agent = (id: string, name: string, extra: Partial<Agent> = {}): Agent => ({
@@ -91,6 +91,32 @@ test("the Agents row shows the most pressing state of any conversation", () => {
   expect(agentsAttention(two, { s1: session("s1", { turnEndedAt: 5, lastTurn: "completed" }), s2: idle }, () => 5)).toBeNull();
   expect(agentsAttention(two, { s1: session("s1", { status: "running" }), s2: session("s2", { status: "needs_approval" }) }, never)).toBe("approval");
   expect(agentsAttention(two, { s1: session("s1", { status: "running" }), s2: idle }, never)).toBe("working");
+});
+
+test("an agent that asked for the user says so until they look, on its card and the row", () => {
+  const now = 10 * 60_000;
+  const a = agent("g1", "Reviewer", { chat: "s1" });
+  const asked = { message: "Need the  deploy\nkey", at: 5 };
+  expect(agentStatus(a, { s1: session("s1", { needsYou: asked }) }, now)).toEqual({ tone: "needsYou", text: "Needs you · Need the deploy key", sessionId: "s1" });
+  // Still working after asking: the call stays in view.
+  expect(agentStatus(a, { s1: session("s1", { status: "running", needsYou: asked }) }, now).tone).toBe("needsYou");
+  // An approval blocks the turn, so it comes first.
+  expect(agentStatus(a, { s1: session("s1", { status: "needs_approval", needsYou: asked }) }, now).tone).toBe("approval");
+  const two = [a, agent("g2", "B", { chat: "s2" })];
+  const never = () => 0;
+  expect(agentsAttention(two, { s1: session("s1", { needsYou: asked }), s2: session("s2", { status: "running" }) }, never)).toBe("needsYou");
+  expect(agentsAttention(two, { s1: session("s1", { needsYou: asked }), s2: session("s2", { status: "needs_approval" }) }, never)).toBe("approval");
+  expect(agentsAttention(two, { s1: session("s1", { needsYou: null }), s2: session("s2") }, never)).toBeNull();
+});
+
+test("a message from another agent is badged with who sent it", () => {
+  expect(originLabel(undefined)).toBeNull();
+  expect(originLabel({ kind: "user" })).toBeNull();
+  expect(originLabel({ kind: "agent", agentId: "g1", name: "Builder", hops: 1 })).toEqual({ text: "From @Builder", agentId: "g1" });
+  expect(originLabel({ kind: "agentReply", agentId: "g2", name: "Reviewer", hops: 2 })).toEqual({ text: "Reply from @Reviewer", agentId: "g2" });
+  expect(originLabel({ kind: "agent", agentId: "g1", name: "", hops: 1 })?.text).toBe("From another agent");
+  // A kind this build does not know yet shows no badge rather than a wrong one.
+  expect(originLabel({ kind: "slack", channel: "#ops" })).toBeNull();
 });
 
 test("how it runs, in the pickers' words", () => {

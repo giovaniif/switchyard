@@ -21,6 +21,10 @@
 //           steered in meanwhile (turn/steer) is appended as " | steered: …"
 //   [chart] an MCP call to the `chart` server (verify/fakes/mcp-chart) whose
 //           tool declares a widget (`mcpAppUi`), then "Here is the chart."
+//   [[tool NAME {json}]]  calls Switchyard's agent tool NAME through the
+//           server the thread was given (`mcp_servers.switchyard` in
+//           thread/start or thread/resume `config`; see agent-tools.mjs), as
+//           `mcpToolCall` items, then "Called NAME: <result>" per call
 //
 // MCP: `mcpServerStatus/list` lists `chart` (connected, from mcp-chart) and
 // `fake-oauth` (not logged in until its sign-in completes); `app/list` one
@@ -42,6 +46,7 @@
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { CHART_URI, chartCall, rpc } from "./chart.mjs";
+import { afterCalls, callTools, toolMarkers } from "./agent-tools.mjs";
 
 const dir = process.env.FAKE_CODEX_DIR;
 const log = (line) => {
@@ -206,12 +211,15 @@ async function handle(msg) {
         if (server.tool_timeout_sec === null) return fail(`invalid type: string "", expected f64 in mcp_servers.${name}.tool_timeout_sec`);
       }
       const tid = newId("thread");
-      threads.set(tid, { cwd: p.cwd ?? "" });
+      threads.set(tid, { cwd: p.cwd ?? "", tools: p.config?.["mcp_servers.switchyard"] ?? null });
       saveThreads();
       return reply(threadResponse(tid, p));
     }
     case "thread/resume": {
       if (!threads.has(p.threadId)) return fail(`no such thread: ${p.threadId}`);
+      // A resumed thread's servers are the ones it is resumed with.
+      threads.get(p.threadId).tools = p.config?.["mcp_servers.switchyard"] ?? null;
+      saveThreads();
       return reply(threadResponse(p.threadId, p));
     }
     case "turn/start": {
@@ -359,6 +367,19 @@ async function runTurn(threadId, cwd, turn, text) {
     if (text.includes("[name-fail]")) return finish("failed", { message: "scripted naming failure" });
     const title = text.includes("[name]") ? '"Fake named session."' : "";
     say(title, [title]);
+    return finish("completed");
+  }
+
+  const calls = toolMarkers(behaviorText);
+  if (calls.length) {
+    const items = calls.map((c) => ({ type: "mcpToolCall", id: newId("mcp"), server: "switchyard", tool: c.tool, arguments: c.args, appContext: null, mcpAppUi: null, pluginId: null }));
+    for (const it of items) item("item/started", { ...it, status: "inProgress", result: null, error: null });
+    const results = await callTools(threads.get(threadId)?.tools, calls);
+    results.forEach((r, i) =>
+      item("item/completed", { ...items[i], status: "completed", result: { content: [{ type: "text", text: r.text }], structuredContent: null, _meta: null, isError: r.isError }, error: null, durationMs: 5 }),
+    );
+    const answer = afterCalls(results);
+    say(answer, [answer]);
     return finish("completed");
   }
 

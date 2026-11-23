@@ -17,6 +17,10 @@
 //           then all done and "Echo: <prompt>"
 //   [chart] an MCP call to `chart` (verify/fakes/mcp-chart) that ends with
 //           its widget on `tool_completed` (`app`), then "Here is the chart."
+//   [[tool NAME {json}]]  calls Switchyard's agent tool NAME through the
+//           server `start` gave (`tools`, the SDK's `mcpServers` entry; see
+//           agent-tools.mjs), labelled as the real sidecar labels it, then
+//           "Called NAME: <result>" per call
 //   other   replies "Echo: <prompt>"
 // A widget's calls (`mcp_call`) go to mcp-chart: a read-only tool runs, any
 // other is refused as Claude Code's permission check would without an answer.
@@ -47,6 +51,8 @@
 
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { CHART_URI, chartCall, rpc } from "./chart.mjs";
+import { afterCalls, callTools, toolMarkers } from "./agent-tools.mjs";
+import { describe as describeTool } from "../../../../sidecar/yard-claude/src/tools.ts";
 
 // An agent's session hands the engine a preamble, then the user's message;
 // the host agent's question comes after its evidence. Only what the user
@@ -196,6 +202,22 @@ async function runChart(text) {
 
 let n = 0;
 let stuck = false;
+// Switchyard's tools server, when `start` gave one (an agent's conversation).
+let tools = null;
+
+async function runTools(calls) {
+  const ids = calls.map((c) => {
+    const id = `tool-${process.pid}-${++n}`;
+    const name = `mcp__switchyard__${c.tool}`;
+    const d = describeTool(name, c.args, "/");
+    emit({ type: "tool_started", itemId: id, kind: d.kind, title: d.title, detail: d.detail });
+    return id;
+  });
+  const results = await callTools(tools, calls);
+  results.forEach((r, i) => emit({ type: "tool_completed", itemId: ids[i], ok: !r.isError, output: r.text }));
+  emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: afterCalls(results) });
+  emit({ type: "turn_completed", status: "completed" });
+}
 // A [steps] turn in progress: messages that arrive are folded into it.
 let steps = null;
 
@@ -268,7 +290,8 @@ for await (const line of console) {
     continue;
   }
   if (msg.type === "start") {
-    log(`start pid=${process.pid} config=${process.env.CLAUDE_CONFIG_DIR ?? ""} resume=${msg.resume ?? ""}${msg.restricted ? " restricted=true" : ""}`);
+    log(`start pid=${process.pid} config=${process.env.CLAUDE_CONFIG_DIR ?? ""} resume=${msg.resume ?? ""}${msg.restricted ? " restricted=true" : ""}${msg.tools ? " tools=switchyard" : ""}`);
+    tools = msg.tools ?? null;
     out({ type: "session", claudeSessionId: msg.resume ?? `fake-claude-${process.pid}` });
     // The shape the real sidecar sends (sidecar/yard-claude/src/usage.ts):
     // utilization is a fraction, resetsAt epoch seconds.
@@ -297,6 +320,11 @@ for await (const line of console) {
       continue;
     }
     const behaviorText = typed(text);
+    const calls = toolMarkers(behaviorText);
+    if (calls.length) {
+      runTools(calls);
+      continue;
+    }
     if (behaviorText.includes("[steps]")) {
       runSteps(text);
       continue;
