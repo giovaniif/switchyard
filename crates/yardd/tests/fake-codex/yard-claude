@@ -12,6 +12,9 @@
 //           result with its duration (`ms`), then "Echo: <prompt>". It also
 //           leaves a `sleep 30` running under the sidecar, so a session's
 //           process list has something to show.
+//   [subagents] three subagents side by side, as a planner fans out: a long
+//           title, two still running with a long latest command for 30 s,
+//           then all done and "Echo: <prompt>"
 //   [chart] an MCP call to `chart` (verify/fakes/mcp-chart) that ends with
 //           its widget on `tool_completed` (`app`), then "Here is the chart."
 //   other   replies "Echo: <prompt>"
@@ -215,6 +218,29 @@ async function runSteps(text) {
   emit({ type: "turn_completed", status: "completed" });
 }
 let sleeper = null;
+async function runSubagents(text) {
+  const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+  const agents = [
+    ["TEST-build agent tools (needs-you, agent messaging, memory) and prove each one on the scripted engines", "cd /tmp/TEST-worktrees/agent-tools && CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents -- --nocapture"],
+    ["TEST-per-agent accounts and remote agents", "grep -rn \"context request timed out\\|during context\" crates/yardd/src"],
+    ["TEST-Slack connector", "cd /tmp/TEST-worktrees/agents-slack && bun test ui/src/slack.test.ts"],
+  ].map(([detail, command]) => ({ id: `tool-${process.pid}-${++n}`, detail, command }));
+  for (const a of agents) emit({ type: "tool_started", itemId: a.id, kind: "other", title: "Agent", detail: a.detail, agent: "general-purpose" });
+  for (const a of agents) {
+    for (const [kind, title, detail] of [["read", "Read", "README.md"], ["command", "Bash", a.command]]) {
+      const id = `tool-${process.pid}-${++n}`;
+      await pause(150);
+      emit({ type: "tool_started", itemId: id, parent: a.id, kind, title, detail });
+      if (kind === "read") emit({ type: "tool_completed", itemId: id, ok: true, output: `${title} done` });
+    }
+  }
+  emit({ type: "tool_completed", itemId: agents[2].id, ok: true, output: "TEST-subagents report: Slack done", ms: 900 });
+  await pause(30000);
+  for (const a of agents.slice(0, 2)) emit({ type: "tool_completed", itemId: a.id, ok: true, output: "TEST-subagents report: done", ms: 6900 });
+  emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: `Echo: ${text}` });
+  emit({ type: "turn_completed", status: "completed" });
+}
+
 async function runSubagent(text) {
   // A background process, as `npm run dev &` would be. Ends on its own after 30 s.
   if (!sleeper) {
@@ -277,6 +303,10 @@ for await (const line of console) {
     }
     if (behaviorText.includes("[chart]")) {
       runChart(text);
+      continue;
+    }
+    if (behaviorText.includes("[subagents]")) {
+      runSubagents(text);
       continue;
     }
     if (behaviorText.includes("[subagent]")) {

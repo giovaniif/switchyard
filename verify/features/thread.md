@@ -216,6 +216,19 @@ yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","eff
 yv drive 'session:{{workspace_agents_mobile}}' --viewport mobile --steps '[{"expect":"css:.thread","text":"Echo: [subagent] TEST-workspace"},{"click":"role:button:Workspace"},{"expect":{"css":".workspace-tabs [aria-pressed=true]","hasText":"Terminal"}},{"click":"role:button:Subagents"},{"expect":"role:region:Session subagents","text":"TEST-survey the repo"},{"click":{"role":"button","name":"TEST-survey the repo","within":"role:region:Session subagents"}},{"expect":"role:region:Session subagents","text":"TEST-subagent report"},{"expect":"role:region:Session subagents","text":"README.md"},{"shot":"subagents"}]'
 ```
 
+### workspace-subagents-line-up
+Viewports: both
+Several subagents at once, one with a two-line task and two still running:
+each is its own card with space between cards (none overlapping), and every
+card's task, type and state and latest step start on the same left edge.
+
+```sh
+yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","effort":"medium","cwd":"{{repo}}","worktree":true,"text":"[subagents] TEST-fan out desktop"}' --wait '{"op":"created"}' --save fan_desktop=sessionId
+yv drive 'session:{{fan_desktop}}' --viewport desktop --steps '[{"click":{"css":".workspace-tabs .tab","hasText":"Subagents"}},{"expect":"css:.subagents-pane > .agent","count":3},{"expect":{"css":".subagents-pane > .agent","hasText":"running"}},{"eval":"(() => { const cards=[...document.querySelectorAll(\".subagents-pane > .agent\")].map(c=>c.getBoundingClientRect()); const lefts=[...document.querySelectorAll(\".subagents-pane .subagent-title, .subagents-pane .agent-what, .subagents-pane .subagent-meta, .subagents-pane .subagent-latest\")].map(e=>Math.round(e.getBoundingClientRect().left)); return cards.every((c,i)=>!i || c.top>=cards[i-1].bottom+4) && new Set(lefts).size===1; })()","equals":true},{"shot":"subagents-line-up"},{"click":{"role":"button","name":"TEST-Slack connector","within":"role:region:Session subagents"}},{"expect":"role:region:Session subagents","text":"TEST-subagents report: Slack done"},{"shot":"subagent-open"}]'
+yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","effort":"medium","cwd":"{{repo}}","worktree":true,"text":"[subagents] TEST-fan out mobile"}' --wait '{"op":"created"}' --save fan_mobile=sessionId
+yv drive 'session:{{fan_mobile}}' --viewport mobile --steps '[{"click":"role:button:Workspace"},{"click":{"css":".workspace-tabs .tab","hasText":"Subagents"}},{"expect":"css:.subagents-pane > .agent","count":3},{"eval":"(() => { const cards=[...document.querySelectorAll(\".subagents-pane > .agent\")].map(c=>c.getBoundingClientRect()); const lefts=[...document.querySelectorAll(\".subagents-pane .subagent-title, .subagents-pane .agent-what, .subagents-pane .subagent-meta, .subagents-pane .subagent-latest\")].map(e=>Math.round(e.getBoundingClientRect().left)); return cards.every((c,i)=>!i || c.top>=cards[i-1].bottom+4) && new Set(lefts).size===1 && document.documentElement.scrollWidth<=innerWidth; })()","equals":true},{"shot":"subagents-line-up"}]'
+```
+
 ### subagent-nests-and-expands
 A Claude subagent (the Agent tool) shows as one entry in the work log: its
 description, its type and how long it took; collapsed, its steps stay out of

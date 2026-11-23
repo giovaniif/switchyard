@@ -3397,7 +3397,7 @@ function ranLabel(entry: ToolItem): string {
 }
 
 /** A subagent: one line, collapsed. Open, the steps it took and its report. */
-function AgentEntry({ entry }: { entry: ToolItem }) {
+function AgentEntry({ entry, card = false }: { entry: ToolItem; card?: boolean }) {
   const [open, setOpen] = useState(false);
   const steps = entry.steps ?? [];
   const expandable = steps.length > 0 || !!entry.output;
@@ -3407,19 +3407,42 @@ function AgentEntry({ entry }: { entry: ToolItem }) {
     entry.state !== "running" && entry.ms != null ? duration(entry.ms) : null,
     steps.length ? `${steps.length} ${steps.length === 1 ? "step" : "steps"}` : null,
   ].filter(Boolean);
+  const chevron = (
+    <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
+      <Icon d={CHEVRON_RIGHT} size={12} />
+    </span>
+  );
+  const status = (
+    <>
+      {entry.state === "running" && <span className="pulse" aria-label="running" />}
+      <span className={entry.state === "failed" ? "bad small" : "muted small"}>{parts.join(" · ")}</span>
+    </>
+  );
+  const latestLine = entry.state === "running" && latest && !open ? <code>{latest.detail}</code> : null;
   return (
-    <div className="tool agent">
-      <button className="tool-row" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
-        <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
-          <Icon d={CHEVRON_RIGHT} size={12} />
-        </span>
-        <span>Agent</span>
-        {entry.detail && <span className="agent-what">{entry.detail}</span>}
-        {entry.agent && <span className="agent-type">{entry.agent}</span>}
-        {entry.state === "running" && <span className="pulse" aria-label="running" />}
-        <span className={entry.state === "failed" ? "bad small" : "muted small"}>{parts.join(" · ")}</span>
-        {entry.state === "running" && latest && !open && <code>{latest.detail}</code>}
-      </button>
+    <div className={`tool agent ${card ? "subagent" : ""}`}>
+      {card ? (
+        // The pane lists only subagents, so the task leads and the word "Agent"
+        // goes; type, state and the latest step line up under it in every card.
+        <button className="tool-row subagent-head" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
+          {chevron}
+          <span className="subagent-title">{entry.detail || "Agent"}</span>
+          <span className="subagent-meta">
+            {entry.agent && <span className="agent-type">{entry.agent}</span>}
+            {status}
+          </span>
+          {latestLine && <span className="subagent-latest">{latestLine}</span>}
+        </button>
+      ) : (
+        <button className="tool-row" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
+          {chevron}
+          <span>Agent</span>
+          {entry.detail && <span className="agent-what">{entry.detail}</span>}
+          {entry.agent && <span className="agent-type">{entry.agent}</span>}
+          {status}
+          {latestLine}
+        </button>
+      )}
       {open && (
         <div className="agent-body">
           {steps.length > 0 && (
@@ -3603,7 +3626,7 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
       {terminalUsed && <TerminalPane sessionId={meta.id} connected={connected} visible={shown && tab === "terminal"} actions={actions} />}
       {shown && tab === "agents" && (
         <section aria-label="Session subagents" className="pane-body subagents-pane">
-          {agents.length ? agents.map((agent) => <AgentEntry key={agent.key} entry={agent} />) : <p className="muted">No subagents in this session.</p>}
+          {agents.length ? agents.map((agent) => <AgentEntry key={agent.key} entry={agent} card />) : <p className="muted">No subagents in this session.</p>}
         </section>
       )}
       {shown && tab === "procs" && <ProcPane meta={meta} state={state} actions={actions} visible />}
