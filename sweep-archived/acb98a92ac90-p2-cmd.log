@@ -1,0 +1,30 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test sweep an_archived
+# exit 101 after 36253 ms at ada2b673c4326df497808fb4cfb1078028c1bb0a
+
+
+running 1 test
+test an_archived_worktree_with_nothing_of_its_own_is_removed ... FAILED
+
+failures:
+
+---- an_archived_worktree_with_nothing_of_its_own_is_removed stdout ----
+
+thread 'an_archived_worktree_with_nothing_of_its_own_is_removed' (3354551) panicked at crates/yardd/tests/sweep.rs:157:5:
+an archived worktree on its base is removed
+yardd: http://127.0.0.1:45141
+yardd: client connected, origin none, agent none
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-3354550-sweeparch-0 for inspection
+
+
+failures:
+    an_archived_worktree_with_nothing_of_its_own_is_removed
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 30.68s
+
+
+   Compiling yardd v0.16.1 (/home/giovani/.yard/wt/better-than-claude-code/yard-the-ux-patrol-automation-on-4773/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 5.53s
+     Running tests/sweep.rs (target/debug/build/yardd/642694a2808f94d8/out/sweep-642694a2808f94d8)
+error: test failed, to rerun pass `-p yardd --test sweep`

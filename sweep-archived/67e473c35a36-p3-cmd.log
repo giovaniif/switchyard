@@ -1,0 +1,15 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test sweep
+# exit 0 after 10777 ms at c5e872ddc4a5254d0881d00ff2fd59a26e048051
+
+
+running 3 tests
+test an_archived_worktree_with_nothing_of_its_own_is_removed ... ok
+test a_merged_worktree_is_removed_and_nothing_else ... ok
+test a_worktree_with_a_running_session_or_process_stays ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.33s
+
+
+   Compiling yardd v0.16.1 (/home/giovani/.yard/wt/better-than-claude-code/yard-the-ux-patrol-automation-on-4773/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 5.39s
+     Running tests/sweep.rs (target/debug/build/yardd/642694a2808f94d8/out/sweep-642694a2808f94d8)

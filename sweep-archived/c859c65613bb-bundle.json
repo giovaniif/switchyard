@@ -1,0 +1,108 @@
+{
+  "v": 1,
+  "claim": "Worktrees of archived automation runs that ended without a PR are never swept, so hourly loops fill the server's disk and the UX patrol's host guard interrupts every run",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-the-ux-patrol-automation-on-4773",
+  "base": "6a36090a7d5eacfe2e378cf57db5f64b5289a1ef",
+  "head": "c5e872ddc4a5254d0881d00ff2fd59a26e048051",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/sweep.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/sweep.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-23T12:48:22.838Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "ada2b673c4326df497808fb4cfb1078028c1bb0a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p1-base-repro.txt",
+          "sha256": "54912edc0c8300d99c9484e2a490303ff31db2caf57af169cebee4ee9de6ec98"
+        }
+      ],
+      "addedAt": "2026-11-23T12:48:22.886Z",
+      "text": "Live server: 167 spent automation worktrees, none sweepable; disk 89% and the guard interrupting every UX patrol run"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "ada2b673c4326df497808fb4cfb1078028c1bb0a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "acb98a92ac9064d00620bbc1d31691e5ba32466cc17962779f78c63e3badbb26"
+        }
+      ],
+      "addedAt": "2026-11-23T12:48:22.931Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test sweep an_archived",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "test",
+      "at": "c5e872ddc4a5254d0881d00ff2fd59a26e048051",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "67e473c35a36988b13a31c0c02df4582e29cb234bd9d08a8e898afdaebc1e6d2"
+        }
+      ],
+      "addedAt": "2026-11-23T12:48:59.255Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test sweep",
+      "exit": 0
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "c5e872ddc4a5254d0881d00ff2fd59a26e048051",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-live-demo.sh",
+          "sha256": "140e2099fa668c73f9401933affaf784431a3338931f5db86290afcf778219bf"
+        },
+        {
+          "path": "p4-cmd.log",
+          "sha256": "ebc175d5b5dff72b17e766324a81771c211ba2fb5eca7907fe5233568c7a7667"
+        }
+      ],
+      "addedAt": "2026-11-23T12:49:10.078Z",
+      "text": "Isolated yardd, scripted engines, sweep every 2 s: a listed session's worktree stays; once archived its worktree and branch go",
+      "cmd": "bash /tmp/yard-cleanup/live-demo.sh",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "note",
+      "at": "c5e872ddc4a5254d0881d00ff2fd59a26e048051",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-23T12:49:26.250Z",
+      "text": "Daemon-only change (ui: false): no viewport screenshots or design check apply. Full cargo test -p yardd on this server: connectors (3) and daemon account/login/usage tests (4) fail identically on unmodified origin/main; sweep tests pass."
+    }
+  ]
+}

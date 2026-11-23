@@ -1,0 +1,6 @@
+$ bash /tmp/yard-cleanup/live-demo.sh
+# exit 0 after 16128 ms at c5e872ddc4a5254d0881d00ff2fd59a26e048051
+
+listed session: worktree /tmp/yv-sweepdemo-3363845-mwt9ip5u/data/wt/sweepdemo-repo.0ics/yard-hello-dab1 kept after 9s
+archived: worktree gone after 2s; branches left: main 
+

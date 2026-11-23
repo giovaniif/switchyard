@@ -1,0 +1,6 @@
+Server yardd 0.16.1 (7515be9), 2026-11-23:
+- ~/.yard/wt/switchyard + ~/.yard/wt/ux-patrol held 190 linked worktrees; 167 were clean, every session in them archived,
+  HEAD already on another branch (or on main in the no-remote ux-patrol repo). None qualified for the merged-PR sweep.
+- Removing them freed 3 GB (df 90% -> 86%).
+- ux-patrol-guard journal: "STOP patrol (disk 89.3% >= 89%)" every 5 s; Codex rollouts of UX patrol runs since
+  2026-11-19 02:00 show turn_aborted (interrupted) 2.5 s after start.
