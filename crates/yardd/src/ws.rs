@@ -267,19 +267,24 @@ pub async fn create_session(
     // repository, or in one with no commits, runs in place.
     let asked = msg["worktree"].as_bool().unwrap_or(false);
     let in_place = asked && !git::can_branch(cwd).await?;
-    let (sid, setup) = if asked && !in_place {
+    let (sid, setup, warmed) = if asked && !in_place {
         let unique = app.id("");
         let suffix = &unique[unique.len().saturating_sub(4)..];
         let wt = git::add_worktree(cwd, msg["branch"].as_str(), msg["base"].as_str(), &title, suffix).await?;
         let worktree = Worktree { branch: wt.branch, repo: wt.repo };
-        (app.insert_session(engine, model, effort, &wt.cwd, &title, Some(worktree), false, account, automation, agent)?, wt.setup)
+        let sid = app.insert_session(engine, model, effort, &wt.cwd, &title, Some(worktree), false, account, automation, agent)?;
+        (sid, wt.setup, wt.warmed)
     } else {
         // An agent's own folder holds no code: a new chat may start while another runs.
         let exclusive = !agent.is_some_and(|a| Path::new(cwd).starts_with(crate::agents::home(a)));
-        (app.insert_session(engine, model, effort, cwd, &title, None, exclusive, account, automation, agent)?, None)
+        (app.insert_session(engine, model, effort, cwd, &title, None, exclusive, account, automation, agent)?, None, Vec::new())
     };
     if let Some(agent) = agent {
         crate::agents::set_chat(app, agent, &sid);
+    }
+    if !warmed.is_empty() {
+        let text = format!("Build caches cloned from the original checkout: {}", warmed.join(", "));
+        app.emit(&sid, json!({ "type": "note", "text": text }));
     }
     if let Some(script) = setup {
         app.emit(&sid, json!({ "type": "note", "text": format!("Worktree setup ran: {script}") }));
@@ -300,6 +305,10 @@ pub async fn create_session(
         let _ = direct.send(created.to_string());
     }
     sessions::begin(app, &sid, text, &files).await;
+    // A title from the task now, rather than its first line until a turn ends.
+    if app.meta(&sid).is_some_and(|m| crate::naming::due_at_start(&m)) {
+        app.name_later(&sid);
+    }
     Ok(sid)
 }
 

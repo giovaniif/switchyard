@@ -30,6 +30,7 @@ mod sessions;
 mod state;
 mod store;
 mod sweep;
+mod warm;
 mod widgets;
 mod ws;
 

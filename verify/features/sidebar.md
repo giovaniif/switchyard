@@ -11,8 +11,9 @@ of them. Pinned, archived and group live in yardd, so every window agrees;
 which groups are collapsed is per browser. The Archived header is pinned to the
 bottom of the session area and never scrolls away.
 
-A session starts titled with its task's first line; after its first completed
-turn (and again after its third) yardd names it from the conversation with a
+A session starts titled with its task's first line; as soon as it starts yardd
+names it from the task, then again after its first and third completed turns
+from the conversation (a session never named yet, after any turn), with a
 small model (Codex `gpt-5.6-luna`, else Haiku). Scripted environments have naming
 off; Setup turns it on with the fake Codex model, which answers a title only when
 the conversation has `[name]`. A title typed through Rename is never replaced.

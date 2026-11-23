@@ -265,6 +265,11 @@ impl App {
         self.naming_rx.lock().unwrap().take().expect("naming taken twice")
     }
 
+    /// Queue a session to be named from its conversation (see `naming`).
+    pub fn name_later(&self, sid: &str) {
+        let _ = self.naming.send(sid.to_string());
+    }
+
     /// Queue a message sent while a turn runs.
     pub fn queue_message(&self, sid: &str, text: &str, attachments: &[Value]) -> String {
         let id = self.id("q");
@@ -541,7 +546,7 @@ impl App {
             if completed {
                 let done = s.events.iter().filter(|e| e["type"] == "turn_completed" && e["status"] == "completed").count();
                 if crate::naming::due(&s.meta, done) {
-                    let _ = self.naming.send(sid.to_string());
+                    self.name_later(sid);
                 }
             }
             if s.meta.pending.is_empty() {

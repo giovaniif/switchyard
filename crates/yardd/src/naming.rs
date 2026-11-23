@@ -1,7 +1,10 @@
 //! Session names from the conversation. A new session is titled with the first
-//! line of its task, which is often a fragment ("hey can you look at"). After
-//! its first completed turn, and again after its third (the work is clearer by
-//! then), a small model reads the conversation and writes a short title.
+//! line of its task, which is often a fragment ("hey can you look at") or a
+//! bare link. As soon as it starts, a small model reads the task and writes a
+//! short title; after its first completed turn, and again after its third (the
+//! work is clearer by then), it reads the conversation and writes it again. A
+//! session that has never been named (from before naming, or every try failed)
+//! is named after whichever turn it completes next.
 //!
 //! The model is Codex's `gpt-5.6-luna` at effort low, else Claude's Haiku when
 //! Codex is missing or fails, each in a private thread with no tools
@@ -38,7 +41,13 @@ pub fn may_name(meta: &Meta) -> bool {
 
 /// Called with the number of completed turns when one completes.
 pub fn due(meta: &Meta, completed_turns: usize) -> bool {
-    NAME_AFTER.contains(&completed_turns) && may_name(meta) && !crate::private::internal(&meta.id)
+    let never_named = meta.title_source.is_none();
+    (never_named || NAME_AFTER.contains(&completed_turns)) && due_at_start(meta)
+}
+
+/// Whether a session just started should be named from its task.
+pub fn due_at_start(meta: &Meta) -> bool {
+    may_name(meta) && !crate::private::internal(&meta.id)
 }
 
 fn off() -> bool {
@@ -271,8 +280,16 @@ mod tests {
             serde_json::from_value(m).unwrap()
         };
         assert!(due(&meta(json!({})), 1));
-        assert!(!due(&meta(json!({})), 2));
+        // Never named (older than naming, or every try failed): the next turn names it.
+        assert!(due(&meta(json!({})), 2));
+        assert!(due(&meta(json!({})), 7));
+        assert!(due(&meta(json!({ "titleSource": "auto" })), 1));
+        assert!(!due(&meta(json!({ "titleSource": "auto" })), 2));
         assert!(due(&meta(json!({ "titleSource": "auto" })), 3));
+        assert!(!due(&meta(json!({ "titleSource": "auto" })), 4));
+        assert!(due_at_start(&meta(json!({}))));
+        assert!(!due_at_start(&meta(json!({ "titleSource": "user" }))));
+        assert!(!due_at_start(&meta(json!({ "automation": "a1" }))));
         assert!(!due(&meta(json!({ "titleSource": "user" })), 1));
         // Automation runs keep `<name> · <time>`, which the loops look runs up by.
         assert!(!due(&meta(json!({ "automation": "a1" })), 1));
