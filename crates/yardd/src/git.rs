@@ -29,8 +29,6 @@ pub struct NewWorktree {
     pub repo: String,
     /// The setup script that ran in it, if any.
     pub setup: Option<String>,
-    /// Build caches cloned in from the original checkout (see `warm`).
-    pub warmed: Vec<String>,
 }
 
 /// Where yardd puts the worktrees it makes: `<data dir>/wt`.
@@ -55,8 +53,7 @@ fn slug(text: &str) -> String {
 }
 
 /// Cut a new branch and worktree from `base` (the folder's current HEAD when
-/// unset), under `<data dir>/wt/<repo>/<branch>`, clone the original
-/// checkout's build caches into it (`warm`), then run the repo's setup
+/// unset), under `<data dir>/wt/<repo>/<branch>`, then run the repo's setup
 /// script in it. Nothing in the original checkout is touched.
 ///
 /// Callers check [`can_branch`] first: every session in a repository gets
@@ -125,8 +122,6 @@ pub async fn add_worktree(
         bail!("git worktree add failed: {}", String::from_utf8_lossy(&out.stderr).trim());
     }
 
-    // Before setup, so an install or build in the setup script starts warm.
-    let warmed = crate::warm::clone_caches(Path::new(&top), &path).await;
     let setup = match run_setup(&top, &path, &repo_name).await {
         Ok(script) => script,
         Err(e) => {
@@ -141,7 +136,6 @@ pub async fn add_worktree(
         branch,
         repo: top,
         setup,
-        warmed,
     })
 }
 
