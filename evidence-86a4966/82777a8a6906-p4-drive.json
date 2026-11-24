@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "86a49661eff84c10e2fa77ca82dfded76b394a15",
+    "short": "86a4966",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T20:03:07.218Z"
+  },
+  "dir": ".verify/evidence/sidebar-rows-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2459,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/sidebar-rows-head-mobile/rows-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-run the migration\")); const icon = row.querySelector(\".engine-icon\").getBoundingClientRect(); const badge = row.querySelector(\".mark-approval\").getBoundingClientRect(); return [row.getBoundingClientRect().height <= 34, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right]; })()",
+          "value": [
+            true,
+            true
+          ]
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
