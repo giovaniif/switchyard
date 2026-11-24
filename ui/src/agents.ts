@@ -1,40 +1,53 @@
 // Words and rules for agents (yardd's agents.rs): @mentions in a message,
-// the card's status line, the avatar's letter. Pure, so bun test covers them.
+// the card's status line, faces. Pure, so bun test covers them.
 import type { Agent, AgentColor, AgentFace, MessageOrigin, Models, SessionMeta } from "./protocol";
 import { isSlack, slackFrom } from "./slack";
 import { ENGINE_NAME } from "./engines";
 
 export const AGENT_COLORS: AgentColor[] = ["blue", "green", "amber", "rose", "violet", "teal", "orange", "slate"];
 export const AGENT_NAME_MAX = 24;
-/** The built-in host agent's id. */
-export const HOST_AGENT = "scout";
-
 /** The avatar's letter. */
 export const initial = (name: string) => (name.trim()[0] ?? "?").toUpperCase();
 
-/** Avatar faces as one stroked path each, drawn white on the avatar's colour in
- *  a 24-unit box. Eyes are zero-length strokes: round caps make them dots. */
-export const FACE_PATHS: Record<AgentFace, string> = {
-  smile: "M9 10v.01M15 10v.01M8.5 14q3.5 3.5 7 0",
-  grin: "M9 9.5v.01M15 9.5v.01M8 13h8a4 4 0 0 1-8 0Z",
-  wink: "M9 10v.01M13.5 10.5q1.5-1.5 3 0M8.5 14q3.5 3.5 7 0",
-  calm: "M7.5 10q1.5 1.5 3 0M13.5 10q1.5 1.5 3 0M10 15.5h4",
-  glasses: "M6 10.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M13 10.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M11 10.5h2M9.5 16q2.5 1.5 5 0",
-  bot: "M7.5 9h3v2.5h-3ZM13.5 9h3v2.5h-3ZM9 15.5h6",
-  happy: "M7.5 10.5q1.5-2 3 0M13.5 10.5q1.5-2 3 0M8 13h8a4 4 0 0 1-8 0Z",
-  curious: "M13.5 7.8q1.5-1.4 3 0M9 10.5v.01M15 10.5v.01M12 14.2a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6Z",
+/** Avatar faces, drawn white on the avatar's colour in a 24-unit box, in
+ *  parts so they can move: `eyes` blink and glance, `mouth` talks while the
+ *  agent works, `frame` (glasses, a brow) moves with the eyes. Eyes are
+ *  zero-length strokes: round caps make them dots. */
+export interface FaceParts {
+  eyes: string;
+  mouth: string;
+  frame?: string;
+}
+export const FACES: Record<AgentFace, FaceParts> = {
+  smile: { eyes: "M9 10v.01M15 10v.01", mouth: "M8.5 14q3.5 3.5 7 0" },
+  grin: { eyes: "M9 9.5v.01M15 9.5v.01", mouth: "M8 13h8a4 4 0 0 1-8 0Z" },
+  wink: { eyes: "M9 10v.01M13.5 10.5q1.5-1.5 3 0", mouth: "M8.5 14q3.5 3.5 7 0" },
+  calm: { eyes: "M7.5 10q1.5 1.5 3 0M13.5 10q1.5 1.5 3 0", mouth: "M10 15.5h4" },
+  glasses: {
+    frame: "M6 10.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M13 10.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M11 10.5h2",
+    eyes: "M8.5 10.5v.01M15.5 10.5v.01",
+    mouth: "M9.5 16q2.5 1.5 5 0",
+  },
+  bot: { eyes: "M7.5 9h3v2.5h-3ZM13.5 9h3v2.5h-3Z", mouth: "M9 15.5h6" },
+  happy: { eyes: "M7.5 10.5q1.5-2 3 0M13.5 10.5q1.5-2 3 0", mouth: "M8 13h8a4 4 0 0 1-8 0Z" },
+  curious: { frame: "M13.5 7.8q1.5-1.4 3 0", eyes: "M9 10.5v.01M15 10.5v.01", mouth: "M12 14.2a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6Z" },
 };
-export const AGENT_FACES = Object.keys(FACE_PATHS) as AgentFace[];
+export const AGENT_FACES = Object.keys(FACES) as AgentFace[];
 
-/** The face an agent shows: its own, or a steady one picked from its id.
- *  Glasses are Scout's unless someone picks them, so no agent looks like it by chance. */
-export function faceOf(agent: Pick<Agent, "face" | "id" | "builtin">): AgentFace {
-  if (agent.face && agent.face in FACE_PATHS) return agent.face;
-  if (agent.builtin) return "glasses";
-  const pool = AGENT_FACES.filter((f) => f !== "glasses");
+/** The face an agent shows: its own, or a steady one picked from its id. */
+export function faceOf(agent: Pick<Agent, "face" | "id">): AgentFace {
+  if (agent.face && agent.face in FACES) return agent.face;
   let h = 0;
   for (const ch of agent.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return pool[h % pool.length];
+  return AGENT_FACES[h % AGENT_FACES.length];
+}
+
+/** A steady offset in seconds (negative: already part-way through), so agents
+ *  side by side do not blink together. */
+export function blinkDelay(id: string): number {
+  let h = 7;
+  for (const ch of id) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
+  return -((h % 50) / 10);
 }
 
 /** yardd's rule, said before it refuses: one word that reads as `@Name`. */
@@ -197,9 +210,4 @@ export function runsOn(agent: Agent, models: Models, permissionLabel: string, ac
   const model = agent.model ? (list.find((m) => m.id === agent.model)?.name ?? agent.model) : (fallback?.name ?? `${ENGINE_NAME[agent.engine]} default`);
   const effort = agent.effort ? agent.effort[0].toUpperCase() + agent.effort.slice(1) : "";
   return [model, account, effort, permissionLabel].filter(Boolean).join(" · ");
-}
-
-/** Where the host agent reads from, in words. */
-export function scopeLabel(scope: string, hostName: (id: string) => string): string {
-  return scope === "all" ? "All hosts" : hostName(scope);
 }

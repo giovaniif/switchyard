@@ -8,7 +8,7 @@ import { Subscriptions, UsageStrip, type UsageAccount } from "./UsageMeters";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
-import { AgentAvatar, AgentBar, AgentForm, AgentsPage, AgentStart, EarlierConversations } from "./AgentsPage";
+import { AgentAvatar, AgentBar, AgentForm, AgentRequests, AgentsPage, AgentStart, EarlierConversations, NewAgentRedirect } from "./AgentsPage";
 import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
@@ -398,8 +398,11 @@ export function App() {
           {route.page === "agents" && <AgentsPage state={state} actions={actions} />}
           {route.page === "agent" && <AgentView state={state} actions={actions} id={route.id} />}
           {route.page === "agentEdit" &&
-            // Like the automation form: read once on mount, so it waits for the snapshot's list.
-            (route.id === "new" || state.agents.some((a) => a.id === route.id) ? (
+            // A new agent is made at once and set up in its conversation.
+            (route.id === "new" ? (
+              <NewAgentRedirect state={state} actions={actions} />
+            ) : // Like the automation form: read once on mount, so it waits for the snapshot's list.
+            state.agents.some((a) => a.id === route.id) ? (
               <AgentForm key={route.id} state={state} actions={actions} id={route.id} />
             ) : (
               <AgentsPage state={state} actions={actions} />
@@ -2382,7 +2385,7 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
       setLoggingIn(true);
       return;
     }
-    // "@Scout what is running?" goes to the agent's chat, not a new session.
+    // "@Reviewer look at #12" goes to the agent's chat, not a new session.
     const routed = leadingMention(text, state.agents);
     if (routed) {
       if (!routed.rest && !attachments.length) return false;
@@ -2526,7 +2529,7 @@ function ChipMenu(props: {
   );
 }
 
-export function HostPicker(props: { state: State; value: string; onChange(host: string): void; onAddHost(): void; contextScope?: boolean; allowOffline?: boolean }) {
+export function HostPicker(props: { state: State; value: string; onChange(host: string): void; onAddHost(): void; allowOffline?: boolean }) {
   const { state, value } = props;
   const [open, setOpen] = useState(false);
   const pick = (host: string) => {
@@ -2534,18 +2537,15 @@ export function HostPicker(props: { state: State; value: string; onChange(host: 
     setOpen(false);
   };
   const remote = state.hosts.find((h) => h.id === value);
-  // "all" is no host id; it wears the cloud like its row in the menu, not this machine's laptop.
-  const allHosts = props.contextScope && value === "all";
   return (
     <ChipMenu
-      menuLabel={props.contextScope ? "Context hosts" : "Hosts"}
-      icon={remote || allHosts ? <Icon d={CLOUD} /> : <Icon d={LAPTOP} />}
-      label={allHosts ? "All hosts" : remote ? remote.name : hostName(state, "local")}
-      title={props.contextScope ? "Hosts used for context" : "Where the session runs"}
+      menuLabel="Hosts"
+      icon={remote ? <Icon d={CLOUD} /> : <Icon d={LAPTOP} />}
+      label={remote ? remote.name : hostName(state, "local")}
+      title="Where the session runs"
       open={open}
       setOpen={setOpen}
     >
-      {props.contextScope && <button className={`picker-item menu-item ${value === "all" ? "active" : ""}`} onClick={() => pick("all")}><Icon d={CLOUD} /><span>All hosts</span></button>}
       <button className={`picker-item menu-item ${value === "local" ? "active" : ""}`} onClick={() => pick("local")}>
         <Icon d={LAPTOP} />
         <span>{hostName(state, "local")}</span>
@@ -2553,7 +2553,7 @@ export function HostPicker(props: { state: State; value: string; onChange(host: 
       {state.hosts.map((h) => {
         const online = hostOnline(state, h.id);
         return (
-          <button key={h.id} className={`picker-item menu-item ${value === h.id ? "active" : ""}`} disabled={!online && !props.contextScope && !props.allowOffline} onClick={() => pick(h.id)}>
+          <button key={h.id} className={`picker-item menu-item ${value === h.id ? "active" : ""}`} disabled={!online && !props.allowOffline} onClick={() => pick(h.id)}>
             <Icon d={CLOUD} />
             <span>{h.name}</span>
             {!online && <span className="muted small menu-aside">{h.status === "error" ? "unreachable" : h.status}</span>}
@@ -2904,10 +2904,9 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
   // The agents live on the hub: a remote session's box offers them only in
   // an agent's own conversation.
   const mentionable = host === "local" || !!agent;
-  const restricted = !!agent?.builtin;
-  // Scout only reads, and an agent in its own folder has no project: no
-  // terminal, subagents or processes to show.
-  const noPane = !!agent && (agent.builtin || !agent.cwd);
+  // An agent in its own folder has no project: no terminal, subagents or
+  // processes to show.
+  const noPane = !!agent && !agent.cwd;
   // A file link opens the file in the workspace; where there is none (an
   // agent with no folder), it downloads.
   const [openedFile, setOpenedFile] = useState<{ path: string; nonce: number } | null>(null);
@@ -2953,6 +2952,8 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
     }
     return keys;
   }, [items, agent?.id]);
+  // The answer being written now: its face looks busy.
+  const lastAnswerKey = useMemo(() => [...answerKeys].pop(), [answerKeys]);
   const loadAttachment = (a: Attachment) => actions.attachmentUrl(meta.id, a);
   // Start anyway is out: hold the button until the session leaves the queue or
   // yardd refuses, or a double click sends a second startNow that yardd
@@ -2963,7 +2964,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
     <Fragment key={item.key}>
       {agent && answerKeys.has(item.key) && (
         <div className="agent-says">
-          <AgentAvatar agent={agent} size="sm" />
+          <AgentAvatar agent={agent} size="sm" busy={busy && item.key === lastAnswerKey} />
           <strong>{agent.name}</strong>
         </div>
       )}
@@ -2990,7 +2991,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
     <div className={`session ${!wide && workspace ? "workspace-open" : ""}`}>
       <main className="thread">
         {agent ? (
-          <AgentBar state={state} agent={agent} actions={actions} host={host}>
+          <AgentBar state={state} agent={agent} actions={actions} host={host} busy={busy && !earlier}>
             {busy && online && (
               <button className="btn-text" onClick={() => actions.interrupt(meta.id)}>
                 Stop
@@ -3094,6 +3095,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
               onRemove={(id) => actions.unqueue(meta.id, id, true)}
             />
           )}
+          {agent && !earlier && <AgentRequests state={state} actions={actions} agent={agent} />}
           <Composer
             placeholder={!online ? "Offline" : busy ? "Queue a message for the agent" : agent ? `Reply to ${agent.name}` : "Reply"}
             mentions={mentionable ? state.agents : undefined}
@@ -3124,13 +3126,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
             />
             <AccountPicker state={state} host={host} engine={meta.engine} account={accountOf(meta)} onManage={() => actions.go({ page: "new" })} />
             <EffortPicker models={models} value={{ engine: meta.engine, model: meta.model, effort: meta.effort }} onChange={(effort) => actions.setModel(meta.id, meta.model, effort)} />
-            {restricted ? (
-              <span className="muted small agent-runs-chip" title={`${agent!.name} only reads: it answers from your hosts without tools`}>
-                Read-only
-              </span>
-            ) : (
-              <PermissionPicker engine={meta.engine} value={meta.permission ?? "ask"} onChange={(p) => actions.setPermission(meta.id, p)} />
-            )}
+            <PermissionPicker engine={meta.engine} value={meta.permission ?? "ask"} onChange={(p) => actions.setPermission(meta.id, p)} />
           </Composer>
         </div>
         )}

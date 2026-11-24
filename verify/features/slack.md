@@ -18,6 +18,13 @@ Slack · #general") above the bubble, the shared origin badge of agents.md, and
 the answer is posted back in its Slack thread with :eyes: swapped for
 :white_check_mark:.
 
+An agent can also have a Slack app of its own, so people @mention it by its
+name: Add to Slack in its header walks through a configuration refresh token
+(`xoxe-…`, once per workspace), the app made from a manifest, its install
+(here the page is http, so the bot token is pasted) and its app-level token,
+then says "<Name> is in Slack" with its connection. A mention of its bot goes
+to that agent without naming it, and the answer comes back through its app.
+
 The fake: `verify/fakes/fake-slack` (Web API and Socket Mode on loopback),
 started by Setup; `curl "$(v slack)/_fake/message"` makes Slack send a
 message, `curl "$(v slack)/_fake/state"` reads what the bot posted and its
@@ -114,7 +121,26 @@ yv drive connectors --viewport desktop --steps '[{"expect":"css:.slack-tokens","
 ls -l "$(v data)/slack.json" | cut -c1-10 | grep -qx -- "-rw-------"
 ```
 
+### an-agents-own-slack-app
+Viewports: both
+Add to Slack, in TEST-Reviewer's header, takes the configuration token, makes
+its own app (@agent in the fake), takes the bot token pasted after installing
+(an http page cannot be Slack's redirect) and the app-level token, and says
+it is in Slack and connected. A mention of its bot in #general reaches it
+without its name and is answered in the thread through its app.
+
+```sh
+yv api '{"op":"slack.allow","user":"UOWNER"}' --wait '{"op":"slack"}'
+yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Reviewer\"] .agent-message"},{"click":"role:button:Add to Slack"},{"expect":"role:dialog:Add TEST-Reviewer to Slack"},{"fill":"label:Configuration refresh token","value":"xoxe-1-TEST-refresh"},{"click":"role:button:Create Slack app"},{"expect":{"css":".slack-progress li[aria-current=\"step\"]","hasText":"Approve"}},{"expect":"role:link:Install App page"},{"shot":"install"},{"fill":"label:Bot token","value":"xoxb-agent-TEST"},{"click":{"css":".slack-token button[type=submit]","hasText":"Next"}},{"expect":{"css":".slack-progress li[aria-current=\"step\"]","hasText":"Connect"}},{"expect":{"css":".slack-modal a","hasText":"app settings"}},{"fill":"label:App-level token","value":"xapp-1-agent-TEST"},{"click":{"css":".slack-token button[type=submit]","hasText":"Connect"}},{"expect":"role:dialog:TEST-Reviewer is in Slack"},{"expect":"css:.slack-connection.is-live","text":"Connected"},{"expect":"css:.slack-modal","text":"Mention @test-reviewer"},{"shot":"in-slack"},{"click":"role:button:Done"},{"expect":"css:.agent-slack-button.is-live","text":"In Slack"}]'
+TS=$(curl -sf -XPOST "$(v slack)/_fake/message" -d '{"app":"agent","user":"UOWNER","channel":"C0GENERAL","text":"<@UAGENT> TEST-from its own app"}' | jq -r .ts)
+for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '.reactions[$ts] == ["white_check_mark"]' > /dev/null && break; sleep 0.2; done
+curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '(.posts | map(select(.thread_ts == $ts)) | length == 1 and (.[0].text | contains("TEST-from its own app"))) and (.manifests[0].display_information.name == "TEST-Reviewer")'
+yv drive agents --viewport mobile --steps '[{"expect":{"css":".agent-card[aria-label=\"TEST-Reviewer\"]","hasText":"In Slack"}},{"click":"css:.agent-card[aria-label=\"TEST-Reviewer\"] .agent-message"},{"expect":{"css":".origin-badge.origin-slack","hasText":"From TEST-Owner on Slack · #general"}},{"click":"role:button:In Slack"},{"expect":"role:dialog:TEST-Reviewer is in Slack"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"in-slack"}]'
+```
+
 ## Gotchas
 
 - Not covered here (no real Slack can be reached from tests): a real
-  workspace's events, rate limits and Slack's own manifest import.
+  workspace's events, rate limits and Slack's own manifest import, and an
+  agent app's install redirect (it needs an https page; `tests/slack.rs`
+  covers it against the fake).

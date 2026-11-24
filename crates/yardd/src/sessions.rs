@@ -247,8 +247,7 @@ async fn start_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]
     let original = text;
     // An agent's session gives its engine more than the user typed.
     let text = match crate::agents::prepare(app, sid, text).await {
-        Ok(crate::agents::Prepared::Send(input)) => input,
-        Ok(crate::agents::Prepared::Stopped) => return,
+        Ok(input) => input,
         Err(e) => {
             fail_turn(app, sid, &e);
             return;
@@ -263,8 +262,7 @@ async fn start_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]
             eprintln!("yardd: {sid}: {e:#}; starting a fresh context");
             app.update_meta(sid, |m| m.fresh_context = Some("the engine could not continue the conversation".into()));
             sent = match crate::agents::prepare(app, sid, original).await {
-                Ok(crate::agents::Prepared::Send(input)) => send_to(app, sid, &engine, &input, attachments).await,
-                Ok(crate::agents::Prepared::Stopped) => return,
+                Ok(input) => send_to(app, sid, &engine, &input, attachments).await,
                 Err(e) => Err(e),
             };
         }

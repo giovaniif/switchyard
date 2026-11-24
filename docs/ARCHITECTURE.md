@@ -466,11 +466,15 @@ Named agents, after Orca's Bots: each has a name it is mentioned by
 (`@Reviewer`), a colour, what it is for, how it runs, and two notes the user
 writes for it. **Each agent has exactly one conversation, for its whole
 life**, and agent conversations never mix with the owner's coding sessions in
-the sidebar. One agent is built in: **Scout**, the host agent, which took
-over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
-`ui/src/AgentsPage.tsx` (page, empty conversation, form), `ui/src/agents.ts`
-(mentions, card words, attention), the composer and session view in
-`App.tsx`.
+the sidebar. There is no built-in agent: Scout, the read-only host agent that
+had replaced Switchy, was removed on 2026-11-24 at the owner's request, with
+its evidence collector (`host_context.rs`, `context.collect`); a Scout record
+and its conversation left by an older yardd are deleted at start
+(`agents::retire`). New agents are **set up by talking to them** (below).
+`crates/yardd/src/agents.rs`; UI `ui/src/AgentsPage.tsx` (page, a new
+agent's conversation, requests, form), `ui/src/agents.ts` (faces, mentions,
+card words, attention), `ui/src/SlackSetup.tsx` (an agent's own Slack app),
+the composer and session view in `App.tsx`.
 
 - **The record** is saved in `agents.json` in the data dir (an unreadable file
   is kept as `.json.bad`): `name` (one word: a letter, then letters, digits,
@@ -481,19 +485,51 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   picks another; Full access only when picked), `instructions` (who it is:
   Orca's SOUL.md), `memory` (what to keep in mind: MEMORY.md), `chat` (its
   conversation's session id, made with its first message; `<hostId>~<id>`
-  for one on a remote), `host` (`local`, or a remote host's id; Scout's is
-  always `local`), `previous` (conversations it left on a host it moved
+  for one on a remote), `host` (`local`, or a remote host's id), `previous` (conversations it left on a host it moved
   away from) and `seed` (what its next conversation starts from after a
-  move; never sent to the UI). The record always lives on the hub; a remote
+  move; never sent to the UI), `setup` (made with New agent, not yet named
+  by itself) and `request` (what it asked for and the owner has not
+  answered: `cwd`, `permission`, `slack`). The record always lives on the hub; a remote
   yardd's own `agents` broadcast is dropped by the hub. The UI knows a
   remote session as an agent's by id (`chat` or `previous`), not by the
   remote's `agent` tag, which may name one of the remote's own; a local
   session tagged with an agent the window does not know is an ordinary one.
 - **Ops:** `agent.list`, `agent.save { agent }` (an `id` edits; only the fields
   sent change; answers `agent.saved`), `agent.delete { id }` (deletes its
-  conversation too, after a confirm in the UI; refused for Scout),
-  `agent.ask { agentId, text, attachments? }`. Every change broadcasts
-  `agents`; the snapshot carries the list.
+  conversation and its own Slack app too, after a confirm in the UI),
+  `agent.ask { agentId, text, attachments? }`, `agent.new { engine, model,
+  effort }` (an agent called `New-agent`, `New-agent-2`… with `setup`, on the
+  last model used; an earlier one nobody has written to is answered instead
+  of a second), `agent.request { id, part, allow }` (the owner's click on
+  what it asked for). Every change broadcasts `agents`; the snapshot carries
+  the list.
+- **Set up by talking to it.** New agent opens the new agent's conversation,
+  no form: its face large, "Hi! What should I do?", ideas to start from, Add
+  it to Slack and Discard; nothing runs until the owner writes. While
+  `setup`, every turn's input carries `<first_run>` (after Orca's first-run
+  rules): ask one question if it cannot tell what it is for; otherwise name
+  itself, write its about and instructions, pick a face and colour, ask for a
+  folder, more access or Slack when the work needs them, do one small piece
+  of the work if it can, and say in one line what it set up. The preamble
+  also gives its current setup ("Your setup now: …", with the engine's
+  models). It sets itself up with its own tool **`update_setup`** (see
+  Agents' own tools): name, about, instructions, memory, face and colour are
+  saved at once (through `agent.save`'s checks; a refusal is the tool's error
+  with the reason); engine, model and effort wait for the turn to end (the
+  conversation cannot change engine mid-turn; `Agents::later`, applied by
+  `run_turn_ends`, then a fresh context as for an Edit), with the note
+  "<Name> now runs on <model>"; a lower or equal permission and "its own
+  folder" at once; a folder of the user's, more access and `connect:
+  "slack"` become `request`. Unknown fields are ignored and named. Its own
+  changes are no notes change. A note in the thread says what changed
+  ("New-agent is set up as @Deployer: name, what it is for, …"); a name of
+  its own ends `setup`, from the tool or from Edit. Requests show as cards
+  above the reply box ("Deployer asks for Full access: it would run anything
+  without asking", Give Full access / Not now; Allow for a folder; Add to
+  Slack opens the Slack dialog); the answer is a note and reaches the agent
+  with its next message. Without the tools (no loopback bind) the first-run
+  rules ask the owner to use Edit. The Edit form stays for changing things
+  by hand.
 - **The one conversation.** Every message to an agent goes into its
   conversation, queued while a turn runs (`sessions::send_message`): from its
   page, from an `@mention` in any message box, from other agents
@@ -574,34 +610,44 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   notification about an agent's turn opens its conversation.
 - **UI.** Agents (`#/agents`, an at-sign row in the sidebar; `#/assistant`
   redirects; Cmd-K "switchy" finds it) is a grid of cards like Automations,
-  rows sharing their height so status lines and buttons line up: avatar,
-  name and `@name` (Scout: "Built in · reads all hosts"), what it is for, how
-  it runs, a status line from the conversation ("Working…", "Needs
-  approval", "Answered 5 min ago · <start of the last answer>", "Failed …",
-  "No messages yet"), then Ask or Message and Edit; the avatar and name open
-  the conversation too. With no agent of the user's own, a dashed card offers
-  to make one. An agent's place is `#/agents/<id>`: its header (avatar, name,
-  what it is for, Stop, Edit) and the thread, the reply box saying "Reply to
-  Scout"; before the first message the New-session-like page with its face,
-  the box, how it runs and, for Scout, three suggested questions. Scout's
-  view, and the view of an agent working in its own folder, have no Terminal,
-  Subagents or Processes pane; an agent given a project folder keeps them.
-  Each answer carries the agent's face and name. The **face** is one of
-  eight drawn ones (`FACE_PATHS` in agents.ts, white strokes on the agent's
-  colour; yardd keeps the name and drops one it does not know). An agent with
-  none shows one picked from its id; glasses are Scout's and never picked by
-  chance. The **form** (`#/agents/<id>/edit`, `new`) is one centred column:
-  the face large with the name under it, then cards for Look (face, colour),
-  Role (what it is for, instructions, memory) and Where and how, and a footer
-  that stays in reach with Delete, Cancel and Save. It reuses New session's
+  rows sharing their height so status lines and buttons line up: face, name
+  and `@name` ("Setting up" while new), what it is for, how it runs, "In
+  Slack" for one with its own app, a status line from the conversation
+  ("Working…", "Needs approval", "Asks you for something", "Answered 5 min
+  ago · <start of the last answer>", "Failed …", "No messages yet"), then
+  Message and Edit; the face and name open the conversation too. New agent
+  (and the dashed card when there is none) opens a new agent's conversation;
+  `#/agents/new/edit` does the same. An agent's place is `#/agents/<id>`:
+  its header (face, name, what it is for, Stop, Add to Slack / Finish Slack /
+  In Slack, Edit), its requests and the thread, the reply box saying "Reply
+  to <Name>". An agent working in its own folder has no Terminal, Subagents
+  or Processes pane; one given a project folder keeps them. Each answer
+  carries the agent's face and name.
+- **Faces move.** Each of the eight faces is drawn in parts (`FACES` in
+  agents.ts: eyes, mouth, and a frame for glasses or a brow; white strokes on
+  the agent's colour; yardd keeps the name and drops one it does not know;
+  an agent with none shows one picked from its id). The eyes blink every 5.2
+  s and glance aside now and then, each agent at its own moment
+  (`blinkDelay` from its id) so faces side by side do not move together;
+  while its conversation runs (header, card, the answer being written) the
+  face looks around, talks and bobs; reaching for one (card, face picker,
+  start page) makes it hop. CSS keyframes on the SVG's parts, off under
+  `prefers-reduced-motion`, still for the form's unpicked faces. The owner
+  asked for faces "animated, like grokbot"; Orca has no animated avatars
+  (only two mascots blinking in a tip dialog), so the motion is ours.
+- **The form** (`#/agents/<id>/edit`, existing agents) is one centred column:
+  the face large with the name under it, then cards for Look (faces and
+  colours on one 8-column grid, 4 on a phone, so each colour sits under a
+  face and every swatch is round), Role (what it is for, instructions,
+  memory) and Where and how, and a footer that stays in reach with Delete,
+  Cancel and Save (both back to the conversation). It reuses New session's
   host, folder, model, account, effort and permission pickers: the folder,
   models and accounts are the picked host's (a new host clears the folder),
   and the account picker shows only when the engine has more than one
-  account there. Scout's has the context host picker instead and no
-  permission. The explanation line and the card's how-it-runs line name the
-  host when it is not this one (a cloud before it on the card), and the
+  account there. The explanation line and the card's how-it-runs line name
+  the host when it is not this one (a cloud before it on the card), and the
   account where the engine has a choice. Deleting asks once more and says the
-  conversation goes too.
+  conversation (and its Slack app) goes too.
 - **Origins** (`origins.rs`). A message into a conversation that the owner
   did not type carries an `origin`, kept on its `user_message` (and on the
   queued message before that) and shown in the thread as a small badge above
@@ -639,8 +685,10 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
 - **Agents' own tools** (`agent_tools.rs`). Every user-made agent gets five
   tools in its conversation on every engine: `notify_owner { message }`,
   `message_agent { to, text }`, `list_agents`, `remember { text }` (adds a
-  line) and `set_memory { text }` (replaces it). Scout, private threads and
-  the owner's own sessions never get them.
+  line), `set_memory { text }` (replaces it) and `update_setup { name?,
+  about?, instructions?, memory?, face?, color?, engine?, model?, effort?,
+  cwd?, permission?, connect? }` (see Set up by talking to it; "Updated its
+  setup"). Private threads and the owner's own sessions never get them.
   - **How they reach the engines.** yardd is also a stdio MCP server:
     `yardd agent-tools`. An agent's conversation hands its engine that server
     with two variables, `YARD_TOOLS_URL` (`http://127.0.0.1:<port>/agent-tools`)
@@ -731,54 +779,20 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   with origin `{ kind: "slack", … }` (the team, channel, thread and message it
   came from, shown as a Slack badge with person and channel), and the reply
   hook's `slack` arm posts the answer to that message back to the Slack thread.
-- **Scout, the host agent.** Its conversation is restricted (`private::restricted`):
-  always Plan only (`session.setPermission` refuses another), and every turn
-  runs on a fresh engine thread with no tools: Codex gets an ephemeral
-  read-only thread with approvals off and shell, apps, browser, computer,
-  JS/code-mode, hooks, multi-agent and every configured MCP server and plugin
-  disabled by thread-local overrides (null optional fields from `config/read`
-  are left out: Codex turns JSON nulls into empty TOML strings, which breaks
-  typed fields such as MCP timeouts); Claude a fresh sidecar with no tools, an
-  empty strict MCP config, no setting sources, plugins or hooks, no saved
-  session, one turn and a denying permission callback. Claude or Codex only.
-  Each turn yardd first collects evidence for the question from the hosts in
-  its scope (All hosts, this one, or one remote), shown in the thread as one
-  step ("Checked all hosts", its sources and coverage as the step's output),
-  then hands the engine an input capped at 32,000 bytes: the four latest
-  exchanges of the chat and up to three older ones sharing words with the
-  question (4,500 bytes), at most 16,000 bytes of evidence merged round-robin
-  across hosts, coverage notes and the question, with instructions to cite
-  source ids and treat evidence and history as untrusted records. Its engine
-  id is never saved, so a restart changes nothing. Stop while the evidence is
-  read ends the turn there.
-- **Evidence** (`host_context.rs`, formerly `switchy_context.rs`) is
-  unchanged: read-only host resources, CPU-sorted process names, services,
-  Docker containers, listening ports, recent saved shell history, matching
-  Switchyard sessions (not Scout's own conversation), and up to four repositories
-  (from session folders, the workspace, common work folders and
-  `YARD_CONTEXT_ROOTS`) with status, recent commits and matching tracked
-  lines; fixed programs and arguments, never a shell or model text, three
-  seconds and 8 KB each, obvious credential lines omitted (not guaranteed
-  secret detection). Each host keeps up to 2,000 distinct observations in
-  `switchy-context.db` (the name kept so they survive) and searches earlier
-  ones by question. `context.collect { query }` collects only the receiving
-  host; the hub asks each connected remote with a daemon-owned WebSocket (20
-  s, 16 hosts) and falls back to the old name `switchy.context`, which a new
-  yardd still answers, for a remote from before agents. Offline hosts, older
-  daemons and omitted sources are named in the coverage.
 - **Private engine threads** (`private.rs`) are what Switchy's plumbing became:
   ids starting `private-` (or the older `switchy-`) stay in memory, never in a
   snapshot, the store or a client op (yardd refuses an op naming one); their
   events go to `app.private.events` instead of a log; in Plan they get the
-  restricted profile above. Session naming (#380) uses them; it moves from
+  restricted profile (Codex: an ephemeral read-only thread with approvals off
+  and every tool, MCP server and plugin disabled by thread-local overrides,
+  null optional fields left out; Claude: a fresh sidecar with no tools, an
+  empty strict MCP config, no setting sources and a denying permission
+  callback). Session naming (#380) uses them; it moves from
   `switchy::internal` / `app.switchy.events` to `private::internal` /
   `app.private.events`. The sidecar's `start` carries `restricted` (and
   `switchy` with the same value, for a sidecar built before agents).
-- **Switchy's conversation** (`switchy.json`) is no longer read: Scout starts
-  with no history, and the file is left where it is, untouched (the owner's
-  call: Switchy was not in use). Switchy's access modes (Ask first, Accept
-  edits, Full access with approvals) are gone: Scout only reads; a task that
-  needs tools is a session or another agent.
+- **Switchy's conversation** (`switchy.json`) is not read and is left where
+  it is.
 - Tests (`tests/agents.rs`, scripted engines): the registry and its refusals,
   the preamble on the first turn only, one conversation per agent, deleting
   an agent with its conversation, a fresh context after a full context, a
@@ -787,22 +801,25 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   checked there, the preamble on the remote's first turn, replies and mentions in the same
   conversation, notes and a model change there, files from the hub refused, sending, editing and
   deleting refused offline), moving to a remote and back (the recap carried, refused mid-turn,
-  the old conversations kept, then deleted with the agent), Scout's evidence step, fresh restricted threads on both engines,
-  history in the second input, Plan only, a restart, remote scope and offline
-  coverage, Stop, the queue, the old op name, and an old `switchy.json` left
-  alone. The `agents`
-  feature map drives the page, card alignment, the empty conversation, the
-  form (with the host and account pickers and the note about a move), mentions (also to a
-  remote agent), the one conversation, a remote agent's card, conversation and offline state,
-  and the Agents row's mark at both viewports. Not proven: a real model's answer to a preamble or to
-  evidence.
+  the old conversations kept, then deleted with the agent), the queue, and
+  Scout retired with its conversation. `tests/naming.rs` covers the private
+  restricted thread with Codex's null config fields. The `agents`
+  feature map drives the page, card alignment, living faces, New agent's
+  conversation and setup, requests, the aligned colours, the form (with the
+  host and account pickers and the note about a move), mentions (also to a
+  remote agent), the one conversation, a remote agent's card, conversation
+  and offline state, Add to Slack, and the Agents row's mark at both
+  viewports. Not proven: a real model's answer to a preamble, or whether it
+  calls update_setup well from the first-run rules.
 - Tests for the tools (`tests/agent_tools.rs`): the scripted engines call the
   real `yardd agent-tools` over stdio for a `[[tool NAME {json}]]` marker
   (`tests/fake-codex/agent-tools.mjs`, on Codex, the Claude sidecar and ACP):
   needs you with its cap and `agent.seen`, a message and its answer back with
   both origins kept across a restart, the hop limit and a message to oneself,
   failed and stopped answers, memory edits and the cap, OpenCode running them
-  unasked, Scout and plain sessions without them, the endpoint's key
+  unasked, a new agent setting itself up with update_setup (direct fields,
+  the model after the turn, requests and the owner's answers, a refused
+  name), plain sessions without them, the endpoint's key
   check, a remote agent's tools acting on the hub (two daemons: `remember`
   in the hub's record and the host's copy, `message_agent` both ways with
   the answers back, `notify_owner` on the hub's windows and its mark
@@ -897,6 +914,45 @@ its engine framing and one arm in `origins::reply`.
   `slack.allow`, `slack.disallow`, `slack.dismiss`, `slack.route { agent,
   channel? }`; each broadcasts `slack`. Slack lives on the hub: a remote's
   `slack` broadcast is dropped.
+- **An agent's own app** (after Orca's bots: "I can't tag it" was the owner's
+  complaint about the shared bot). Each agent can have a Slack app of its
+  own, named after it, so people @mention it by name; it lives beside the
+  shared bot. Its dialog (`SlackSetup.tsx`) opens from Add to Slack in the
+  agent's header, from its start page, and from its request card.
+  - **Token.** The owner pastes a Slack App Configuration *Refresh* Token
+    (`xoxe-`), once per workspace (`slack.grant`; with `agentId` it also
+    makes that agent's app). A pasted Access Token (`xoxe.xoxp-`) is told
+    apart. yardd rotates it with `tooling.tokens.rotate` (each refresh token
+    works once; access lasts 12 h) and keeps both in `slack.json`. The next
+    agent in that workspace is one click (`slack.app.create { teamId }`).
+  - **Its app** (`apps.manifest.create` with the access token): display name
+    and description from the agent, a bot user called by its name in lower
+    case, Socket Mode, the shared bot's scopes and events.
+  - **Install.** The redirect is the page's own address plus `/slack/oauth`,
+    only when it is https and one yardd serves its page to
+    (`YARD_ALLOW_ORIGIN`): only the owner's browser has to reach it, so a
+    tailnet name works. The install link carries a one-time state for 30
+    minutes (`slack.app.authorize` makes a new one); `GET /slack/oauth`
+    exchanges the code (`oauth.v2.access` with the app's client secret) and
+    shows a small page. Without an https page (the desktop app's 127.0.0.1)
+    the dialog has the owner install from the app's page and paste its bot
+    token (`slack.app.botToken`, checked with `auth.test`). Whoever installed
+    it goes on the allowlist (for a pasted token: who made the configuration
+    token).
+  - **Connection.** It needs an app-level token (`xapp-`, `connections:write`)
+    that Slack only makes by hand, the step Orca's cloud spares its users:
+    the dialog links the app's settings and says what to click
+    (`slack.app.appToken`, checked with `apps.connections.open`). Then it
+    keeps its own Socket Mode connection (`run_app`, redialled like the
+    shared bot's, from start after a restart).
+  - **Messages.** Everything it hears goes to its agent, never routed by
+    name or default; the allowlist, origins (with `app`: its agent),
+    reactions and answers are the shared bot's, and the answer is posted
+    with its own bot token.
+  - **Remove** (`slack.app.remove`, or deleting the agent) closes the
+    connection and deletes the app (`apps.manifest.delete`, best effort).
+  - Not built: updating the app when the agent is renamed (its Slack name
+    stays), Orca's member list and access requests per agent, "post as".
 - **Tests.** `YARD_SLACK_API` points the Web API (and so Socket Mode)
   elsewhere: `verify/fakes/fake-slack` is a Bun fake of the Web API methods
   above and Socket Mode, with control endpoints to send a message, a
@@ -907,7 +963,12 @@ its engine framing and one arm in `origins::reply`.
   approval, stop and unread posts, every envelope acked, reconnects after a
   `disconnect` and a drop, a refused token shown, tokens in no snapshot,
   broadcast or log (file mode 0600), and a message to an agent on a remote
-  host (its origin there, its answer posted from the hub). Unit tests cover routing, mention
+  host (its origin there, its answer posted from the hub), and an agent's own
+  app (the token checks, the manifest, the install's redirect and a forged
+  or reused state, the app-level token, a mention answered through its bot,
+  a restart, removal; the fake knows `tooling.tokens.rotate`,
+  `apps.manifest.create`/`delete`, `oauth.v2.access` and a second bot,
+  @agent). Unit tests cover routing, mention
   stripping, Slack markup, mrkdwn, splitting and the `slack` framing. The
   `slack` feature map drives the card (empty, refused, connected, a request,
   the default agent) and the badge in a conversation at both viewports,

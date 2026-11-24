@@ -30,6 +30,8 @@ export function ownToolLabel(name: string, input: any): { title: string; detail:
       return { title: "Remembered", detail: s(input?.text) };
     case "set_memory":
       return { title: "Updated memory", detail: s(input?.text) };
+    case "update_setup":
+      return { title: "Updated its setup", detail: Object.keys(input ?? {}).join(", ") };
     default:
       return null;
   }

@@ -200,7 +200,7 @@ async fn messages_from_slack_reach_the_named_or_default_agent_and_answers_go_bac
     let lost = fake.say(json!({ "user": "UOWNER", "text": "TEST-anyone there?" }));
     let st = fake.wait("the list of agents", |s| !FakeSlack::posts(s, &lost).is_empty()).await;
     let list = &FakeSlack::posts(&st, &lost)[0];
-    assert!(list.starts_with("Which agent?") && list.contains("Scout") && list.contains("Reviewer"), "{list}");
+    assert!(list.starts_with("Which agent?") && list.contains("Reviewer"), "{list}");
 
     // With a default agent it goes there. A bot's message never does.
     op(&mut c, json!({ "op": "slack.route", "agent": id })).await.unwrap();
@@ -312,8 +312,9 @@ async fn the_connection_shows_refused_tokens_and_comes_back_after_a_disconnect_o
 
     // Messages still arrive on the new connection.
     op(&mut c, json!({ "op": "slack.allow", "user": "UOWNER" })).await.unwrap();
-    let ts = fake.say(json!({ "user": "UOWNER", "text": "Scout TEST-are you there?" }));
-    fake.wait("Scout's answer", |s| !FakeSlack::posts(s, &ts).is_empty()).await;
+    reviewer(&mut c).await;
+    let ts = fake.say(json!({ "user": "UOWNER", "text": "Reviewer TEST-are you there?" }));
+    fake.wait("Reviewer's answer", |s| !FakeSlack::posts(s, &ts).is_empty()).await;
 
     // Disconnect forgets the tokens and closes the socket.
     op(&mut c, json!({ "op": "slack.disconnect" })).await.unwrap();
@@ -362,4 +363,101 @@ async fn slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_th
     let answer = FakeSlack::posts(&st, &ts);
     assert_eq!(answer.len(), 1);
     assert!(answer[0].starts_with("Echo: ") && answer[0].contains("TEST-how is the box?"), "{answer:?}");
+}
+
+/// A Slack-app step with a `ref`: the new Slack state, or why not.
+async fn step(c: &mut Client, msg: Value) -> Result<Value, String> {
+    let from = c.mark();
+    let r = format!("step-{from}");
+    let mut msg = msg;
+    msg["ref"] = json!(r);
+    c.send(msg).await;
+    let reply = c.wait_after(from, "the step's answer", |m| m["ref"] == r.as_str() && (m["op"] == "slack" || m["op"] == "error")).await;
+    match reply["op"].as_str() {
+        Some("error") => Err(reply["message"].as_str().unwrap_or("").to_string()),
+        _ => Ok(reply["slack"].clone()),
+    }
+}
+
+#[tokio::test]
+async fn an_agent_gets_a_slack_app_of_its_own_from_a_configuration_token() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-agent-app");
+    let api = fake.api();
+    let env = [("YARD_SLACK_API", api.as_str()), ("YARD_ALLOW_ORIGIN", "https://yard.test")];
+    let d = sb.start_with(&env);
+    let mut c = d.client().await;
+    ready(&mut c).await;
+    let id = reviewer(&mut c).await;
+
+    // The configuration token: an Access Token is told apart, a wrong one refused.
+    let wrong = step(&mut c, json!({ "op": "slack.grant", "token": "xoxe.xoxp-1-TEST" })).await.unwrap_err();
+    assert!(wrong.contains("That is the Access Token"), "{wrong}");
+    assert!(step(&mut c, json!({ "op": "slack.grant", "token": "xoxb-1-TEST" })).await.unwrap_err().contains("starts with xoxe-"));
+    assert!(step(&mut c, json!({ "op": "slack.grant", "token": "xoxe-1-bad-TEST" })).await.unwrap_err().contains("refused"));
+    // The refresh token, with the agent: its app is made in that workspace at once.
+    let s = step(&mut c, json!({ "op": "slack.grant", "token": "xoxe-1-TEST-refresh", "agentId": id, "origin": "https://yard.test" })).await.unwrap();
+    assert_eq!(s["workspaces"][0]["teamId"], "T0TEST");
+    let app = &s["agentApps"][&id];
+    assert_eq!(app["step"], "install");
+    assert_eq!(app["handle"], "reviewer");
+    let manifest = &fake.state()["manifests"][0];
+    assert_eq!(manifest["display_information"]["name"], "Reviewer");
+    assert_eq!(manifest["features"]["bot_user"]["display_name"], "reviewer");
+    assert_eq!(manifest["settings"]["socket_mode_enabled"], true);
+    assert_eq!(manifest["oauth_config"]["redirect_urls"][0], "https://yard.test/slack/oauth");
+    let url = app["authorizeUrl"].as_str().unwrap().to_string();
+    assert!(url.contains("client_id=C0AGENT") && url.contains("redirect_uri=https%3A%2F%2Fyard.test%2Fslack%2Foauth"), "{url}");
+    // No token or secret reaches a window.
+    let shown = s.to_string();
+    assert!(!shown.contains("xoxe") && !shown.contains("TEST-secret"), "{shown}");
+    // A second app for the same agent is refused.
+    assert!(step(&mut c, json!({ "op": "slack.app.create", "agentId": id, "teamId": "T0TEST", "origin": "" })).await.unwrap_err().contains("already has a Slack app"));
+
+    // Slack sends the browser back; a made-up state is refused.
+    let port = d.port;
+    let forged = tokio::task::spawn_blocking(move || http_get(port, "/slack/oauth?code=TEST-code&state=forged").unwrap()).await.unwrap();
+    assert!(forged.contains("This link has expired"));
+    let state = url.split("&state=").nth(1).unwrap().to_string();
+    let path = format!("/slack/oauth?code=TEST-code&state={state}");
+    let page = tokio::task::spawn_blocking(move || http_get(port, &path).unwrap()).await.unwrap();
+    assert!(page.contains("Reviewer is installed in Slack"), "{page}");
+    // Once only.
+    let path = format!("/slack/oauth?code=TEST-code&state={state}");
+    assert!(tokio::task::spawn_blocking(move || http_get(port, &path).unwrap()).await.unwrap().contains("expired"));
+    let s = slack_state(&mut c, "the app-level token step", |s| s["agentApps"][&id]["step"] == "appToken").await;
+    assert_eq!(s["agentApps"][&id]["ownerName"], "TEST-Owner");
+    // Whoever installed it may ask.
+    assert!(s["allowed"].as_array().unwrap().iter().any(|p| p["id"] == "UOWNER"));
+
+    // Its app-level token opens its own Socket Mode connection.
+    assert!(step(&mut c, json!({ "op": "slack.app.appToken", "agentId": id, "token": "xoxb-agent-TEST" })).await.unwrap_err().contains("starts with xapp-"));
+    step(&mut c, json!({ "op": "slack.app.appToken", "agentId": id, "token": "xapp-1-agent-TEST" })).await.unwrap();
+    slack_state(&mut c, "its app connected", |s| s["agentApps"][&id]["state"] == "connected").await;
+
+    // A mention of its own bot reaches it without naming it, and the answer
+    // goes back through its app.
+    let ts = fake.say(json!({ "app": "agent", "user": "UOWNER", "channel": "C0OPS", "text": "<@UAGENT> TEST-check the deploy" }));
+    let st = fake.wait("its answer", |s| !FakeSlack::posts(s, &ts).is_empty() && s["reactions"][&ts] == json!(["white_check_mark"])).await;
+    assert!(FakeSlack::posts(&st, &ts)[0].contains("TEST-check the deploy"));
+    let sid = chat_of(&mut c, &id).await;
+    let history = c.history(&sid).await;
+    let m = history.iter().find(|e| e["type"] == "user_message").expect("the message in its conversation");
+    assert_eq!(m["text"], "TEST-check the deploy");
+    assert_eq!(m["origin"]["kind"], "slack");
+    assert_eq!(m["origin"]["app"], id.as_str());
+    assert!(st["calls"].as_array().unwrap().iter().any(|call| call["method"] == "chat.postMessage" && call["token"] == "bot"));
+
+    // After a restart its app connects again on its own.
+    drop(c);
+    d.stop();
+    let d = sb.start_with(&env);
+    let mut c = d.client().await;
+    slack_state(&mut c, "its app connected again", |s| s["agentApps"][&id]["state"] == "connected").await;
+
+    // Leaving Slack deletes its app; the agent stays.
+    step(&mut c, json!({ "op": "slack.app.remove", "agentId": id })).await.unwrap();
+    assert_eq!(fake.state()["deleted"], json!(["A0AGENT"]));
+    let saved = std::fs::read_to_string(sb.data().join("slack.json")).unwrap();
+    assert!(!saved.contains("xoxb-agent-TEST"));
 }

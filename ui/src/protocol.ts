@@ -109,6 +109,28 @@ export interface SlackView {
   requests: { id: string; name: string; place: string; at: number }[];
   defaultAgent: string | null;
   channels: { id: string; name: string; agent: string | null }[];
+  /** Workspaces with a configuration token: an agent's own app there is one click (older yardds send none). */
+  workspaces?: { teamId: string; teamName: string }[];
+  /** Agents with a Slack app of their own, by agent id. */
+  agentApps?: Record<string, SlackAgentApp>;
+}
+
+/** An agent's own Slack app (yardd's slack.rs): its step and connection, never a token. */
+export interface SlackAgentApp {
+  /** `install`: approve it in Slack; `appToken`: its connection token is missing; `ready`. */
+  step: "install" | "appToken" | "ready";
+  appId: string;
+  teamId: string;
+  teamName: string;
+  /** Its bot's handle in Slack, the agent's name in lower case. */
+  handle: string;
+  ownerName: string;
+  /** Slack sends the browser back here after the install (an https page only). */
+  canRedirect: boolean;
+  authorizeUrl?: string;
+  /** When ready: `connecting`, `connected` or `error`. */
+  state?: "connecting" | "connected" | "error";
+  error?: string | null;
 }
 
 export type ModelServiceTier = { id: string; name: string; description: string };
@@ -893,6 +915,13 @@ export type AgentColor = "blue" | "green" | "amber" | "rose" | "violet" | "teal"
 /** An avatar face; agents.ts draws each. */
 export type AgentFace = "smile" | "grin" | "wink" | "calm" | "glasses" | "bot" | "happy" | "curious";
 
+/** What an agent asked for that it may not give itself (yardd's agents.rs). */
+export interface AgentRequest {
+  cwd?: string;
+  permission?: Permission;
+  slack?: boolean;
+}
+
 /** A named agent, mentioned as `@name`. Agents live on the hub (yardd's agents.rs). */
 export interface Agent {
   id: string;
@@ -914,16 +943,16 @@ export interface Agent {
   instructions: string;
   /** What it keeps in mind across chats. */
   memory: string;
-  /** The built-in host agent: read-only, answers from host evidence. */
-  builtin: boolean;
-  /** The built-in agent's evidence hosts: `all`, `local` or a host id. */
-  scope: string;
   /** Its one conversation (a session id), made with its first message; every message to the agent goes there. */
   chat?: string | null;
   /** Where its conversation runs: `local`, or a remote host's id (older yardds send none). */
   host?: string;
   /** Conversations it left on a host it moved away from, oldest first: readable, not answered from. */
   previous?: string[];
+  /** Made with New agent and still setting itself up in its conversation. */
+  setup?: boolean;
+  /** What it asked for in its conversation and waits on the owner's click for. */
+  request?: AgentRequest | null;
   createdAt: number;
   updatedAt: number;
 }

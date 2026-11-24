@@ -22,7 +22,7 @@ use std::sync::Arc;
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
-use crate::{host_context::clip, state::App};
+use crate::{agents::clip, state::App};
 
 /// The longest chain of agents messaging agents: a message that would be the
 /// fourth hop is refused.
@@ -126,6 +126,10 @@ pub fn from_hub(origin: &Value) -> Option<Value> {
             let mut o = json!({ "kind": "slack" });
             for k in ["team", "channel", "channelName", "threadTs", "ts", "user", "userName"] {
                 o[k] = json!(text(k));
+            }
+            // Which agent's own Slack app it came through (empty: the shared bot).
+            if origin["app"].is_string() {
+                o["app"] = json!(text("app"));
             }
             Some(o)
         }

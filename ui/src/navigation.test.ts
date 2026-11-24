@@ -36,10 +36,10 @@ describe("navigationEntries", () => {
     expect(navigationEntries([], context, "import")[0].action).toBe("import");
   });
   test("agents are destinations; their conversations are not listed apart", () => {
-    const withAgents = { ...context, agents: [{ id: "scout", name: "Scout", about: "", builtin: true }, { id: "g1", name: "Reviewer", about: "Reviews", builtin: false }] };
+    const withAgents = { ...context, agents: [{ id: "g0", name: "Scribe", about: "" }, { id: "g1", name: "Reviewer", about: "Reviews" }] };
     const rows = navigationEntries([session("chat", { agent: "g1" }), session("mine")], withAgents, "");
     expect(rows.filter((e) => e.group === "Sessions").map((e) => e.title)).toEqual(["mine"]);
-    expect(rows.filter((e) => e.group === "Agents").map((e) => e.route)).toEqual([{ page: "agent", id: "scout" }, { page: "agent", id: "g1" }]);
+    expect(rows.filter((e) => e.group === "Agents").map((e) => e.route)).toEqual([{ page: "agent", id: "g0" }, { page: "agent", id: "g1" }]);
     expect(navigationEntries([session("chat", { agent: "g1" })], withAgents, "review").map((e) => e.title)).toEqual(["Reviewer"]);
   });
   test("every sidebar page is a destination; Switchy's old name finds the agents", () => {

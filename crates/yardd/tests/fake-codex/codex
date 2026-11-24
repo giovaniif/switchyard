@@ -334,13 +334,10 @@ async function handle(msg) {
   }
 }
 
-// An agent's session hands the engine a preamble, then the user's message;
-// the host agent's question comes after its evidence. Only what the user
-// typed controls the scripted behaviour.
+// An agent's session hands the engine a preamble, then the user's message.
+// Only what the user typed controls the scripted behaviour.
 const AGENT_MARK = "\nThe user's message:\n";
-const hostQuestion = (text) => text.includes("\nEvidence: ") && text.includes("\nQuestion: ");
-const typed = (text) =>
-  hostQuestion(text) ? text.slice(text.lastIndexOf("\nQuestion: ") + 11) : text.includes(AGENT_MARK) ? text.slice(text.lastIndexOf(AGENT_MARK) + AGENT_MARK.length) : text;
+const typed = (text) => (text.includes(AGENT_MARK) ? text.slice(text.lastIndexOf(AGENT_MARK) + AGENT_MARK.length) : text);
 
 async function runTurn(threadId, cwd, turn, text) {
   // Retrieved records may contain markers from other sessions. Only this
@@ -524,7 +521,7 @@ async function runTurn(threadId, cwd, turn, text) {
     return finish("completed");
   }
 
-  const answer = hostQuestion(text) ? "The host snapshot is available [local:1]. This is a scripted host agent answer." : `Echo: ${typed(text)}`;
+  const answer = `Echo: ${typed(text)}`;
   const third = Math.ceil(answer.length / 3);
   say(answer, [answer.slice(0, third), answer.slice(third, 2 * third), answer.slice(2 * third)]);
   finish("completed");

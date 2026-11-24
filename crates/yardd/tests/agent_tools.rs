@@ -3,8 +3,8 @@
 //! engines in `tests/fake-codex` call it for real over stdio when a prompt
 //! carries a `[[tool NAME {json}]]` marker (see agent-tools.mjs). Covers
 //! reaching the owner, messaging another agent and getting its answer back,
-//! the hop limit, refusals, failure replies, memory edits, Scout and plain
-//! sessions without tools, and the loopback endpoint's key check.
+//! the hop limit, refusals, failure replies, memory edits, plain sessions
+//! without tools, and the loopback endpoint's key check.
 mod common;
 
 use std::{
@@ -146,8 +146,8 @@ async fn a_message_to_another_agent_comes_back_as_its_answer() {
     assert!(sent["text"].as_str().unwrap().starts_with("Sent to @Bea (hop 1 of 3)."), "{sent}");
     // The tool's description names the agents there are.
     let listed = calls(&sb).into_iter().find(|r| r["listed"].is_array()).unwrap();
-    assert_eq!(listed["listed"], json!(["notify_owner", "message_agent", "list_agents", "remember", "set_memory"]));
-    assert!(listed["messageAgent"].as_str().unwrap().contains("Agents: @Scout, @Bea."), "{listed}");
+    assert_eq!(listed["listed"], json!(["notify_owner", "message_agent", "list_agents", "remember", "set_memory", "update_setup"]));
+    assert!(listed["messageAgent"].as_str().unwrap().contains("Agents: @Bea."), "{listed}");
     assert_eq!(c.events(&ada_chat).iter().find(|e| e["type"] == "tool_started").unwrap()["title"], "Messaged @bea");
 
     // Bea's one conversation gets it, tagged as Ada's; her engine reads who it is from.
@@ -260,6 +260,7 @@ async fn a_claude_agent_edits_its_own_memory() {
     let mut c = daemon.client().await;
     ready(&mut c).await;
     let ada = agent(&mut c, "Ada", "claude", "claude-haiku-5-5").await;
+    agent(&mut c, "Bea", "claude", "claude-haiku-5-5").await;
     let text = format!(
         "{} {} {}",
         marker("remember", json!({ "text": "The main branch is trunk." })),
@@ -276,7 +277,8 @@ async fn a_claude_agent_edits_its_own_memory() {
     assert_eq!(steps[0]["title"], "Remembered");
     assert_eq!(steps[0]["detail"], "The main branch is trunk.");
     assert_eq!(steps[2]["title"], "Listed agents");
-    assert!(results(&sb, "list_agents")[0]["text"].as_str().unwrap().contains("@Scout"));
+    let listed = results(&sb, "list_agents")[0]["text"].as_str().unwrap().to_string();
+    assert!(listed.contains("@Bea") && !listed.contains("@Ada"), "{listed}");
     assert!(std::fs::read_to_string(sb.fake_state().join("sidecar.log")).unwrap().contains("tools=switchyard"));
 
     // set_memory replaces it; past the cap it is refused and nothing changes.
@@ -310,7 +312,7 @@ async fn an_opencode_agent_calls_its_tools_without_asking() {
 }
 
 #[tokio::test]
-async fn scout_and_the_owners_own_sessions_get_no_tools() {
+async fn the_owners_own_sessions_get_no_tools() {
     let sb = Sandbox::new("tools-none");
     let daemon = start(&sb);
     let mut c = daemon.client().await;
@@ -329,12 +331,6 @@ async fn scout_and_the_owners_own_sessions_get_no_tools() {
     let oc = c.create(&sb.folder("proj3"), "hi", json!({ "engine": "opencode", "model": "opencode/fake-free", "effort": "default" })).await;
     c.wait_turn_done(&oc, 0).await;
     assert!(std::fs::read_to_string(sb.fake_state().join("acp.log")).unwrap().contains("opencode mcpServers \n"));
-    // Scout's restricted thread has none either.
-    let scout = ask(&mut c, "scout", "What is running?").await;
-    c.wait_turn_done(&scout, 0).await;
-    let start = thread_starts(&sb).into_iter().last().unwrap();
-    assert_eq!(start["ephemeral"], true);
-    assert!(start["config"]["mcp_servers.switchyard"].is_null() && start["config"]["mcp_servers"]["switchyard"].is_null(), "{start}");
     assert!(!c.log.iter().any(|m| m["op"] == "notify"));
 }
 
@@ -438,7 +434,7 @@ async fn a_remote_agents_tools_act_on_the_hub() {
 
     // The tools' description names the hub's agents, not the remote's.
     let listed = calls(&remote_sb).into_iter().find(|r| r["listed"].is_array()).unwrap();
-    assert!(listed["messageAgent"].as_str().unwrap().contains("Agents: @Scout, @Bea."), "{listed}");
+    assert!(listed["messageAgent"].as_str().unwrap().contains("Agents: @Bea."), "{listed}");
 
     // message_agent: Bea, on the hub, gets it from Far, and her answer goes back to Far's conversation there.
     let sent = &results(&remote_sb, "message_agent")[0];
@@ -536,4 +532,94 @@ async fn a_hosted_agent_gets_tools_only_from_a_hub_that_answers_them() {
     assert_eq!(r["isError"], false, "{r}");
     assert_eq!(r["text"], "TEST-done");
     assert_eq!(saved_agent(&sb, "g-far")["memory"], "TEST-y");
+}
+
+/// `agent.new`, answered with the agent.
+async fn new_agent(c: &mut Client) -> Value {
+    let from = c.mark();
+    let r = format!("new-{from}");
+    c.send(json!({ "op": "agent.new", "engine": "codex", "model": MODEL, "effort": EFFORT, "ref": r })).await;
+    let reply = c.wait_after(from, "agent.new reply", |m| m["ref"] == r.as_str()).await;
+    assert_eq!(reply["op"], "agent.saved", "{reply}");
+    reply["agent"].clone()
+}
+
+fn agent_in(m: &Value, id: &str) -> Value {
+    m["agents"].as_array().and_then(|l| l.iter().find(|a| a["id"] == id).cloned()).unwrap_or(Value::Null)
+}
+
+#[tokio::test]
+async fn a_new_agent_sets_itself_up_with_its_tool() {
+    let sb = Sandbox::new("tools-setup");
+    let d = start(&sb);
+    let mut c = d.client().await;
+    ready(&mut c).await;
+    let folder = sb.folder("TEST-project");
+    let made = new_agent(&mut c).await;
+    let id = made["id"].as_str().unwrap().to_string();
+    assert_eq!((made["name"].as_str(), made["setup"].as_bool()), (Some("New-agent"), Some(true)));
+    // Asked again before anyone wrote to it: the same one.
+    assert_eq!(new_agent(&mut c).await["id"], id.as_str());
+
+    // Its first turn has the first-run rules; the scripted engine calls the
+    // tool as if the model chose to.
+    let setup = json!({ "name": "Deployer", "about": "Watches deploys", "instructions": "Be brief.", "face": "bot", "color": "rose",
+        "model": "fake-deep", "permission": "full", "cwd": folder, "connect": "slack", "mood": "x" });
+    let sid = ask(&mut c, &id, &format!("TEST-watch my deploys {}", marker("update_setup", setup))).await;
+    c.wait_turn_done(&sid, 0).await;
+    let first = sb.turn_inputs()[0][0]["text"].as_str().unwrap().to_string();
+    assert!(first.contains("<first_run>") && first.contains("New-agent is a placeholder name") && first.contains("update_setup"), "{first}");
+    assert!(first.contains("Your setup now: name New-agent;"), "{first}");
+    let result = &results(&sb, "update_setup")[0];
+    assert_eq!(result["isError"], false, "{result}");
+    let text = result["text"].as_str().unwrap();
+    assert!(text.starts_with("Saved. New-agent is set up as @Deployer: name, what it is for, instructions, face, colour."), "{text}");
+    assert!(text.contains("It switches its model when this turn ends."), "{text}");
+    assert!(text.contains(&format!("It asks for the folder {folder}, full access (runs anything without asking) and a place in Slack")), "{text}");
+    assert!(text.contains("Ignored: mood."), "{text}");
+    let m = c.wait_for("the agent set up", |m| m["op"] == "agents" && agent_in(m, &id)["request"].is_object() && agent_in(m, &id)["model"] == "fake-deep").await;
+    let a = agent_in(&m, &id);
+    assert_eq!((a["name"].as_str(), a["setup"].as_bool()), (Some("Deployer"), None));
+    assert_eq!((a["about"].as_str(), a["instructions"].as_str(), a["face"].as_str(), a["color"].as_str()), (Some("Watches deploys"), Some("Be brief."), Some("bot"), Some("rose")));
+    // A folder of the user's, more access and Slack wait for a click.
+    assert_eq!((a["permission"].as_str(), a["cwd"].as_str()), (Some("ask"), Some("")));
+    assert_eq!(a["request"], json!({ "cwd": folder, "permission": "full", "slack": true }));
+    // The thread says what changed, and that it now runs on the new model.
+    let notes: Vec<String> = c.history(&sid).await.into_iter().filter(|e| e["type"] == "note").map(|e| e["text"].as_str().unwrap().to_string()).collect();
+    assert!(notes.iter().any(|n| n.starts_with("New-agent is set up as @Deployer")), "{notes:?}");
+    assert!(notes.iter().any(|n| n == "Deployer now runs on fake-deep."), "{notes:?}");
+
+    // The owner answers: more access yes, the folder no, Slack not now.
+    let from = c.mark();
+    for (part, allow) in [("permission", true), ("cwd", false), ("slack", false)] {
+        c.send(json!({ "op": "agent.request", "id": id, "part": part, "allow": allow })).await;
+    }
+    let m = c.wait_after(from, "the requests answered", |m| m["op"] == "agents" && agent_in(m, &id)["request"].is_null() && agent_in(m, &id)["permission"] == "full").await;
+    assert_eq!(agent_in(&m, &id)["cwd"], "");
+    let notes: Vec<String> = c.history(&sid).await.into_iter().filter(|e| e["type"] == "note").map(|e| e["text"].as_str().unwrap().to_string()).collect();
+    assert!(notes.iter().any(|n| n.starts_with("Gave Deployer full access")), "{notes:?}");
+    assert!(notes.iter().any(|n| n.starts_with("Did not allow Deployer to work in")), "{notes:?}");
+    assert!(notes.iter().any(|n| n == "Not now: Deployer stays out of Slack."), "{notes:?}");
+
+    // Its next turn runs on the new model in a fresh context, with its setup
+    // as it is now and no first-run rules.
+    let seq = c.next_seq(&sid);
+    ask(&mut c, &id, "TEST-thanks").await;
+    c.wait_turn_done(&sid, seq).await;
+    let next = sb.turn_inputs().last().unwrap()[0]["text"].as_str().unwrap().to_string();
+    assert!(next.starts_with("You are Deployer,") && next.contains("model fake-deep;") && next.contains("permission full,") && !next.contains("<first_run>"), "{next}");
+    assert_eq!(thread_starts(&sb).last().unwrap()["model"], "fake-deep");
+    let notes: Vec<String> = c.history(&sid).await.into_iter().filter(|e| e["type"] == "note").map(|e| e["text"].as_str().unwrap().to_string()).collect();
+    assert!(notes.iter().any(|n| n.starts_with("Started a fresh context: its model changed.")), "{notes:?}");
+    // A bad name is refused with the reason, in the tool's answer.
+    let seq = c.next_seq(&sid);
+    ask(&mut c, &id, &format!("TEST-rename {}", marker("update_setup", json!({ "name": "two words" })))).await;
+    c.wait_turn_done(&sid, seq).await;
+    let refused = results(&sb, "update_setup").pop().unwrap();
+    assert_eq!(refused["isError"], true);
+    assert!(refused["text"].as_str().unwrap().contains("A name is one word"), "{refused}");
+    // A new agent after this one is a new one again.
+    let other = new_agent(&mut c).await;
+    assert_ne!(other["id"], id.as_str());
+    assert_eq!(other["name"], "New-agent");
 }

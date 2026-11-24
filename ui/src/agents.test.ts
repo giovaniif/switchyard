@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { Agent, SessionMeta } from "./protocol";
-import { AGENT_FACES, agentOf, agentStatus, agentWhere, agentsAttention, faceOf, initial, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, moveNote, nameProblem, originLabel, runsOn } from "./agents";
+import { AGENT_FACES, FACES, agentOf, blinkDelay, agentStatus, agentWhere, agentsAttention, faceOf, initial, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, moveNote, nameProblem, originLabel, runsOn } from "./agents";
 import { initial as empty, parseHash, reduce, routeHash } from "./store";
 
 const agent = (id: string, name: string, extra: Partial<Agent> = {}): Agent => ({
   id, name, color: "blue", face: "", about: "", engine: "codex", model: "", effort: "", account: "default", cwd: "", permission: "ask",
-  instructions: "", memory: "", builtin: false, scope: "all", chat: null, createdAt: 0, updatedAt: 0, ...extra,
+  instructions: "", memory: "", chat: null, createdAt: 0, updatedAt: 0, ...extra,
 });
-const agents = [agent("scout", "Scout", { builtin: true }), agent("g1", "Reviewer"), agent("g2", "Release-bot")];
+const agents = [agent("g0", "Scribe"), agent("g1", "Reviewer"), agent("g2", "Release-bot")];
 const session = (id: string, extra: Partial<SessionMeta> = {}): SessionMeta => ({
   id, title: id, engine: "codex", model: "fake-fast", effort: "low", cwd: "/w", status: "idle", host: "local", createdAt: 0, updatedAt: 0, ...extra,
 });
@@ -17,7 +17,7 @@ describe("mentions", () => {
     expect(mentionAt("@sc", 3)).toEqual({ start: 0, query: "sc" });
     expect(mentionAt("ask @", 5)).toEqual({ start: 4, query: "" });
     expect(mentionAt("mail@host", 9)).toBeNull();
-    expect(mentionAt("@scout is", 9)).toBeNull();
+    expect(mentionAt("@scribe is", 10)).toBeNull();
   });
   test("names that start with the query come first", () => {
     expect(matchAgents(agents, "re").map((a) => a.name)).toEqual(["Reviewer", "Release-bot"]);
@@ -25,27 +25,31 @@ describe("mentions", () => {
     expect(matchAgents(agents, "").length).toBe(3);
   });
   test("picking one replaces the query and leaves the caret after a space", () => {
-    expect(insertMention("@sc what runs?", 0, 3, "Scout")).toEqual({ text: "@Scout what runs?", caret: 7 });
+    expect(insertMention("@sc what runs?", 0, 3, "Scribe")).toEqual({ text: "@Scribe what runs?", caret: 8 });
     expect(insertMention("hi @re", 3, 6, "Reviewer")).toEqual({ text: "hi @Reviewer ", caret: 13 });
   });
   test("a message that starts with an agent's @Name goes to it, without the mention", () => {
-    expect(leadingMention("@scout what is running?", agents)).toEqual({ agent: agents[0], rest: "what is running?" });
+    expect(leadingMention("@scribe what is running?", agents)).toEqual({ agent: agents[0], rest: "what is running?" });
     expect(leadingMention("  @Reviewer\nlook at #12", agents)?.rest).toBe("look at #12");
     expect(leadingMention("@nobody hi", agents)).toBeNull();
-    expect(leadingMention("ask @scout later", agents)).toBeNull();
-    expect(leadingMention("@scouting", agents)).toBeNull();
+    expect(leadingMention("ask @scribe later", agents)).toBeNull();
+    expect(leadingMention("@scribes", agents)).toBeNull();
   });
 });
 
-test("faces: its own, else a steady one from its id; Scout wears glasses", () => {
+test("faces: its own, else a steady one from its id; each in parts that move", () => {
   expect(faceOf(agent("g1", "Reviewer", { face: "wink" }))).toBe("wink");
-  expect(faceOf(agent("scout", "Scout", { builtin: true }))).toBe("glasses");
   const picked = faceOf(agent("g7", "Docs"));
   expect(AGENT_FACES).toContain(picked);
   expect(faceOf(agent("g7", "Renamed"))).toBe(picked);
-  for (const id of ["g1", "g2", "g3", "g4", "g5", "g6", "g8", "g9"]) expect(faceOf(agent(id, "X"))).not.toBe("glasses");
   // An unknown face from a newer yardd falls back instead of drawing nothing.
   expect(AGENT_FACES).toContain(faceOf(agent("g7", "Docs", { face: "moustache" as Agent["face"] })));
+  // Eyes blink and mouths talk, so every face has both.
+  for (const f of AGENT_FACES) expect(FACES[f].eyes && FACES[f].mouth).toBeTruthy();
+  // Each agent blinks at its own steady moment, within the 5.2 s blink.
+  expect(blinkDelay("g1")).toBe(blinkDelay("g1"));
+  expect(new Set(["g1", "g2", "g3", "g4"].map(blinkDelay)).size).toBeGreaterThan(1);
+  for (const id of ["g1", "x", ""]) expect(blinkDelay(id) <= 0 && blinkDelay(id) > -5.2).toBe(true);
 });
 
 test("names: one mentionable word, unique, the rule said before yardd refuses", () => {
@@ -55,7 +59,7 @@ test("names: one mentionable word, unique, the rule said before yardd refuses", 
   expect(nameProblem("two words", agents)).toContain("One word");
   expect(nameProblem("", agents)).toBe("Give it a name.");
   expect(nameProblem("x".repeat(25), agents)).toContain("24");
-  expect(initial(" scout")).toBe("S");
+  expect(initial(" scribe")).toBe("S");
 });
 
 test("an agent's conversation is the hub's, and stays out of the sidebar", () => {
@@ -168,7 +172,7 @@ test("routes and the agents broadcast", () => {
   // Switchy's old address lands on the agents.
   expect(parseHash("#/assistant")).toEqual({ page: "agents" });
   const s = reduce(empty, { t: "server", msg: { op: "agents", agents } });
-  expect(s.agents.map((a) => a.id)).toEqual(["scout", "g1", "g2"]);
+  expect(s.agents.map((a) => a.id)).toEqual(["g0", "g1", "g2"]);
   // A remote host's own agents never replace the hub's.
   expect(reduce(s, { t: "server", msg: { op: "agents", hostId: "box", agents: [] } }).agents.length).toBe(3);
 });

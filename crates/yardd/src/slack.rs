@@ -26,6 +26,18 @@
 //! the agents' names. In a channel, a message without an @mention is read
 //! only as a follow-up in a thread already routed.
 //!
+//! An agent can also have a Slack app of its own, as Orca's bots do, so people
+//! @mention it by its name. The owner pastes a Slack App Configuration Refresh
+//! Token once per workspace (`slack.grant`); yardd keeps it rotated and makes
+//! the agent's app from a manifest (`apps.manifest.create`). The install is
+//! approved in Slack, which sends the browser back to `/slack/oauth` on the
+//! page's own address (only an https one yardd serves; else the owner pastes
+//! the bot token). Slack cannot reach this host, so the app's events come over
+//! Socket Mode too, which takes an app-level token Slack only makes by hand.
+//! Each such app has its own connection; its messages always go to its agent,
+//! through the same allowlist, origins and answers as the shared bot's, and
+//! whoever installed it is allowed.
+//!
 //! `YARD_SLACK_API` points the Web API (and so Socket Mode) elsewhere: tests
 //! and `verify/yv` use the fake in `verify/fakes/fake-slack`.
 
@@ -72,6 +84,57 @@ struct Config {
     channels: Vec<Channel>,
     /// Which agent each routed Slack thread went to (`team/channel/thread_ts`).
     threads: Vec<Link>,
+    /// Configuration tokens, one per workspace, for making agents' apps.
+    workspaces: Vec<Workspace>,
+    /// Agents' own Slack apps.
+    apps: Vec<AgentApp>,
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+struct Workspace {
+    team_id: String,
+    team_name: String,
+    /// Who made the configuration token: the owner, in Slack.
+    user_id: String,
+    refresh_token: String,
+    access_token: String,
+    expires_at: u64,
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+struct AgentApp {
+    agent: String,
+    team_id: String,
+    team_name: String,
+    app_id: String,
+    client_id: String,
+    client_secret: String,
+    /// Where Slack sends the browser after the install; empty: the owner
+    /// pastes the bot token instead.
+    redirect: String,
+    authorize_url: String,
+    bot_token: String,
+    bot_user: String,
+    /// Its bot's handle, as the manifest named it.
+    handle: String,
+    /// Who installed it, added to the allowlist.
+    owner: String,
+    owner_name: String,
+    app_token: String,
+}
+
+impl AgentApp {
+    fn step(&self) -> &'static str {
+        if self.bot_token.is_empty() {
+            "install"
+        } else if self.app_token.is_empty() {
+            "appToken"
+        } else {
+            "ready"
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -119,11 +182,15 @@ struct Status {
     error: Option<String>,
 }
 
-/// Who the bot is, from `auth.test`.
+/// Who the bot is, from `auth.test`, and for an agent's own app, whose.
 #[derive(Clone)]
 struct Me {
     team_id: String,
     bot_user: String,
+    /// The bot token its answers and notes are posted with.
+    token: String,
+    /// The agent whose own app this is; none for the shared bot.
+    agent: Option<String>,
 }
 
 pub struct Slack {
@@ -140,6 +207,14 @@ pub struct Slack {
     /// channel message (or is redelivered) is handled once.
     seen: Mutex<VecDeque<String>>,
     http: OnceLock<reqwest::Client>,
+    /// Each agent app's connection, as its dialog shows it.
+    app_status: Mutex<HashMap<String, Status>>,
+    /// Each ready agent app's Socket Mode connection.
+    app_tasks: Mutex<HashMap<String, tokio::task::AbortHandle>>,
+    /// Install links in flight: OAuth `state` → (agent, until).
+    installs: Mutex<HashMap<String, (String, u64)>>,
+    /// The connections' event queue, made when `run` starts.
+    events: OnceLock<mpsc::UnboundedSender<(Me, Value)>>,
 }
 
 impl Slack {
@@ -163,6 +238,10 @@ impl Slack {
             names: Mutex::new(HashMap::new()),
             seen: Mutex::new(VecDeque::new()),
             http: OnceLock::new(),
+            app_status: Mutex::default(),
+            app_tasks: Mutex::default(),
+            installs: Mutex::default(),
+            events: OnceLock::new(),
         }
     }
 
@@ -182,7 +261,64 @@ impl Slack {
             "requests": cfg.requests,
             "defaultAgent": cfg.default_agent,
             "channels": cfg.channels,
+            "workspaces": cfg.workspaces.iter().map(|w| json!({ "teamId": w.team_id, "teamName": if w.team_name.is_empty() { &w.team_id } else { &w.team_name } })).collect::<Vec<_>>(),
+            "agentApps": self.apps_view(&cfg),
         })
+    }
+
+    /// Each agent's own app: its step and connection, never a token.
+    fn apps_view(&self, cfg: &Config) -> Value {
+        let status = self.app_status.lock().unwrap();
+        let map: serde_json::Map<String, Value> = cfg
+            .apps
+            .iter()
+            .map(|a| {
+                let mut v = json!({
+                    "step": a.step(),
+                    "appId": a.app_id,
+                    "teamId": a.team_id,
+                    "teamName": a.team_name,
+                    "handle": a.handle,
+                    "ownerName": a.owner_name,
+                    "canRedirect": !a.redirect.is_empty(),
+                });
+                if a.step() == "install" && !a.redirect.is_empty() {
+                    v["authorizeUrl"] = json!(a.authorize_url);
+                }
+                if a.step() == "ready" {
+                    let st = status.get(&a.agent).cloned().unwrap_or_else(|| Status { state: "connecting".into(), ..Default::default() });
+                    v["state"] = json!(st.state);
+                    v["error"] = json!(st.error);
+                }
+                (a.agent.clone(), v)
+            })
+            .collect();
+        Value::Object(map)
+    }
+
+    fn app_of(&self, agent: &str) -> Option<AgentApp> {
+        self.cfg.lock().unwrap().apps.iter().find(|a| a.agent == agent).cloned()
+    }
+
+    fn put_app(&self, rec: AgentApp) {
+        self.change(|c| match c.apps.iter_mut().find(|a| a.agent == rec.agent) {
+            Some(slot) => *slot = rec,
+            None => c.apps.push(rec),
+        });
+    }
+
+    /// A Web API call that takes no bearer token (token rotation, the OAuth
+    /// code exchange): the secret is in the form.
+    async fn api_open(&self, method: &str, form: &[(&str, &str)]) -> Result<Value> {
+        let url = format!("{}{method}", api_base());
+        let res = self.http().post(&url).form(form).send().await.map_err(|e| anyhow!("{method}: {}", e.without_url()))?;
+        let status = res.status();
+        let bytes = res.bytes().await.map_err(|e| anyhow!("{method}: {}", e.without_url()))?;
+        let body: Value = serde_json::from_slice(&bytes).map_err(|_| anyhow!("{method}: Slack answered HTTP {status} without JSON"))?;
+        if body["ok"] == true {
+            return Ok(body);
+        }
+        bail!("{method}: {}", body["error"].as_str().unwrap_or("failed"))
     }
 
     fn tokens(&self) -> (String, String) {
@@ -283,6 +419,11 @@ impl Slack {
         name
     }
 
+    /// The agent has a Slack app of its own (made, maybe not installed yet).
+    pub fn has_app(&self, agent: &str) -> bool {
+        self.cfg.lock().unwrap().apps.iter().any(|a| a.agent == agent)
+    }
+
     fn first_time(&self, key: String) -> bool {
         let mut seen = self.seen.lock().unwrap();
         if seen.contains(&key) {
@@ -347,10 +488,62 @@ fn user_id_ok(id: &str) -> bool {
     id.len() >= 3 && id.len() <= 20 && id.starts_with(['U', 'W']) && id.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
 }
 
-/// The Connectors page's ops. Every change broadcasts `slack`.
-pub async fn handle(app: &Arc<App>, msg: &Value) -> Result<()> {
+/// The Connectors page's ops, and an agent's own app's steps (`SlackSetup`
+/// in the UI). Every change broadcasts `slack`; the asking window also gets
+/// it as the answer to its `ref`.
+pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value) -> Result<()> {
     let slack = &app.slack;
+    let agent = || -> Result<crate::agents::Agent> { app.agents.get(msg["agentId"].as_str().context("missing `agentId`")?).filter(|a| !a.hosted).context("no such agent") };
+    let token = || msg["token"].as_str().unwrap_or("").trim().to_string();
     match msg["op"].as_str().unwrap_or("") {
+        "slack.grant" => {
+            let t = token();
+            if t.starts_with("xoxe.xoxp-") {
+                bail!("That is the Access Token. Copy the Refresh Token, the one next to it.");
+            }
+            if !t.starts_with("xoxe-") || t.len() < 12 || t.chars().any(char::is_whitespace) {
+                bail!("That is not a configuration refresh token. It starts with xoxe-.");
+            }
+            let v = slack.api_open("tooling.tokens.rotate", &[("refresh_token", &t)]).await.map_err(|e| refused("Slack refused the configuration token", " Generate a new one and paste it.", e))?;
+            let team = keep_grant(slack, &v);
+            // With an agent: its app is made in that workspace at once.
+            if msg["agentId"].is_string() {
+                create_app(app, &agent()?, &team, msg["origin"].as_str().unwrap_or("")).await?;
+            }
+        }
+        "slack.app.create" => {
+            let team = msg["teamId"].as_str().context("missing `teamId`")?.to_string();
+            create_app(app, &agent()?, &team, msg["origin"].as_str().unwrap_or("")).await?;
+        }
+        "slack.app.authorize" => authorize(app, &agent()?.id),
+        "slack.app.botToken" => {
+            let a = agent()?;
+            let t = token();
+            if !t.starts_with("xoxb-") || t.chars().any(char::is_whitespace) {
+                bail!("That is not a bot token. It starts with xoxb-: Bot User OAuth Token, on the app's OAuth & Permissions page.");
+            }
+            let mut rec = slack.app_of(&a.id).context("Make its Slack app first.")?;
+            let who = slack.api(&t, "auth.test", &[]).await.map_err(|e| refused("Slack refused that bot token", "", e))?;
+            rec.bot_token = t;
+            rec.bot_user = who["user_id"].as_str().unwrap_or_default().to_string();
+            rec.team_name = who["team"].as_str().unwrap_or_default().to_string();
+            // Pasted by hand: the owner is whoever made the configuration token.
+            rec.owner = slack.cfg.lock().unwrap().workspaces.iter().find(|w| w.team_id == rec.team_id).map(|w| w.user_id.clone()).unwrap_or_default();
+            installed(app, rec).await;
+        }
+        "slack.app.appToken" => {
+            let a = agent()?;
+            let t = token();
+            if !t.starts_with("xapp-") || t.chars().any(char::is_whitespace) {
+                bail!("That is not an app-level token. It starts with xapp-.");
+            }
+            let mut rec = slack.app_of(&a.id).context("Make its Slack app first.")?;
+            slack.api(&t, "apps.connections.open", &[]).await.map_err(|e| refused("Slack refused that token", " It needs the connections:write scope.", e))?;
+            rec.app_token = t;
+            slack.put_app(rec);
+            start_app(app, &a.id);
+        }
+        "slack.app.remove" => remove_app(app, &agent()?.id).await,
         "slack.tokens" => {
             let app_token = msg["appToken"].as_str().unwrap_or("").trim().to_string();
             let bot_token = msg["botToken"].as_str().unwrap_or("").trim().to_string();
@@ -436,7 +629,214 @@ pub async fn handle(app: &Arc<App>, msg: &Value) -> Result<()> {
         other => bail!("unknown op `{other}`"),
     }
     broadcast(app);
+    let _ = direct.send(json!({ "op": "slack", "slack": slack.view(), "ref": msg["ref"] }).to_string());
     Ok(())
+}
+
+/// A rotated configuration token, kept for its workspace. Answers the team.
+fn keep_grant(slack: &Slack, v: &Value) -> String {
+    let team = v["team_id"].as_str().unwrap_or_default().to_string();
+    let w = Workspace {
+        team_id: team.clone(),
+        team_name: String::new(),
+        user_id: v["user_id"].as_str().unwrap_or_default().to_string(),
+        refresh_token: v["refresh_token"].as_str().unwrap_or_default().to_string(),
+        access_token: v["token"].as_str().unwrap_or_default().to_string(),
+        expires_at: v["exp"].as_u64().map(|s| s * 1000).unwrap_or_else(|| now_ms() + 11 * 3600 * 1000),
+    };
+    slack.change(|c| {
+        let name = c.workspaces.iter().find(|x| x.team_id == team).map(|x| x.team_name.clone()).unwrap_or_default();
+        c.workspaces.retain(|x| x.team_id != team);
+        c.workspaces.push(Workspace { team_name: name, ..w });
+    });
+    team
+}
+
+/// The workspace's configuration access token, rotated when it is about to
+/// run out (they last 12 hours; each refresh token works once).
+async fn config_token(slack: &Slack, team: &str) -> Result<String> {
+    let w = slack.cfg.lock().unwrap().workspaces.iter().find(|w| w.team_id == team).cloned().context("No configuration token for that workspace. Paste one.")?;
+    if w.expires_at > now_ms() + 5 * 60 * 1000 {
+        return Ok(w.access_token);
+    }
+    let v = slack.api_open("tooling.tokens.rotate", &[("refresh_token", &w.refresh_token)]).await.map_err(|e| anyhow!("Slack no longer accepts this workspace's configuration token. Generate a new one and paste it. ({e:#})"))?;
+    keep_grant(slack, &v);
+    Ok(v["token"].as_str().unwrap_or_default().to_string())
+}
+
+/// The manifest of an agent's own app: a bot named after it, Socket Mode,
+/// and the shared bot's scopes and events, so it reads the same messages.
+fn agent_manifest(name: &str, about: &str, redirect: &str) -> Value {
+    let mut oauth = json!({ "scopes": { "bot": ["app_mentions:read", "chat:write", "im:history", "im:read", "im:write", "channels:history", "channels:read", "groups:history", "groups:read", "users:read", "reactions:write"] } });
+    if !redirect.is_empty() {
+        oauth["redirect_urls"] = json!([redirect]);
+    }
+    let about: String = if about.trim().is_empty() { format!("{name}, an agent in Switchyard.") } else { about.chars().take(139).collect() };
+    json!({
+        "display_information": { "name": name.chars().take(35).collect::<String>(), "description": about },
+        "features": {
+            "bot_user": { "display_name": name.to_lowercase(), "always_online": true },
+            "app_home": { "home_tab_enabled": false, "messages_tab_enabled": true, "messages_tab_read_only_enabled": false },
+        },
+        "oauth_config": oauth,
+        "settings": {
+            "event_subscriptions": { "bot_events": ["app_mention", "message.im", "message.channels", "message.groups"] },
+            "interactivity": { "is_enabled": false },
+            "org_deploy_enabled": false,
+            "socket_mode_enabled": true,
+            "token_rotation_enabled": false,
+        },
+    })
+}
+
+/// The page's address as the install's redirect: https only, and only one
+/// yardd serves its page to, so a window cannot name another site.
+fn redirect_for(origin: &str) -> String {
+    let origin = origin.trim_end_matches('/');
+    if origin.starts_with("https://") && crate::ws::allowed_origins().iter().any(|o| o == origin) {
+        format!("{origin}/slack/oauth")
+    } else {
+        String::new()
+    }
+}
+
+async fn create_app(app: &Arc<App>, a: &crate::agents::Agent, team: &str, origin: &str) -> Result<()> {
+    let slack = &app.slack;
+    if let Some(old) = slack.app_of(&a.id) {
+        bail!("{} already has a Slack app ({}). Remove it first.", a.name, old.app_id);
+    }
+    let config = config_token(slack, team).await?;
+    let redirect = redirect_for(origin);
+    let manifest = agent_manifest(&a.name, &a.about, &redirect).to_string();
+    let made = slack.api(&config, "apps.manifest.create", &[("manifest", &manifest)]).await.map_err(|e| refused("Slack did not make the app", "", e))?;
+    let team_name = slack.cfg.lock().unwrap().workspaces.iter().find(|w| w.team_id == team).map(|w| w.team_name.clone()).unwrap_or_default();
+    slack.put_app(AgentApp {
+        agent: a.id.clone(),
+        team_id: team.to_string(),
+        team_name,
+        app_id: made["app_id"].as_str().unwrap_or_default().to_string(),
+        client_id: made["credentials"]["client_id"].as_str().unwrap_or_default().to_string(),
+        client_secret: made["credentials"]["client_secret"].as_str().unwrap_or_default().to_string(),
+        redirect,
+        authorize_url: made["oauth_authorize_url"].as_str().unwrap_or_default().to_string(),
+        handle: a.name.to_lowercase(),
+        ..Default::default()
+    });
+    authorize(app, &a.id);
+    Ok(())
+}
+
+/// An install link good for 30 minutes: Slack's own, with our redirect and a
+/// one-time state.
+fn authorize(app: &App, agent: &str) {
+    let Some(mut rec) = app.slack.app_of(agent) else { return };
+    if rec.redirect.is_empty() || rec.authorize_url.is_empty() {
+        return;
+    }
+    let state = format!("{}{}", app.id("slack-"), random_hex());
+    app.slack.installs.lock().unwrap().insert(state.clone(), (agent.to_string(), now_ms() + 30 * 60 * 1000));
+    let base = rec.authorize_url.split("&redirect_uri=").next().unwrap_or_default().split("&state=").next().unwrap_or_default().to_string();
+    rec.authorize_url = format!("{base}&redirect_uri={}&state={state}", encode(&rec.redirect));
+    app.slack.put_app(rec);
+}
+
+fn random_hex() -> String {
+    let mut bytes = [0u8; 16];
+    if std::fs::File::open("/dev/urandom").and_then(|mut f| std::io::Read::read_exact(&mut f, &mut bytes)).is_err() {
+        bytes = now_ms().to_le_bytes().repeat(2).try_into().unwrap_or_default();
+    }
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn encode(s: &str) -> String {
+    s.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect()
+}
+
+/// The app is installed: its installer may ask, and it connects once its
+/// app-level token is there.
+async fn installed(app: &Arc<App>, mut rec: AgentApp) {
+    let slack = &app.slack;
+    if !rec.owner.is_empty() {
+        rec.owner_name = slack.user_name(&rec.bot_token, &rec.owner).await;
+        let (id, name) = (rec.owner.clone(), rec.owner_name.clone());
+        slack.change(|c| {
+            c.requests.retain(|r| r.id != id);
+            if !c.allowed.iter().any(|p| p.id == id) {
+                c.allowed.push(Person { id, name });
+            }
+        });
+    }
+    if !rec.team_name.is_empty() {
+        let (team, name) = (rec.team_id.clone(), rec.team_name.clone());
+        slack.change(|c| {
+            if let Some(w) = c.workspaces.iter_mut().find(|w| w.team_id == team) {
+                w.team_name = name;
+            }
+        });
+    }
+    let ready = rec.step() == "ready";
+    let agent = rec.agent.clone();
+    slack.put_app(rec);
+    if ready {
+        start_app(app, &agent);
+    }
+    broadcast(app);
+}
+
+/// The agent leaves Slack: its connection closes and its app is deleted
+/// (best effort: the configuration token may have lapsed).
+pub async fn remove_app(app: &Arc<App>, agent: &str) {
+    stop_app(app, agent);
+    let Some(rec) = app.slack.app_of(agent) else { return };
+    if let Ok(token) = config_token(&app.slack, &rec.team_id).await {
+        if let Err(e) = app.slack.api(&token, "apps.manifest.delete", &[("app_id", &rec.app_id)]).await {
+            eprintln!("yardd: could not delete Slack app {}: {e:#}", rec.app_id);
+        }
+    }
+    app.slack.change(|c| c.apps.retain(|a| a.agent != agent));
+    broadcast(app);
+}
+
+#[derive(Deserialize)]
+pub struct Callback {
+    code: Option<String>,
+    state: Option<String>,
+    error: Option<String>,
+}
+
+/// Where Slack sends the owner's browser after an agent's app is installed.
+pub async fn oauth(axum::extract::State(app): axum::extract::State<Arc<App>>, axum::extract::Query(q): axum::extract::Query<Callback>) -> axum::response::Html<String> {
+    let escape = |s: &str| s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;");
+    let page = |title: &str, body: &str| {
+        axum::response::Html(format!(
+            "<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width\"><title>{title}</title>\
+<body style=\"font:15px system-ui;max-width:32em;margin:15vh auto;padding:0 20px;color:#222\"><h1 style=\"font-size:20px\">{title}</h1><p>{body}</p>\
+<p><a href=\"/#/agents\">Back to Switchyard</a></p></body>"
+        ))
+    };
+    let taken = q.state.as_deref().and_then(|s| app.slack.installs.lock().unwrap().remove(s)).filter(|(_, until)| *until > now_ms());
+    let Some((agent, _)) = taken else {
+        return page("This link has expired", "Open the agent in Switchyard and choose Approve in Slack again.");
+    };
+    if let Some(e) = q.error {
+        return page("Not installed", &format!("Slack said: {}.", escape(&e)));
+    }
+    let Some(rec) = app.slack.app_of(&agent) else { return page("Not installed", "The agent left Slack meanwhile.") };
+    crypto();
+    let code = q.code.unwrap_or_default();
+    match app.slack.api_open("oauth.v2.access", &[("client_id", &rec.client_id), ("client_secret", &rec.client_secret), ("code", &code), ("redirect_uri", &rec.redirect)]).await {
+        Ok(v) => {
+            let mut rec = rec;
+            rec.bot_token = v["access_token"].as_str().unwrap_or_default().to_string();
+            rec.bot_user = v["bot_user_id"].as_str().unwrap_or_default().to_string();
+            rec.team_name = v["team"]["name"].as_str().unwrap_or_default().to_string();
+            rec.owner = v["authed_user"]["id"].as_str().unwrap_or_default().to_string();
+            installed(&app, rec).await;
+            let name = app.agents.get(&agent).map(|a| a.name).unwrap_or_default();
+            page(&format!("{} is installed in Slack", escape(&name)), "One step is left in Switchyard: its connection token. You can close this tab.")
+        }
+        Err(e) => page("Not installed", &escape(&format!("{e:#}"))),
+    }
 }
 
 /// Why a connection ended without an error.
@@ -456,6 +856,12 @@ pub async fn run(app: Arc<App>) {
     // Messages are handled one at a time, in the order Slack sent them, so
     // two quick messages in a thread reach the agent in order.
     tokio::spawn(handle_events(app.clone(), events_rx));
+    let _ = app.slack.events.set(events.clone());
+    // Agents' own apps each keep a connection of their own.
+    let ready: Vec<String> = app.slack.cfg.lock().unwrap().apps.iter().filter(|a| a.step() == "ready").map(|a| a.agent.clone()).collect();
+    for agent in ready {
+        start_app(&app, &agent);
+    }
     let mut changed = app.slack.changed.subscribe();
     let mut backoff = Duration::from_secs(1);
     loop {
@@ -472,7 +878,7 @@ pub async fn run(app: Arc<App>) {
             s.state = "connecting".into();
         });
         let ended = tokio::select! {
-            r = connect(&app, &app_token, &bot_token, &events) => r,
+            r = connect(&app, &app_token, &bot_token, &events, None) => r,
             _ = changed.changed() => {
                 backoff = Duration::from_secs(1);
                 continue;
@@ -506,10 +912,11 @@ pub async fn run(app: Arc<App>) {
     }
 }
 
-async fn connect(app: &Arc<App>, app_token: &str, bot_token: &str, events: &mpsc::UnboundedSender<(Me, Value)>) -> Result<Ended> {
+/// One Socket Mode connection: the shared bot's (`agent` none) or an agent's own app's.
+async fn connect(app: &Arc<App>, app_token: &str, bot_token: &str, events: &mpsc::UnboundedSender<(Me, Value)>, agent: Option<&str>) -> Result<Ended> {
     let slack = &app.slack;
     let who = slack.api(bot_token, "auth.test", &[]).await.map_err(|e| refused("The bot token was refused", "", e))?;
-    let me = Me { team_id: who["team_id"].as_str().unwrap_or("").into(), bot_user: who["user_id"].as_str().unwrap_or("").into() };
+    let me = Me { team_id: who["team_id"].as_str().unwrap_or("").into(), bot_user: who["user_id"].as_str().unwrap_or("").into(), token: bot_token.to_string(), agent: agent.map(str::to_string) };
     let team = who["team"].as_str().unwrap_or("").to_string();
     let bot = who["user"].as_str().unwrap_or("").to_string();
     let open = slack.api(app_token, "apps.connections.open", &[]).await.map_err(|e| refused("The app-level token was refused", " It needs the connections:write scope.", e))?;
@@ -542,8 +949,11 @@ async fn connect(app: &Arc<App>, app_token: &str, bot_token: &str, events: &mpsc
                 match envelope["type"].as_str().unwrap_or("") {
                     "hello" => {
                         up = true;
-                        let (team, bot) = (team.clone(), bot.clone());
-                        slack.set_status(app, |s| *s = Status { state: "connected".into(), team, bot, error: None });
+                        let status = Status { state: "connected".into(), team: team.clone(), bot: bot.clone(), error: None };
+                        match agent {
+                            Some(agent) => app_status(app, agent, status),
+                            None => slack.set_status(app, |s| *s = status),
+                        }
                     }
                     "disconnect" => {
                         if envelope["reason"] == "link_disabled" {
@@ -567,11 +977,59 @@ async fn connect(app: &Arc<App>, app_token: &str, bot_token: &str, events: &mpsc
     }
 }
 
+fn app_status(app: &App, agent: &str, status: Status) {
+    app.slack.app_status.lock().unwrap().insert(agent.to_string(), status);
+    broadcast(app);
+}
+
+/// An agent's app is ready (or its tokens changed): (re)dial its connection.
+fn start_app(app: &Arc<App>, agent: &str) {
+    let task = tokio::spawn(run_app(app.clone(), agent.to_string()));
+    if let Some(old) = app.slack.app_tasks.lock().unwrap().insert(agent.to_string(), task.abort_handle()) {
+        old.abort();
+    }
+}
+
+fn stop_app(app: &App, agent: &str) {
+    if let Some(task) = app.slack.app_tasks.lock().unwrap().remove(agent) {
+        task.abort();
+    }
+    app.slack.app_status.lock().unwrap().remove(agent);
+}
+
+/// An agent's own app's connection, redialled like the shared bot's.
+async fn run_app(app: Arc<App>, agent: String) {
+    crypto();
+    let mut backoff = Duration::from_secs(1);
+    loop {
+        let Some(rec) = app.slack.app_of(&agent).filter(|a| a.step() == "ready") else { return };
+        let Some(events) = app.slack.events.get().cloned() else { return };
+        app_status(&app, &agent, Status { state: "connecting".into(), ..Default::default() });
+        let wait = match connect(&app, &rec.app_token, &rec.bot_token, &events, Some(&agent)).await {
+            Ok(Ended::Refresh) => Duration::ZERO,
+            Ok(Ended::Closed { up }) => {
+                if up {
+                    backoff = Duration::from_secs(1);
+                }
+                backoff
+            }
+            Err(e) => {
+                let error = format!("{e:#}");
+                eprintln!("yardd: slack ({agent}): {error}");
+                app_status(&app, &agent, Status { state: "error".into(), error: Some(error), ..Default::default() });
+                backoff
+            }
+        };
+        tokio::time::sleep(wait).await;
+        backoff = (backoff * 2).min(Duration::from_secs(60));
+    }
+}
+
 /// A token Slack turned down reads as such; anything else (no network, a
 /// wrong `YARD_SLACK_API`) as Slack not being reached.
 fn refused(what: &str, hint: &str, e: anyhow::Error) -> anyhow::Error {
     let text = format!("{e:#}");
-    let auth = ["invalid_auth", "not_authed", "account_inactive", "token_revoked", "token_expired", "not_allowed_token_type", "missing_scope"];
+    let auth = ["invalid_auth", "not_authed", "account_inactive", "token_revoked", "token_expired", "not_allowed_token_type", "missing_scope", "invalid_refresh_token", "invalid_code", "invalid_manifest", "invalid_app_id"];
     if auth.iter().any(|code| text.ends_with(code)) {
         anyhow!("{what} ({text}).{hint}")
     } else {
@@ -635,12 +1093,13 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
     if !slack.first_time(format!("{channel}:{ts}")) {
         return Ok(());
     }
-    let token = slack.bot_token();
+    let token = me.token.clone();
     if token.is_empty() {
         return Ok(());
     }
     let place = slack.channel_name(&token, channel, im).await;
-    if !im {
+    // Channels are listed for the shared bot's default agents.
+    if !im && me.agent.is_none() {
         slack.change(|c| match c.channels.iter_mut().find(|ch| ch.id == channel) {
             Some(ch) => ch.name = place.clone(),
             None => {
@@ -678,8 +1137,9 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
     // A hub's agents kept here to run are the hub's to reach.
     let agents: Vec<(String, String)> = app.agents.all().into_iter().filter(|a| !a.hosted).map(|a| (a.id, a.name)).collect();
     let name_of = |id: &str| agents.iter().find(|(a, _)| a == id).map(|(_, n)| n.clone());
-    // A thread keeps its agent; a deleted one lets the message route anew.
-    let (agent, text) = match known.filter(|id| name_of(id).is_some()) {
+    // An agent's own app is only ever that agent. Else a thread keeps its
+    // agent; a deleted one lets the message route anew.
+    let (agent, text) = match me.agent.clone().or(known).filter(|id| name_of(id).is_some()) {
         Some(id) => (Some(id), text),
         None => match route(&text, &agents) {
             Some((id, rest)) => (Some(id), rest),
@@ -712,7 +1172,7 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
         }
     });
     let user_name = slack.user_name(&token, user).await;
-    let origin = json!({
+    let mut origin = json!({
         "kind": "slack",
         "team": team,
         "channel": channel,
@@ -722,6 +1182,10 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
         "user": user,
         "userName": user_name,
     });
+    if let Some(agent) = &me.agent {
+        // Answered through the same app.
+        origin["app"] = json!(agent);
+    }
     slack.react(&token, channel, ts, "eyes", true).await;
     if let Err(e) = crate::agents::deliver(app, &agent, text.trim(), &origin).await {
         slack.react(&token, channel, ts, "eyes", false).await;
@@ -743,7 +1207,12 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
     crypto();
     let slack = &app.slack;
     let _order = slack.posting.lock().await;
-    let token = slack.bot_token();
+    // A message is answered through the app it came in on: an agent's own,
+    // or the shared bot.
+    let token_for = |o: &Value| match o["app"].as_str().filter(|a| !a.is_empty()) {
+        Some(agent) => slack.app_of(agent).map(|a| a.bot_token).unwrap_or_default(),
+        None => slack.bot_token(),
+    };
     // A remote agent's conversation is on its host: the note goes to the log.
     let note = |text: String| {
         if app.meta(&owed.sid).is_some() {
@@ -752,16 +1221,17 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
             eprintln!("yardd: {agent}: {text}");
         }
     };
-    if token.is_empty() {
-        if owed.status != "approval" {
-            note("Slack is not connected, so this answer was not posted there.".into());
-        }
-        return;
-    }
-    let mut threads: Vec<(String, String, String)> = Vec::new();
+    let mut threads: Vec<(String, String, String, String)> = Vec::new();
     for o in origins {
-        let t = (o["channel"].as_str().unwrap_or("").to_string(), o["threadTs"].as_str().unwrap_or("").to_string(), o["channelName"].as_str().unwrap_or("Slack").to_string());
-        if !t.0.is_empty() && !t.1.is_empty() && !threads.iter().any(|x| x.0 == t.0 && x.1 == t.1) {
+        let token = token_for(o);
+        if token.is_empty() {
+            if owed.status != "approval" {
+                note("Slack is not connected, so this answer was not posted there.".into());
+            }
+            continue;
+        }
+        let t = (o["channel"].as_str().unwrap_or("").to_string(), o["threadTs"].as_str().unwrap_or("").to_string(), o["channelName"].as_str().unwrap_or("Slack").to_string(), token);
+        if !t.0.is_empty() && !t.1.is_empty() && !threads.iter().any(|x| x.0 == t.0 && x.1 == t.1 && x.3 == t.3) {
             threads.push(t);
         }
     }
@@ -784,9 +1254,9 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
         "failed" => (vec![why().map_or_else(|| format!("{agent} could not finish."), |w| format!("{agent} could not finish: {w}"))], Some("x")),
         _ => (vec![why().map_or_else(|| format!("Your message did not reach {agent}."), |w| format!("Your message did not reach {agent}: {w}"))], Some("x")),
     };
-    for (channel, thread, place) in &threads {
+    for (channel, thread, place, token) in &threads {
         for part in &parts {
-            if let Err(e) = slack.post(&token, channel, thread, part).await {
+            if let Err(e) = slack.post(token, channel, thread, part).await {
                 note(format!("Could not post to Slack ({place}): {e:#}"));
                 break;
             }
@@ -795,6 +1265,7 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
     if let Some(mark) = mark {
         for o in origins {
             let (Some(channel), Some(ts)) = (o["channel"].as_str(), o["ts"].as_str()) else { continue };
+            let token = token_for(o);
             slack.react(&token, channel, ts, "eyes", false).await;
             slack.react(&token, channel, ts, mark, true).await;
         }
@@ -1039,7 +1510,7 @@ mod tests {
     use super::*;
 
     fn agents() -> Vec<(String, String)> {
-        vec![("scout".into(), "Scout".into()), ("g1".into(), "Reviewer".into()), ("g2".into(), "pr-bot".into())]
+        vec![("g0".into(), "Scribe".into()), ("g1".into(), "Reviewer".into()), ("g2".into(), "pr-bot".into())]
     }
 
     #[test]
@@ -1049,7 +1520,7 @@ mod tests {
             assert_eq!(route(text, &a), Some(("g1".into(), "look at #12".into())), "{text:?}");
         }
         assert_eq!(route("pr-bot: go", &a), Some(("g2".into(), "go".into())));
-        assert_eq!(route("Scout", &a), Some(("scout".into(), "".into())));
+        assert_eq!(route("Scribe", &a), Some(("g0".into(), "".into())));
         for text in ["Reviewers look", "look Reviewer", "Reviewer's turn", "", "@ Reviewer x", "Nobody: hi"] {
             assert_eq!(route(text, &a), None, "{text:?}");
         }
