@@ -24,6 +24,7 @@ import { PR_URL_SOURCE, prLink, shortLabel } from "./prPeek";
 import { ProcPane } from "./ProcPane";
 import { draftOf, fenceSegments, keepDraft, lineCount, onAppend, quoteInComposer, quoteSegments, type Snippet, splitQuotes, withQuotes } from "./compose";
 import { blockSegments, fencedBlocks, type MdTable } from "./markdown";
+import { fileTarget } from "./fileLinks";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { AutomationForm, AutomationsPage } from "./AutomationsPage";
 import { ConnectorsPage } from "./ConnectorsPage";
@@ -2927,6 +2928,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
     return keys;
   }, [items, agent?.id]);
   const loadAttachment = (a: Attachment) => actions.attachmentUrl(meta.id, a);
+  const downloadFile = useMemo(() => (path: string) => actions.downloadFile(meta.id, path), [actions, meta.id]);
   // Start anyway is out: hold the button until the session leaves the queue or
   // yardd refuses, or a double click sends a second startNow that yardd
   // answers with "this session is not queued".
@@ -2959,6 +2961,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
   );
 
   return (
+    <FileLinks.Provider value={downloadFile}>
     <div className={`session ${!wide && workspace ? "workspace-open" : ""}`}>
       <main className="thread">
         {agent ? (
@@ -3109,6 +3112,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
       </main>
       {!noPane && <WorkPane key={meta.id} shown={workspaceShown} connected={online} actions={actions} meta={meta} state={state} items={items} closeButton={workspaceCloseButton} onClose={closeWorkspace} />}
     </div>
+    </FileLinks.Provider>
   );
 }
 
@@ -3691,6 +3695,43 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
 const WEB_URL = /https?:\/\/(?:[^\s<>()\[\]{}"`']|\([^\s<>()]*\))+/;
 const INLINE = new RegExp(`(${[/\[`?[^\]`]+`?\]\([^)]+\)/.source, /`[^`]+`/.source, /\*\*[^*]+\*\*/.source, PR_URL_SOURCE, WEB_URL.source].join("|")})`, "gi");
 
+/** Downloads a file a link in the open session names; null outside one. */
+const FileLinks = createContext<((path: string) => Promise<string | null>) | null>(null);
+
+/** A link to a file on the session's host. Clicking downloads it; a failure
+ *  (moved, a folder, too large) shows next to the link. */
+function FileLink({ path, label }: { path: string; label: string }) {
+  const download = useContext(FileLinks);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!download) return <code>{label}</code>;
+  return (
+    <>
+      <button
+        type="button"
+        className="file-link"
+        title={`Download ${path}`}
+        aria-busy={busy || undefined}
+        onClick={async () => {
+          if (busy) return;
+          setBusy(true);
+          setError(null);
+          setError(await download(path));
+          setBusy(false);
+        }}
+      >
+        <Icon d={IMPORT} size={12} />
+        {label}
+      </button>
+      {error && (
+        <span className="file-link-error" role="alert">
+          {error}
+        </span>
+      )}
+    </>
+  );
+}
+
 function webHref(raw: string): string | null {
   if (!/^https?:\/\/[^\s\\]+$/i.test(raw)) return null;
   try {
@@ -3717,6 +3758,8 @@ function inline(text: string): ReactNode[] {
         </Fragment>
       );
     }
+    const file = link && fileTarget(link[2]);
+    if (file) return <FileLink key={i} path={file} label={link[1]} />;
     if (link) return <code key={i}>{link[1]}</code>;
     if (part.startsWith("`") && part.endsWith("`") && part.length > 2) return <code key={i}>{part.slice(1, -1)}</code>;
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) return <strong key={i}>{inline(part.slice(2, -2))}</strong>;

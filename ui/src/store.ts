@@ -37,6 +37,7 @@ import type { WidgetRecord } from "./widget";
 import { createNotifier } from "./notify";
 import { inMobileApp, type MobileStatus } from "./mobile";
 import { base64ToBlob, fileToBase64, Replies, tooLarge } from "./attach";
+import { fileError } from "./fileLinks";
 
 /** Where an upload goes: a host from the new-session page, or the host of a
  *  session from its reply box. Empty means this machine. */
@@ -650,6 +651,9 @@ export interface Actions {
   upload(file: File, target: UploadTarget): Promise<Attachment>;
   /** An object URL for an attachment of a session, for a thumbnail. */
   attachmentUrl(sessionId: string, attachment: Attachment): Promise<string>;
+  /** Download a file a link in the session names, read on its host. Resolves
+   *  with a message fit to show when it could not, else null. */
+  downloadFile(sessionId: string, path: string): Promise<string | null>;
   setModel(sessionId: string, model: string, effort: string): void;
   setServiceTier(sessionId: string, serviceTier: string): void;
   /** Change what the engine may do unasked; Claude switches at once, Codex from its next turn. */
@@ -878,6 +882,20 @@ export function useYard(): { state: State; actions: Actions } {
     return url;
   };
 
+  const downloadFile = async (sessionId: string, path: string): Promise<string | null> => {
+    const reply = await ask({ op: "file.get", sessionId, path }, 2 * 60_000);
+    if (reply.error || typeof reply.data !== "string") return fileError(reply);
+    // Always bytes to save, never a page: an agent's HTML file must not
+    // open on this origin.
+    const url = URL.createObjectURL(base64ToBlob(reply.data, "application/octet-stream"));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = typeof reply.name === "string" && reply.name ? reply.name : "file";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return null;
+  };
+
   // Load a session's history the first time it is shown on this connection.
   // A host snapshot drops that host's threads, so reload whatever is gone.
   // An agent's page shows its conversation.
@@ -968,6 +986,7 @@ export function useYard(): { state: State; actions: Actions } {
       },
       upload,
       attachmentUrl,
+      downloadFile,
       setModel: (sessionId, model, effort) => {
         const session = sessionsRef.current[sessionId];
         if (session) rememberSession({ ...session, model, effort });

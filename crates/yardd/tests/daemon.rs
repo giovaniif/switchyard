@@ -1336,6 +1336,14 @@ async fn attachments_reach_codex_as_a_local_image_and_a_path() {
     assert_eq!(user["attachments"][0]["path"], shot_path);
     assert_eq!(user["attachments"][1]["size"], 18);
 
+    // A file the agent links is read from the session's folder, whatever
+    // dialect the link is in; a missing one says so.
+    fs::write(Path::new(&cwd).join("report.csv"), "org,domain\n").unwrap();
+    assert_eq!(c.file(&sid, "report.csv:2").await.unwrap(), ("report.csv".to_string(), b"org,domain\n".to_vec()));
+    assert_eq!(c.file(&sid, "sandbox:/mnt/data/report.csv").await.unwrap().1, b"org,domain\n");
+    let missing = c.file(&sid, "gone.csv").await.unwrap_err();
+    assert!(missing.contains("gone.csv was not found"), "{missing}");
+
     // Thumbnails: the bytes come back for this session's attachments only.
     assert_eq!(c.fetch(&sid, shot["id"].as_str().unwrap()).await.unwrap(), png(300));
     let stray = c.upload("other.png", "image/png", &png(20), json!({})).await.unwrap();
@@ -1469,6 +1477,12 @@ async fn attachments_land_on_the_remote_host_through_the_hub() {
     let history = c.history(&sid).await;
     assert_eq!(history[0]["attachments"][0]["path"], shot_path.as_str());
     assert_eq!(c.fetch(&sid, shot["id"].as_str().unwrap()).await.unwrap(), big);
+    // A linked file is read on the remote host, at the size cap, through the hub.
+    let csv = vec![b'x'; 10 * 1024 * 1024];
+    fs::write(Path::new(&cwd).join("big.csv"), &csv).unwrap();
+    assert_eq!(c.file(&sid, &format!("{cwd}/big.csv")).await.unwrap(), ("big.csv".to_string(), csv));
+    let over = c.file(&sid, "../proj").await.unwrap_err();
+    assert!(over.contains("is a folder"), "{over}");
 
     // Over the cap through the hub: refused by the remote, the link stays up.
     let err = c.upload("huge.bin", "", &vec![0u8; 10 * 1024 * 1024 + 1], json!({ "host": host })).await.unwrap_err();

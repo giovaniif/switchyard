@@ -10,6 +10,7 @@ mod automations;
 mod claude;
 mod codex;
 mod engines;
+mod files;
 mod gemini;
 mod git;
 mod grok;

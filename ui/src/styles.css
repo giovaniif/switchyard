@@ -457,6 +457,12 @@ h1, h2, h3, p { margin: 0; }
 /* PR links in answers and their hover card */
 .prose a { color: inherit; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
 .prose a:hover { text-decoration-color: currentColor; }
+/* A file the agent linked: reads as a link, downloads from the session's host. */
+.prose .file-link { display: inline; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; cursor: pointer; }
+.prose .file-link:hover { text-decoration-color: currentColor; }
+.prose .file-link svg { margin-right: 4px; vertical-align: -1px; color: var(--muted); }
+.prose .file-link[aria-busy] { cursor: progress; color: var(--muted); }
+.file-link-error { margin-left: 6px; color: var(--bad-ink); font-size: 12.5px; }
 .pr-peek { position: fixed; z-index: 45; width: min(340px, calc(100vw - 16px)); display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); box-shadow: var(--shadow-pop); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
 .pr-peek-repo { color: var(--muted); font-family: var(--mono); font-size: 11px; }
 .pr-peek-title { font-size: 14px; font-weight: 600; }
