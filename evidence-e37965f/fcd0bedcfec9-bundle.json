@@ -1,0 +1,90 @@
+{
+  "v": 1,
+  "claim": "Feature map only: layout gains a Gotcha for the phone branch chip that shrinks to 'ya…' (#249).",
+  "repo": "/home/giovani/.yard/wt/switchyard/pr-377-b0c9",
+  "base": "b24a467fe3d2d908e4106c03efd441c13da72d95",
+  "head": "e37965f472a753d7a7e3b24b56287f8660babaa7",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/features/layout.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-24T00:21:29.073Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "e37965f472a753d7a7e3b24b56287f8660babaa7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-24T00:21:29.110Z",
+      "text": "no-repro: map-only change (one layout Gotcha line); no product behaviour changes"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "e37965f472a753d7a7e3b24b56287f8660babaa7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-24T00:21:29.150Z",
+      "text": "no-failing-test: the recipe is the test; no recipe added or changed, the head map run of layout is the check"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "e37965f472a753d7a7e3b24b56287f8660babaa7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-patrol-b0c9-377-layout.json",
+          "sha256": "7b5dc19e29923016ea11f305fa82e803164790d2f76ca0b9a430cb12cc51af60"
+        }
+      ],
+      "addedAt": "2026-11-24T00:23:09.184Z",
+      "text": "head map run layout",
+      "failedApi": [],
+      "failingRecipes": [],
+      "passingRecipes": [
+        "layout/desktop-three-columns",
+        "layout/narrow-hides-pane",
+        "layout/desktop-sidebars-collapse-independently",
+        "layout/mobile-panels-have-close-controls",
+        "layout/mobile-main-column-usable",
+        "layout/mobile-hosts-page",
+        "layout/mobile-drawer-opens-and-closes",
+        "layout/mobile-menu-on-every-page",
+        "layout/mobile-delete-confirm-fits-the-bar",
+        "layout/mobile-delete-confirm-fits-the-bar-without-worktree",
+        "layout/send-stays-at-the-right",
+        "layout/new-session-send-shares-controls-row",
+        "layout/desktop-sidebar-is-a-column",
+        "layout/workspace-tabs-fit-minimum-width"
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "e37965f472a753d7a7e3b24b56287f8660babaa7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "ddd1e590d383c55667ff64dd0498dee5d7d541eea0bdae9e4240fd92fb7763ef"
+        }
+      ],
+      "addedAt": "2026-11-24T00:23:09.225Z",
+      "cmd": "verify/yv map run layout",
+      "exit": 0
+    }
+  ]
+}
