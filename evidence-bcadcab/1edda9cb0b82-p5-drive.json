@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "session:s1a20ade110e2",
+  "build": {
+    "sha": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+    "short": "bcadcab",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T00:04:14.963Z"
+  },
+  "dir": ".verify/evidence/first-term-head2-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4757,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/first-term-head2-desktop/terminal-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "(document.querySelector(\".xterm-rows\").innerText.match(/@[^:\\s]+:/g) || []).length",
+          "value": 1
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

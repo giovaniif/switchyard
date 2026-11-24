@@ -1,0 +1,88 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "terminal",
+      "at": "2026-11-24T00:06:18.635Z",
+      "counts": {
+        "pass": 13,
+        "manual": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "runs-command",
+          "status": "pass",
+          "ms": 4903
+        },
+        {
+          "label": "keys-arrive-in-order",
+          "status": "pass",
+          "ms": 5345
+        },
+        {
+          "label": "second-terminal",
+          "status": "pass",
+          "ms": 3989
+        },
+        {
+          "label": "scrollback-after-reload",
+          "status": "pass",
+          "ms": 4426
+        },
+        {
+          "label": "scrollback-keeps-wrapped-lines",
+          "status": "pass",
+          "ms": 4481
+        },
+        {
+          "label": "scrollback-matches-after-reloads",
+          "status": "pass",
+          "ms": 14513
+        },
+        {
+          "label": "scrollback-does-not-reply-to-old-probes",
+          "status": "pass",
+          "ms": 10449
+        },
+        {
+          "label": "last-terminal-closed-offers-a-new-one",
+          "status": "pass",
+          "ms": 4850
+        },
+        {
+          "label": "exited-shell-survives-reload",
+          "status": "pass",
+          "ms": 6978
+        },
+        {
+          "label": "close-terminal",
+          "status": "pass",
+          "ms": 4800
+        },
+        {
+          "label": "folder-gone",
+          "status": "pass",
+          "ms": 7361
+        },
+        {
+          "label": "attach-terminal-rows",
+          "status": "pass",
+          "ms": 7405
+        },
+        {
+          "label": "first-terminal-opens-at-the-pane-size",
+          "status": "pass",
+          "ms": 9240
+        },
+        {
+          "label": "attach-terminal-selection",
+          "status": "manual",
+          "why": "needs a mouse selection inside xterm"
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

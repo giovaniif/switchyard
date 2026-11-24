@@ -1,0 +1,383 @@
+{
+  "v": 1,
+  "claim": "The first terminal of a session showed the shell prompt twice, a stale copy cut off at the right edge above the real one, on phones and in the desktop right pane: it was opened at 80x24 before its pane was measured.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-23-b0c9",
+  "base": "73abac64de1209e3c2e3ab72be945036281bf5b5",
+  "head": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/TerminalPane.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/terminal.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-24T00:03:52.886Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "73abac64de1209e3c2e3ab72be945036281bf5b5",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "fdf5e1aa33e829c14215989dbe68d9fa6f7f1cc982384432dcb3294163f37cf9"
+        },
+        {
+          "path": "p1-terminal-mobile.png",
+          "sha256": "caee56e39ab74fa2f923a7c1a3796877e8f833c6bcac7b061a39d6b0b68569f5"
+        },
+        {
+          "path": "p1-fail-mobile-step4.png",
+          "sha256": "caee56e39ab74fa2f923a7c1a3796877e8f833c6bcac7b061a39d6b0b68569f5"
+        },
+        {
+          "path": "p1-2-fail-mobile-step4.png",
+          "sha256": "caee56e39ab74fa2f923a7c1a3796877e8f833c6bcac7b061a39d6b0b68569f5"
+        }
+      ],
+      "addedAt": "2026-11-24T00:03:52.934Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "73abac64de1209e3c2e3ab72be945036281bf5b5",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "758ac4121a168d5e3c7d297513a1303f2b9eb65f4bb240036efc059328d354b3"
+        },
+        {
+          "path": "p2-terminal-desktop.png",
+          "sha256": "67df4808ca41b18404c5d948bfad1fa129e4d24734506884494941c5bb3a46f2"
+        },
+        {
+          "path": "p2-fail-desktop-step4.png",
+          "sha256": "9daf8ae2787e1208b7ea9e2a454549856f259e86c2f56ba1bf0d99c7170c3c24"
+        },
+        {
+          "path": "p2-2-fail-desktop-step4.png",
+          "sha256": "9daf8ae2787e1208b7ea9e2a454549856f259e86c2f56ba1bf0d99c7170c3c24"
+        }
+      ],
+      "addedAt": "2026-11-24T00:03:52.984Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "eaea0bf2b1cad08f9088c73c7e0758ba67a6780b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "971a39b7999690928f739dc3be599e00fd20c5ff38e8aa9c5692459274b21f57"
+        }
+      ],
+      "addedAt": "2026-11-24T00:03:53.044Z",
+      "cmd": "verify/yv map run terminal --recipe first-terminal-opens-at-the-pane-size",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "f9c73f94d04510db070b99a3c5d7423b6660247150986883b6c0ad926b02295f"
+        },
+        {
+          "path": "p4-terminal-mobile.png",
+          "sha256": "a695472a06f0d4f9e748b32262c87db2ad442b89f7dd0cb9828d4bd22758dc2b"
+        }
+      ],
+      "addedAt": "2026-11-24T00:04:35.217Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "1edda9cb0b82fa4bd7765d5595dfb36da342ea19b0aa765ff5680fe3ef64ff02"
+        },
+        {
+          "path": "p5-terminal-desktop.png",
+          "sha256": "f8f42fbeafc9065fddc89a8c441da2a46df50e37029394ff88c440e18afc5eba"
+        }
+      ],
+      "addedAt": "2026-11-24T00:04:35.258Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p6-drive.json",
+          "sha256": "5b8c7c36cc7f11a71a69a5e935b8620bf55e28bd8e11dd55ff0d093f36153e62"
+        },
+        {
+          "path": "p6-reopened-desktop.png",
+          "sha256": "da03f5ffb76d575d0ce97715b79a4e108f3cc9dcda23d3adbcdfeb38c7e2b204"
+        }
+      ],
+      "addedAt": "2026-11-24T00:04:35.300Z",
+      "text": "Open a terminal after closing the last tab also opens at the pane size: one prompt",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "89a6d3dcfa1a8196259210043d165ddaed898fbe8cd87af8f79604015985c6ad"
+        }
+      ],
+      "addedAt": "2026-11-24T00:04:35.342Z",
+      "cmd": "verify/yv design-check --base 73abac64de12",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "test",
+      "at": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-cmd.log",
+          "sha256": "e1cbeac8758374a663e78800da3cc0b164095059f1e2884e1b4d15677b307040"
+        }
+      ],
+      "addedAt": "2026-11-24T00:04:35.432Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run terminal --recipe first-terminal-opens-at-the-pane-size",
+      "exit": 0
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "regression",
+      "at": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-map-terminal.json",
+          "sha256": "b7a35885851877da7a875531c98e3a01baeae78f050fa70e80bbed1b44a54247"
+        }
+      ],
+      "addedAt": "2026-11-24T00:04:49.041Z",
+      "cmd": "verify/yv map run terminal",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "terminal/runs-command",
+        "terminal/keys-arrive-in-order",
+        "terminal/second-terminal",
+        "terminal/scrollback-after-reload",
+        "terminal/scrollback-keeps-wrapped-lines",
+        "terminal/scrollback-matches-after-reloads",
+        "terminal/scrollback-does-not-reply-to-old-probes",
+        "terminal/last-terminal-closed-offers-a-new-one",
+        "terminal/exited-shell-survives-reload",
+        "terminal/close-terminal",
+        "terminal/folder-gone",
+        "terminal/attach-terminal-rows",
+        "terminal/first-terminal-opens-at-the-pane-size"
+      ]
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "regression",
+      "at": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-map-mobile.json",
+          "sha256": "1f7cb763b95b4e71cc571d4a01eb7a65c8d7b3536d01b34ffa159b8d1505759e"
+        }
+      ],
+      "addedAt": "2026-11-24T00:06:25.090Z",
+      "cmd": "verify/yv map run mobile",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "mobile/setup-entry-points",
+        "mobile/phone-workspace",
+        "mobile/workspace-button-text-centered",
+        "mobile/successful-connection-removes-shortcuts"
+      ]
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "regression",
+      "at": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-map-layout.json",
+          "sha256": "18477019500d7b5165fd04753309cfbff47265ee1f033bf8a66c7563ece335e0"
+        }
+      ],
+      "addedAt": "2026-11-24T00:06:59.080Z",
+      "cmd": "verify/yv map run layout",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "layout/desktop-three-columns",
+        "layout/narrow-hides-pane",
+        "layout/desktop-sidebars-collapse-independently",
+        "layout/mobile-panels-have-close-controls",
+        "layout/mobile-main-column-usable",
+        "layout/mobile-hosts-page",
+        "layout/mobile-drawer-opens-and-closes",
+        "layout/mobile-menu-on-every-page",
+        "layout/mobile-delete-confirm-fits-the-bar",
+        "layout/mobile-delete-confirm-fits-the-bar-without-worktree",
+        "layout/send-stays-at-the-right",
+        "layout/new-session-send-shares-controls-row",
+        "layout/desktop-sidebar-is-a-column",
+        "layout/workspace-tabs-fit-minimum-width"
+      ]
+    },
+    {
+      "id": 12,
+      "ref": "head",
+      "kind": "regression",
+      "at": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p12-map-worktrees.json",
+          "sha256": "bc0cde787d460486b9653fca00c05d08b8b0c8f40cb7cdf729539b10fc4f09bb"
+        }
+      ],
+      "addedAt": "2026-11-24T00:08:06.894Z",
+      "cmd": "verify/yv map run worktrees",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "worktrees/session-gets-worktree",
+        "worktrees/plain-folder-in-place",
+        "worktrees/one-writer-per-folder",
+        "worktrees/delete-removes-clean-worktree",
+        "worktrees/dirty-worktree-is-kept"
+      ]
+    },
+    {
+      "id": 13,
+      "ref": "head",
+      "kind": "regression",
+      "at": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p13-map-processes.json",
+          "sha256": "9cc582d446c4794b8f143f1b3275f5bf647b788c2ff17e934872484244a870b0"
+        }
+      ],
+      "addedAt": "2026-11-24T00:08:17.585Z",
+      "cmd": "verify/yv map run processes",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "processes/lists-the-process-tree",
+        "processes/nothing-running",
+        "processes/terminal-shell-is-listed",
+        "processes/stop-a-terminal-command",
+        "processes/force-kill-what-ignores-sigterm",
+        "processes/stop-with-children",
+        "processes/stop-with-children-fits-the-pane",
+        "processes/agent-offers-no-stop",
+        "processes/refused-outside-the-session",
+        "processes/listed-from-the-workspace-sheet",
+        "processes/full-command-on-tap"
+      ]
+    },
+    {
+      "id": 14,
+      "ref": "head",
+      "kind": "regression",
+      "at": "bcadcab97e1a808fdf1b3df68f9254681a8fce9c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p14-map-focused-pages.json",
+          "sha256": "607032e79b22d161e2a4c7eb51e31aacaa83b9d9c5f522425bfb7c4f856fdf22"
+        }
+      ],
+      "addedAt": "2026-11-24T00:09:33.053Z",
+      "cmd": "verify/yv map run focused-pages",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "focused-pages/selected-host-tabs",
+        "focused-pages/compact-usage-popover",
+        "focused-pages/usage-popover-leads-with-trigger-account",
+        "focused-pages/usage-row-lines-up-with-host-rows",
+        "focused-pages/subscriptions-page",
+        "focused-pages/account-picker-separate-from-model",
+        "focused-pages/other-engine-account-and-fixed-session",
+        "focused-pages/sessions-search-and-archive",
+        "focused-pages/sessions-visibility-tabs",
+        "focused-pages/sessions-search-no-match-says-so",
+        "focused-pages/host-rows-line-up-with-the-page",
+        "focused-pages/session-rows-line-up-with-the-page",
+        "focused-pages/session-rows-have-straight-dividers",
+        "focused-pages/offline-host-and-selection-fallback",
+        "focused-pages/workspace-widths-and-views",
+        "focused-pages/manage-accounts-opens-logins",
+        "focused-pages/sidebar-skips-duplicate-page-links"
+      ]
+    }
+  ]
+}

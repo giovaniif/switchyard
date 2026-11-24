@@ -1,0 +1,40 @@
+$ verify/yv map run terminal --recipe first-terminal-opens-at-the-pane-size
+# exit 1 after 10515 ms at eaea0bf2b1cad08f9088c73c7e0758ba67a6780b
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "terminal",
+      "at": "2026-11-24T00:04:03.555Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "first-terminal-opens-at-the-pane-size",
+          "status": "fail",
+          "ms": 5235,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 3 {\"eval\":\"(document.querySelector(\\\".xterm-rows\\\").innerText.match(/@[^:\\\\s]+:/g) || []).length\",\"equals\":1}: eval returned 2, expected 1",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-23-b0c9/.verify/drives/2026-11-24T00-03-58-683Z/fail-mobile-step3.png and the aria snapshot"
+            }
+          ],
+          "tail": "{\n  \"command\": \"api\",\n  \"ok\": true,\n  \"sent\": {\n    \"op\": \"session.create\",\n    \"engine\": \"codex\",\n    \"model\": \"fake-fast\",\n    \"effort\": \"low\",\n    \"cwd\": \"/tmp/yv-map-terminal-1204824-mwtxmfa3/work/TEST-plain-folder\",\n    \"text\": \"TEST-first terminal phone\"\n  },\n  \"reply\": {\n    \"op\": \"created\",\n    \"sessionId\": \"s1a20addcea2d\"\n  },\n  \"saved\": {\n    \"first_term_sid\": \"s1a20addcea2d\"\n  },\n  \"received\": 11,\n  \"problems\": []\n}\ntrue\n{\n  \"command\": \"drive\",\n  \"ok\": false,\n  \"route\": \"session:s1a20addcea2d\",\n  \"build\": {\n    \"sha\": \"eaea0bf2b1cad08f9088c73c7e0758ba67a6780b\",\n    \"short\": \"eaea0bf\",\n    \"dirty\": false,\n    \"diffHash\": null,\n    \"at\": \"2026-11-24T00:03:57.530Z\"\n  },\n  \"dir\": \"/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-23-b0c9/.verify/drives/2026-11-24T00-03-58-683Z\",\n  \"runs\": [\n    {\n      \"viewport\": \"mobile\",\n      \"ms\": 4556,\n      \"steps\": 4,\n      \"failed\": {\n        \"step\": 3,\n        \"action\": {\n          \"eval\": \"(document.querySelector(\\\".xterm-rows\\\").innerText.match(/@[^:\\\\s]+:/g) || []).length\",\n          \"equals\": 1\n        },\n        \"reason\": \"eval returned 2, expected 1\",\n        \"screenshot\": \"/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-23-b0c9/.verify/drives/2026-11-24T00-03-58-683Z/fail-mobile-step3.png\",\n        \"aria\": \"- region \\\"Workspace\\\":\\n  - button \\\"Back to conversation\\\"\\n  - button \\\"Terminal\\\" [pressed]\\n  - button \\\"Subagents\\\"\\n  - button \\\"Processes\\\"\\n  - tablist \\\"Terminals\\\":\\n    - tab \\\"1\\\" [selected]\\n    - button \\\"Close terminal\\\"\\n    - button \\\"New terminal\\\"\\n    - button \\\"Attach\\\"\\n  - textbox \\\"Terminal input\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [\n        {\n          \"step\": 3,\n          \"eval\": \"(document.querySelector(\\\".xterm-rows\\\").innerText.match(/@[^:\\\\s]+:/g) || []).length\",\n          \"value\": 2\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 3 {\\\"eval\\\":\\\"(document.querySelector(\\\\\\\".xterm-rows\\\\\\\").innerText.match(/@[^:\\\\\\\\s]+:/g) || []).length\\\",\\\"equals\\\":1}: eval returned 2, expected 1\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-23-b0c9/.verify/drives/2026-11-24T00-03-58-683Z/fail-mobile-step3.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "terminal/first-terminal-opens-at-the-pane-size",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

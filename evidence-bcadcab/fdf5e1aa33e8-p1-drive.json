@@ -1,0 +1,58 @@
+{
+  "ok": false,
+  "route": "session:s1a20adc3d25d",
+  "build": {
+    "sha": "73abac64de1209e3c2e3ab72be945036281bf5b5",
+    "short": "73abac6",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T00:01:36.482Z"
+  },
+  "dir": ".verify/evidence/first-term-base-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4348,
+      "steps": 5,
+      "failed": {
+        "step": 4,
+        "action": {
+          "eval": "(document.querySelector(\".xterm-rows\").innerText.match(/@[^:\\s]+:/g) || []).length",
+          "equals": 1
+        },
+        "reason": "eval returned 2, expected 1",
+        "screenshot": ".verify/evidence/first-term-base-mobile/fail-mobile-step4.png",
+        "aria": "- region \"Workspace\":\n  - button \"Back to conversation\"\n  - button \"Terminal\" [pressed]\n  - button \"Subagents\"\n  - button \"Processes\"\n  - tablist \"Terminals\":\n    - tab \"1\" [selected]\n    - button \"Close terminal\"\n    - button \"New terminal\"\n    - button \"Attach\"\n  - textbox \"Terminal input\""
+      },
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/first-term-base-mobile/terminal-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "(document.querySelector(\".xterm-rows\").innerText.match(/@[^:\\s]+:/g) || []).length",
+          "value": 2
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 4 {\"eval\":\"(document.querySelector(\\\".xterm-rows\\\").innerText.match(/@[^:\\\\s]+:/g) || []).length\",\"equals\":1}: eval returned 2, expected 1",
+      "hint": "see .verify/evidence/first-term-base-mobile/fail-mobile-step4.png and the aria snapshot"
+    }
+  ]
+}

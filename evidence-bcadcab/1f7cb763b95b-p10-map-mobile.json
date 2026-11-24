@@ -1,0 +1,43 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "mobile",
+      "at": "2026-11-24T00:06:59.034Z",
+      "counts": {
+        "pass": 4,
+        "manual": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "setup-entry-points",
+          "status": "pass",
+          "ms": 10815
+        },
+        {
+          "label": "phone-workspace",
+          "status": "pass",
+          "ms": 3918
+        },
+        {
+          "label": "workspace-button-text-centered",
+          "status": "pass",
+          "ms": 2982
+        },
+        {
+          "label": "successful-connection-removes-shortcuts",
+          "status": "pass",
+          "ms": 15372
+        },
+        {
+          "label": "native-device",
+          "status": "manual",
+          "why": "requires a signed build and physical iPhone"
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
