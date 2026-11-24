@@ -1,0 +1,64 @@
+{
+  "ok": false,
+  "route": "new",
+  "build": {
+    "sha": "6b3a74c8ec71814259846aedff1e87342768157d",
+    "short": "6b3a74c",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T20:56:38.509Z"
+  },
+  "dir": ".verify/evidence/sidebar-rows-base",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2220,
+      "steps": 5,
+      "failed": {
+        "step": 4,
+        "action": {
+          "eval": "(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-run the migration\")); const icon = row.querySelector(\".engine-icon\").getBoundingClientRect(); const badge = row.querySelector(\".mark-approval\").getBoundingClientRect(); return [row.getBoundingClientRect().height <= 36, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right]; })()",
+          "equals": [
+            true,
+            true
+          ]
+        },
+        "reason": "eval returned [false,true], expected [true,true]",
+        "screenshot": ".verify/evidence/sidebar-rows-base/fail-desktop-step4.png",
+        "aria": "- navigation \"Sessions\":\n  - button \"Go to session or page\": Switchyard Ctrl K\n  - button \"Collapse sessions sidebar\" [expanded]\n  - button \"New session\"\n  - button \"Agents\"\n  - button \"Automations\"\n  - button \"Connectors\"\n  - button \"Import\"\n  - button \"Settings\"\n  - button \"[slow] TEST-long running refactor Fake Fast · Running\"\n  - button \"Archive [slow] TEST-long running refactor\"\n  - button \"Actions for [slow] TEST-long running refactor\"\n  - button \"[cmd] TEST-run the migration Fake Fast · Needs approval\"\n  - button \"Archive [cmd] TEST-run the migration\"\n  - button \"Actions for [cmd] TEST-run the migration\"\n  - button \"TEST-hello from Claude Haiku 5.5 · Idle\"\n  - button \"Archive TEST-hello from Claude\"\n  - button \"Actions for TEST-hello from Claude\"\n  - button \"[edit] TEST-fix the greeting Fake Fast · Idle\"\n  - button \"Archive [edit] TEST-fix the greeting\"\n  - button \"Actions for [edit] TEST-fix the greeting\"\n  - button \"TEST-say hello Fake Fast · Idle\"\n  - button \"Archive TEST-say hello\"\n  - button \"Actions for TEST-say hello\"\n  - button \"[think] TEST-plan the refactor Fake Fast · Idle\"\n  - button \"Archive [think] TEST-plan the refactor\"\n  - button \"Actions for [think] TEST-plan the refactor\"\n  - button \"[fail] TEST-failing turn Fake Fast · Idle\"\n  - button \"Archive [fail] TEST-failing turn\"\n  - button \"Actions for [fail] TEST-failing turn\"\n  - button \"Subscription usage\": Usage 47% used\n  - button \"iso-host 27% · 65%\"\n- separator \"Resize the sessions sidebar\"\n- banner:\n  - button \"Set up iPhone app\"\n- heading \"What should we work on?\" [level=1]\n- textbox \"Message\":\n  - /placeholder: Describe the task\n- button \"Attach files\"\n- button \"Dictate\"\n- button \"Voice mode\"\n- button \"Model Opus 5.5\": Opus 5.5\n- 'button \"Account: Claude, Default\"'\n- button \"Effort High\": High\n- button \"Ask first\"\n- button \"Send\" [disabled]\n- button \"iso-host\"\n- button \"work\"\n- text: Works in the folder itself"
+      },
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/sidebar-rows-base/rows-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-run the migration\")); const icon = row.querySelector(\".engine-icon\").getBoundingClientRect(); const badge = row.querySelector(\".mark-approval\").getBoundingClientRect(); return [row.getBoundingClientRect().height <= 36, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right]; })()",
+          "value": [
+            false,
+            true
+          ]
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "desktop: step 4 {\"eval\":\"(() => { const row = [...document.querySelectorAll(\\\".session-row\\\")].find((r) => r.textContent.includes(\\\"TEST-run the migration\\\")); const icon = row.querySelector(\\\".engine-icon\\\").getBoundingClientRect(); const badge = row.querySelector(\\\".mark-approval\\\").getBoundingClientRect(); return [row.getBoundingClientRect().height <= 36, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right]; })()\",\"equals\":[true,true]}: eval returned [false,true], expected [true,true]",
+      "hint": "see .verify/evidence/sidebar-rows-base/fail-desktop-step4.png and the aria snapshot"
+    }
+  ]
+}

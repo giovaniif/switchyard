@@ -1,0 +1,210 @@
+{
+  "v": 1,
+  "claim": "Session rows are two lines tall with model and status text, a separate activity mark, a cloud icon and no harness logo, and Archive only in the menu; they should be one line: the harness logo with the status as a badge on it, the title, and Archive on hover",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-some-conversations-just-vanish-1851",
+  "base": "181da51af5049427236eb36d5b4932e59f457926",
+  "head": "6ffa137f3523dae51f13f350cb7f023dd0316eb7",
+  "changed": [
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/ConnectorsPage.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/EngineIcon.test.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/EngineIcon.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/UsageMeters.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/sidebar.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-24T20:56:33.151Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "6b3a74c8ec71814259846aedff1e87342768157d",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "c6b4abae257e8e66a9745d7e32cef2231803dbf5251eae7ed7f0ef1ab443ab97"
+        },
+        {
+          "path": "p1-rows-desktop.png",
+          "sha256": "3a6137f9d73bbfc7bef2f02d9fd86b7fac95217fcabc974e6a87d1bf2cbf8be7"
+        },
+        {
+          "path": "p1-fail-desktop-step4.png",
+          "sha256": "a1d08dd399f490a06c53e5c401a5cbb932d5c28d7d3c8258025ff2432fc473c8"
+        }
+      ],
+      "addedAt": "2026-11-24T20:56:42.069Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "6b3a74c8ec71814259846aedff1e87342768157d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "171556f5927f57e7f4db59127a6617394019814e9b7631fcde656d9311c75982"
+        }
+      ],
+      "addedAt": "2026-11-24T20:56:42.117Z",
+      "cmd": "verify/yv map run sidebar --recipe compact-rows-with-engine-marks",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "6ffa137f3523dae51f13f350cb7f023dd0316eb7",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "e5b77b5a801779af876bf7cf642a79ca09b6706ff13b2df20246674f28216920"
+        },
+        {
+          "path": "p3-rows-desktop.png",
+          "sha256": "324e4da7991f9651bb442ce0fe5d55b0aca6b01dc503c75cebb88d03148b6f6e"
+        }
+      ],
+      "addedAt": "2026-11-24T20:56:53.688Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "6ffa137f3523dae51f13f350cb7f023dd0316eb7",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "412845970ea9f709f3cb27219bf27fa4f9c4794d1408cf3e11229353f32f2ad9"
+        },
+        {
+          "path": "p4-rows-mobile.png",
+          "sha256": "df87de5b7fa497cce98168b11fa901ba85077641e17254969474a6b085c31c21"
+        }
+      ],
+      "addedAt": "2026-11-24T20:56:56.690Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "6ffa137f3523dae51f13f350cb7f023dd0316eb7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "e5e3588e68c0ce7b767dcaf81e171dd48feb28dadfbb17df81e819470f759a8c"
+        }
+      ],
+      "addedAt": "2026-11-24T20:56:56.737Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "6ffa137f3523dae51f13f350cb7f023dd0316eb7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "8a311e5343d67c46fb05ccadf849698ed8a06d47aa3de47f6dc5e92f6806d3fb"
+        }
+      ],
+      "addedAt": "2026-11-24T20:58:07.254Z",
+      "cmd": "verify/yv design-check --base 181da51af504",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "6ffa137f3523dae51f13f350cb7f023dd0316eb7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-sidebar.json",
+          "sha256": "29aca5db23b0c25468440b5f97ea3e67b7f1ceae23bf09d63141f94f3710f8ee"
+        }
+      ],
+      "addedAt": "2026-11-24T20:58:07.355Z",
+      "cmd": "verify/yv map run sidebar",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "sidebar/rows-show-status",
+        "sidebar/compact-rows-with-engine-marks",
+        "sidebar/hover-shows-archive",
+        "sidebar/rows-mark-what-needs-you",
+        "sidebar/mark-chat-unread",
+        "sidebar/rename-session",
+        "sidebar/pin-and-unpin",
+        "sidebar/archive-and-restore",
+        "sidebar/archiving-the-open-session-keeps-the-list-closed",
+        "sidebar/delete-keeps-worktree",
+        "sidebar/group-new",
+        "sidebar/group-move-to-existing",
+        "sidebar/group-drag-out-to-ungrouped",
+        "sidebar/group-drag-into-group",
+        "sidebar/group-drag-noop",
+        "sidebar/group-collapse-persists",
+        "sidebar/group-rename",
+        "sidebar/group-remove-from-group",
+        "sidebar/group-ungroup",
+        "sidebar/archived-header-stays-at-bottom",
+        "sidebar/hand-off-keeps-the-group",
+        "sidebar/hand-off-from-a-pinned-session-stays-in-its-group",
+        "sidebar/menu-on-a-row-below-the-fold",
+        "sidebar/session-named-from-the-conversation"
+      ]
+    }
+  ]
+}

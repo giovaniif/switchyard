@@ -1,0 +1,40 @@
+$ verify/yv map run sidebar --recipe compact-rows-with-engine-marks
+# exit 1 after 2873 ms at 6b3a74c8ec71814259846aedff1e87342768157d
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "sidebar",
+      "at": "2026-11-24T20:56:44.988Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "compact-rows-with-engine-marks",
+          "status": "fail",
+          "ms": 2047,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 3 {\"eval\":\"(() => { const row = [...document.querySelectorAll(\\\".session-row\\\")].find((r) => r.textContent.includes(\\\"TEST-run the migration\\\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\\\".row-engine .engine-icon\\\").getBoundingClientRect(); const badge = row.querySelector(\\\".row-engine .mark-approval\\\").getBoundingClientRect(); const title = row.querySelector(\\\".session-title\\\").getBoundingClientRect(); const visible = [...row.querySelector(\\\".session-text\\\").children].filter((e) => !e.classList.contains(\\\"sr-only\\\")).length; return [box.height <= 34, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right, icon.right <= title.left, visible, row.title.includes(\\\"Fake Fast · Needs approval\\\"), row.querySelectorAll(\\\".cloud\\\").length]; })()\",\"equals\":[true,true,true,1,true,0]}: evaluate: TypeError: Cannot read properties of null (reading 'getBoundingClientRect')",
+              "hint": "see /home/giovani/.yard/wt/better-than-claude-code/yard-some-conversations-just-vanish-1851/.verify/drives/2026-11-24T20-56-43-161Z/fail-desktop-step3.png and the aria snapshot"
+            }
+          ],
+          "tail": "button \\\"TEST-say hello Fake Fast · Idle\\\"\\n  - button \\\"Archive TEST-say hello\\\"\\n  - button \\\"Actions for TEST-say hello\\\"\\n  - button \\\"[think] TEST-plan the refactor Fake Fast · Idle\\\"\\n  - button \\\"Archive [think] TEST-plan the refactor\\\"\\n  - button \\\"Actions for [think] TEST-plan the refactor\\\"\\n  - button \\\"[fail] TEST-failing turn Fake Fast · Idle\\\"\\n  - button \\\"Archive [fail] TEST-failing turn\\\"\\n  - button \\\"Actions for [fail] TEST-failing turn\\\"\\n  - button \\\"Subscription usage\\\": Usage 47% used\\n  - button \\\"iso-host Healthy\\\"\\n- separator \\\"Resize the sessions sidebar\\\"\\n- banner:\\n  - button \\\"Set up iPhone app\\\"\\n- heading \\\"What should we work on?\\\" [level=1]\\n- textbox \\\"Message\\\":\\n  - /placeholder: Describe the task\\n- button \\\"Attach files\\\"\\n- button \\\"Dictate\\\"\\n- button \\\"Voice mode\\\"\\n- button \\\"Model Opus 5.5\\\": Opus 5.5\\n- 'button \\\"Account: Claude, Default\\\"'\\n- button \\\"Effort High\\\": High\\n- button \\\"Ask first\\\"\\n- button \\\"Send\\\" [disabled]\\n- button \\\"iso-host\\\"\\n- button \\\"work\\\"\\n- text: Works in the folder itself\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 3 {\\\"eval\\\":\\\"(() => { const row = [...document.querySelectorAll(\\\\\\\".session-row\\\\\\\")].find((r) => r.textContent.includes(\\\\\\\"TEST-run the migration\\\\\\\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\\\\\\\".row-engine .engine-icon\\\\\\\").getBoundingClientRect(); const badge = row.querySelector(\\\\\\\".row-engine .mark-approval\\\\\\\").getBoundingClientRect(); const title = row.querySelector(\\\\\\\".session-title\\\\\\\").getBoundingClientRect(); const visible = [...row.querySelector(\\\\\\\".session-text\\\\\\\").children].filter((e) => !e.classList.contains(\\\\\\\"sr-only\\\\\\\")).length; return [box.height <= 34, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right, icon.right <= title.left, visible, row.title.includes(\\\\\\\"Fake Fast · Needs approval\\\\\\\"), row.querySelectorAll(\\\\\\\".cloud\\\\\\\").length]; })()\\\",\\\"equals\\\":[true,true,true,1,true,0]}: evaluate: TypeError: Cannot read properties of null (reading 'getBoundingClientRect')\",\n      \"hint\": \"see /home/giovani/.yard/wt/better-than-claude-code/yard-some-conversations-just-vanish-1851/.verify/drives/2026-11-24T20-56-43-161Z/fail-desktop-step3.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "sidebar/compact-rows-with-engine-marks",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+
