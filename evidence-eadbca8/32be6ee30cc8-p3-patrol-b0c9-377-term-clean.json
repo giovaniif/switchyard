@@ -1,0 +1,83 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "terminal",
+      "at": "2026-11-24T00:14:25.895Z",
+      "counts": {
+        "pass": 12,
+        "manual": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "runs-command",
+          "status": "pass",
+          "ms": 4744
+        },
+        {
+          "label": "keys-arrive-in-order",
+          "status": "pass",
+          "ms": 5353
+        },
+        {
+          "label": "second-terminal",
+          "status": "pass",
+          "ms": 4179
+        },
+        {
+          "label": "scrollback-after-reload",
+          "status": "pass",
+          "ms": 4458
+        },
+        {
+          "label": "scrollback-keeps-wrapped-lines",
+          "status": "pass",
+          "ms": 4408
+        },
+        {
+          "label": "scrollback-matches-after-reloads",
+          "status": "pass",
+          "ms": 14531
+        },
+        {
+          "label": "scrollback-does-not-reply-to-old-probes",
+          "status": "pass",
+          "ms": 10489
+        },
+        {
+          "label": "last-terminal-closed-offers-a-new-one",
+          "status": "pass",
+          "ms": 4736
+        },
+        {
+          "label": "exited-shell-survives-reload",
+          "status": "pass",
+          "ms": 6899
+        },
+        {
+          "label": "close-terminal",
+          "status": "pass",
+          "ms": 5016
+        },
+        {
+          "label": "folder-gone",
+          "status": "pass",
+          "ms": 7292
+        },
+        {
+          "label": "attach-terminal-rows",
+          "status": "pass",
+          "ms": 7392
+        },
+        {
+          "label": "attach-terminal-selection",
+          "status": "manual",
+          "why": "needs a mouse selection inside xterm"
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

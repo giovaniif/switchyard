@@ -1,0 +1,91 @@
+$ verify/yv map run layout
+# exit 0 after 67095 ms at eadbca8ad4cb699c23d17868e811e8e270fe11f6
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "layout",
+      "at": "2026-11-24T00:15:44.266Z",
+      "counts": {
+        "pass": 14
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "desktop-three-columns",
+          "status": "pass",
+          "ms": 3742
+        },
+        {
+          "label": "narrow-hides-pane",
+          "status": "pass",
+          "ms": 2840
+        },
+        {
+          "label": "desktop-sidebars-collapse-independently",
+          "status": "pass",
+          "ms": 9130
+        },
+        {
+          "label": "mobile-panels-have-close-controls",
+          "status": "pass",
+          "ms": 5783
+        },
+        {
+          "label": "mobile-main-column-usable",
+          "status": "pass",
+          "ms": 3101
+        },
+        {
+          "label": "mobile-hosts-page",
+          "status": "pass",
+          "ms": 3051
+        },
+        {
+          "label": "mobile-drawer-opens-and-closes",
+          "status": "pass",
+          "ms": 6134
+        },
+        {
+          "label": "mobile-menu-on-every-page",
+          "status": "pass",
+          "ms": 3935
+        },
+        {
+          "label": "mobile-delete-confirm-fits-the-bar",
+          "status": "pass",
+          "ms": 3724
+        },
+        {
+          "label": "mobile-delete-confirm-fits-the-bar-without-worktree",
+          "status": "pass",
+          "ms": 3513
+        },
+        {
+          "label": "send-stays-at-the-right",
+          "status": "pass",
+          "ms": 8850
+        },
+        {
+          "label": "new-session-send-shares-controls-row",
+          "status": "pass",
+          "ms": 4377
+        },
+        {
+          "label": "desktop-sidebar-is-a-column",
+          "status": "pass",
+          "ms": 2822
+        },
+        {
+          "label": "workspace-tabs-fit-minimum-width",
+          "status": "pass",
+          "ms": 5234
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+

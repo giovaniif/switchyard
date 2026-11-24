@@ -1,0 +1,92 @@
+{
+  "v": 1,
+  "claim": "Feature map only: the terminal intro said desktop only, but the terminal is also in the phone Workspace sheet; layout gains a Gotcha for the phone branch chip (#249).",
+  "repo": "/home/giovani/.yard/wt/switchyard/pr-377-b0c9",
+  "base": "73abac64de1209e3c2e3ab72be945036281bf5b5",
+  "head": "eadbca8ad4cb699c23d17868e811e8e270fe11f6",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/features/layout.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/terminal.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-24T00:12:23.389Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "eadbca8ad4cb699c23d17868e811e8e270fe11f6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-24T00:12:23.439Z",
+      "text": "no-repro: map-only change (terminal intro text, layout Gotcha); no product behaviour changes"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "eadbca8ad4cb699c23d17868e811e8e270fe11f6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-24T00:12:23.478Z",
+      "text": "no-failing-test: the recipe is the test; no recipe added or changed, the head map runs of terminal and layout are the check"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "eadbca8ad4cb699c23d17868e811e8e270fe11f6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-patrol-b0c9-377-term-clean.json",
+          "sha256": "32be6ee30cc867a43e05b17d59217120f7322de720336df10d922552253f5663"
+        }
+      ],
+      "addedAt": "2026-11-24T00:14:37.133Z",
+      "text": "head map run terminal: 12 pass, 1 manual",
+      "failedApi": [],
+      "failingRecipes": [],
+      "passingRecipes": [
+        "terminal/runs-command",
+        "terminal/keys-arrive-in-order",
+        "terminal/second-terminal",
+        "terminal/scrollback-after-reload",
+        "terminal/scrollback-keeps-wrapped-lines",
+        "terminal/scrollback-matches-after-reloads",
+        "terminal/scrollback-does-not-reply-to-old-probes",
+        "terminal/last-terminal-closed-offers-a-new-one",
+        "terminal/exited-shell-survives-reload",
+        "terminal/close-terminal",
+        "terminal/folder-gone",
+        "terminal/attach-terminal-rows"
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "eadbca8ad4cb699c23d17868e811e8e270fe11f6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "2e0c0ee2df2944ef665c708365e8272b987bd58b2bdbe5129f3d3d56bfa93c37"
+        }
+      ],
+      "addedAt": "2026-11-24T00:14:37.173Z",
+      "cmd": "verify/yv map run layout",
+      "exit": 0
+    }
+  ]
+}
