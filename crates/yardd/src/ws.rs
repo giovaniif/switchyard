@@ -303,6 +303,10 @@ pub async fn create_session(
         let _ = direct.send(created.to_string());
     }
     sessions::begin(app, &sid, text, &files, origin).await;
+    // A title from the task now, rather than its first line until a turn ends.
+    if app.meta(&sid).is_some_and(|m| crate::naming::due_at_start(&m)) {
+        app.name_later(&sid);
+    }
     Ok(sid)
 }
 
