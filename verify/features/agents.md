@@ -88,6 +88,15 @@ yv drive agents --viewport mobile --steps '[{"click":"role:button:New agent"},{"
 yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"name":"TEST-Desk","color":"rose","face":"wink","instructions":"TEST-plan first","memory":"TEST-remember this","permission":"ask"},{"name":"TEST-Phone","color":"teal"}]}'
 ```
 
+### a-name-problem-shows-by-the-name
+A name the form refuses says why right under the name field, in view, not
+only at the end of the form below the fold: a taken name, then two words.
+Fixed, the line under the field names the mention again (#391).
+
+```sh
+yv drive agents --steps '[{"click":"role:button:New agent"},{"fill":"label:Name","value":"Scout"},{"expect":"role:button:Create agent","enabled":false},{"expect":"css:.agent-form-name [role=alert]","text":"Another agent is already called Scout.","inViewport":true},{"shot":"taken"},{"fill":"label:Name","value":"two words"},{"expect":"css:.agent-form-name [role=alert]","text":"One word","inViewport":true},{"fill":"label:Name","value":"TEST-Fine"},{"expect":"css:.agent-form-name","text":"Mention it as @TEST-Fine"},{"expect":"role:alert","count":0}]'
+```
+
 ### at-mention-from-new-session-goes-to-the-agents-conversation
 `@` offers the agents, filtered by what follows; Enter picks one. A message
 that starts with the mention says where it goes, and Send opens the agent's

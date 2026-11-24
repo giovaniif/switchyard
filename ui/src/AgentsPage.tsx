@@ -271,6 +271,8 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
       .map((s) => s.repo || s.cwd);
     return [...new Set([...readRecent("local"), ...fromSessions])].slice(0, 12);
   }, [state.sessions]);
+  // A typed name's problem shows by the field: the foot of the form is below the fold.
+  const nameIssue = name ? nameProblem(name, state.agents, existing?.id) : null;
   const problem = nameProblem(name, state.agents, existing?.id) ?? (!choice.model ? "Pick a model." : null);
   const save = async () => {
     setSaving(true);
@@ -333,7 +335,13 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
                 Name
               </label>
               <input id="agent-name" className="field agent-name-input" value={name} maxLength={24} onChange={(e) => setName(e.target.value)} placeholder="Name it" autoFocus={!existing} />
-              <span className="muted small">{name.trim() && !nameProblem(name, state.agents, existing?.id) ? `Mention it as @${name.trim()} in any message.` : "One word, so it can be @mentioned."}</span>
+              {nameIssue ? (
+                <span className="small automation-reason" role="alert">
+                  {nameIssue}
+                </span>
+              ) : (
+                <span className="muted small">{name.trim() ? `Mention it as @${name.trim()} in any message.` : "One word, so it can be @mentioned."}</span>
+              )}
             </div>
           </div>
           <section className="agent-form-card" aria-labelledby="agent-form-look">
@@ -416,7 +424,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
               </div>
             </div>
           </section>
-          {(error || (name && problem)) && (
+          {(error || (name && problem && !nameIssue)) && (
             <div className="small automation-reason" role="alert">
               {error ?? problem}
             </div>
