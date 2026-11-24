@@ -163,6 +163,16 @@ pub async fn send_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Val
 
 async fn start_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) {
     app.emit(sid, json!({ "type": "turn_started" }));
+    // The sweep removes a merged PR's worktree under an idle session. An
+    // engine started there fails its own way: Claude Code's SDK reports
+    // ENOENT as a libc mismatch, which sends the user after the wrong thing.
+    if let Some(meta) = app.meta(sid) {
+        if crate::git::ensure_folder(&meta.cwd).is_err() {
+            let e = anyhow::anyhow!("This session's folder no longer exists: {}. Start a new session to keep working.", meta.cwd);
+            fail_turn(app, sid, &e);
+            return;
+        }
+    }
     let original = text;
     // An agent's session gives its engine more than the user typed.
     let text = match crate::agents::prepare(app, sid, text).await {
