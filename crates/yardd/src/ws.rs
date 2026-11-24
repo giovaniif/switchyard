@@ -147,6 +147,8 @@ async fn client(socket: WebSocket, app: Arc<App>) {
             }
         }
     }
+    // A hub's connection: calls passed to it will not be answered.
+    app.tools.conn_closed(&direct);
 }
 
 /// An op's failure. `ref` comes back when the op had one, so a client

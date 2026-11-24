@@ -88,13 +88,45 @@ pub struct Agent {
     /// The built-in agent's evidence hosts: `all`, `local` or a host id.
     #[serde(default = "default_scope")]
     pub scope: String,
-    /// The ongoing chat: the session a message to the agent goes to.
+    /// The ongoing chat: the session a message to the agent goes to. On the
+    /// hub, a remote agent's carries its host (`<hostId>~<sessionId>`).
     #[serde(default)]
     pub chat: Option<String>,
+    /// Where its conversation runs: `local`, or a remote host's id.
+    #[serde(default = "default_host")]
+    pub host: String,
+    /// Conversations it left on a host it moved away from, oldest first.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub previous: Vec<String>,
+    /// What its next new conversation starts from, after a move.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seed: Option<Seed>,
+    /// On a remote: a hub's agent kept here to run its conversation. Not
+    /// listed, mentioned or edited here.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub hosted: bool,
+    /// On a hosted copy: the hub that keeps the record, which answers its
+    /// tools (`agent_tools`). Empty from a hub that does not.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub hub: String,
     pub created_at: u64,
     pub updated_at: u64,
 }
 
+/// A conversation that starts where another one, on another host, ended.
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Seed {
+    /// For the thread's note: "it moved to <host>".
+    pub why: String,
+    /// The latest exchanges (`recap`), empty when they could not be read.
+    pub recap: String,
+}
+
+pub const LOCAL: &str = "local";
+
+fn default_host() -> String {
+    LOCAL.into()
+}
 fn default_color() -> String {
     "blue".into()
 }
@@ -126,6 +158,11 @@ fn scout() -> Agent {
         builtin: true,
         scope: default_scope(),
         chat: None,
+        host: default_host(),
+        previous: Vec::new(),
+        seed: None,
+        hosted: false,
+        hub: String::new(),
         created_at: now_ms(),
         updated_at: now_ms(),
     }
@@ -157,8 +194,21 @@ impl Agents {
         Agents { file, list: Mutex::new(list) }
     }
 
+    /// The agents for the UI: not the ones kept for a hub, and no seeds.
     pub fn list(&self) -> Value {
-        json!(*self.list.lock().unwrap())
+        let list = self.list.lock().unwrap();
+        let shown: Vec<Value> = list
+            .iter()
+            .filter(|a| !a.hosted)
+            .map(|a| {
+                let mut v = json!(a);
+                if let Some(o) = v.as_object_mut() {
+                    o.remove("seed");
+                }
+                v
+            })
+            .collect();
+        Value::Array(shown)
     }
 
     pub fn all(&self) -> Vec<Agent> {
@@ -185,6 +235,16 @@ impl Agents {
         if let Err(e) = write() {
             eprintln!("yardd: cannot save {}: {e}", self.file.display());
         }
+    }
+
+    /// Take the seed of the agent's next conversation: it is used once.
+    fn take_seed(&self, id: &str) -> Option<Seed> {
+        let mut list = self.list.lock().unwrap();
+        let seed = list.iter_mut().find(|a| a.id == id)?.seed.take();
+        if seed.is_some() {
+            self.persist(&list);
+        }
+        seed
     }
 
     fn update(&self, id: &str, f: impl FnOnce(&mut Agent)) -> bool {
@@ -225,10 +285,10 @@ fn one_line(text: &str, max: usize) -> String {
 
 /// Create or change an agent from the UI's fields. An id means a change:
 /// fields not sent keep their value.
-fn save(app: &App, input: &Value) -> Result<Agent> {
+async fn save(app: &Arc<App>, input: &Value) -> Result<Agent> {
     let obj = input.as_object().context("missing `agent`")?;
     let existing = match input["id"].as_str() {
-        Some(id) => Some(app.agents.get(id).context("no such agent")?),
+        Some(id) => Some(app.agents.get(id).filter(|a| !a.hosted).context("no such agent")?),
         None => None,
     };
     let mut merged = match &existing {
@@ -244,12 +304,67 @@ fn save(app: &App, input: &Value) -> Result<Agent> {
     };
     for (k, v) in obj {
         // yardd owns these.
-        if !["id", "createdAt", "updatedAt", "builtin", "chat"].contains(&k.as_str()) {
+        if !["id", "createdAt", "updatedAt", "builtin", "chat", "previous", "seed", "hosted", "hub"].contains(&k.as_str()) {
             merged[k] = v.clone();
         }
     }
     let mut a: Agent = serde_json::from_value(merged).map_err(|e| anyhow::anyhow!("invalid agent: {e}"))?;
     a.name = a.name.trim().to_string();
+    check_fields(&mut a)?;
+    a.builtin = a.id == BUILTIN;
+    if a.host.is_empty() {
+        a.host = default_host();
+    }
+    if a.builtin {
+        // The host agent reads; its engine threads have no tools to restrict otherwise.
+        if !matches!(a.engine.as_str(), "codex" | "claude") {
+            bail!("The host agent runs on Claude or Codex: only they can be held to read-only answers.");
+        }
+        a.permission = "plan".into();
+        a.cwd = String::new();
+        // It reads every host from here; its scope says which.
+        a.host = default_host();
+        let hosts = app.remotes.list();
+        let known = a.scope == "all" || a.scope == "local" || hosts.as_array().is_some_and(|hs| hs.iter().any(|h| h["id"] == a.scope));
+        if !known {
+            a.scope = default_scope();
+        }
+    }
+    if a.host == LOCAL {
+        app.accounts.check(&a.engine, &a.account)?;
+        if !a.builtin && !a.cwd.is_empty() && !std::path::Path::new(&a.cwd).is_dir() {
+            bail!("{} is not a folder", a.cwd);
+        }
+    } else if matches!(reach(app, &a.host), Reach::Gone) {
+        // Its folder and account are the host's to check (`save_hosted`).
+        bail!("no such host");
+    }
+    a.updated_at = now_ms();
+    if app.agents.list.lock().unwrap().iter().any(|x| !x.hosted && x.id != a.id && x.name.to_lowercase() == a.name.to_lowercase()) {
+        bail!("Another agent is already called {}.", a.name);
+    }
+    match &existing {
+        Some(old) if old.host != a.host => move_host(app, old, &mut a).await?,
+        // Its host keeps the conversation and follows the change itself.
+        _ if a.host != LOCAL => {
+            let name = online(app, &a.host, |n| format!("{n} is offline, so {} can't be changed now. Try again once it is back.", a.name))?;
+            push(app, &name, &a).await?;
+        }
+        Some(old) => follow(app, old, &a)?,
+        None => {}
+    }
+    let mut list = app.agents.list.lock().unwrap();
+    match list.iter_mut().find(|x| x.id == a.id) {
+        Some(slot) => *slot = a.clone(),
+        None => list.push(a.clone()),
+    }
+    app.agents.persist(&list);
+    Ok(a)
+}
+
+/// The checks that need nothing but the record, on the hub and on the host
+/// that keeps a copy.
+fn check_fields(a: &mut Agent) -> Result<()> {
     check_name(&a.name)?;
     a.about = one_line(&a.about, ABOUT_MAX);
     a.instructions = a.instructions.trim().to_string();
@@ -269,37 +384,14 @@ fn save(app: &App, input: &Value) -> Result<Agent> {
     if !PERMISSIONS.contains(&a.permission.as_str()) {
         bail!("unknown permission mode {}", a.permission);
     }
-    app.accounts.check(&a.engine, &a.account)?;
-    a.builtin = a.id == BUILTIN;
-    if a.builtin {
-        // The host agent reads; its engine threads have no tools to restrict otherwise.
-        if !matches!(a.engine.as_str(), "codex" | "claude") {
-            bail!("The host agent runs on Claude or Codex: only they can be held to read-only answers.");
-        }
-        a.permission = "plan".into();
-        a.cwd = String::new();
-        let hosts = app.remotes.list();
-        let known = a.scope == "all" || a.scope == "local" || hosts.as_array().is_some_and(|hs| hs.iter().any(|h| h["id"] == a.scope));
-        if !known {
-            a.scope = default_scope();
-        }
-    } else if !a.cwd.is_empty() && !std::path::Path::new(&a.cwd).is_dir() {
-        bail!("{} is not a folder", a.cwd);
+    if a.account.is_empty() {
+        a.account = default_account();
     }
-    a.updated_at = now_ms();
-    if app.agents.list.lock().unwrap().iter().any(|x| x.id != a.id && x.name.to_lowercase() == a.name.to_lowercase()) {
-        bail!("Another agent is already called {}.", a.name);
-    }
-    if let Some(old) = &existing {
-        follow(app, old, &a)?;
-    }
-    let mut list = app.agents.list.lock().unwrap();
-    match list.iter_mut().find(|x| x.id == a.id) {
-        Some(slot) => *slot = a.clone(),
-        None => list.push(a.clone()),
-    }
-    app.agents.persist(&list);
-    Ok(a)
+    Ok(())
+}
+
+fn busy(status: &str) -> bool {
+    matches!(status, "running" | "needs_approval" | "queued")
 }
 
 /// The conversation follows the agent's settings. A new engine, model,
@@ -317,7 +409,7 @@ fn follow(app: &App, old: &Agent, a: &Agent) -> Result<()> {
     if !moved && old.effort == a.effort && old.permission == a.permission {
         return Ok(());
     }
-    if matches!(meta.status.as_str(), "running" | "needs_approval" | "queued") {
+    if busy(&meta.status) {
         bail!("{} is in the middle of a turn. Change how it runs once the turn ends.", old.name);
     }
     let (engine, model, effort) = launch(app, a)?;
@@ -325,7 +417,16 @@ fn follow(app: &App, old: &Agent, a: &Agent) -> Result<()> {
     let account = if engine == a.engine { a.account.clone() } else { crate::accounts::DEFAULT.to_string() };
     app.update_meta(&meta.id, |m| {
         if moved && !a.builtin {
-            m.fresh_context = Some(if old.engine != a.engine { "its engine changed" } else if old.model != a.model { "its model changed" } else { "where it works changed" }.into());
+            let why = if old.engine != a.engine {
+                "its engine changed"
+            } else if old.model != a.model {
+                "its model changed"
+            } else if old.account != a.account {
+                "its account changed"
+            } else {
+                "where it works changed"
+            };
+            m.fresh_context = Some(why.into());
         }
         m.engine = engine;
         m.model = model;
@@ -335,6 +436,115 @@ fn follow(app: &App, old: &Agent, a: &Agent) -> Result<()> {
         m.permission = a.permission.clone();
         m.notes_changed = notes && !moved && !a.builtin;
     });
+    Ok(())
+}
+
+/// Whether a remote host can be reached now.
+enum Reach {
+    Online(String),
+    Offline(String),
+    Gone,
+}
+
+fn reach(app: &App, host: &str) -> Reach {
+    let hosts = app.remotes.list();
+    match hosts.as_array().and_then(|l| l.iter().find(|h| h["id"] == host)) {
+        None => Reach::Gone,
+        Some(h) => {
+            let name = h["name"].as_str().unwrap_or(host).to_string();
+            if h["status"] == "connected" {
+                Reach::Online(name)
+            } else {
+                Reach::Offline(name)
+            }
+        }
+    }
+}
+
+/// A host's name, as the UI shows it.
+fn host_name(app: &App, host: &str) -> String {
+    if host == LOCAL {
+        return crate::hosts::local_name().to_string();
+    }
+    match reach(app, host) {
+        Reach::Online(n) | Reach::Offline(n) => n,
+        Reach::Gone => "a removed host".into(),
+    }
+}
+
+/// The remote host's name while it is connected; otherwise `offline` says
+/// why nothing happened.
+fn online(app: &App, host: &str, offline: impl FnOnce(&str) -> String) -> Result<String> {
+    match reach(app, host) {
+        Reach::Online(n) => Ok(n),
+        Reach::Offline(n) => bail!("{}", offline(&n)),
+        Reach::Gone => bail!("{}", offline("a removed host")),
+    }
+}
+
+/// A request to the host that runs an agent. A host from before remote
+/// agents does not know the ops: say what to do about it.
+async fn call(app: &Arc<App>, host: &str, name: &str, msg: Value) -> Result<Value> {
+    match crate::remote::request(app, host, msg).await {
+        Err(e) if format!("{e:#}").contains("unknown op") => {
+            bail!("{name} runs an older Switchyard that cannot run agents. Use Update Switchyard on its card in Hosts, then try again.")
+        }
+        other => other,
+    }
+}
+
+/// Hand a remote agent's record to its host, which keeps it to run its
+/// conversation and checks what only it can: the folder and the account.
+async fn push(app: &Arc<App>, name: &str, a: &Agent) -> Result<()> {
+    let mut copy = json!(a);
+    copy["chat"] = Value::Null;
+    copy["previous"] = json!([]);
+    copy["host"] = json!(LOCAL);
+    copy["hosted"] = json!(true);
+    // Its tools act here, where the record is: the host passes their calls
+    // back over this hub's connection (`agent_tools`).
+    copy["hub"] = json!(app.tools.hub_id());
+    call(app, &a.host, name, json!({ "op": "agent.hosted.save", "agent": copy })).await?;
+    Ok(())
+}
+
+/// The agent moves to another host. A conversation cannot follow (it lives
+/// on the host that runs it): the old one stays there, readable and listed
+/// in `previous`, and the next message starts one on the new host with the
+/// preamble and the latest exchanges, as a fresh context does. Refused while
+/// a turn runs; a host that is offline keeps its conversation unread.
+async fn move_host(app: &Arc<App>, old: &Agent, a: &mut Agent) -> Result<()> {
+    let to = host_name(app, &a.host);
+    let new_host = if a.host == LOCAL { None } else { Some(online(app, &a.host, |n| format!("{n} is offline, so {} can't move there now.", a.name))?) };
+    let mut recap_text = String::new();
+    let mut why = format!("it moved to {to}");
+    if old.host == LOCAL {
+        if let Some(sid) = old.chat.as_deref() {
+            if app.meta(sid).is_some_and(|m| busy(&m.status)) {
+                bail!("{} is in the middle of a turn. Move it once the turn ends.", old.name);
+            }
+            recap_text = recap_of(app, sid);
+        }
+    } else {
+        match reach(app, &old.host) {
+            Reach::Online(n) => {
+                let left = call(app, &old.host, &n, json!({ "op": "agent.hosted.leave", "id": old.id })).await?;
+                recap_text = left["recap"].as_str().unwrap_or("").to_string();
+            }
+            Reach::Offline(n) if old.chat.is_some() => why = format!("it moved to {to}; its earlier messages stay on {n}, which was offline"),
+            _ => {}
+        }
+    }
+    a.chat = None;
+    if let Some(chat) = old.chat.clone() {
+        a.previous.push(chat);
+        a.seed = Some(Seed { why, recap: recap_text });
+    }
+    if let Some(name) = new_host {
+        push(app, &name, a).await?;
+        // The new host keeps the seed; its prepare uses it.
+        a.seed = None;
+    }
     Ok(())
 }
 
@@ -394,14 +604,37 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
     match msg["op"].as_str().unwrap_or("") {
         "agent.list" => reply(json!({ "op": "agents", "agents": app.agents.list() })),
         "agent.save" => {
-            let a = save(app, &msg["agent"])?;
+            let a = save(app, &msg["agent"]).await?;
             broadcast(app);
-            reply(json!({ "op": "agent.saved", "agent": a }));
+            let mut shown = json!(a);
+            if let Some(o) = shown.as_object_mut() {
+                o.remove("seed");
+            }
+            reply(json!({ "op": "agent.saved", "agent": shown }));
         }
         "agent.delete" => {
             let id = msg["id"].as_str().context("missing `id`")?;
             if app.agents.is_builtin(id) {
                 bail!("The host agent is built in and cannot be deleted.");
+            }
+            let a = app.agents.get(id).filter(|a| !a.hosted).context("no such agent")?;
+            // Conversations on other hosts go first. One on a host that is
+            // offline cannot: then nothing is deleted yet.
+            let mut hosts: Vec<String> = Vec::new();
+            for h in std::iter::once(a.host.as_str()).chain(a.previous.iter().filter_map(|s| s.split_once(crate::remote::SEP).map(|(h, _)| h))) {
+                if h != LOCAL && !hosts.iter().any(|x| x == h) {
+                    hosts.push(h.to_string());
+                }
+            }
+            for h in &hosts {
+                if let Reach::Offline(n) = reach(app, h) {
+                    bail!("{}'s conversation is on {n}, which is offline. Delete {} once {n} is back.", a.name, a.name);
+                }
+            }
+            for h in &hosts {
+                if let Reach::Online(n) = reach(app, h) {
+                    call(app, h, &n, json!({ "op": "agent.hosted.delete", "id": id })).await?;
+                }
             }
             let removed = {
                 let mut list = app.agents.list.lock().unwrap();
@@ -414,40 +647,163 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
                 bail!("no such agent");
             }
             // Its conversation goes with it (the UI confirms first).
-            let chats: Vec<crate::state::Meta> = app
-                .sessions
-                .lock()
-                .unwrap()
-                .values()
-                .filter(|s| s.meta.agent.as_deref() == Some(id))
-                .map(|s| s.meta.clone())
-                .collect();
-            for meta in chats {
-                crate::ws::delete_session(app, &meta.id, &meta).await;
-            }
+            delete_conversations(app, id).await;
             broadcast(app);
+            reply(json!({ "op": "agent.deleted", "id": id }));
         }
         "agent.ask" => ask(app, direct, msg).await?,
         // A window opened the agent's conversation: its call for the owner was seen.
         "agent.seen" => {
             let id = msg["agentId"].as_str().context("missing `agentId`")?;
             let a = app.agents.get(id).context("no such agent")?;
+            if a.host != LOCAL {
+                // The mark is on its conversation, on its host.
+                if let Reach::Online(_) = reach(app, &a.host) {
+                    let (app, host) = (app.clone(), a.host.clone());
+                    tokio::spawn(async move {
+                        if let Err(e) = crate::remote::request(&app, &host, json!({ "op": "agent.hosted.seen", "id": a.id })).await {
+                            eprintln!("yardd: could not clear {}'s call on its host: {e:#}", a.name);
+                        }
+                    });
+                }
+            } else if let Some(sid) = a.chat.filter(|sid| app.meta(sid).is_some_and(|m| m.needs_you.is_some())) {
+                app.update_meta(&sid, |m| m.needs_you = None);
+            }
+        }
+        // From a hub whose agent runs here.
+        "agent.hosted.save" => {
+            let a = save_hosted(app, &msg["agent"])?;
+            reply(json!({ "op": "agent.hosted.saved", "id": a.id }));
+        }
+        "agent.hosted.ask" => {
+            let id = msg["agentId"].as_str().context("missing `agentId`")?;
+            app.agents.get(id).filter(|a| a.hosted).context("no such agent")?;
+            match crate::origins::from_hub(&msg["origin"]) {
+                // Another agent's message, or the answer to one, sent on by the hub.
+                Some(origin) => {
+                    let text = msg["text"].as_str().unwrap_or("").trim();
+                    if text.is_empty() {
+                        bail!("the message is empty");
+                    }
+                    let sid = deliver(app, id, text, &origin).await?;
+                    reply(json!({ "op": "created", "sessionId": sid, "agentId": id }));
+                }
+                None => ask(app, direct, msg).await?,
+            }
+        }
+        "agent.hosted.seen" => {
+            let id = msg["id"].as_str().context("missing `id`")?;
+            let a = app.agents.get(id).filter(|a| a.hosted).context("no such agent")?;
             if let Some(sid) = a.chat.filter(|sid| app.meta(sid).is_some_and(|m| m.needs_you.is_some())) {
                 app.update_meta(&sid, |m| m.needs_you = None);
             }
+            reply(json!({ "op": "agent.hosted.seen", "id": id }));
+        }
+        // A hub's own connection says which hub it is, so this host can pass
+        // the tool calls of the hub's agents back to it.
+        "agent.hosted.hub" => {
+            let hub = msg["hub"].as_str().filter(|h| !h.is_empty() && h.len() <= 64 && h.chars().all(|c| c.is_ascii_alphanumeric())).context("invalid hub id")?;
+            app.tools.hub_connected(hub, direct);
+        }
+        "agent.hosted.answer" => app.tools.answered(direct, msg),
+        "agent.hosted.leave" => {
+            let id = msg["id"].as_str().context("missing `id`")?;
+            let mut recap_text = String::new();
+            if let Some(a) = app.agents.get(id).filter(|a| a.hosted) {
+                if let Some(meta) = a.chat.as_deref().and_then(|sid| app.meta(sid)) {
+                    if busy(&meta.status) {
+                        bail!("{} is in the middle of a turn on {}. Move it once the turn ends.", a.name, crate::hosts::local_name());
+                    }
+                    recap_text = recap_of(app, &meta.id);
+                }
+                // Its conversation stays, readable from the hub.
+                let mut list = app.agents.list.lock().unwrap();
+                list.retain(|x| x.id != id);
+                app.agents.persist(&list);
+            }
+            reply(json!({ "op": "agent.hosted.left", "recap": recap_text }));
+        }
+        "agent.hosted.delete" => {
+            let id = msg["id"].as_str().context("missing `id`")?;
+            if app.agents.get(id).is_some_and(|a| !a.hosted) {
+                bail!("that agent is this host's own");
+            }
+            {
+                let mut list = app.agents.list.lock().unwrap();
+                list.retain(|x| x.id != id);
+                app.agents.persist(&list);
+            }
+            delete_conversations(app, id).await;
+            reply(json!({ "op": "agent.hosted.deleted", "id": id }));
         }
         other => bail!("unknown op `{other}`"),
     }
     Ok(())
 }
 
+/// Delete every session tagged with the agent: its conversation and any it
+/// left here when it moved.
+async fn delete_conversations(app: &Arc<App>, id: &str) {
+    let chats: Vec<crate::state::Meta> = app.sessions.lock().unwrap().values().filter(|s| s.meta.agent.as_deref() == Some(id)).map(|s| s.meta.clone()).collect();
+    for meta in chats {
+        crate::ws::delete_session(app, &meta.id, &meta).await;
+    }
+}
+
+/// Keep a hub's agent here, to run its conversation (`agent.hosted.save`).
+/// The hub checked the record; this host checks what is its own: the folder
+/// and the account. The conversation follows the change like a local
+/// agent's (`follow`).
+fn save_hosted(app: &App, input: &Value) -> Result<Agent> {
+    let mut a: Agent = serde_json::from_value(input.clone()).map_err(|e| anyhow::anyhow!("invalid agent: {e}"))?;
+    // The id names its folder here.
+    if a.id.is_empty() || a.id.len() > 64 || a.id == BUILTIN || !a.id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+        bail!("invalid agent id");
+    }
+    check_fields(&mut a)?;
+    app.accounts.check(&a.engine, &a.account)?;
+    if !a.cwd.is_empty() && !std::path::Path::new(&a.cwd).is_dir() {
+        bail!("{} is not a folder on {}", a.cwd, crate::hosts::local_name());
+    }
+    if a.hub.len() > 64 || !a.hub.chars().all(|c| c.is_ascii_alphanumeric()) {
+        bail!("invalid hub id");
+    }
+    a.hosted = true;
+    a.builtin = false;
+    a.host = default_host();
+    a.previous.clear();
+    let old = app.agents.get(&a.id);
+    match &old {
+        Some(old) if !old.hosted => bail!("that agent is this host's own"),
+        Some(old) => {
+            // The conversation is this host's to know.
+            a.chat = old.chat.clone();
+            if a.seed.is_none() {
+                a.seed = old.seed.clone();
+            }
+            follow(app, old, &a)?;
+        }
+        None => a.chat = None,
+    }
+    let mut list = app.agents.list.lock().unwrap();
+    match list.iter_mut().find(|x| x.id == a.id) {
+        Some(slot) => *slot = a.clone(),
+        None => list.push(a.clone()),
+    }
+    app.agents.persist(&list);
+    Ok(a)
+}
+
 /// A message for an agent: into its one conversation, made with the first.
 /// Answered with `created`, which opens it, as soon as the session is known;
-/// the turn goes on after.
+/// the turn goes on after. A remote agent's goes to its host.
 async fn ask(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value) -> Result<()> {
     let id = msg["agentId"].as_str().context("missing `agentId`")?;
     let a = app.agents.get(id).context("no such agent")?;
     let text = msg["text"].as_str().unwrap_or("").trim().to_string();
+    if a.host != LOCAL {
+        return ask_remote(app, direct, &a, msg, &text).await;
+    }
     let files = crate::attachments::resolve(&msg["attachments"])?;
     if text.is_empty() && files.is_empty() {
         bail!("the message is empty");
@@ -470,6 +826,9 @@ async fn ask(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value
 /// Answers the conversation's session id.
 pub async fn deliver(app: &Arc<App>, id: &str, text: &str, origin: &Value) -> Result<String> {
     let a = app.agents.get(id).context("no such agent")?;
+    if a.host != LOCAL {
+        return send_remote(app, &a, text, &Value::Null, Some(origin)).await;
+    }
     if let Some(sid) = a.chat.clone().filter(|sid| app.meta(sid).is_some()) {
         if app.meta(&sid).is_some_and(|m| m.status == "queued") {
             app.queue_message(&sid, text, &[], Some(origin));
@@ -538,6 +897,58 @@ pub fn edit_memory(app: &App, id: &str, text: &str, append: bool) -> Result<Stri
     Ok(memory)
 }
 
+/// A hosted copy's memory, as the agent's tools changed it on the hub. Its
+/// engine already knows, so this is no notes change either.
+pub fn hosted_memory(app: &App, id: &str, memory: &str) {
+    app.agents.update(id, |a| {
+        if a.hosted {
+            a.memory = memory.to_string();
+        }
+    });
+}
+
+/// A message for an agent on a remote host: its host runs the conversation,
+/// so the message goes there, or nowhere: an offline host is said, not
+/// queued here.
+async fn ask_remote(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, a: &Agent, msg: &Value, text: &str) -> Result<()> {
+    let sid = send_remote(app, a, text, &msg["attachments"], None).await?;
+    let _ = direct.send(json!({ "op": "created", "sessionId": sid, "agentId": a.id, "ref": msg["ref"] }).to_string());
+    Ok(())
+}
+
+/// Hand a message to the host that runs the agent; answers its conversation,
+/// as this hub names it. `origin`: another agent's message, or the answer to
+/// one (see `deliver`).
+async fn send_remote(app: &Arc<App>, a: &Agent, text: &str, attachments: &Value, origin: Option<&Value>) -> Result<String> {
+    let name = online(app, &a.host, |n| format!("{} runs on {n}, which is offline. Your message was not sent.", a.name))?;
+    let attached = attachments.as_array().is_some_and(|l| !l.is_empty());
+    if text.is_empty() && !attached {
+        bail!("the message is empty");
+    }
+    // Files uploaded to this host are not on that one.
+    if attached && crate::attachments::resolve(attachments).is_ok() {
+        bail!("These files are on {}, not on {name}. Attach them in {}'s conversation instead.", crate::hosts::local_name(), a.name);
+    }
+    let mut send = json!({ "op": "agent.hosted.ask", "agentId": a.id, "text": text, "attachments": attachments });
+    if let Some(origin) = origin {
+        send["origin"] = origin.clone();
+    }
+    let reply = match call(app, &a.host, &name, send.clone()).await {
+        // The host lost its copy (reinstalled, or a move that did not finish): hand it over again.
+        Err(e) if format!("{e:#}").contains("no such agent") => {
+            push(app, &name, a).await?;
+            call(app, &a.host, &name, send).await?
+        }
+        other => other?,
+    };
+    let remote_sid = reply["sessionId"].as_str().context("the host did not say which conversation")?;
+    let sid = format!("{}{}{remote_sid}", a.host, crate::remote::SEP);
+    if a.chat.as_deref() != Some(sid.as_str()) {
+        set_chat(app, &a.id, &sid);
+    }
+    Ok(sid)
+}
+
 /// The session is now the agent's conversation. Called when it is created.
 pub fn set_chat(app: &App, id: &str, sid: &str) {
     if app.agents.update(id, |a| a.chat = Some(sid.to_string())) {
@@ -563,11 +974,17 @@ pub async fn prepare(app: &Arc<App>, sid: &str, text: &str) -> Result<Prepared> 
     let (turns, history) = {
         let map = app.sessions.lock().unwrap();
         let events = map.get(sid).map(|s| s.events.as_slice()).unwrap_or_default();
-        (events.iter().filter(|e| e["type"] == "turn_started").count(), exchanges(events))
+        (events.iter().filter(|e| e["type"] == "turn_started").count(), exchanges(events, true))
     };
     if !agent.builtin {
         if turns <= 1 {
-            return Ok(Prepared::Send(preamble(&agent, "", crate::agent_tools::offered(app, sid), text)));
+            // A conversation that takes over from one on another host starts
+            // where that one ended.
+            let seed = app.agents.take_seed(&agent.id);
+            if let Some(seed) = &seed {
+                app.emit(sid, json!({ "type": "note", "text": format!("Started a fresh context: {}. {} keeps its notes and the latest messages.", seed.why, agent.name) }));
+            }
+            return Ok(Prepared::Send(preamble(&agent, seed.as_ref().map_or("", |s| s.recap.as_str()), crate::agent_tools::offered(app, sid), text)));
         }
         let Some(why) = meta.fresh_context.clone() else {
             if meta.notes_changed {
@@ -686,8 +1103,16 @@ pub fn preamble(a: &Agent, earlier: &str, tools: bool, text: &str) -> String {
     out
 }
 
-/// Each earlier question of a chat with its final answer, oldest first.
-fn exchanges(events: &[Value]) -> Vec<(String, String, u64)> {
+/// The latest exchanges of a session, for a conversation that takes over
+/// from it on another host.
+fn recap_of(app: &App, sid: &str) -> String {
+    let map = app.sessions.lock().unwrap();
+    map.get(sid).map(|s| recap(&exchanges(&s.events, false))).unwrap_or_default()
+}
+
+/// Each question of a chat with its final answer, oldest first. `asking`:
+/// the last one is the question being asked now, and is left out.
+fn exchanges(events: &[Value], asking: bool) -> Vec<(String, String, u64)> {
     let mut out: Vec<(String, String, u64)> = Vec::new();
     let mut at = 0;
     for e in events {
@@ -702,8 +1127,9 @@ fn exchanges(events: &[Value]) -> Vec<(String, String, u64)> {
             _ => {}
         }
     }
-    // The last one is the question being asked now.
-    out.pop();
+    if asking {
+        out.pop();
+    }
     out
 }
 
@@ -905,7 +1331,8 @@ mod tests {
             json!({ "type": "user_message", "text": "two" }),
             json!({ "type": "turn_started", "at": 9 }),
         ];
-        let h = exchanges(&events);
+        let h = exchanges(&events, true);
+        assert_eq!(exchanges(&events, false).len(), 2);
         assert_eq!(h, vec![("one".to_string(), "first answer".to_string(), 0)]);
     }
 

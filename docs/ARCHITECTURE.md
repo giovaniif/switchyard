@@ -265,7 +265,7 @@ Scheduled work, built into yardd (`crates/yardd/src/automations.rs`, UI in `ui/s
 More than one login per engine on a host, for example a personal and a company Claude Code subscription.
 
 - Each engine has a **Default** account: the login the CLI already has, run with yardd's own environment, unchanged. Added accounts (`account.add { engine, name, host? }`) each get a folder `<data dir>/accounts/<id>/`, used as `CLAUDE_CONFIG_DIR` for Claude Code (the sidecar, `claude auth status` and `claude auth login`), as `CODEX_HOME` for Codex (that account's app-server), as `GROK_HOME` for Grok (its agent, `grok models`, `grok login`) and as `XDG_DATA_HOME` for OpenCode (its logins and sessions; its config stays the user's). OpenCode has no variable of its own for this, so commands its agent runs see the moved data folder too. These variables are documented by their CLIs (XDG by the spec OpenCode follows); Switchyard never reads what is in the folders. Names are unique per engine (case-insensitive) and at most 40 plain characters.
-- They are saved in `accounts.json` next to `hosts.json`, per host, and listed in the `snapshot` and the `accounts` broadcast. `account.remove { id, host? }` cancels a login in progress, stops the account's Codex app-server, and deletes the folder, and with it the login. It is refused while any session (archived ones too) uses the account.
+- They are saved in `accounts.json` next to `hosts.json`, per host, and listed in the `snapshot` and the `accounts` broadcast. `account.remove { id, host? }` cancels a login in progress, stops the account's Codex app-server, and deletes the folder, and with it the login. It is refused while any session (archived ones too) uses the account. An agent keeps its own `account` (picked in its form); changing it moves its conversation to a fresh context on that login (see Agents).
 - `engines.status` answers `{ engines: { claude, codex, opencode, grok, gemini }, accounts: { <id>: state } }`: Default under `engines`, the added ones by id. Adding or removing an account triggers a fresh answer.
 - `session.create` takes `account` (an id of that engine; Default when left out) and checks it. It is saved in the session's metadata (`account`, `default` for older rows), so resume after a restart and every later turn use the same account: the Claude sidecar is started with the account's `CLAUDE_CONFIG_DIR`, and the session's Codex thread lives on that account's app-server (a thread is only known to the `CODEX_HOME` that made it). **The account cannot be changed mid-session**; start a new session instead.
 - A hand-off starts a session on another engine, so the source's account does not carry over: it runs on the target engine's Default unless `session.handoff` names an `account` of that engine (the UI does not offer one yet).
@@ -478,9 +478,15 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   folder, `<data dir>/agents/<id>/`), `permission` (Ask first unless the user
   picks another; Full access only when picked), `instructions` (who it is:
   Orca's SOUL.md), `memory` (what to keep in mind: MEMORY.md), `chat` (its
-  conversation's session id, made with its first message). Agents live on the
-  hub and run on this host; a remote yardd's own `agents` broadcast is
-  dropped by the hub, as is the `agent` tag of a remote's sessions in the UI.
+  conversation's session id, made with its first message; `<hostId>~<id>`
+  for one on a remote), `host` (`local`, or a remote host's id; Scout's is
+  always `local`), `previous` (conversations it left on a host it moved
+  away from) and `seed` (what its next conversation starts from after a
+  move; never sent to the UI). The record always lives on the hub; a remote
+  yardd's own `agents` broadcast is dropped by the hub. The UI knows a
+  remote session as an agent's by id (`chat` or `previous`), not by the
+  remote's `agent` tag, which may name one of the remote's own; a local
+  session tagged with an agent the window does not know is an ordinary one.
 - **Ops:** `agent.list`, `agent.save { agent }` (an `id` edits; only the fields
   sent change; answers `agent.saved`), `agent.delete { id }` (deletes its
   conversation too, after a confirm in the UI; refused for Scout),
@@ -501,12 +507,49 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   the engine reported a full context (an `error` mentioning the context
   window, prompt length or compaction sets `Meta.fresh_context`), the engine
   could not continue the thread (a send that fails, such as a lost thread,
-  is retried once this way), or the agent's engine, model, account or folder
-  changed in Edit (`agent.save` moves the conversation's metadata with it and
+  is retried once this way), or the agent's engine, model, account ("its
+  account changed": a thread lives on the old login's app-server or config
+  dir) or folder changed in Edit (`agent.save` moves the conversation's metadata with it and
   refuses while a turn runs). Changed instructions, memory, name or
   description keep the thread and reach the agent with its next message
   (`<notes_changed>`, `Meta.notes_changed`); effort and permission apply from
   the next turn. The user sees one continuous thread.
+- **On a remote host.** An agent whose `host` is a remote runs its one
+  conversation as a session on that host, in its own folder there
+  (`<remote data dir>/agents/<id>/`, made with the first message) or a folder
+  picked from that host's dirs. The hub hands the host a copy of the record
+  (`agent.hosted.save`, with `hosted: true`; kept in the host's
+  `agents.json`, never listed, mentioned or edited there), so the host's own
+  `agents::prepare` adds the preamble, changed notes and a fresh context
+  exactly as for a local agent, also for a reply sent straight to the session
+  through the hub; the host checks the folder and the account (accounts are
+  per host) and refuses a change mid-turn. A message (`agent.ask` from the
+  page or a mention) goes from the hub to the host as `agent.hosted.ask`
+  over a daemon-owned connection (`remote::request`, so no window has to be
+  open), answered with `created`; the hub prefixes the id and keeps it as
+  `chat`. A host that lost its copy gets it again and the message is retried
+  once. Files attached on another host are refused with a message (they are
+  not on that host). **Offline:** sending, editing and deleting are refused
+  with a message that says so ("Far runs on box, which is offline. Your
+  message was not sent."); nothing is queued on the hub. The card's status
+  line says "<host> is offline", the header names the host with "· offline",
+  the start page and the conversation's dock say so, Send is disabled, and
+  the form cannot save. **A host from before remote agents** answers
+  `unknown op`: the hub says to use Update Switchyard on its card.
+- **Moving between hosts** (the host picker in Edit). A conversation cannot
+  cross hosts, so the agent leaves it where it is, readable, in `previous`,
+  and its next message starts a new one on the new host with the preamble and
+  the latest exchanges (`seed`, the same recap as a fresh context) and the
+  note "Started a fresh context: it moved to <host>." Refused while a turn
+  runs (a remote answers `agent.hosted.leave` with the recap only when idle,
+  then drops its copy). The new host must be online; an offline old host
+  keeps its conversation unread and the note says so. The agent's page shows
+  "Earlier messages with <name> are on <host>. Open them" above the thread;
+  that conversation opens read-only, its dock saying the agent moved, with a
+  link back. The form says what will happen before saving. Deleting an agent
+  deletes every conversation it had, on every host (`agent.hosted.delete`),
+  and is refused while one of those hosts is offline; yardd answers
+  `agent.deleted` and the form shows a refusal.
 - **The preamble:** the first turn hands the engine "You are <name>, an agent
   the user set up in Switchyard…", what it is for, its instructions and
   memory, then "The user's message:" and the text (`agents::prepare`, called
@@ -548,9 +591,14 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   chance. The **form** (`#/agents/<id>/edit`, `new`) is one centred column:
   the face large with the name under it, then cards for Look (face, colour),
   Role (what it is for, instructions, memory) and Where and how, and a footer
-  that stays in reach with Delete, Cancel and Save. It reuses the folder,
-  model, effort and permission pickers; Scout's has the context host picker
-  instead and no permission. Deleting asks once more and says the
+  that stays in reach with Delete, Cancel and Save. It reuses New session's
+  host, folder, model, account, effort and permission pickers: the folder,
+  models and accounts are the picked host's (a new host clears the folder),
+  and the account picker shows only when the engine has more than one
+  account there. Scout's has the context host picker instead and no
+  permission. The explanation line and the card's how-it-runs line name the
+  host when it is not this one (a cloud before it on the card), and the
+  account where the engine has a choice. Deleting asks once more and says the
   conversation goes too.
 - **Origins** (`origins.rs`). A message into a conversation that the owner
   did not type carries an `origin`, kept on its `user_message` (and on the
@@ -635,6 +683,47 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
     character cap, refused past it) and broadcast `agents`. The engine knows
     already, so it is not a notes change. An open form follows the new memory
     unless the user has typed in it, and Save leaves an untouched memory out.
+  - **On a remote host.** A remote agent's engine runs on its host, but
+    everything its tools act on is on the hub: the record and its memory, the
+    other agents, the owner's windows. So the host's engine gets the same
+    stdio server and talks to the host's own yardd, over the host's loopback,
+    with a key the host made for that one conversation; the host's
+    `/agent-tools` sees that the conversation belongs to a hosted copy and
+    passes the call to the hub instead of running it. The way back is the
+    connection the hub already keeps open to every host (`remote::monitor`,
+    over the SSH tunnel): on connecting it sends `agent.hosted.hub { hub }`
+    (the hub's id, made once and kept in its data folder as `hub-id`), and
+    the host remembers that connection for that hub until it closes. Every
+    copy names the hub that pushed it (`Agent::hub`, set by
+    `agents::push`); a call goes to that hub only, as `agent.hub.call {
+    ref, agentId, sessionId, method, params, answering }`, and is answered
+    on the same connection with `agent.hosted.answer { ref, result,
+    needsYou?, memory? }` (an answer from any other connection is ignored).
+    The hub runs it only for an agent whose `host` is the remote asking
+    (`agent_tools::from_host`), as the conversation `<host>~<id>`: the
+    notification names that id, the rate caps and hop count are the hub's,
+    `message_agent` lists the hub's agents, and memory lands in the hub's
+    record. The host then sets `needsYou` on its session (the hub's
+    `agent.seen` clears it there with `agent.hosted.seen`) and the copy's
+    memory, without a notes change. Messages and answers between agents, and
+    Slack's, go through the hub too: the hub's `agents::deliver` sends one to a remote
+    agent as `agent.hosted.ask` with its `origin` (the host keeps only the
+    kinds and fields yardd makes, `origins::from_hub`), and a hosted agent's
+    turn that owes answers (to agents or Slack, the approval note included)
+    passes them to the hub as `agent.hub.owed`, which runs the reply hook
+    there, so Slack reaches a remote agent like a local one; answers owed while the hub is away wait in
+    memory (up to 200) until it says hello again. Security: the engine still
+    reaches only loopback on its own host with a per-conversation key; no
+    port is opened (the hub dials the host, as before); and the hub acts
+    only for the agents it placed on that host, which that host already
+    runs. **Version skew:** a hub from before this does not name itself, so
+    its copies have no `hub` and get no tools (the preamble does not mention
+    them); an older host answers the hello with `unknown op`, which the hub
+    ignores, and it cannot run remote agents at all (`agent.hosted.save`
+    is refused with "Use Update Switchyard"). While the hub is not connected,
+    a call waits up to 5 s for it, then fails with a line the model reads
+    ("…is not connected to this host right now"); `tools/list` then names
+    no agents.
 - **Slack (built, step 3; see Slack below).** A Slack thread is not a session
   of its own: a message from Slack goes into the agent's one conversation
   with origin `{ kind: "slack", … }` (the team, channel, thread and message it
@@ -691,13 +780,19 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
 - Tests (`tests/agents.rs`, scripted engines): the registry and its refusals,
   the preamble on the first turn only, one conversation per agent, deleting
   an agent with its conversation, a fresh context after a full context, a
-  model change and a lost thread, changed notes reaching the thread, Scout's evidence step, fresh restricted threads on both engines,
+  model change, an account change and a lost thread, changed notes reaching the thread,
+  an agent on a remote (the record on the hub and a hosted copy there, the folder and account
+  checked there, the preamble on the remote's first turn, replies and mentions in the same
+  conversation, notes and a model change there, files from the hub refused, sending, editing and
+  deleting refused offline), moving to a remote and back (the recap carried, refused mid-turn,
+  the old conversations kept, then deleted with the agent), Scout's evidence step, fresh restricted threads on both engines,
   history in the second input, Plan only, a restart, remote scope and offline
   coverage, Stop, the queue, the old op name, and an old `switchy.json` left
   alone. The `agents`
   feature map drives the page, card alignment, the empty conversation, the
-  form, mentions, the one conversation and the Agents row's mark at both
-  viewports. Not proven: a real model's answer to a preamble or to
+  form (with the host and account pickers and the note about a move), mentions (also to a
+  remote agent), the one conversation, a remote agent's card, conversation and offline state,
+  and the Agents row's mark at both viewports. Not proven: a real model's answer to a preamble or to
   evidence.
 - Tests for the tools (`tests/agent_tools.rs`): the scripted engines call the
   real `yardd agent-tools` over stdio for a `[[tool NAME {json}]]` marker
@@ -705,9 +800,14 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   needs you with its cap and `agent.seen`, a message and its answer back with
   both origins kept across a restart, the hop limit and a message to oneself,
   failed and stopped answers, memory edits and the cap, OpenCode running them
-  unasked, Scout and plain sessions without them, and the endpoint's key
-  check. The `agents` map drives the badges, the Needs-you card and row, and
-  memory in the form at both viewports. Checked against the real CLIs
+  unasked, Scout and plain sessions without them, the endpoint's key
+  check, a remote agent's tools acting on the hub (two daemons: `remember`
+  in the hub's record and the host's copy, `message_agent` both ways with
+  the answers back, `notify_owner` on the hub's windows and its mark
+  cleared by `agent.seen`), and a hosted copy without a hub (no tools) or
+  with its hub away (the call says so), then answered only on the hub's
+  own connection. The `agents` map drives the badges, the Needs-you card and row, and
+  memory in the form at both viewports, and a remote agent's tools. Checked against the real CLIs
   without a turn: Codex 0.171 takes the `mcp_servers.switchyard` override,
   starts the server and runs `mcpServer/tool/call` through it; the real
   sidecar with Claude Code starts it from `start.tools` and runs `mcp_call`.
@@ -715,7 +815,9 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   an MCP call during a real turn (answered by the elicitation accept, not
   seen live), and how OpenCode, Grok and Gemini name the calls (matched by
   `switchyard` plus the tool name).
-- Not built yet: agents on a remote host, per-agent accounts in the form.
+- Not built yet: one thread across a move between hosts (the earlier
+  conversation is linked instead), files attached on one host sent to an
+  agent on another.
 
 ## Slack
 
@@ -801,8 +903,9 @@ its engine framing and one arm in `origins::reply`.
   and its one ephemeral note, bots ignored, a channel mention handled once,
   the engine framing, answers in the right thread with reactions, failure,
   approval, stop and unread posts, every envelope acked, reconnects after a
-  `disconnect` and a drop, a refused token shown, and tokens in no snapshot,
-  broadcast or log (file mode 0600). Unit tests cover routing, mention
+  `disconnect` and a drop, a refused token shown, tokens in no snapshot,
+  broadcast or log (file mode 0600), and a message to an agent on a remote
+  host (its origin there, its answer posted from the hub). Unit tests cover routing, mention
   stripping, Slack markup, mrkdwn, splitting and the `slack` framing. The
   `slack` feature map drives the card (empty, refused, connected, a request,
   the default agent) and the badge in a conversation at both viewports,
@@ -810,5 +913,8 @@ its engine framing and one arm in `origins::reply`.
 - **Not checked:** a real Slack workspace. Nothing here has talked to
   slack.com: the manifest import, real event shapes beyond Slack's documented
   ones, rate limits, Enterprise Grid ids and the TLS path to slack.com are
-  untested. A Slack message is only answered by the agent's conversation on
-  the hub; Slack on a remote host is not offered.
+  untested. Slack connects from the hub only (Slack on a remote host is not
+  offered); an agent on a remote host is reached through the hub like any
+  `agents::deliver` (see Agents' own tools, On a remote host). A note about
+  a Slack post that failed lands in a local conversation only: for a remote
+  agent's it is logged on the hub instead.

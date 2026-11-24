@@ -79,17 +79,44 @@ export function leadingMention(text: string, agents: Agent[]): { agent: Agent; r
   return agent ? { agent, rest: text.slice(m[0].length).trim() } : null;
 }
 
-/** The agent a session is a chat with. Agents live on the hub, so a remote
- *  session's tag names one of its own host's and is not looked up here. */
-export function agentOf(agents: Agent[], s: Pick<SessionMeta, "agent" | "host"> | undefined): Agent | undefined {
-  if (!s?.agent || (s.host && s.host !== "local")) return undefined;
-  return agents.find((a) => a.id === s.agent);
+/** The host an agent runs on: `local`, or a remote host's id. */
+export const agentHost = (agent: Pick<Agent, "host">): string => agent.host || "local";
+
+/** The agent a session is a chat with: on this host by its tag; on a remote
+ *  host only when one of the hub's agents names it as its conversation (or
+ *  one it left there), since a remote's tag may name one of its own. */
+export function agentOf<A extends Pick<Agent, "id" | "chat" | "previous">>(agents: A[], s: Pick<SessionMeta, "id" | "agent" | "host"> | undefined): A | undefined {
+  if (!s) return undefined;
+  if (s.host && s.host !== "local") return agents.find((a) => a.chat === s.id || a.previous?.includes(s.id));
+  return s.agent ? agents.find((a) => a.id === s.agent) : undefined;
 }
 
-/** An agent's one conversation: kept out of the sidebar, shown on the
- *  Agents page and its nav row. Only the hub's own (a remote's tag names one
- *  of its own agents). */
-export const isAgentConversation = (s: Pick<SessionMeta, "agent" | "host">): boolean => !!s.agent && (!s.host || s.host === "local");
+/** An agent's conversation: kept out of the sidebar, shown on the Agents
+ *  page and its nav row. A session tagged with an agent this window does
+ *  not know (a hub's agent that runs here) is an ordinary session. */
+export const isAgentConversation = (s: Pick<SessionMeta, "id" | "agent" | "host">, agents: Pick<Agent, "id" | "chat" | "previous">[]): boolean => !!agentOf(agents, s);
+
+/** A conversation the agent left on a host it moved away from: readable,
+ *  not answered from. */
+export const isEarlierConversation = (agent: Agent, sessionId: string): boolean => agent.chat !== sessionId && !!agent.previous?.includes(sessionId);
+
+/** Where an agent works, in words: "its own folder on box". The host is
+ *  named only when it is not this one. */
+export function agentWhere(agent: Agent, hostName: (id: string) => string, folder: string): string {
+  const where = agent.cwd ? folder : "its own folder";
+  return agentHost(agent) === "local" ? where : `${where} on ${hostName(agentHost(agent))}`;
+}
+
+/** What the form says about a change of host: the conversation cannot
+ *  follow, so the next message starts a new one there with the latest
+ *  exchanges, and the old one stays readable where it is. Null when nothing
+ *  moves. */
+export function moveNote(agent: Agent | undefined, host: string, hostName: (id: string) => string): string | null {
+  if (!agent || agentHost(agent) === host) return null;
+  const to = hostName(host);
+  if (!agent.chat) return `It moves to ${to}.`;
+  return `Its conversation stays on ${hostName(agentHost(agent))}, readable. The next message starts a new one on ${to} with its notes and the latest messages.`;
+}
 
 /** The agent's conversation, if it has one yet. */
 export function conversationOf(agent: Agent, sessions: Record<string, SessionMeta>): SessionMeta | undefined {
@@ -107,12 +134,15 @@ const ago = (ms: number) => {
 
 /** `answered`: an answer the user has not opened yet. `needsYou`: the agent
  *  asked for the user (`notify_owner`) and they have not opened it since. */
-export type AgentTone = "live" | "approval" | "needsYou" | "answered" | "ok" | "bad" | "quiet";
+export type AgentTone = "live" | "approval" | "needsYou" | "answered" | "ok" | "bad" | "quiet" | "offline";
 
 /** The card's one status line, from the agent's conversation. `seenAt`: the
- *  turn end the user last had open (rowState's `yard.seen`). */
-export function agentStatus(agent: Agent, sessions: Record<string, SessionMeta>, now: number, seenAt = Infinity): { tone: AgentTone; text: string; sessionId: string | null } {
+ *  turn end the user last had open (rowState's `yard.seen`). `offline`: the
+ *  name of the agent's host while it cannot be reached. */
+export function agentStatus(agent: Agent, sessions: Record<string, SessionMeta>, now: number, seenAt = Infinity, offline?: string): { tone: AgentTone; text: string; sessionId: string | null } {
   const chat = conversationOf(agent, sessions);
+  // Its last state there is stale, and nothing can be sent until it is back.
+  if (offline) return { tone: "offline", text: `${offline} is offline`, sessionId: chat?.id ?? null };
   if (!chat) return { tone: "quiet", text: "No messages yet", sessionId: null };
   const at = { sessionId: chat.id };
   if (chat.status === "needs_approval") return { tone: "approval", text: "Needs approval", ...at };
@@ -158,14 +188,15 @@ export function originLabel(origin: MessageOrigin | undefined): { text: string; 
   return null;
 }
 
-/** "Fake Fast · Low · Plan only": how the agent runs, in the picker's words. */
-export function runsOn(agent: Agent, models: Models, permissionLabel: string): string {
+/** "Fake Fast · Low · Plan only": how the agent runs, in the picker's words.
+ *  `account`: its account's name, where the engine has a choice (accountLabel). */
+export function runsOn(agent: Agent, models: Models, permissionLabel: string, account?: string | null): string {
   const list = models[agent.engine] ?? [];
   // No model of its own: the host's default, which a new chat starts on.
   const fallback = list.find((m) => m.isDefault) ?? list[0];
   const model = agent.model ? (list.find((m) => m.id === agent.model)?.name ?? agent.model) : (fallback?.name ?? `${ENGINE_NAME[agent.engine]} default`);
   const effort = agent.effort ? agent.effort[0].toUpperCase() + agent.effort.slice(1) : "";
-  return [model, effort, permissionLabel].filter(Boolean).join(" · ");
+  return [model, account, effort, permissionLabel].filter(Boolean).join(" · ");
 }
 
 /** Where the host agent reads from, in words. */

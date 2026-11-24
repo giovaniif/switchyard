@@ -675,7 +675,8 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
     }
     broadcast(app);
     let text = from_slack(&strip_mention(raw, &me.bot_user));
-    let agents: Vec<(String, String)> = app.agents.all().into_iter().map(|a| (a.id, a.name)).collect();
+    // A hub's agents kept here to run are the hub's to reach.
+    let agents: Vec<(String, String)> = app.agents.all().into_iter().filter(|a| !a.hosted).map(|a| (a.id, a.name)).collect();
     let name_of = |id: &str| agents.iter().find(|(a, _)| a == id).map(|(_, n)| n.clone());
     // A thread keeps its agent; a deleted one lets the message route anew.
     let (agent, text) = match known.filter(|id| name_of(id).is_some()) {
@@ -743,7 +744,14 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
     let slack = &app.slack;
     let _order = slack.posting.lock().await;
     let token = slack.bot_token();
-    let note = |text: String| app.emit(&owed.sid, json!({ "type": "note", "text": text }));
+    // A remote agent's conversation is on its host: the note goes to the log.
+    let note = |text: String| {
+        if app.meta(&owed.sid).is_some() {
+            app.emit(&owed.sid, json!({ "type": "note", "text": text }));
+        } else {
+            eprintln!("yardd: {agent}: {text}");
+        }
+    };
     if token.is_empty() {
         if owed.status != "approval" {
             note("Slack is not connected, so this answer was not posted there.".into());

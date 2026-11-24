@@ -211,7 +211,7 @@ fn spawn_host(app: &Arc<App>, config: HostConfig) -> Entry {
         let port = config.remote_port.unwrap_or(DEFAULT_REMOTE_PORT);
         tasks.push(tokio::spawn(tunnel(app.clone(), conn.clone(), destination, port, ssh_pid.clone())));
     }
-    tasks.push(tokio::spawn(monitor(app.clone(), conn.clone())));
+    tasks.push(tokio::spawn(monitor(app.clone(), conn.clone(), config.id.clone())));
     Entry { config, conn, tasks, ssh_pid, last: Default::default() }
 }
 
@@ -435,9 +435,11 @@ async fn connect(
     Ok(ws)
 }
 
-/// The hub's own connection to a host. It only decides the status the UI
-/// shows; clients get their own connections in `pipe`.
-async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>) {
+/// The hub's own connection to a host. It decides the status the UI shows
+/// (clients get their own connections in `pipe`), and it is the way back
+/// for this hub's agents that run there: it says which hub it is, and the
+/// host passes their tool calls and owed answers to it (`agent_tools`).
+async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>, host: String) {
     let mut rx = conn.subscribe();
     let mut backoff = Backoff::new(Duration::from_secs(10));
     loop {
@@ -446,14 +448,14 @@ async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>) {
             Err(_) => return,
         };
         match connect(&url).await {
-            Ok(mut ws) => {
+            Ok(ws) => {
                 set(&app, &conn, |c| {
                     c.status = "connected";
                     c.error = None;
                     c.no_daemon = false;
                 });
                 backoff.reset();
-                while let Some(Ok(_)) = ws.next().await {}
+                serve_host(&app, ws, &host).await;
                 set(&app, &conn, |c| {
                     c.status = "error";
                     c.error = Some("Connection lost. Retrying.".into());
@@ -467,6 +469,47 @@ async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>) {
             }),
         }
         backoff.wait().await;
+    }
+}
+
+/// Until the connection drops: say which hub this is, and answer what the
+/// host passes back for this hub's agents. A host from before remote agents
+/// answers the hello with an error, which is ignored like everything else.
+async fn serve_host(app: &Arc<App>, ws: tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>, host: &str) {
+    let (mut sink, mut stream) = ws.split();
+    let hello = json!({ "op": "agent.hosted.hub", "hub": app.tools.hub_id() });
+    if sink.send(Message::Text(hello.to_string())).await.is_err() {
+        return;
+    }
+    let (answers, mut answers_rx) = mpsc::unbounded_channel::<Value>();
+    loop {
+        tokio::select! {
+            incoming = stream.next() => match incoming {
+                Some(Ok(Message::Text(text))) => {
+                    // Everything the host broadcasts comes here too: parse only what is ours.
+                    if !text.contains("\"agent.hub.") {
+                        continue;
+                    }
+                    let Ok(msg) = serde_json::from_str::<Value>(&text) else { continue };
+                    if !msg["op"].as_str().is_some_and(|op| op.starts_with("agent.hub.")) {
+                        continue;
+                    }
+                    let (app, host, answers) = (app.clone(), host.to_string(), answers.clone());
+                    tokio::spawn(async move {
+                        if let Some(answer) = crate::agent_tools::from_host(&app, &host, &msg).await {
+                            let _ = answers.send(answer);
+                        }
+                    });
+                }
+                Some(Ok(_)) => {}
+                _ => return,
+            },
+            Some(answer) = answers_rx.recv() => {
+                if sink.send(Message::Text(answer.to_string())).await.is_err() {
+                    return;
+                }
+            }
+        }
     }
 }
 
@@ -907,8 +950,10 @@ mod tests {
     }
 }
 
-/// A daemon-owned read request, independent of any browser connection: the
-/// host agent keeps collecting if the user closes its tab. Never accepts arbitrary URLs.
+/// A daemon-owned request, independent of any browser connection: the host
+/// agent keeps collecting if the user closes its tab, and a remote agent's
+/// message reaches its host whoever sent it. Answered by the first reply with
+/// its `ref`. Never accepts arbitrary URLs.
 pub async fn request(app: &Arc<App>, host: &str, mut msg: Value) -> Result<Value> {
     let (conn, _, _) = app.remotes.lookup(host).context("unknown host")?;
     let connection = conn.borrow().clone();
@@ -928,6 +973,6 @@ pub async fn request(app: &Arc<App>, host: &str, mut msg: Value) -> Result<Value
                 }
             }
         }
-        bail!("host disconnected during context collection")
-    }).await.context("host context request timed out")?
+        bail!("the host disconnected before it answered")
+    }).await.context("the host did not answer in time")?
 }
