@@ -2766,6 +2766,30 @@ async fn a_session_whose_folder_is_gone_says_so() {
 }
 
 #[tokio::test]
+async fn a_message_to_a_session_whose_folder_is_gone_says_so() {
+    let sb = Sandbox::new("gonesend");
+    let d = sb.start();
+    let mut c = d.client().await;
+    for engine in ["codex", "claude"] {
+        let folder = sb.folder(&format!("proj-{engine}"));
+        // As the merged-worktree sweep leaves it: Claude's sidecar stopped, folder gone.
+        let first = if engine == "claude" { "[die] hi" } else { "hi" };
+        let sid = c.create(&folder, first, json!({ "engine": engine })).await;
+        c.wait_turn_done(&sid, 0).await;
+        c.wait_status(&sid, "idle").await;
+        fs::remove_dir_all(&folder).unwrap();
+
+        // The engine would fail its own way: Claude Code's SDK blames libc.
+        let seq = c.next_seq(&sid);
+        c.send(json!({ "op": "session.send", "sessionId": sid, "text": "keep going" })).await;
+        let error = c.wait_event(&sid, "error", seq).await;
+        let message = error["message"].as_str().unwrap_or_default();
+        assert!(message.contains("no longer exists") && message.contains(&folder), "{engine}: {error}");
+        assert_eq!(c.wait_turn_done(&sid, seq).await["status"], "failed", "{engine}");
+    }
+}
+
+#[tokio::test]
 async fn claude_usage_survives_a_restart() {
     // Claude reports its limits only during a turn, so without saving them a
     // restart blanks the meters and lets a usage-capped automation run.
