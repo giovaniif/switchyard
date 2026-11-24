@@ -346,6 +346,9 @@ export function sidebarLayout(sessions: SessionMeta[]): SidebarLayout {
 
 /** The host a session runs on, `local` for this machine. */
 export const hostOf = (s: SessionMeta | undefined) => s?.host || "local";
+/** A live event can create a thread before its history (it waits in `early`),
+ *  so only a thread that has had its history counts as loaded. */
+export const historyLoaded = (state: State, id: string): boolean => (state.threads[id]?.next ?? -1) >= 0;
 export const modelsOn = (state: State, host: string): Models => state.models[host] ?? EMPTY_MODELS;
 export const usageOn = (state: State, host: string): Usage => state.usage[host] ?? NO_USAGE;
 export const homeOn = (state: State, host: string): string => state.home[host] ?? "";
@@ -902,7 +905,7 @@ export function useYard(): { state: State; actions: Actions } {
   const routeId = state.route.page === "session" ? state.route.id : agentChat && state.sessions[agentChat] ? agentChat : null;
   const routeHost = routeId ? hostOf(state.sessions[routeId]) : "local";
   const online = routeId ? hostOnline(state, routeHost) : false;
-  const loaded = routeId ? !!state.threads[routeId] : false;
+  const loaded = routeId ? historyLoaded(state, routeId) : false;
   useEffect(() => {
     if (routeId && !loaded) opened.current.delete(routeId);
     if (!routeId || !online || opened.current.has(routeId)) return;

@@ -425,6 +425,14 @@ yv api '{"op":"session.send","sessionId":"{{sid_echo}}","text":"TEST-numbered st
 yv drive 'session:{{sid_echo}}' --steps '[{"expect":{"css":".prose li","hasText":"Start the daemon."}},{"expect":{"css":"pre.code","hasText":"bunx vite build"}},{"eval":"[...document.querySelectorAll(\".prose ol\")].slice(-3).map(o => [o.start, o.textContent])","equals":[[1,"Install the deps:"],[2,"Build the UI:"],[3,"Start the daemon."]]},{"shot":"numbered-steps"}]'
 ```
 
+### history-reloads-after-resync
+Viewports: both
+When the socket falls behind, yardd resends a snapshot on the same connection, and a running session's next event can arrive before the page asks for history again. The conversation must reload instead of going blank with only "Working" left. The drive delivers that snapshot and an event straight to the page's socket handler.
+
+```sh
+yv drive 'session:{{sid_echo}}' --steps '[{"expect": "css:.thread", "text": "Echo:"}, {"eval": "(() => { const send = WebSocket.prototype.send; window.__sent = 0;\n  WebSocket.prototype.send = function (d) { if (this.readyState === 1) { window.__appWs = this; window.__sent++; } return send.call(this, d); };\n  return true; })()", "equals": true}, {"eval": "(() => { location.hash = '\''#/s/{{sid_think}}'\''; return true; })()", "equals": true}, {"wait": 800}, {"eval": "(() => { location.hash = '\''#/s/{{sid_echo}}'\''; return true; })()", "equals": true}, {"expect": "css:.thread", "text": "Echo:"}, {"eval": "window.__sent > 0", "equals": true}, {"eval": "new Promise((done) => {\n  const app = window.__appWs;\n  if (!app) return done('\''no app socket'\'');\n  const probe = new WebSocket(app.url);\n  probe.onmessage = (e) => {\n    const msg = JSON.parse(e.data);\n    if (msg.op !== '\''snapshot'\'') return;\n    probe.close();\n    app.onmessage({ data: e.data });\n    app.onmessage({ data: JSON.stringify({ op: '\''event'\'', sessionId: '\''{{sid_echo}}'\'', seq: 1000, event: { type: '\''turn_started'\'' } }) });\n    done('\''injected'\'');\n  };\n})", "equals": "injected"}, {"wait": 1500}, {"shot": "after-resync"}, {"expect": "css:.thread", "text": "Echo:"}]'
+```
+
 ## Gotchas
 - Recipes share one isolated yardd and run in order, and several send to `sid_echo`: by `reply-to-part-of-answer` its first answer is scrolled out of view at 390 px, so that recipe scrolls the paragraph into view before selecting it (a user only selects what they see).
 - A failed turn leaves the session status `idle` in the sidebar, with the red error line in the thread.
