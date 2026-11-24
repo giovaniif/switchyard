@@ -2,6 +2,24 @@
 
 Each version is a [GitHub release](https://github.com/giovaniif/better-than-claude-code/releases) with the signed Mac app and the Linux packages. The section for a version becomes its release notes.
 
+## 0.19.0 (2026-11-24)
+
+- **New agents set themselves up.** New agent opens a conversation instead of a form: tell the agent what it's for, and it picks its own name, writes its description and instructions, and chooses a face, colour and model. It can't give itself your project folder, more access or a place in Slack: it asks, and you answer with a button above the reply box. Edit is still there for changes by hand, or just tell the agent what to change.
+- **Each agent can have its own Slack app**, so people @mention it by name. Choose Add to Slack in the agent's header:
+  1. Paste a Slack configuration token (once per workspace).
+  2. Switchyard creates the agent's app.
+  3. Approve the install in Slack.
+  4. Paste the app's connection token.
+
+  Whoever installed it can ask right away. The shared Switchyard bot on the Connectors page still works as before.
+- **Faces come alive.** Agents' faces blink and glance around, look busy while the agent works, and hop when you point at them. They stay still if your system asks for reduced motion.
+- **Scout is gone.** The built-in host agent and its conversation are removed.
+- **File links open in a workspace viewer** (Markdown, CSV, images, text) with Download.
+- **Sidebar rows are one line**, with the harness's logo and a status badge; archive on hover.
+- **Fixed:**
+  - The agent form's colours line up under the faces and are round again.
+  - A conversation whose history was dropped while it kept streaming reloads instead of staying blank.
+
 ## 0.18.0 (2026-11-24)
 
 - **Agents.** The Agents page replaces Switchy. An agent is a name you mention (`@Reviewer`) with a colour, what it's for, how it runs (engine, model, effort, folder, permission) and two notes: instructions and memory. Each agent keeps one ongoing conversation. Type `@Name` in any message box to send it there, or start a new chat from its card. **Scout** is built in and answers quick questions about your hosts, read-only, like Switchy did. Switchy's old history isn't carried over.
