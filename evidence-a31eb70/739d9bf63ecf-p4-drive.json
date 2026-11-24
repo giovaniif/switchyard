@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "a31eb7035d724017eb34aa3f7ed84042605b5575",
+    "short": "a31eb70",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T18:56:27.464Z"
+  },
+  "dir": ".verify/evidence/sidebar-rows-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2428,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/sidebar-rows-head-mobile/rows-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-hello from Claude\")); const text = row.querySelector(\".session-text\").getBoundingClientRect(); const mark = row.querySelector(\".mark\").getBoundingClientRect(); return [row.getBoundingClientRect().height <= 46, mark.left >= text.right]; })()",
+          "value": [
+            true,
+            true
+          ]
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

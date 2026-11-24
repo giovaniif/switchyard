@@ -1,0 +1,137 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "sidebar",
+      "at": "2026-11-24T19:00:00.989Z",
+      "counts": {
+        "pass": 24
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "rows-show-status",
+          "status": "pass",
+          "ms": 4566
+        },
+        {
+          "label": "compact-rows-with-engine-marks",
+          "status": "pass",
+          "ms": 5064
+        },
+        {
+          "label": "hover-shows-archive-in-place-of-the-mark",
+          "status": "pass",
+          "ms": 7169
+        },
+        {
+          "label": "rows-mark-what-needs-you",
+          "status": "pass",
+          "ms": 11843
+        },
+        {
+          "label": "mark-chat-unread",
+          "status": "pass",
+          "ms": 12928
+        },
+        {
+          "label": "rename-session",
+          "status": "pass",
+          "ms": 11298
+        },
+        {
+          "label": "pin-and-unpin",
+          "status": "pass",
+          "ms": 6395
+        },
+        {
+          "label": "archive-and-restore",
+          "status": "pass",
+          "ms": 5938
+        },
+        {
+          "label": "archiving-the-open-session-keeps-the-list-closed",
+          "status": "pass",
+          "ms": 7116
+        },
+        {
+          "label": "delete-keeps-worktree",
+          "status": "pass",
+          "ms": 4822
+        },
+        {
+          "label": "group-new",
+          "status": "pass",
+          "ms": 3268
+        },
+        {
+          "label": "group-move-to-existing",
+          "status": "pass",
+          "ms": 3106
+        },
+        {
+          "label": "group-drag-out-to-ungrouped",
+          "status": "pass",
+          "ms": 5721
+        },
+        {
+          "label": "group-drag-into-group",
+          "status": "pass",
+          "ms": 4571
+        },
+        {
+          "label": "group-drag-noop",
+          "status": "pass",
+          "ms": 3024
+        },
+        {
+          "label": "group-collapse-persists",
+          "status": "pass",
+          "ms": 3462
+        },
+        {
+          "label": "group-rename",
+          "status": "pass",
+          "ms": 3362
+        },
+        {
+          "label": "group-remove-from-group",
+          "status": "pass",
+          "ms": 3083
+        },
+        {
+          "label": "group-ungroup",
+          "status": "pass",
+          "ms": 2996
+        },
+        {
+          "label": "archived-header-stays-at-bottom",
+          "status": "pass",
+          "ms": 8925
+        },
+        {
+          "label": "hand-off-keeps-the-group",
+          "status": "pass",
+          "ms": 2949
+        },
+        {
+          "label": "hand-off-from-a-pinned-session-stays-in-its-group",
+          "status": "pass",
+          "ms": 6174
+        },
+        {
+          "label": "menu-on-a-row-below-the-fold",
+          "status": "pass",
+          "ms": 7419
+        },
+        {
+          "label": "session-named-from-the-conversation",
+          "status": "pass",
+          "ms": 1912
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

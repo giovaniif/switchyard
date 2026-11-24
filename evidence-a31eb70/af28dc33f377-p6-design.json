@@ -1,0 +1,56 @@
+{
+  "command": "design-check",
+  "ok": true,
+  "base": "2286c07e55d94aee4aecdd614fa7f33b067b7793",
+  "ui": true,
+  "touched": [
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/App.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/ConnectorsPage.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "paths": [
+        "ui/src/EngineIcon.test.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "paths": [
+        "ui/src/EngineIcon.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/UsageMeters.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/styles.css"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "rule": "raw-svg",
+      "severity": "warn",
+      "file": "ui/src/EngineIcon.tsx",
+      "line": 43,
+      "text": "<svg",
+      "hint": "use <Icon d={PATH} /> like the rest of the UI"
+    }
+  ],
+  "problems": [],
+  "hint": "screenshot the reference screen next to your after-shots, and cover empty, loading, error and long-text states at both viewports"
+}
