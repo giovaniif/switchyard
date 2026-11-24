@@ -1,0 +1,245 @@
+{
+  "v": 1,
+  "claim": "Clicking a CSV or Markdown file an agent linked only downloaded it; it should open a preview in the workspace sidebar (grid, rendered document) with a Download button there",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-some-conversations-just-vanish-1851",
+  "base": "2286c07e55d94aee4aecdd614fa7f33b067b7793",
+  "head": "d7f802a17706f9c903cebca3deefc9c137825c33",
+  "changed": [
+    {
+      "status": "M",
+      "path": "app/src-tauri/src/main.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/yardd/src/files.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/common/mod.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/FileView.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/fileLinks.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/fileLinks.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/filePreview.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/filePreview.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/markdown.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/markdown.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/thread.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-24T15:45:13.292Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "53153f74232813343f496de352ed527d1595960b",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "b967e1e3c1e639f4f678b950494d54fc95fe09038fdf16205d661c6df1bfb29f"
+        },
+        {
+          "path": "p1-fail-mobile-step1.png",
+          "sha256": "54aeb23663c1be5f465373390560dc3499306ce32fd90c28276105dc6039f78c"
+        },
+        {
+          "path": "p1-fail-desktop-step1.png",
+          "sha256": "7641cafa8fe9aa6ca368187f39b7097521edc7ea38ef359ebb8385c21c670e53"
+        }
+      ],
+      "addedAt": "2026-11-24T15:45:53.386Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "53153f74232813343f496de352ed527d1595960b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "666e528ba0dd7f82ea99ee930a7eb6f216d7c27f1b3490d08e49d65a30334fe5"
+        }
+      ],
+      "addedAt": "2026-11-24T15:45:53.440Z",
+      "cmd": "verify/yv map run thread --recipe file-viewer-kinds",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "d7f802a17706f9c903cebca3deefc9c137825c33",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "b4b42ca5cd3cf23e45b668ad9385c58724fe53bf7dda09342da2060c721d739d"
+        },
+        {
+          "path": "p3-csv-preview-mobile.png",
+          "sha256": "f8fa00e1dcc08455473874d3f054ea6f16d3705e31cf0a38713fab3b98091b11"
+        },
+        {
+          "path": "p3-csv-preview-desktop.png",
+          "sha256": "fd68ac6a0f39731005696b326bc95adc45d915ba78cd847a473487ae2e9bba67"
+        }
+      ],
+      "addedAt": "2026-11-24T15:46:35.035Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "d7f802a17706f9c903cebca3deefc9c137825c33",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "30ffd4d4da52cfbf73784fa9b62b966817fa28bd607728ad3ba3b67705eb1260"
+        }
+      ],
+      "addedAt": "2026-11-24T15:46:35.080Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "d7f802a17706f9c903cebca3deefc9c137825c33",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "a6c3beb1f59f7e0290ec9971f921dfce964b57bc4f2ba895a623213a07880838"
+        }
+      ],
+      "addedAt": "2026-11-24T15:47:43.737Z",
+      "cmd": "verify/yv design-check --base 2286c07e55d9",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "d7f802a17706f9c903cebca3deefc9c137825c33",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-thread.json",
+          "sha256": "6541f11e84ca0e0e5220031ae62d03108382559d3f86bdc833a41bf479020868"
+        }
+      ],
+      "addedAt": "2026-11-24T15:47:43.830Z",
+      "cmd": "verify/yv map run thread",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "thread/reply-renders",
+        "thread/markdown-table-renders",
+        "thread/markdown-blocks-without-blank-lines",
+        "thread/web-links-open-outside-the-thread",
+        "thread/thinking-folds",
+        "thread/edit-shows-diff",
+        "thread/failed-turn-shows-error",
+        "thread/follow-up-turn",
+        "thread/claude-session-renders",
+        "thread/reply-to-part-of-answer",
+        "thread/no-reply-on-own-message",
+        "thread/queue-a-message-while-working",
+        "thread/remove-a-queued-message",
+        "thread/steer-a-running-turn",
+        "thread/steer-a-selected-queued-message",
+        "thread/stop-returns-the-queue",
+        "thread/edit-a-queued-message",
+        "thread/edit-a-queued-reply-keeps-its-quotes",
+        "thread/draft-survives-switching-sessions",
+        "thread/workspace-subagents",
+        "thread/workspace-subagents-line-up",
+        "thread/subagent-nests-and-expands",
+        "thread/working-line-stays-in-view",
+        "thread/pr-link-hover-card",
+        "thread/pr-link-card-states",
+        "thread/pr-link-card-error",
+        "thread/pr-link-keyboard-and-touch",
+        "thread/links-inside-bold-text",
+        "thread/file-links-download",
+        "thread/file-viewer-kinds",
+        "thread/numbered-steps-across-code-blocks"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "route": "session:s1a20e3cad97d",
+  "build": {
+    "sha": "d7f802a17706f9c903cebca3deefc9c137825c33",
+    "short": "d7f802a",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T15:46:26.543Z"
+  },
+  "dir": ".verify/evidence/file-view-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3723,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/file-view-head/csv-preview-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3362,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/file-view-head/csv-preview-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

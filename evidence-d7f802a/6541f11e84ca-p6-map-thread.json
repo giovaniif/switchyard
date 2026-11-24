@@ -1,0 +1,172 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "thread",
+      "at": "2026-11-24T15:52:58.622Z",
+      "counts": {
+        "pass": 31
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "reply-renders",
+          "status": "pass",
+          "ms": 6672
+        },
+        {
+          "label": "markdown-table-renders",
+          "status": "pass",
+          "ms": 6143
+        },
+        {
+          "label": "markdown-blocks-without-blank-lines",
+          "status": "pass",
+          "ms": 6023
+        },
+        {
+          "label": "web-links-open-outside-the-thread",
+          "status": "pass",
+          "ms": 6067
+        },
+        {
+          "label": "thinking-folds",
+          "status": "pass",
+          "ms": 6098
+        },
+        {
+          "label": "edit-shows-diff",
+          "status": "pass",
+          "ms": 5658
+        },
+        {
+          "label": "failed-turn-shows-error",
+          "status": "pass",
+          "ms": 5157
+        },
+        {
+          "label": "follow-up-turn",
+          "status": "pass",
+          "ms": 4299
+        },
+        {
+          "label": "claude-session-renders",
+          "status": "pass",
+          "ms": 5600
+        },
+        {
+          "label": "reply-to-part-of-answer",
+          "status": "pass",
+          "ms": 9510
+        },
+        {
+          "label": "no-reply-on-own-message",
+          "status": "pass",
+          "ms": 3125
+        },
+        {
+          "label": "queue-a-message-while-working",
+          "status": "pass",
+          "ms": 12827
+        },
+        {
+          "label": "remove-a-queued-message",
+          "status": "pass",
+          "ms": 6254
+        },
+        {
+          "label": "steer-a-running-turn",
+          "status": "pass",
+          "ms": 6484
+        },
+        {
+          "label": "steer-a-selected-queued-message",
+          "status": "pass",
+          "ms": 13516
+        },
+        {
+          "label": "stop-returns-the-queue",
+          "status": "pass",
+          "ms": 4592
+        },
+        {
+          "label": "edit-a-queued-message",
+          "status": "pass",
+          "ms": 8244
+        },
+        {
+          "label": "edit-a-queued-reply-keeps-its-quotes",
+          "status": "pass",
+          "ms": 6531
+        },
+        {
+          "label": "draft-survives-switching-sessions",
+          "status": "pass",
+          "ms": 13166
+        },
+        {
+          "label": "workspace-subagents",
+          "status": "pass",
+          "ms": 9158
+        },
+        {
+          "label": "workspace-subagents-line-up",
+          "status": "pass",
+          "ms": 8962
+        },
+        {
+          "label": "subagent-nests-and-expands",
+          "status": "pass",
+          "ms": 7741
+        },
+        {
+          "label": "working-line-stays-in-view",
+          "status": "pass",
+          "ms": 31402
+        },
+        {
+          "label": "pr-link-hover-card",
+          "status": "pass",
+          "ms": 8737
+        },
+        {
+          "label": "pr-link-card-states",
+          "status": "pass",
+          "ms": 5209
+        },
+        {
+          "label": "pr-link-card-error",
+          "status": "pass",
+          "ms": 7854
+        },
+        {
+          "label": "pr-link-keyboard-and-touch",
+          "status": "pass",
+          "ms": 7421
+        },
+        {
+          "label": "links-inside-bold-text",
+          "status": "pass",
+          "ms": 6589
+        },
+        {
+          "label": "file-links-download",
+          "status": "pass",
+          "ms": 40275
+        },
+        {
+          "label": "file-viewer-kinds",
+          "status": "pass",
+          "ms": 38175
+        },
+        {
+          "label": "numbered-steps-across-code-blocks",
+          "status": "pass",
+          "ms": 6424
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
