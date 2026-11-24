@@ -71,13 +71,45 @@ export interface PendingMessage {
 
 /** Where a message into a conversation came from, when the owner did not
  *  type it (yardd's origins.rs): another agent's `message_agent` (`agent`),
- *  or the answer to one delivered back (`agentReply`). `hops` counts the
- *  chain of agents messaging agents. Slack will add `slack`. Absent, or
+ *  the answer to one delivered back (`agentReply`), or a Slack message
+ *  (`slack`). `hops` counts the chain of agents messaging agents. Absent, or
  *  `user`: typed by the owner. */
 export type MessageOrigin =
   | { kind: "user" }
   | { kind: "agent" | "agentReply"; agentId: string; name: string; hops: number }
+  /** `slack` (and kinds this build does not know); `isSlack` narrows to SlackOrigin. */
   | { kind: string; [field: string]: unknown };
+
+/** A message from Slack: where it was written and by whom (yardd's slack.rs). */
+export interface SlackOrigin {
+  kind: "slack";
+  team: string;
+  channel: string;
+  /** `#general`, or `Direct message`. */
+  channelName: string;
+  /** The Slack thread the answer is posted in. */
+  threadTs: string;
+  ts: string;
+  user: string;
+  userName: string;
+}
+
+/** The Slack connection and its settings (yardd's slack.rs). Tokens never
+ *  come here: only their kind and last four characters. */
+export interface SlackView {
+  configured: boolean;
+  appToken: string;
+  botToken: string;
+  state: "off" | "connecting" | "connected" | "error";
+  team: string;
+  bot: string;
+  error: string | null;
+  allowed: { id: string; name: string }[];
+  /** People who wrote to the bot and are not allowed, newest first. */
+  requests: { id: string; name: string; place: string; at: number }[];
+  defaultAgent: string | null;
+  channels: { id: string; name: string; agent: string | null }[];
+}
 
 export type ModelServiceTier = { id: string; name: string; description: string };
 

@@ -1,6 +1,7 @@
 // Words and rules for agents (yardd's agents.rs): @mentions in a message,
 // the card's status line, the avatar's letter. Pure, so bun test covers them.
 import type { Agent, AgentColor, AgentFace, MessageOrigin, Models, SessionMeta } from "./protocol";
+import { isSlack, slackFrom } from "./slack";
 import { ENGINE_NAME } from "./engines";
 
 export const AGENT_COLORS: AgentColor[] = ["blue", "green", "amber", "rose", "violet", "teal", "orange", "slate"];
@@ -153,6 +154,7 @@ export function originLabel(origin: MessageOrigin | undefined): { text: string; 
   const agentId = typeof origin.agentId === "string" ? origin.agentId : null;
   if (origin.kind === "agent") return { text: name ? `From @${name}` : "From another agent", agentId };
   if (origin.kind === "agentReply") return { text: name ? `Reply from @${name}` : "Reply from another agent", agentId };
+  if (isSlack(origin)) return { text: slackFrom(origin), agentId: null };
   return null;
 }
 

@@ -46,6 +46,9 @@
   --agent-teal: #0f8b8d;
   --agent-orange: #c2560c;
   --agent-slate: #556070;
+  /* Slack's aubergine, for its connector tile and the badge on messages from Slack. */
+  --slack-ink: #4a154b;
+  --slack-fill: #f5edf5;
 }
 
 * { box-sizing: border-box; }
@@ -1028,6 +1031,8 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 /* Above a message the user did not type: who sent it. Right-aligned with the bubble. */
 .origin-badge { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin: 0 4px -2px 0; font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .origin-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--off); }
+/* From Slack: the dot in Slack's aubergine, like its connector tile. */
+.origin-slack .origin-dot { background: var(--slack-ink); }
 .row-agent .agent-avatar { display: inline-grid; margin-right: 4px; vertical-align: -2px; }
 .agent-colors { gap: 6px; }
 .btn-icon.agent-swatch { width: 32px; height: 32px; border-radius: 50%; }
@@ -1301,7 +1306,7 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .connector-accounts { display: grid; gap: 16px; }
 /* Header, rows and footer each draw their own line, so the card has no gap:
    the old 10 px one left a framed empty band between them. */
-.connectors-card { padding: 0; gap: 0; }
+.connectors-card, .slack-card { padding: 0; gap: 0; }
 .connectors-card-head + .connector-list { border-top: 0; }
 .connectors-card > :is(.connector-filter-controls, .connector-pagination, .connectors-note) { margin-block: 10px; }
 .connectors-card-head { align-items: center; gap: 10px 14px; padding: 14px 16px; background: var(--side); border-bottom: 1px solid var(--line); border-radius: 12px 12px 0 0; }
@@ -1315,14 +1320,46 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .connector-filter-controls { display: grid; gap: 8px; padding-inline: 16px; }
 .connector-filter-controls .connector-search { min-width: 0; }
 .connector-filter-toggle { margin-left: auto; }
-.connectors-card .connector-list { margin: 0; }
-.connectors-card .connector { padding-block: 12px; }
+:is(.connectors-card, .slack-card) .connector-list { margin: 0; }
+:is(.connectors-card, .slack-card) .connector { padding-block: 12px; }
 .connector-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; padding: 6px 16px; border-top: 1px solid var(--line); }
 .connector-card-footer .connector-add { margin: 0; }
 .connector-add-step { display: grid; gap: 8px; }
 .connector-add-step p { margin: 0; }
 .connector-add-step .connector-catalog { display: grid; gap: 4px; }
 .connector-add-popover .popover-footer { justify-content: flex-end; }
+/* Messaging: the Slack connector, under the accounts. Its rows reuse the
+   connector rows, so names, dots and controls line up with the cards above. */
+.connector-apps { display: grid; gap: 12px; margin-top: 28px; }
+.connector-section-head { display: grid; gap: 4px; }
+.connector-section-head h2 { font-size: 15px; font-weight: 600; }
+.connector-account-slack { background: var(--slack-fill); color: var(--slack-ink); font-size: 16px; }
+.slack-state-ok { color: var(--ok-ink); }
+.slack-state-bad { color: var(--bad-ink); }
+.slack-state-muted { color: var(--muted); }
+.slack-status-line { overflow-wrap: anywhere; }
+.slack-hint { padding-left: 15px; line-height: 1.5; }
+/* Setting rows keep the dot's place, so every name starts at the same x. */
+.dot-spacer { visibility: hidden; }
+.slack-setup { display: grid; gap: 16px; padding: 14px 16px 16px; }
+/* Numbers sit on the card's left edge, with the token fields below; the
+   text and buttons of each step share one column after them. */
+.slack-steps { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: step; line-height: 1.5; }
+.slack-steps li { display: grid; grid-template-columns: 20px minmax(0, 1fr); counter-increment: step; }
+.slack-steps li::before { content: counter(step) "."; grid-row: 1 / span 3; color: var(--muted); }
+.slack-steps li > * { grid-column: 2; }
+.slack-step-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.slack-manifest { max-height: 240px; margin: 8px 0 0; padding: 10px 12px; overflow: auto; border-radius: 10px; background: var(--fill); font-size: 12px; line-height: 1.45; }
+.slack-token-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.slack-field { display: grid; align-content: start; gap: 4px; }
+.slack-field .field { font-family: var(--mono); }
+.slack-form-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.slack-form-actions .muted { margin-right: auto; }
+.slack-tokens { font-family: var(--mono); overflow-wrap: anywhere; }
+.slack-footer-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+@media (max-width: 700px) {
+  .slack-token-form { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 700px) {
   .anchored-scrim { background: var(--scrim); }
   .anchored-popover { width: calc(100vw - 16px); border-radius: 16px; }

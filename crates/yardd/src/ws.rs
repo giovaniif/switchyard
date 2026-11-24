@@ -310,6 +310,9 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
     if msg["sessionId"].as_str().is_some_and(crate::private::internal) {
         bail!("that engine thread is private to yardd");
     }
+    if msg["op"].as_str().is_some_and(|op| op.starts_with("slack.")) {
+        return crate::slack::handle(app, msg).await;
+    }
     if msg["op"].as_str().is_some_and(|op| op.starts_with("agent.")) {
         return crate::agents::handle(app, direct, msg).await;
     }

@@ -31,6 +31,7 @@ import {
   type Agent,
   type McpAuthState,
   type McpStatus,
+  type SlackView,
 } from "./protocol";
 import type { WidgetRecord } from "./widget";
 import { createNotifier } from "./notify";
@@ -139,6 +140,8 @@ interface Thread {
 
 export interface State {
   mobile: MobileStatus;
+  /** The hub's Slack connection; null until the snapshot. */
+  slack: SlackView | null;
   /** The hub's agents (agents live on this yardd only). */
   agents: Agent[];
   connected: boolean;
@@ -199,6 +202,8 @@ export interface State {
   notice: string | null;
 }
 
+export type SlackOp = "slack.tokens" | "slack.disconnect" | "slack.retry" | "slack.allow" | "slack.disallow" | "slack.dismiss" | "slack.route";
+
 type Action =
   | { t: "socket"; connected: boolean }
   | { t: "route"; route: Route }
@@ -211,6 +216,7 @@ const emptyThread = (): Thread => ({ next: -1, items: [], early: [] });
 
 export const initial: State = {
   mobile: { configured: false },
+  slack: null,
   agents: [],
   connected: false,
   route: { page: "new" },
@@ -381,6 +387,8 @@ function reduceServer(state: State, msg: any): State {
       return msg.hostId ? state : { ...state, mobile: msg.mobile };
     case "agents":
       return msg.hostId ? state : { ...state, agents: (msg.agents as Agent[] | undefined) ?? [] };
+    case "slack":
+      return msg.hostId ? state : { ...state, slack: msg.slack as SlackView };
     case "snapshot": {
       const hosts = (msg.hosts ?? []) as HostEntry[];
       const known = new Set(hosts.map((h) => h.id));
@@ -396,6 +404,7 @@ function reduceServer(state: State, msg: any): State {
       return {
         ...next,
         mobile: msg.mobile ?? { configured: false },
+        slack: (msg.slack as SlackView | undefined) ?? null,
         agents: (msg.agents as Agent[] | undefined) ?? [],
         sessions,
         route,
@@ -718,6 +727,8 @@ export interface Actions {
   mcpChangeClear(host: string, engine: Engine, account: string, name: string): void;
   /** Forget a finished or abandoned sign-in on this page. */
   mcpAuthClear(host: string, engine: Engine, account: string, server: string): void;
+  /** Slack on the hub: `slack.tokens`, `slack.allow`, `slack.route`, ...; answers as `slack`. */
+  slack(op: SlackOp, fields?: Record<string, unknown>): void;
   /** A tool call's widget: its HTML, CSP, input and result. */
   widget(sessionId: string, id: string): Promise<{ widget?: WidgetRecord; error?: string }>;
   /** A call a widget makes to its own server. */
@@ -1037,6 +1048,7 @@ export function useYard(): { state: State; actions: Actions } {
       },
       mcpChangeClear: (host, engine, account, name) => dispatch({ t: "server", msg: { op: "mcp.change", host, engine, account, name, state: null } }),
       mcpAuthClear: (host, engine, account, server) => dispatch({ t: "server", msg: { op: "mcp.auth", host, engine, account, server, state: null } }),
+      slack: (op, fields = {}) => post({ ...fields, op }),
       widget: (sessionId, id) => {
         const key = `${sessionId}\n${id}`;
         let p = widgets.get(key);

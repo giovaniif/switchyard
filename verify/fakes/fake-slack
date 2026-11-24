@@ -1,0 +1,192 @@
+#!/usr/bin/env bun
+// A fake Slack for tests and verify/yv: the Web API methods yardd's slack.rs
+// calls, and Socket Mode's WebSocket. Nothing leaves the machine. Point yardd
+// at it with YARD_SLACK_API=http://127.0.0.1:<port>/api/.
+//
+//   fake-slack [--port N] [--port-file F]   prints {"port":N} when listening
+//
+// The workspace is TEST-workspace (T0TEST); the bot is @switchyard (UBOT,
+// BBOT). Users: UOWNER "TEST-Owner", USTRANGER "TEST-Stranger", any other id
+// "TEST-<id>". Channels: C0GENERAL #general, C0OPS #ops; a D… id is a DM.
+// A token containing "bad" is refused (invalid_auth).
+//
+// Web API (form or JSON bodies, bearer token): auth.test,
+// apps.connections.open, chat.postMessage, chat.postEphemeral, reactions.add,
+// reactions.remove, users.info, conversations.info. Every call is recorded
+// with its token's kind (bot, app), never the token.
+//
+// Socket Mode (/socket): sends hello on connect, records every ack.
+//
+// Control, for tests:
+//   POST /_fake/message {user, text, channel?, thread_ts?, bot_id?, subtype?, mention?}
+//        Slack's events for a message: in a DM `message` (channel_type im);
+//        in a channel `message`, plus `app_mention` when the text mentions
+//        <@UBOT> (as Slack sends both). Answers {ts, envelopes}.
+//   POST /_fake/disconnect {reason?}   a `disconnect` envelope, then a close
+//   POST /_fake/drop                   closes every socket at once
+//   GET  /_fake/state                  {connections, opens, acks, calls, posts, ephemerals, reactions}
+
+const args = process.argv.slice(2);
+const arg = (name) => {
+  const i = args.indexOf(`--${name}`);
+  return i >= 0 ? args[i + 1] : undefined;
+};
+
+const BOT = "UBOT";
+const USERS = { UOWNER: "TEST-Owner", USTRANGER: "TEST-Stranger" };
+const CHANNELS = { C0GENERAL: "general", C0OPS: "ops" };
+
+let clock = 1_700_000_000;
+const nextTs = () => `${++clock}.000100`;
+let envelopeN = 0;
+
+const state = { opens: 0, acks: [], calls: [], posts: [], ephemerals: [], reactions: {} };
+const sockets = new Set();
+
+const tokenKind = (auth) => {
+  const token = (auth || "").replace(/^Bearer\s+/i, "");
+  if (token.startsWith("xoxb-")) return "bot";
+  if (token.startsWith("xapp-")) return "app";
+  return token ? "other" : "none";
+};
+
+async function params(req) {
+  const type = req.headers.get("content-type") || "";
+  const out = Object.fromEntries(new URL(req.url).searchParams);
+  if (req.method !== "POST") return out;
+  const body = await req.text();
+  if (type.includes("json")) return { ...out, ...JSON.parse(body || "{}") };
+  return { ...out, ...Object.fromEntries(new URLSearchParams(body)) };
+}
+
+function api(method, p, auth, port) {
+  const kind = tokenKind(auth);
+  const token = (auth || "").replace(/^Bearer\s+/i, "");
+  const refused = { ok: false, error: kind === "none" ? "not_authed" : "invalid_auth" };
+  switch (method) {
+    case "auth.test":
+      if (kind !== "bot" || token.includes("bad")) return refused;
+      return { ok: true, url: "https://test-workspace.slack.com/", team: "TEST-workspace", user: "switchyard", team_id: "T0TEST", user_id: BOT, bot_id: "BBOT" };
+    case "apps.connections.open":
+      if (kind !== "app" || token.includes("bad")) return refused;
+      state.opens++;
+      return { ok: true, url: `ws://127.0.0.1:${port}/socket?ticket=TEST-ticket-${state.opens}` };
+    case "chat.postMessage": {
+      if (kind !== "bot") return refused;
+      if (!p.channel) return { ok: false, error: "channel_not_found" };
+      if (!p.text) return { ok: false, error: "no_text" };
+      const ts = nextTs();
+      state.posts.push({ channel: p.channel, thread_ts: p.thread_ts ?? null, text: p.text, ts });
+      return { ok: true, channel: p.channel, ts, message: { text: p.text, ts } };
+    }
+    case "chat.postEphemeral":
+      if (kind !== "bot") return refused;
+      state.ephemerals.push({ channel: p.channel, user: p.user, text: p.text });
+      return { ok: true, message_ts: nextTs() };
+    case "reactions.add":
+    case "reactions.remove": {
+      if (kind !== "bot") return refused;
+      const list = (state.reactions[p.timestamp] ??= []);
+      if (method === "reactions.add") {
+        if (list.includes(p.name)) return { ok: false, error: "already_reacted" };
+        list.push(p.name);
+      } else {
+        if (!list.includes(p.name)) return { ok: false, error: "no_reaction" };
+        list.splice(list.indexOf(p.name), 1);
+      }
+      return { ok: true };
+    }
+    case "users.info": {
+      if (kind !== "bot") return refused;
+      const name = USERS[p.user] ?? `TEST-${p.user}`;
+      return { ok: true, user: { id: p.user, name: name.toLowerCase(), real_name: name, profile: { display_name: name, real_name: name } } };
+    }
+    case "conversations.info": {
+      if (kind !== "bot") return refused;
+      const id = p.channel ?? "";
+      if (id.startsWith("D")) return { ok: true, channel: { id, is_im: true, user: "UOWNER" } };
+      return { ok: true, channel: { id, name: CHANNELS[id] ?? id.toLowerCase(), is_channel: true } };
+    }
+    default:
+      return { ok: false, error: "unknown_method" };
+  }
+}
+
+function send(envelope) {
+  const text = JSON.stringify(envelope);
+  for (const ws of sockets) ws.send(text);
+}
+
+function events(p) {
+  const channel = p.channel ?? "D0OWNER";
+  const ts = p.ts ?? nextTs();
+  const im = channel.startsWith("D");
+  const base = { user: p.user ?? "UOWNER", text: p.text ?? "", channel, ts, event_ts: ts, team: "T0TEST" };
+  if (p.thread_ts) base.thread_ts = p.thread_ts;
+  if (p.bot_id) base.bot_id = p.bot_id;
+  if (p.subtype) base.subtype = p.subtype;
+  const list = [{ ...base, type: "message", channel_type: im ? "im" : channel.startsWith("G") ? "group" : "channel" }];
+  if (!im && base.text.includes(`<@${BOT}>`)) list.unshift({ ...base, type: "app_mention" });
+  const envelopes = list.map((event) => {
+    const id = `TEST-env-${++envelopeN}`;
+    send({ envelope_id: id, type: "events_api", accepts_response_payload: false, retry_attempt: 0, retry_reason: "", payload: { type: "event_callback", team_id: "T0TEST", api_app_id: "A0TEST", event, event_id: `Ev${envelopeN}`, event_time: clock } });
+    return id;
+  });
+  return { ts, envelopes };
+}
+
+const json = (v, status = 200) => new Response(JSON.stringify(v), { status, headers: { "content-type": "application/json" } });
+
+const server = Bun.serve({
+  hostname: "127.0.0.1",
+  port: Number(arg("port") ?? 0),
+  async fetch(req, srv) {
+    const url = new URL(req.url);
+    if (url.pathname === "/socket") {
+      if (srv.upgrade(req)) return;
+      return new Response("upgrade required", { status: 426 });
+    }
+    if (url.pathname.startsWith("/api/")) {
+      const method = url.pathname.slice(5);
+      const p = await params(req);
+      const auth = req.headers.get("authorization");
+      state.calls.push({ method, token: tokenKind(auth), params: p, at: Date.now() });
+      return json(api(method, p, auth, server.port));
+    }
+    if (url.pathname === "/_fake/message" && req.method === "POST") return json(events(await req.json()));
+    if (url.pathname === "/_fake/disconnect" && req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      send({ type: "disconnect", reason: body.reason ?? "refresh_requested", debug_info: { host: "TEST" } });
+      // Only these: the client may already have opened its next one.
+      const old = [...sockets];
+      setTimeout(() => old.forEach((ws) => ws.close()), 50);
+      return json({ ok: true, connections: sockets.size });
+    }
+    if (url.pathname === "/_fake/drop" && req.method === "POST") {
+      const n = sockets.size;
+      sockets.forEach((ws) => ws.terminate?.() ?? ws.close());
+      return json({ ok: true, dropped: n });
+    }
+    if (url.pathname === "/_fake/state") return json({ connections: sockets.size, ...state });
+    return new Response("not found", { status: 404 });
+  },
+  websocket: {
+    open(ws) {
+      sockets.add(ws);
+      ws.send(JSON.stringify({ type: "hello", num_connections: sockets.size, connection_info: { app_id: "A0TEST" }, debug_info: { host: "TEST" } }));
+    },
+    message(ws, data) {
+      try {
+        const msg = JSON.parse(String(data));
+        if (msg.envelope_id) state.acks.push(msg.envelope_id);
+      } catch {}
+    },
+    close(ws) {
+      sockets.delete(ws);
+    },
+  },
+});
+
+const portFile = arg("port-file");
+if (portFile) await Bun.write(portFile, String(server.port));
+console.log(JSON.stringify({ port: server.port }));

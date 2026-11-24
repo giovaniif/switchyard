@@ -116,7 +116,8 @@ test("a message from another agent is badged with who sent it", () => {
   expect(originLabel({ kind: "agentReply", agentId: "g2", name: "Reviewer", hops: 2 })).toEqual({ text: "Reply from @Reviewer", agentId: "g2" });
   expect(originLabel({ kind: "agent", agentId: "g1", name: "", hops: 1 })?.text).toBe("From another agent");
   // A kind this build does not know yet shows no badge rather than a wrong one.
-  expect(originLabel({ kind: "slack", channel: "#ops" })).toBeNull();
+  expect(originLabel({ kind: "slack", channel: "C1", channelName: "#ops", userName: "Gio" })?.text).toBe("From Gio on Slack · #ops");
+  expect(originLabel({ kind: "mail" })).toBeNull();
 });
 
 test("how it runs, in the pickers' words", () => {

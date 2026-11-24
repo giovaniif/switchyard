@@ -66,3 +66,4 @@ prompt).
 | [usage](usage.md) | Usage popover, Subscriptions, reset times and separate account/model controls |
 | [accounts](accounts.md) | More than one login per engine: add, log in, pick for a new session, remove |
 | [connectors](connectors.md) | MCP servers per engine account: states, sign-in (claude.ai, pasted redirects, ChatGPT apps), chart widgets in the thread |
+| [slack](slack.md) | The Slack connector: setup guide and manifest, refused and good tokens, allowing someone who wrote, the default agent, answers posted in the Slack thread, the Slack badge in a conversation, tokens kept out of the page and logs |

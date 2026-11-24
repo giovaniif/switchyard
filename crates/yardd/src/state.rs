@@ -199,6 +199,8 @@ pub struct App {
     /// Connectors processes and replies owed by sidecars (see mcp.rs).
     pub mcp: crate::mcp::Connectors,
     pub mobile: crate::mobile::Mobile,
+    /// Slack: the connection, its settings and posts owed to threads.
+    pub slack: crate::slack::Slack,
     /// Agents' own tools: per-conversation keys and rate limits (see agent_tools).
     pub tools: crate::agent_tools::Tools,
     /// Sessions with queued messages to deliver; drained by a task in main
@@ -263,6 +265,7 @@ impl App {
             logins: crate::login::Logins::default(),
             mcp: crate::mcp::Connectors::default(),
             mobile: crate::mobile::Mobile::load(crate::store::data_dir()),
+            slack: crate::slack::Slack::load(crate::store::data_dir()),
             tools: crate::agent_tools::Tools::default(),
             next_turns,
             next_turns_rx: Mutex::new(Some(next_turns_rx)),
@@ -557,6 +560,15 @@ impl App {
                     let _ = self.replies.send(crate::origins::Owed::of_turn(sid, origins, &status, &s.events));
                 }
             }
+            // Whoever waits in Slack hears, once a turn, that the turn waits on an approval.
+            if s.events.last().is_some_and(|e| e["type"] == "approval_request") {
+                let origins: Vec<Value> = s.meta.answering.iter().filter(|o| crate::origins::wants_approval_note(o)).cloned().collect();
+                let start = s.events.iter().rposition(|e| e["type"] == "turn_started").unwrap_or(0);
+                if !origins.is_empty() && s.events[start..].iter().filter(|e| e["type"] == "approval_request").count() == 1 {
+                    let text = s.events.last().and_then(|e| e["title"].as_str()).unwrap_or("").to_string();
+                    let _ = self.replies.send(crate::origins::Owed { sid: sid.to_string(), origins, status: "approval".into(), text });
+                }
+            }
             let moved = status.is_some_and(|st| s.meta.status != st);
             if let Some(st) = status {
                 s.meta.status = st.to_string();
@@ -727,6 +739,7 @@ impl App {
             "automations": self.automations.list(),
             "agents": self.agents.list(),
             "mobile": self.mobile.status(),
+            "slack": self.slack.view(),
         })
     }
 }

@@ -3541,7 +3541,7 @@ function ItemView(props: {
       return (
         <div className="user-message">
           {origin && (
-            <div className={`origin-badge origin-${item.origin!.kind}`}>
+            <div className={`origin-badge origin-${item.origin!.kind}`} title={item.origin!.kind === "slack" ? "Its answer is posted back to the Slack thread." : undefined}>
               {from ? <AgentAvatar agent={from} size="xs" /> : <span className="origin-dot" aria-hidden="true" />}
               {origin.text}
             </div>
