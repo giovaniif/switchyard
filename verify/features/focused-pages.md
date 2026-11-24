@@ -130,6 +130,17 @@ session button, as if there were no sessions at all.
 yv drive 'sessions' --steps '[{"expect":"role:heading:Sessions"},{"expect":{"css":".focused-session-row","hasText":"TEST-say hello"}},{"fill":"label:Search sessions","value":"TEST-matches-nothing"},{"expect":"css:.focused-session-row","count":0},{"expect":"css:.focused-empty","text":"No sessions match your search."},{"expect":{"css":".focused-empty button","hasText":"New session"},"count":0},{"shot":"no-match"},{"click":{"css":".focused-empty button","hasText":"Clear search"}},{"expect":"label:Search sessions","value":""},{"expect":{"css":".focused-session-row","hasText":"TEST-say hello"}}]'
 ```
 
+### sessions-search-finds-the-account
+Viewports: both
+Each row names the account its session runs on, so searching for that name
+lists the session. Until 2026-11-24 the search skipped the account and said
+"No sessions match your search." (#394).
+
+```sh
+yv api '{"op":"session.create","engine":"codex","account":"{{codex_acct}}","model":"fake-fast","effort":"low","cwd":"{{repo}}","text":"TEST-on the codex account"}' --wait '{"op":"created"}' --save acct_search_sid=sessionId
+yv drive 'sessions' --steps '[{"expect":{"css":".focused-session-row","hasText":"TEST-on the codex account"},"text":"TEST-Codex"},{"fill":"label:Search sessions","value":"test-codex"},{"expect":{"css":".focused-session-row","hasText":"TEST-on the codex account"}},{"expect":{"css":".focused-session-row","hasText":"TEST-say hello"},"count":0},{"expect":"css:.focused-empty","count":0},{"shot":"search-by-account"}]'
+```
+
 ### host-rows-line-up-with-the-page
 Viewports: both
 Host rows and the "Run sessions on another machine" tile span the same column
