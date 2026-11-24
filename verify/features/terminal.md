@@ -2,8 +2,9 @@
 
 The Terminal tab runs the user's shell in the session folder through yardd's
 PTY. Several terminals per session ("1", "2"...), 256 KB of scrollback replayed
-after a reload, and Attach (terminal output as a card in the reply box). Desktop only (the pane
-is hidden below 1100 px).
+after a reload, and Attach (terminal output as a card in the reply box). On
+desktop it is the Terminal tab of the right pane; on phones it is inside the
+Workspace sheet.
 
 ## Setup
 
@@ -143,11 +144,31 @@ yv drive 'session:{{sid_claude}}' --viewport desktop --steps '[{"click":"role:bu
 yv api '{"op":"session.open","sessionId":"{{sid_claude}}"}' --wait '{"op":"history"}' | jq -e '[.reply.events[] | select(.type=="user_message") | .text] | last | test("^Terminal 1, [0-9]+ lines:\\n\\x60{3}text\\n(.|\\n)*TEST-row-3\\n(.|\\n)*\\x60{3}\\n\\nTEST-what failed\\?$")'
 ```
 
+### first-terminal-opens-at-the-pane-size
+Viewports: mobile, desktop
+The first terminal of a session shows one shell prompt, sized to its pane: the
+phone Workspace sheet and the desktop right pane (about 50 columns) are both
+narrower than 80. Fails today (#376): the terminal is opened at 80 columns
+before anything measured the pane, so readline redraws after the resize and a
+stale, cut-off copy of the prompt sits above the real one (the count reads 2).
+Each viewport uses its own new session: a seeded one may already have a
+terminal from an earlier recipe, and then nothing opens at the default size.
+
+```sh
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-first terminal phone"}' --wait '{"op":"created"}' --save first_term_sid=sessionId
+yv api '{"op":"term.list","sessionId":"{{first_term_sid}}"}' --wait '{"op":"term.list"}' | jq -e '.reply.terms | length == 0'
+yv drive 'session:{{first_term_sid}}' --viewport mobile --steps '[{"click":"role:button:Workspace"},{"expect":"css:.xterm","text":"$"},{"wait":1500},{"eval":"(document.querySelector(\".xterm-rows\").innerText.match(/@[^:\\s]+:/g) || []).length","equals":1}]'
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-first terminal desktop"}' --wait '{"op":"created"}' --save first_term_desk_sid=sessionId
+yv api '{"op":"term.list","sessionId":"{{first_term_desk_sid}}"}' --wait '{"op":"term.list"}' | jq -e '.reply.terms | length == 0'
+yv drive 'session:{{first_term_desk_sid}}' --viewport desktop --steps '[{"click":"role:button:Terminal"},{"expect":"css:.xterm","text":"$"},{"wait":1500},{"eval":"(document.querySelector(\".xterm-rows\").innerText.match(/@[^:\\s]+:/g) || []).length","equals":1}]'
+```
+
 ### attach-terminal-selection (manual: needs a mouse selection inside xterm)
 Select text in the terminal, open Attach, pick Selection: the card holds the
 selection. Selecting through xterm's renderer is not scripted yet.
 
 ## Gotchas
 - Fixed 2026-11-15: the scrollback replayed after a reload used to be written at xterm's default 80 columns before the first fit and then reflowed, garbling wrapped lines and overwriting output. scrollback-after-reload and scrollback-keeps-wrapped-lines guard it.
+- Open 2026-11-22 (#376): the first terminal of a session shows the shell prompt twice, a stale copy cut off at the right edge above the real one, whenever its pane is narrower than 80 columns and the prompt wraps: the phone Workspace sheet and the desktop right pane alike. `TerminalPane` sends `term.open` with the default 80x24 before any view has fitted. first-terminal-opens-at-the-pane-size fails at both viewports until it is fixed.
 - Wait for the prompt (`expect` text `$`) before typing: keys sent before the shell is ready are echoed out of order.
 - xterm ignores `fill`; use the `type` step with `target: "label:Terminal input"`.
