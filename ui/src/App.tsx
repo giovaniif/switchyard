@@ -25,6 +25,8 @@ import { ProcPane } from "./ProcPane";
 import { draftOf, fenceSegments, keepDraft, lineCount, onAppend, quoteInComposer, quoteSegments, type Snippet, splitQuotes, withQuotes } from "./compose";
 import { blockSegments, fencedBlocks, type MdTable } from "./markdown";
 import { fileTarget } from "./fileLinks";
+import { saveFile } from "./filePreview";
+import { FileLinks, FileView, fileLabel } from "./FileView";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { AutomationForm, AutomationsPage } from "./AutomationsPage";
 import { ConnectorsPage } from "./ConnectorsPage";
@@ -105,14 +107,14 @@ export const Icon = ({ d, size = 14, width = 2 }: { d: string; size?: number; wi
 );
 export const PLUS = "M12 5v14M5 12h14";
 const CLOCK = "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z";
-const IMPORT = "M12 3v12M7 10l5 5 5-5M5 21h14";
+export const IMPORT = "M12 3v12M7 10l5 5 5-5M5 21h14";
 export const CHEVRON_RIGHT = "M9 6l6 6-6 6";
 const CHEVRON_DOWN = "M6 9l6 6 6-6";
 const ARROW_UP = "M12 19V5M5 12l7-7 7 7";
-const REFRESH = "M21 12a9 9 0 1 1-3-6.7M21 4v5h-5";
+export const REFRESH = "M21 12a9 9 0 1 1-3-6.7M21 4v5h-5";
 export const CLOUD = "M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z";
 const PAPERCLIP = "M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48";
-const FILE = "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8ZM14 3v5h5";
+export const FILE = "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8ZM14 3v5h5";
 const CLOSE = "M18 6 6 18M6 6l12 12";
 const MORE = "M5 12h.01M12 12h.01M19 12h.01";
 const REPLY = "M9 17 4 12l5-5M20 18v-2a4 4 0 0 0-4-4H4";
@@ -2898,6 +2900,22 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
   // Scout only reads, and an agent in its own folder has no project: no
   // terminal, subagents or processes to show.
   const noPane = !!agent && (agent.builtin || !agent.cwd);
+  // A file link opens the file in the workspace; where there is none (an
+  // agent with no folder), it downloads.
+  const [openedFile, setOpenedFile] = useState<{ path: string; nonce: number } | null>(null);
+  useEffect(() => setOpenedFile(null), [meta.id]);
+  const openFile = async (path: string): Promise<string | null> => {
+    if (noPane) {
+      const read = await actions.readFile(meta.id, path);
+      if ("error" in read) return read.error;
+      saveFile(read.name, read.data);
+      return null;
+    }
+    setOpenedFile((f) => ({ path, nonce: (f?.nonce ?? 0) + 1 }));
+    if (wide) setWorkspaceCollapsed(false);
+    else openWorkspace();
+    return null;
+  };
   const submit = async (text: string, attachments: Attachment[]) => {
     if (/^\/login\s*$/.test(text.trim()) && !attachments.length) {
       setLoggingIn(true);
@@ -2928,7 +2946,6 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
     return keys;
   }, [items, agent?.id]);
   const loadAttachment = (a: Attachment) => actions.attachmentUrl(meta.id, a);
-  const downloadFile = useMemo(() => (path: string) => actions.downloadFile(meta.id, path), [actions, meta.id]);
   // Start anyway is out: hold the button until the session leaves the queue or
   // yardd refuses, or a double click sends a second startNow that yardd
   // answers with "this session is not queued".
@@ -2961,7 +2978,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
   );
 
   return (
-    <FileLinks.Provider value={downloadFile}>
+    <FileLinks.Provider value={openFile}>
     <div className={`session ${!wide && workspace ? "workspace-open" : ""}`}>
       <main className="thread">
         {agent ? (
@@ -3110,7 +3127,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
         </div>
         )}
       </main>
-      {!noPane && <WorkPane key={meta.id} shown={workspaceShown} connected={online} actions={actions} meta={meta} state={state} items={items} closeButton={workspaceCloseButton} onClose={closeWorkspace} />}
+      {!noPane && <WorkPane key={meta.id} shown={workspaceShown} connected={online} actions={actions} meta={meta} state={state} items={items} closeButton={workspaceCloseButton} onClose={closeWorkspace} file={openedFile} onOpenFile={openFile} onCloseFile={() => setOpenedFile(null)} />}
     </div>
     </FileLinks.Provider>
   );
@@ -3651,7 +3668,7 @@ function FileDiff({ file }: { file: ChangedFile }) {
   );
 }
 
-function WorkPane({ shown, connected, actions, meta, state, items, closeButton, onClose }: {
+function WorkPane({ shown, connected, actions, meta, state, items, closeButton, onClose, file, onOpenFile, onCloseFile }: {
   shown: boolean;
   connected: boolean;
   actions: Actions;
@@ -3660,9 +3677,17 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
   items: Item[];
   closeButton: RefObject<HTMLButtonElement | null>;
   onClose(): void;
+  /** A file a link opened: its tab shows while it is open. */
+  file: { path: string; nonce: number } | null;
+  onOpenFile(path: string): Promise<string | null>;
+  onCloseFile(): void;
 }) {
   const [paneW, setPaneW] = useWidth("yard.paneWidth", PANE_W);
-  const [tab, setTab] = useState<"terminal" | "agents" | "procs">("terminal");
+  const [tab, setTab] = useState<"terminal" | "agents" | "procs" | "file">("terminal");
+  useEffect(() => {
+    if (file) setTab("file");
+    else setTab((t) => (t === "file" ? "terminal" : t));
+  }, [file?.path, file?.nonce]);
   const [terminalUsed, setTerminalUsed] = useState(shown);
   const agents = useMemo(() => tab === "agents" ? sessionSubagents(items) : [], [tab, items]);
   useEffect(() => {
@@ -3676,6 +3701,17 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
         <button className={`tab ${tab === "terminal" ? "active" : ""}`} aria-pressed={tab === "terminal"} onClick={() => setTab("terminal")}>Terminal</button>
         <button className={`tab ${tab === "agents" ? "active" : ""}`} aria-pressed={tab === "agents"} onClick={() => setTab("agents")}>Subagents</button>
         <button className={`tab ${tab === "procs" ? "active" : ""}`} aria-pressed={tab === "procs"} onClick={() => setTab("procs")}>Processes</button>
+        {file && (
+          <span className={`file-tab ${tab === "file" ? "active" : ""}`}>
+            <button className={`tab ${tab === "file" ? "active" : ""}`} aria-pressed={tab === "file"} aria-label={fileLabel(file.path)} title={file.path} onClick={() => setTab("file")}>
+              <Icon d={FILE} size={13} />
+              <span className="file-tab-name">{fileLabel(file.path)}</span>
+            </button>
+            <button className="btn-icon file-tab-close" aria-label={`Close ${fileLabel(file.path)}`} onClick={onCloseFile}>
+              <Icon d={CLOSE} size={12} />
+            </button>
+          </span>
+        )}
         <span className="spacer" />
         {tab === "procs" && <button className="btn-icon" aria-label="Refresh processes" onClick={() => actions.loadProcs(meta.id)}><Icon d={REFRESH} /></button>}
       </header>
@@ -3686,6 +3722,7 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
         </section>
       )}
       {shown && tab === "procs" && <ProcPane meta={meta} state={state} actions={actions} visible />}
+      {file && tab === "file" && <FileView sessionId={meta.id} path={file.path} nonce={file.nonce} home={homeOn(state, hostOf(meta))} actions={actions} onOpen={onOpenFile} />}
     </section>
   );
 }
@@ -3695,32 +3732,30 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
 const WEB_URL = /https?:\/\/(?:[^\s<>()\[\]{}"`']|\([^\s<>()]*\))+/;
 const INLINE = new RegExp(`(${[/\[`?[^\]`]+`?\]\([^)]+\)/.source, /`[^`]+`/.source, /\*\*[^*]+\*\*/.source, PR_URL_SOURCE, WEB_URL.source].join("|")})`, "gi");
 
-/** Downloads a file a link in the open session names; null outside one. */
-const FileLinks = createContext<((path: string) => Promise<string | null>) | null>(null);
-
-/** A link to a file on the session's host. Clicking downloads it; a failure
- *  (moved, a folder, too large) shows next to the link. */
+/** A link to a file on the session's host. Clicking opens it in the
+ *  workspace; a failure to download one where there is no workspace shows
+ *  next to the link. */
 function FileLink({ path, label }: { path: string; label: string }) {
-  const download = useContext(FileLinks);
+  const open = useContext(FileLinks);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (!download) return <code>{label}</code>;
+  if (!open) return <code>{label}</code>;
   return (
     <>
       <button
         type="button"
         className="file-link"
-        title={`Download ${path}`}
+        title={`Open ${path}`}
         aria-busy={busy || undefined}
         onClick={async () => {
           if (busy) return;
           setBusy(true);
           setError(null);
-          setError(await download(path));
+          setError(await open(path));
           setBusy(false);
         }}
       >
-        <Icon d={IMPORT} size={12} />
+        <Icon d={FILE} size={12} />
         {label}
       </button>
       {error && (
@@ -3822,7 +3857,22 @@ export function Markdown({ text, quotable }: { text: string; quotable?: boolean 
                 case "table":
                   return <MdTableView key={key} table={seg.table} />;
                 case "heading":
-                  return <h3 key={key}>{inline(seg.text)}</h3>;
+                  return (
+                    <h3 key={key} data-level={seg.level}>
+                      {inline(seg.text)}
+                    </h3>
+                  );
+                case "quote":
+                  return (
+                    <blockquote key={key}>
+                      {seg.lines.map((l, k) => (
+                        <span key={k}>
+                          {k > 0 && <br />}
+                          {inline(l)}
+                        </span>
+                      ))}
+                    </blockquote>
+                  );
                 case "ul":
                 case "ol": {
                   const List = seg.kind;

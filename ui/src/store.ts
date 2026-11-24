@@ -608,6 +608,9 @@ function reduceServer(state: State, msg: any): State {
   }
 }
 
+/** A file read for the workspace: where yardd found it and its bytes. */
+export type FileRead = { name: string; path: string; data: Uint8Array } | { error: string };
+
 export interface Actions {
   /** A message for an agent: into its one conversation, which opens.
    *  Resolves with an error fit to show when yardd refused it. */
@@ -651,9 +654,8 @@ export interface Actions {
   upload(file: File, target: UploadTarget): Promise<Attachment>;
   /** An object URL for an attachment of a session, for a thumbnail. */
   attachmentUrl(sessionId: string, attachment: Attachment): Promise<string>;
-  /** Download a file a link in the session names, read on its host. Resolves
-   *  with a message fit to show when it could not, else null. */
-  downloadFile(sessionId: string, path: string): Promise<string | null>;
+  /** Read a file a link in the session names, on the session's host. */
+  readFile(sessionId: string, path: string): Promise<FileRead>;
   setModel(sessionId: string, model: string, effort: string): void;
   setServiceTier(sessionId: string, serviceTier: string): void;
   /** Change what the engine may do unasked; Claude switches at once, Codex from its next turn. */
@@ -882,18 +884,15 @@ export function useYard(): { state: State; actions: Actions } {
     return url;
   };
 
-  const downloadFile = async (sessionId: string, path: string): Promise<string | null> => {
+  const readFile = async (sessionId: string, path: string): Promise<FileRead> => {
     const reply = await ask({ op: "file.get", sessionId, path }, 2 * 60_000);
-    if (reply.error || typeof reply.data !== "string") return fileError(reply);
-    // Always bytes to save, never a page: an agent's HTML file must not
-    // open on this origin.
-    const url = URL.createObjectURL(base64ToBlob(reply.data, "application/octet-stream"));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = typeof reply.name === "string" && reply.name ? reply.name : "file";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    return null;
+    if (reply.error || typeof reply.data !== "string") return { error: fileError(reply) };
+    const blob = base64ToBlob(reply.data, "application/octet-stream");
+    return {
+      name: typeof reply.name === "string" && reply.name ? reply.name : "file",
+      path: typeof reply.path === "string" ? reply.path : path,
+      data: new Uint8Array(await blob.arrayBuffer()),
+    };
   };
 
   // Load a session's history the first time it is shown on this connection.
@@ -986,7 +985,7 @@ export function useYard(): { state: State; actions: Actions } {
       },
       upload,
       attachmentUrl,
-      downloadFile,
+      readFile,
       setModel: (sessionId, model, effort) => {
         const session = sessionsRef.current[sessionId];
         if (session) rememberSession({ ...session, model, effort });

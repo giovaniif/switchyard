@@ -191,6 +191,7 @@ h1, h2, h3, p { margin: 0; }
 .prose { display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
 .prose h3 { font-size: 14px; font-weight: 600; }
 .prose ul, .prose ol { margin: 0; padding-left: 20px; }
+.prose blockquote { margin: 0; padding: 2px 0 2px 12px; border-left: 3px solid var(--line-strong); color: var(--muted); }
 .prose code { padding: 1px 4px; border-radius: 4px; background: var(--fill); font-size: 12.5px; }
 .md-table { overflow-x: auto; }
 .md-table table { border-collapse: collapse; font-size: 13px; line-height: 1.5; }
@@ -1406,4 +1407,69 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
   .usage-chip-track > span { display: block; height: 100%; background: var(--ink); border-radius: inherit; }
   .connectors-mobile-header .connector-refresh { width: 32px; padding: 0; }
   .connectors-mobile-header .connector-refresh > span { display: none; }
+}
+
+/* ---------- file view: a file an agent linked, opened in the workspace ---------- */
+/* Its tab sits after the three fixed ones and gives way first when the pane is narrow. */
+.workspace-tabs .file-tab { flex: 0 1 auto; display: inline-flex; align-items: center; min-width: 0; }
+.workspace-tabs .file-tab .tab { flex: 0 1 auto; display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 200px; height: 100%; padding-right: 2px; }
+.file-tab .tab svg { flex: none; color: var(--muted); }
+.file-tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-tabs .file-tab-close { width: 22px; height: 22px; border-radius: 6px; }
+
+.file-view { flex: 1 1 0; min-height: 0; gap: 0; padding: 0; overflow: hidden; }
+/* Name and actions on one line; what it is and where it lives under the name, full width. */
+.file-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-areas: "badge name reload download" "badge meta meta meta" ". path path path"; column-gap: 10px; align-items: center; padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+.file-badge { grid-area: badge; align-self: start; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--fill); color: var(--muted); }
+.file-name { grid-area: name; overflow: hidden; font-size: 14px; font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.file-reload { grid-area: reload; }
+.file-download { grid-area: download; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.file-meta { grid-area: meta; align-self: start; margin-top: -6px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.file-path { grid-area: path; overflow: hidden; margin-top: 6px; color: var(--muted); font: 11px/1.5 var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.file-loading { padding: 16px; font-size: 13px; }
+.file-note { flex: none; padding: 8px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.file-empty-line { padding: 16px; }
+.file-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 24px 16px; padding: 28px 20px; border: 1px dashed var(--line-strong); border-radius: 10px; color: var(--muted); font-size: 13px; text-align: center; overflow-wrap: anywhere; }
+.file-empty strong { color: var(--ink); font-weight: 600; }
+.file-empty .btn { margin-top: 6px; }
+
+/* Markdown reads like a document: the thread's text, with heading sizes and room around it. */
+.file-doc { flex: 1 1 0; min-height: 0; overflow: auto; padding: 18px 20px 28px; }
+.file-doc .prose h3[data-level="1"] { font-size: 20px; line-height: 1.3; }
+.file-doc .prose h3[data-level="2"] { margin-top: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--line); font-size: 16px; }
+.file-doc .prose h3[data-level="1"] + h3, .file-doc .prose > h3:first-child { margin-top: 0; }
+
+/* A data grid: header and row numbers stay put while the cells scroll. */
+.file-table { flex: 1 1 0; min-height: 0; overflow: auto; }
+.file-table:focus-visible { outline: 2px solid var(--info); outline-offset: -2px; }
+.file-table table { min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12.5px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.file-table th, .file-table td { max-width: 280px; overflow: hidden; padding: 6px 12px; border-bottom: 1px solid var(--line); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.file-table th { position: sticky; top: 0; z-index: 1; border-bottom-color: var(--line-strong); background: var(--side); font-weight: 600; }
+.file-table .num { text-align: right; }
+.file-table .row-num { position: sticky; left: 0; min-width: 40px; padding-inline: 8px 10px; border-right: 1px solid var(--line); background: var(--side); color: var(--muted); font-size: 11px; text-align: right; }
+.file-table thead .row-num { z-index: 2; }
+.file-table tbody tr:hover td { background: var(--fill); }
+.file-table tbody tr:hover .row-num { background: var(--fill-strong); }
+
+/* Text with line numbers that copying leaves out. */
+.file-text { flex: 1 1 0; min-height: 0; overflow: auto; margin: 0; padding: 12px 0; font: 12px/1.6 var(--mono); counter-reset: line; }
+.file-line { display: block; padding-right: 16px; white-space: pre; }
+.file-line-hit { background: var(--warn-fill); }
+.file-line-hit::before { color: var(--warn-ink); }
+.file-line::before { counter-increment: line; content: counter(line); display: inline-block; width: 40px; margin-right: 14px; padding-right: 10px; border-right: 1px solid var(--line); color: var(--off); text-align: right; user-select: none; }
+
+/* Images on a checkerboard, so transparent ones read as such. */
+.file-image { flex: 1 1 0; min-height: 0; overflow: auto; display: grid; place-items: center; padding: 16px; background: repeating-conic-gradient(var(--fill) 0 25%, var(--bg) 0 50%) 0 0 / 16px 16px; }
+.file-image img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); }
+
+/* Beside three fixed tabs a name gets a few letters, so a narrow pane shows the icon: the name heads the view. */
+@container workspace (max-width: 560px) {
+  .file-tab-name { display: none; }
+  .workspace-tabs .file-tab .tab { padding-right: 0; }
+}
+@container workspace (max-width: 360px) {
+  .file-head { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "name reload download" "meta meta meta" "path path path"; }
+  .file-badge { display: none; }
+  .file-meta { margin-top: 0; }
+  .file-download { padding-inline: 10px; }
 }
