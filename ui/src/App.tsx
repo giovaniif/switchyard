@@ -4992,7 +4992,13 @@ function SessionsPage({ state, actions }: { state: State; actions: Actions }) {
   const sessions = Object.values(state.sessions)
     .filter((s) => !hiddenFromSidebar(s))
     .filter((s) => (filter === "archived" ? s.archived : filter === "all" || !s.archived))
-    .filter((s) => `${s.title} ${s.cwd} ${ENGINE_NAME[s.engine]} ${hostName(state, hostOf(s))}`.toLowerCase().includes(query.toLowerCase()))
+    // Search what the row shows, account included: "Work" should find the
+    // sessions that run on the Work login.
+    .filter((s) =>
+      `${s.title} ${s.cwd} ${ENGINE_NAME[s.engine]} ${accountName(accountsOn(state, hostOf(s)), s.engine, accountOf(s))} ${hostName(state, hostOf(s))}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+    )
     .sort((a, b) => b.updatedAt - a.updatedAt);
   return (
     <div className="hosts">
