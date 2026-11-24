@@ -167,8 +167,29 @@ const PLURAL: Record<string, [string, string, string]> = {
 /** A call whose approval was denied or never answered: it did not run. */
 export const didNotRun = (e: WorkItem) => e.kind === "tool" && e.state !== "ok" && (e.asked === "denied" || e.asked === "unanswered");
 
+/** What did not happen, per kind: a denied edit left the file "not edited",
+ *  a denied search is a search, not a "time". */
+const SKIPPED: Record<string, [string, string, string]> = {
+  read: ["file", "files", "not read"],
+  edit: ["file", "files", "not edited"],
+  command: ["command", "commands", "not run"],
+  search: ["search", "searches", "not run"],
+  context: ["host snapshot", "host snapshots", "not read"],
+};
+
+/** A row's verb. Engines title a call by its outcome ("Ran", "Edited") from
+ *  the start; until it is allowed and done, it has not happened. */
+export function toolLabel(entry: ToolItem): string {
+  const verbs = entry.title === "Ran" ? ["Waiting to run", "Did not run", "Running"] : entry.title === "Edited" ? ["Waiting to edit", "Did not edit", "Editing"] : null;
+  if (!verbs) return entry.title;
+  if (entry.asked === "waiting") return verbs[0];
+  if (didNotRun(entry)) return verbs[1];
+  return entry.state === "running" ? verbs[2] : entry.title;
+}
+
 /** "Read 3 files, ran 2 commands", from the two biggest kinds of work. Calls
- *  that were not allowed to run are counted apart: "1 command not run". */
+ *  that were not allowed to run are counted apart: "1 command not run",
+ *  "1 file not edited". */
 export function summarize(entries: WorkItem[]): string {
   const ran = entries.filter((e) => !didNotRun(e));
   const counts = new Map<string, number>();
@@ -188,8 +209,8 @@ export function summarize(entries: WorkItem[]): string {
   const failed = ran.filter((e) => e.kind === "tool" && e.state === "failed").length;
   const skipped = entries.filter(didNotRun) as ToolItem[];
   const kinds = new Set(skipped.map((e) => e.toolKind));
-  const noun = kinds.size === 1 && PLURAL[skipped[0]?.toolKind] ? PLURAL[skipped[0].toolKind] : ["", "step", "steps"];
-  const notRun = skipped.length ? `${skipped.length} ${skipped.length === 1 ? noun[1] : noun[2]} not run` : "";
+  const [one, many, not] = (kinds.size === 1 && SKIPPED[skipped[0]?.toolKind]) || ["step", "steps", "not run"];
+  const notRun = skipped.length ? `${skipped.length} ${skipped.length === 1 ? one : many} ${not}` : "";
   if (!parts.length && !notRun) return counts.has("think") ? "Thought" : "";
   const text = parts.join(", ");
   const head = text ? text[0].toUpperCase() + text.slice(1) + (failed ? ` · ${failed} failed` : "") : "";
