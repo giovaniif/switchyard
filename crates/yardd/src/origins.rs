@@ -115,10 +115,42 @@ fn attr(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ").replace(['"', '<', '>'], "").chars().take(80).collect()
 }
 
-/// Hand each origin that waits for an answer what it is owed. One arm per kind.
+/// An origin a hub sent with a message for one of its agents that runs here
+/// (`agent.hosted.ask`), or a host passed back with an answer it owes: only
+/// the kinds and fields yardd itself makes.
+pub fn from_hub(origin: &Value) -> Option<Value> {
+    let text = |k: &str| origin[k].as_str().map(|s| clip(s, 200)).unwrap_or_default();
+    match kind(origin) {
+        "agent" | "agentReply" => Some(json!({ "kind": kind(origin), "agentId": text("agentId"), "name": text("name"), "hops": hops(origin).min(MAX_HOPS + 1) })),
+        "slack" => {
+            let mut o = json!({ "kind": "slack" });
+            for k in ["team", "channel", "channelName", "threadTs", "ts", "user", "userName"] {
+                o[k] = json!(text(k));
+            }
+            Some(o)
+        }
+        _ => None,
+    }
+}
+
+/// Hand each origin that waits for an answer what it is owed. A hub's agent
+/// that runs here owes its answers on the hub, where the other agents and
+/// Slack are.
 pub async fn reply(app: &Arc<App>, owed: Owed) {
     let meta = app.meta(&owed.sid);
     let answerer = meta.as_ref().and_then(|m| m.agent.clone()).and_then(|id| app.agents.get(&id));
+    if let Some(a) = answerer.as_ref().filter(|a| a.hosted) {
+        if owed.origins.iter().any(reply_able) {
+            crate::agent_tools::owed_to_hub(app, a, &owed);
+        }
+        return;
+    }
+    answer(app, answerer, owed).await;
+}
+
+/// One arm per kind. `answerer`: the agent whose turn it was, as this yardd
+/// knows it.
+pub async fn answer(app: &Arc<App>, answerer: Option<crate::agents::Agent>, owed: Owed) {
     // Slack posts once per thread however many of its messages the turn
     // answered, so its origins go together.
     let mut slack = Vec::new();

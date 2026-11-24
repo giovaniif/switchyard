@@ -105,6 +105,10 @@ pub struct Agent {
     /// listed, mentioned or edited here.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub hosted: bool,
+    /// On a hosted copy: the hub that keeps the record, which answers its
+    /// tools (`agent_tools`). Empty from a hub that does not.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub hub: String,
     pub created_at: u64,
     pub updated_at: u64,
 }
@@ -158,6 +162,7 @@ fn scout() -> Agent {
         previous: Vec::new(),
         seed: None,
         hosted: false,
+        hub: String::new(),
         created_at: now_ms(),
         updated_at: now_ms(),
     }
@@ -299,7 +304,7 @@ async fn save(app: &Arc<App>, input: &Value) -> Result<Agent> {
     };
     for (k, v) in obj {
         // yardd owns these.
-        if !["id", "createdAt", "updatedAt", "builtin", "chat", "previous", "seed", "hosted"].contains(&k.as_str()) {
+        if !["id", "createdAt", "updatedAt", "builtin", "chat", "previous", "seed", "hosted", "hub"].contains(&k.as_str()) {
             merged[k] = v.clone();
         }
     }
@@ -496,6 +501,9 @@ async fn push(app: &Arc<App>, name: &str, a: &Agent) -> Result<()> {
     copy["previous"] = json!([]);
     copy["host"] = json!(LOCAL);
     copy["hosted"] = json!(true);
+    // Its tools act here, where the record is: the host passes their calls
+    // back over this hub's connection (`agent_tools`).
+    copy["hub"] = json!(app.tools.hub_id());
     call(app, &a.host, name, json!({ "op": "agent.hosted.save", "agent": copy })).await?;
     Ok(())
 }
@@ -648,7 +656,17 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
         "agent.seen" => {
             let id = msg["agentId"].as_str().context("missing `agentId`")?;
             let a = app.agents.get(id).context("no such agent")?;
-            if let Some(sid) = a.chat.filter(|sid| app.meta(sid).is_some_and(|m| m.needs_you.is_some())) {
+            if a.host != LOCAL {
+                // The mark is on its conversation, on its host.
+                if let Reach::Online(_) = reach(app, &a.host) {
+                    let (app, host) = (app.clone(), a.host.clone());
+                    tokio::spawn(async move {
+                        if let Err(e) = crate::remote::request(&app, &host, json!({ "op": "agent.hosted.seen", "id": a.id })).await {
+                            eprintln!("yardd: could not clear {}'s call on its host: {e:#}", a.name);
+                        }
+                    });
+                }
+            } else if let Some(sid) = a.chat.filter(|sid| app.meta(sid).is_some_and(|m| m.needs_you.is_some())) {
                 app.update_meta(&sid, |m| m.needs_you = None);
             }
         }
@@ -660,8 +678,34 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
         "agent.hosted.ask" => {
             let id = msg["agentId"].as_str().context("missing `agentId`")?;
             app.agents.get(id).filter(|a| a.hosted).context("no such agent")?;
-            ask(app, direct, msg).await?;
+            match crate::origins::from_hub(&msg["origin"]) {
+                // Another agent's message, or the answer to one, sent on by the hub.
+                Some(origin) => {
+                    let text = msg["text"].as_str().unwrap_or("").trim();
+                    if text.is_empty() {
+                        bail!("the message is empty");
+                    }
+                    let sid = deliver(app, id, text, &origin).await?;
+                    reply(json!({ "op": "created", "sessionId": sid, "agentId": id }));
+                }
+                None => ask(app, direct, msg).await?,
+            }
         }
+        "agent.hosted.seen" => {
+            let id = msg["id"].as_str().context("missing `id`")?;
+            let a = app.agents.get(id).filter(|a| a.hosted).context("no such agent")?;
+            if let Some(sid) = a.chat.filter(|sid| app.meta(sid).is_some_and(|m| m.needs_you.is_some())) {
+                app.update_meta(&sid, |m| m.needs_you = None);
+            }
+            reply(json!({ "op": "agent.hosted.seen", "id": id }));
+        }
+        // A hub's own connection says which hub it is, so this host can pass
+        // the tool calls of the hub's agents back to it.
+        "agent.hosted.hub" => {
+            let hub = msg["hub"].as_str().filter(|h| !h.is_empty() && h.len() <= 64 && h.chars().all(|c| c.is_ascii_alphanumeric())).context("invalid hub id")?;
+            app.tools.hub_connected(hub, direct);
+        }
+        "agent.hosted.answer" => app.tools.answered(direct, msg),
         "agent.hosted.leave" => {
             let id = msg["id"].as_str().context("missing `id`")?;
             let mut recap_text = String::new();
@@ -721,6 +765,9 @@ fn save_hosted(app: &App, input: &Value) -> Result<Agent> {
     if !a.cwd.is_empty() && !std::path::Path::new(&a.cwd).is_dir() {
         bail!("{} is not a folder on {}", a.cwd, crate::hosts::local_name());
     }
+    if a.hub.len() > 64 || !a.hub.chars().all(|c| c.is_ascii_alphanumeric()) {
+        bail!("invalid hub id");
+    }
     a.hosted = true;
     a.builtin = false;
     a.host = default_host();
@@ -779,6 +826,9 @@ async fn ask(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value
 /// Answers the conversation's session id.
 pub async fn deliver(app: &Arc<App>, id: &str, text: &str, origin: &Value) -> Result<String> {
     let a = app.agents.get(id).context("no such agent")?;
+    if a.host != LOCAL {
+        return send_remote(app, &a, text, &Value::Null, Some(origin)).await;
+    }
     if let Some(sid) = a.chat.clone().filter(|sid| app.meta(sid).is_some()) {
         if app.meta(&sid).is_some_and(|m| m.status == "queued") {
             app.queue_message(&sid, text, &[], Some(origin));
@@ -847,20 +897,42 @@ pub fn edit_memory(app: &App, id: &str, text: &str, append: bool) -> Result<Stri
     Ok(memory)
 }
 
+/// A hosted copy's memory, as the agent's tools changed it on the hub. Its
+/// engine already knows, so this is no notes change either.
+pub fn hosted_memory(app: &App, id: &str, memory: &str) {
+    app.agents.update(id, |a| {
+        if a.hosted {
+            a.memory = memory.to_string();
+        }
+    });
+}
+
 /// A message for an agent on a remote host: its host runs the conversation,
 /// so the message goes there, or nowhere: an offline host is said, not
 /// queued here.
 async fn ask_remote(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, a: &Agent, msg: &Value, text: &str) -> Result<()> {
+    let sid = send_remote(app, a, text, &msg["attachments"], None).await?;
+    let _ = direct.send(json!({ "op": "created", "sessionId": sid, "agentId": a.id, "ref": msg["ref"] }).to_string());
+    Ok(())
+}
+
+/// Hand a message to the host that runs the agent; answers its conversation,
+/// as this hub names it. `origin`: another agent's message, or the answer to
+/// one (see `deliver`).
+async fn send_remote(app: &Arc<App>, a: &Agent, text: &str, attachments: &Value, origin: Option<&Value>) -> Result<String> {
     let name = online(app, &a.host, |n| format!("{} runs on {n}, which is offline. Your message was not sent.", a.name))?;
-    let attached = msg["attachments"].as_array().is_some_and(|l| !l.is_empty());
+    let attached = attachments.as_array().is_some_and(|l| !l.is_empty());
     if text.is_empty() && !attached {
         bail!("the message is empty");
     }
     // Files uploaded to this host are not on that one.
-    if attached && crate::attachments::resolve(&msg["attachments"]).is_ok() {
+    if attached && crate::attachments::resolve(attachments).is_ok() {
         bail!("These files are on {}, not on {name}. Attach them in {}'s conversation instead.", crate::hosts::local_name(), a.name);
     }
-    let send = json!({ "op": "agent.hosted.ask", "agentId": a.id, "text": text, "attachments": msg["attachments"] });
+    let mut send = json!({ "op": "agent.hosted.ask", "agentId": a.id, "text": text, "attachments": attachments });
+    if let Some(origin) = origin {
+        send["origin"] = origin.clone();
+    }
     let reply = match call(app, &a.host, &name, send.clone()).await {
         // The host lost its copy (reinstalled, or a move that did not finish): hand it over again.
         Err(e) if format!("{e:#}").contains("no such agent") => {
@@ -874,8 +946,7 @@ async fn ask_remote(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, a: &
     if a.chat.as_deref() != Some(sid.as_str()) {
         set_chat(app, &a.id, &sid);
     }
-    let _ = direct.send(json!({ "op": "created", "sessionId": sid, "agentId": a.id, "ref": msg["ref"] }).to_string());
-    Ok(())
+    Ok(sid)
 }
 
 /// The session is now the agent's conversation. Called when it is created.

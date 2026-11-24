@@ -683,6 +683,47 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
     character cap, refused past it) and broadcast `agents`. The engine knows
     already, so it is not a notes change. An open form follows the new memory
     unless the user has typed in it, and Save leaves an untouched memory out.
+  - **On a remote host.** A remote agent's engine runs on its host, but
+    everything its tools act on is on the hub: the record and its memory, the
+    other agents, the owner's windows. So the host's engine gets the same
+    stdio server and talks to the host's own yardd, over the host's loopback,
+    with a key the host made for that one conversation; the host's
+    `/agent-tools` sees that the conversation belongs to a hosted copy and
+    passes the call to the hub instead of running it. The way back is the
+    connection the hub already keeps open to every host (`remote::monitor`,
+    over the SSH tunnel): on connecting it sends `agent.hosted.hub { hub }`
+    (the hub's id, made once and kept in its data folder as `hub-id`), and
+    the host remembers that connection for that hub until it closes. Every
+    copy names the hub that pushed it (`Agent::hub`, set by
+    `agents::push`); a call goes to that hub only, as `agent.hub.call {
+    ref, agentId, sessionId, method, params, answering }`, and is answered
+    on the same connection with `agent.hosted.answer { ref, result,
+    needsYou?, memory? }` (an answer from any other connection is ignored).
+    The hub runs it only for an agent whose `host` is the remote asking
+    (`agent_tools::from_host`), as the conversation `<host>~<id>`: the
+    notification names that id, the rate caps and hop count are the hub's,
+    `message_agent` lists the hub's agents, and memory lands in the hub's
+    record. The host then sets `needsYou` on its session (the hub's
+    `agent.seen` clears it there with `agent.hosted.seen`) and the copy's
+    memory, without a notes change. Messages and answers between agents, and
+    Slack's, go through the hub too: the hub's `agents::deliver` sends one to a remote
+    agent as `agent.hosted.ask` with its `origin` (the host keeps only the
+    kinds and fields yardd makes, `origins::from_hub`), and a hosted agent's
+    turn that owes answers (to agents or Slack, the approval note included)
+    passes them to the hub as `agent.hub.owed`, which runs the reply hook
+    there, so Slack reaches a remote agent like a local one; answers owed while the hub is away wait in
+    memory (up to 200) until it says hello again. Security: the engine still
+    reaches only loopback on its own host with a per-conversation key; no
+    port is opened (the hub dials the host, as before); and the hub acts
+    only for the agents it placed on that host, which that host already
+    runs. **Version skew:** a hub from before this does not name itself, so
+    its copies have no `hub` and get no tools (the preamble does not mention
+    them); an older host answers the hello with `unknown op`, which the hub
+    ignores, and it cannot run remote agents at all (`agent.hosted.save`
+    is refused with "Use Update Switchyard"). While the hub is not connected,
+    a call waits up to 5 s for it, then fails with a line the model reads
+    ("…is not connected to this host right now"); `tools/list` then names
+    no agents.
 - **Slack (built, step 3; see Slack below).** A Slack thread is not a session
   of its own: a message from Slack goes into the agent's one conversation
   with origin `{ kind: "slack", … }` (the team, channel, thread and message it
@@ -759,9 +800,14 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   needs you with its cap and `agent.seen`, a message and its answer back with
   both origins kept across a restart, the hop limit and a message to oneself,
   failed and stopped answers, memory edits and the cap, OpenCode running them
-  unasked, Scout and plain sessions without them, and the endpoint's key
-  check. The `agents` map drives the badges, the Needs-you card and row, and
-  memory in the form at both viewports. Checked against the real CLIs
+  unasked, Scout and plain sessions without them, the endpoint's key
+  check, a remote agent's tools acting on the hub (two daemons: `remember`
+  in the hub's record and the host's copy, `message_agent` both ways with
+  the answers back, `notify_owner` on the hub's windows and its mark
+  cleared by `agent.seen`), and a hosted copy without a hub (no tools) or
+  with its hub away (the call says so), then answered only on the hub's
+  own connection. The `agents` map drives the badges, the Needs-you card and row, and
+  memory in the form at both viewports, and a remote agent's tools. Checked against the real CLIs
   without a turn: Codex 0.171 takes the `mcp_servers.switchyard` override,
   starts the server and runs `mcpServer/tool/call` through it; the real
   sidecar with Claude Code starts it from `start.tools` and runs `mcp_call`.
@@ -866,5 +912,8 @@ its engine framing and one arm in `origins::reply`.
 - **Not checked:** a real Slack workspace. Nothing here has talked to
   slack.com: the manifest import, real event shapes beyond Slack's documented
   ones, rate limits, Enterprise Grid ids and the TLS path to slack.com are
-  untested. A Slack message is only answered by the agent's conversation on
-  the hub; Slack on a remote host is not offered.
+  untested. Slack connects from the hub only (Slack on a remote host is not
+  offered); an agent on a remote host is reached through the hub like any
+  `agents::deliver` (see Agents' own tools, On a remote host). A note about
+  a Slack post that failed lands in a local conversation only: for a remote
+  agent's it is logged on the hub instead.

@@ -13,6 +13,19 @@
 //! daemon's state and the key decides who is calling. Scout, private threads
 //! and the owner's own sessions are never given the server, and a key is
 //! only ever made for an agent's conversation.
+//!
+//! An agent on a remote host runs there, from a hidden copy of its record
+//! (`agents::save_hosted`), but its tools act on the hub: the record, its
+//! memory, the other agents and the owner's windows are all there. So the
+//! remote's engine still talks to the remote's yardd, over the remote's own
+//! loopback with a key for that one conversation, and the remote passes the
+//! call on over the connection the hub already keeps open to it (`remote::
+//! monitor`). That connection names its hub (`agent.hosted.hub`); a copy
+//! names the hub that pushed it (`Agent::hub`), and its calls go to that hub
+//! only (`agent.hub.call`, answered with `agent.hosted.answer`). The hub acts
+//! only for an agent whose host is the remote asking. No port is opened:
+//! the hub dials the remote, as before. Answers an agent owes another agent
+//! go back the same way (`agent.hub.owed`).
 
 use std::{
     collections::{HashMap, VecDeque},
@@ -30,7 +43,10 @@ use axum::{
     Json,
 };
 use serde_json::{json, Value};
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
+    sync::{mpsc, oneshot},
+};
 
 use crate::{
     host_context::clip,
@@ -56,7 +72,23 @@ pub struct Tools {
     keys: Mutex<HashMap<String, String>>,
     /// `<agent id>:<tool>` -> when it was used in the last hour.
     used: Mutex<HashMap<String, VecDeque<u64>>>,
+    /// This yardd as a hub: its id, made once and kept in the data folder.
+    hub_id: std::sync::OnceLock<String>,
+    /// On a remote: the hubs connected now, by id, and how to reach each.
+    hubs: Mutex<HashMap<String, mpsc::UnboundedSender<String>>>,
+    /// Calls passed to a hub, waiting for its answer, by `ref`.
+    pending: Mutex<HashMap<String, (mpsc::UnboundedSender<String>, oneshot::Sender<Value>)>>,
+    /// Answers owed on a hub that was not connected when the turn ended.
+    outbox: Mutex<Vec<(String, Value)>>,
+    next_ref: std::sync::atomic::AtomicU64,
 }
+
+/// How long a remote waits for its hub to answer a passed-on call: under the
+/// stdio server's own 60 s.
+const HUB_ANSWER: Duration = Duration::from_secs(50);
+/// How long a call waits for the hub to connect again after a blip.
+const HUB_RECONNECT: Duration = Duration::from_secs(5);
+const OUTBOX_MAX: usize = 200;
 
 impl Tools {
     pub fn set_url(&self, url: Option<String>) {
@@ -79,6 +111,86 @@ impl Tools {
 
     fn session(&self, key: &str) -> Option<String> {
         self.keys.lock().unwrap().get(key).cloned()
+    }
+
+    /// This yardd's id as a hub, which the remotes running its agents know it by.
+    pub fn hub_id(&self) -> String {
+        self.hub_id
+            .get_or_init(|| {
+                let file = crate::store::data_dir().join("hub-id");
+                if let Some(id) = std::fs::read_to_string(&file).ok().map(|s| s.trim().to_string()).filter(|s| s.len() == 32 && s.chars().all(|c| c.is_ascii_hexdigit())) {
+                    return id;
+                }
+                let id = random_key()[..32].to_string();
+                if let Err(e) = std::fs::write(&file, &id) {
+                    eprintln!("yardd: cannot save {}: {e}", file.display());
+                }
+                id
+            })
+            .clone()
+    }
+
+    /// A hub's connection said which hub it is (`agent.hosted.hub`). Answers
+    /// it still owed go out now.
+    pub fn hub_connected(&self, hub: &str, conn: &mpsc::UnboundedSender<String>) {
+        // The outbox first, as `owed_to_hub` takes it: nothing slips between.
+        let mut outbox = self.outbox.lock().unwrap();
+        self.hubs.lock().unwrap().insert(hub.to_string(), conn.clone());
+        let (now, later): (Vec<_>, Vec<_>) = std::mem::take(&mut *outbox).into_iter().partition(|(h, _)| h == hub);
+        *outbox = later;
+        for (_, msg) in now {
+            let _ = conn.send(msg.to_string());
+        }
+    }
+
+    /// A client went away: if it was a hub, calls waiting on it fail now.
+    pub fn conn_closed(&self, conn: &mpsc::UnboundedSender<String>) {
+        self.hubs.lock().unwrap().retain(|_, c| !c.same_channel(conn));
+        self.pending.lock().unwrap().retain(|_, (c, _)| !c.same_channel(conn));
+    }
+
+    /// `agent.hosted.answer`: a hub answered a call, on the connection it was asked on.
+    pub fn answered(&self, conn: &mpsc::UnboundedSender<String>, msg: &Value) {
+        let Some(r) = msg["ref"].as_str() else { return };
+        let mut pending = self.pending.lock().unwrap();
+        if pending.get(r).is_some_and(|(c, _)| c.same_channel(conn)) {
+            if let Some((_, tx)) = pending.remove(r) {
+                let _ = tx.send(msg.clone());
+            }
+        }
+    }
+
+    fn hub(&self, hub: &str) -> Option<mpsc::UnboundedSender<String>> {
+        self.hubs.lock().unwrap().get(hub).filter(|c| !c.is_closed()).cloned()
+    }
+
+    /// Pass a call to the hub and wait for its answer.
+    async fn ask_hub(&self, hub: &str, mut msg: Value) -> Result<Value> {
+        let deadline = tokio::time::Instant::now() + HUB_RECONNECT;
+        let conn = loop {
+            if let Some(c) = self.hub(hub) {
+                break c;
+            }
+            if tokio::time::Instant::now() >= deadline {
+                bail!("the Switchyard that keeps your record is not connected to this host right now");
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        };
+        let r = format!("hub-{}", self.next_ref.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
+        msg["ref"] = json!(r);
+        let (tx, rx) = oneshot::channel();
+        self.pending.lock().unwrap().insert(r.clone(), (conn.clone(), tx));
+        if conn.send(msg.to_string()).is_err() {
+            self.pending.lock().unwrap().remove(&r);
+            bail!("the Switchyard that keeps your record went away");
+        }
+        let answer = tokio::time::timeout(HUB_ANSWER, rx).await;
+        self.pending.lock().unwrap().remove(&r);
+        match answer {
+            Ok(Ok(v)) => Ok(v),
+            Ok(Err(_)) => bail!("the Switchyard that keeps your record disconnected before it answered"),
+            Err(_) => bail!("the Switchyard that keeps your record did not answer in time"),
+        }
     }
 
     /// Count a use against the hourly cap; refused with when the oldest use
@@ -122,10 +234,16 @@ fn agent_of(app: &App, sid: &str) -> Option<crate::agents::Agent> {
     app.agents.get(&id).filter(|a| !a.builtin)
 }
 
+/// The agent whose conversation gets the tools: a user-made agent's, or a
+/// hub's agent that runs here when that hub answers its tools.
+fn tool_agent(app: &App, sid: &str) -> Option<crate::agents::Agent> {
+    agent_of(app, sid).filter(|a| !a.hosted || !a.hub.is_empty())
+}
+
 /// Whether the session's engine gets the tools: a user-made agent's
 /// conversation, while yardd listens on loopback.
 pub fn offered(app: &App, sid: &str) -> bool {
-    app.tools.url.lock().unwrap().is_some() && agent_of(app, sid).is_some()
+    app.tools.url.lock().unwrap().is_some() && tool_agent(app, sid).is_some()
 }
 
 /// How an engine starts the tools' MCP server for one conversation.
@@ -160,7 +278,7 @@ impl Launch {
 /// The MCP server a session's engine launches, or none (see `offered`).
 pub fn launch(app: &App, sid: &str) -> Option<Launch> {
     let url = app.tools.url.lock().unwrap().clone()?;
-    agent_of(app, sid)?;
+    tool_agent(app, sid)?;
     let command = std::env::current_exe().ok()?.to_string_lossy().into_owned();
     Some(Launch {
         command,
@@ -204,6 +322,11 @@ fn definitions(app: &App, me: &crate::agents::Agent) -> Value {
     } else {
         format!("Agents: {}.", others.iter().map(|a| format!("@{}", a.name)).collect::<Vec<_>>().join(", "))
     };
+    described(&names)
+}
+
+/// The tools, with `names` saying which agents there are.
+fn described(names: &str) -> Value {
     let text = |d: &str| json!({ "type": "string", "description": d });
     json!([
         {
@@ -247,17 +370,50 @@ fn at_clock(ms: u64) -> String {
     chrono::DateTime::from_timestamp_millis(ms as i64).map(|t| t.with_timezone(&chrono::Local).format("%H:%M").to_string()).unwrap_or_default()
 }
 
-/// Run one tool for the agent whose conversation `sid` is. Answers the text
-/// the model reads and whether it is an error.
-pub async fn call(app: &Arc<App>, sid: &str, tool: &str, args: &Value) -> (String, bool) {
-    match run(app, sid, tool, args).await {
-        Ok(text) => (text, false),
+/// Who calls a tool: an agent, from one of its conversations.
+struct Caller {
+    me: crate::agents::Agent,
+    /// The conversation as this yardd's windows name it (`<host>~<id>` for
+    /// one on a remote).
+    sid: String,
+    /// The origins its running turn answers (`Meta::answering`).
+    answering: Vec<Value>,
+}
+
+/// What a tool did, beyond the text the model reads: the call for the
+/// owner to mark on the conversation, and the memory as it is now. A
+/// conversation on a remote gets both from the hub's answer.
+#[derive(Default)]
+struct Done {
+    text: String,
+    needs_you: Option<Value>,
+    memory: Option<String>,
+}
+
+impl From<String> for Done {
+    fn from(text: String) -> Done {
+        Done { text, ..Default::default() }
+    }
+}
+
+/// Run one tool for the agent whose conversation `sid` is, here. Answers the
+/// text the model reads and whether it is an error.
+async fn call(app: &Arc<App>, sid: &str, tool: &str, args: &Value) -> (String, bool) {
+    let Some(me) = agent_of(app, sid) else { return ("This conversation no longer belongs to an agent.".into(), true) };
+    let caller = Caller { me, sid: sid.to_string(), answering: app.meta(sid).map(|m| m.answering).unwrap_or_default() };
+    match run(app, &caller, tool, args).await {
+        Ok(done) => {
+            if let Some(mark) = done.needs_you {
+                app.update_meta(sid, |m| m.needs_you = Some(mark));
+            }
+            (done.text, false)
+        }
         Err(e) => (format!("{e:#}"), true),
     }
 }
 
-async fn run(app: &Arc<App>, sid: &str, tool: &str, args: &Value) -> Result<String> {
-    let me = agent_of(app, sid).context("This conversation no longer belongs to an agent.")?;
+async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Result<Done> {
+    let (me, sid) = (&caller.me, caller.sid.as_str());
     let arg = |k: &str| args[k].as_str().unwrap_or("").trim().to_string();
     match tool {
         "notify_owner" => {
@@ -269,13 +425,13 @@ async fn run(app: &Arc<App>, sid: &str, tool: &str, args: &Value) -> Result<Stri
                 bail!("Not sent: you already reached the user {NOTIFY_PER_HOUR} times in the last hour. Try again after {}, or put it in your answer.", at_clock(until));
             }
             let message = clip(&message, 400);
-            app.update_meta(sid, |m| m.needs_you = Some(json!({ "message": message, "at": now_ms() })));
             let windows = crate::ws::notify(app, &json!({ "title": format!("{} needs you", me.name), "body": message, "sessionId": sid }))?;
-            Ok(if windows == 0 {
+            let text = if windows == 0 {
                 "No Switchyard window is open right now. Your card shows that you need the user until they open this conversation.".into()
             } else {
                 format!("Sent to the user's open Switchyard windows ({windows}). Your card shows that you need them until they open this conversation.")
-            })
+            };
+            Ok(Done { text, needs_you: Some(json!({ "message": message, "at": now_ms() })), memory: None })
         }
         "message_agent" => {
             let to = arg("to").trim_start_matches('@').to_string();
@@ -283,7 +439,7 @@ async fn run(app: &Arc<App>, sid: &str, tool: &str, args: &Value) -> Result<Stri
             if text.is_empty() {
                 bail!("Not sent: the message is empty.");
             }
-            let others = others(app, &me);
+            let others = others(app, me);
             let Some(target) = others.iter().find(|a| a.name.eq_ignore_ascii_case(&to)).cloned() else {
                 if me.name.eq_ignore_ascii_case(&to) {
                     bail!("Not sent: that is you. message_agent sends to another agent.");
@@ -291,7 +447,7 @@ async fn run(app: &Arc<App>, sid: &str, tool: &str, args: &Value) -> Result<Stri
                 let names = others.iter().map(|a| a.name.as_str()).collect::<Vec<_>>().join(", ");
                 bail!("Not sent: no agent is called {to}. {}", if names.is_empty() { "There are no other agents.".to_string() } else { format!("Agents: {names}.") });
             };
-            let hops = origins::next_hops(&app.meta(sid).map(|m| m.answering).unwrap_or_default());
+            let hops = origins::next_hops(&caller.answering);
             if hops > origins::MAX_HOPS {
                 bail!(
                     "Not sent: this would be hop {hops} of a chain of agents messaging agents, and at most {} are allowed. Answer with what you have instead.",
@@ -305,7 +461,7 @@ async fn run(app: &Arc<App>, sid: &str, tool: &str, args: &Value) -> Result<Stri
             let text = clip(&text, MESSAGE_BYTES);
             // Delivery may start the target's engine: the tool answers now,
             // and a message that cannot be delivered comes back as a reply.
-            let (app2, target2) = (app.clone(), target.clone());
+            let (app2, target2, me) = (app.clone(), target.clone(), me.clone());
             tokio::spawn(async move {
                 if let Err(e) = crate::agents::deliver(&app2, &target2.id, &text, &origin).await {
                     let back = json!({ "kind": "agentReply", "agentId": target2.id, "name": target2.name, "hops": hops });
@@ -319,12 +475,13 @@ async fn run(app: &Arc<App>, sid: &str, tool: &str, args: &Value) -> Result<Stri
                 "Sent to @{} (hop {hops} of {}). Its answer will arrive in this conversation as a new message when it is done; you do not need to wait for it.",
                 target.name,
                 origins::MAX_HOPS
-            ))
+            )
+            .into())
         }
         "list_agents" => {
-            let list = others(app, &me);
+            let list = others(app, me);
             if list.is_empty() {
-                return Ok("There are no other agents yet.".into());
+                return Ok(String::from("There are no other agents yet.").into());
             }
             Ok(list
                 .iter()
@@ -333,11 +490,13 @@ async fn run(app: &Arc<App>, sid: &str, tool: &str, args: &Value) -> Result<Stri
                     format!("@{}{built}{}", a.name, if a.about.is_empty() { String::new() } else { format!(": {}", a.about) })
                 })
                 .collect::<Vec<_>>()
-                .join("\n"))
+                .join("\n")
+                .into())
         }
         "remember" | "set_memory" => {
             let memory = crate::agents::edit_memory(app, &me.id, &arg("text"), tool == "remember")?;
-            Ok(if memory.is_empty() { "Your memory is now empty.".into() } else { format!("Saved. Your memory now:\n{memory}") })
+            let text = if memory.is_empty() { "Your memory is now empty.".into() } else { format!("Saved. Your memory now:\n{memory}") };
+            Ok(Done { text, needs_you: None, memory: Some(memory) })
         }
         other => bail!("Switchyard has no tool {other}."),
     }
@@ -357,9 +516,15 @@ pub async fn http(State(app): State<Arc<App>>, ConnectInfo(peer): ConnectInfo<So
     let Ok(req) = serde_json::from_slice::<Value>(&body) else {
         return refuse(StatusCode::BAD_REQUEST, "expected JSON");
     };
-    let Some(me) = agent_of(&app, &sid) else {
+    let Some(me) = tool_agent(&app, &sid) else {
         return refuse(StatusCode::UNAUTHORIZED, "this conversation no longer belongs to an agent");
     };
+    if me.hosted {
+        return match req["method"].as_str() {
+            Some("tools/list" | "tools/call") => Json(to_hub(&app, &me, &sid, &req).await).into_response(),
+            _ => refuse(StatusCode::BAD_REQUEST, "unknown method"),
+        };
+    }
     match req["method"].as_str() {
         Some("tools/list") => Json(json!({ "tools": definitions(&app, &me) })).into_response(),
         Some("tools/call") => {
@@ -370,6 +535,114 @@ pub async fn http(State(app): State<Arc<App>>, ConnectInfo(peer): ConnectInfo<So
         }
         _ => refuse(StatusCode::BAD_REQUEST, "unknown method"),
     }
+}
+
+/// A call from a hub's agent that runs here: its hub runs it. The
+/// conversation gets the call for the owner, and the copy its memory, from
+/// the answer. Answers what the stdio server hands the engine.
+async fn to_hub(app: &Arc<App>, me: &crate::agents::Agent, sid: &str, req: &Value) -> Value {
+    let method = req["method"].as_str().unwrap_or("");
+    let answering = app.meta(sid).map(|m| m.answering).unwrap_or_default();
+    let msg = json!({ "op": "agent.hub.call", "agentId": me.id, "sessionId": sid, "method": method, "params": req["params"], "answering": answering });
+    let failed = |why: String| {
+        if method == "tools/list" {
+            // The tools still work once the hub is back; only the names are unknown.
+            json!({ "tools": described("Which agents there are is not known right now; list_agents names them.") })
+        } else {
+            json!({ "content": [{ "type": "text", "text": format!("Not done: {why}. Try again later, or put it in your answer.") }], "isError": true })
+        }
+    };
+    let answer = match app.tools.ask_hub(&me.hub, msg).await {
+        Ok(a) => a,
+        Err(e) => return failed(format!("{e:#}")),
+    };
+    if let Some(why) = answer["error"].as_str() {
+        return failed(why.to_string());
+    }
+    if let Some(mark) = answer["needsYou"]["message"].as_str() {
+        let mark = json!({ "message": clip(mark, 400), "at": now_ms() });
+        app.update_meta(sid, |m| m.needs_you = Some(mark));
+    }
+    if let Some(memory) = answer["memory"].as_str() {
+        crate::agents::hosted_memory(app, &me.id, memory);
+    }
+    answer["result"].clone()
+}
+
+/// On the hub: what a remote passed on for one of this hub's agents that
+/// runs there (`agent.hub.call`, `agent.hub.owed`). Only for an agent whose
+/// host is the remote asking. Answers what goes back to the remote, if anything.
+pub async fn from_host(app: &Arc<App>, host: &str, msg: &Value) -> Option<Value> {
+    let id = msg["agentId"].as_str().unwrap_or("");
+    let remote_sid = msg["sessionId"].as_str().unwrap_or("");
+    let me = app.agents.get(id).filter(|a| !a.hosted && !a.builtin && a.host == host && !remote_sid.is_empty() && !remote_sid.contains(crate::remote::SEP));
+    // As this hub's windows name the conversation.
+    let sid = format!("{host}{}{remote_sid}", crate::remote::SEP);
+    let origins_in = |v: &Value| -> Vec<Value> { v.as_array().map(|l| l.iter().filter_map(origins::from_hub).collect()).unwrap_or_default() };
+    match msg["op"].as_str() {
+        Some("agent.hub.call") => {
+            let mut answer = json!({ "op": "agent.hosted.answer", "ref": msg["ref"] });
+            let Some(me) = me else {
+                answer["error"] = json!("this host does not run that agent");
+                return Some(answer);
+            };
+            match msg["method"].as_str() {
+                Some("tools/list") => answer["result"] = json!({ "tools": definitions(app, &me) }),
+                Some("tools/call") => {
+                    let p = &msg["params"];
+                    let caller = Caller { me, sid, answering: origins_in(&msg["answering"]) };
+                    let (text, error) = match run(app, &caller, p["name"].as_str().unwrap_or(""), &p["arguments"]).await {
+                        Ok(done) => {
+                            if let Some(mark) = done.needs_you {
+                                answer["needsYou"] = mark;
+                            }
+                            if let Some(memory) = done.memory {
+                                answer["memory"] = json!(memory);
+                            }
+                            (done.text, false)
+                        }
+                        Err(e) => (format!("{e:#}"), true),
+                    };
+                    answer["result"] = json!({ "content": [{ "type": "text", "text": text }], "isError": error });
+                }
+                _ => answer["error"] = json!("unknown method"),
+            }
+            Some(answer)
+        }
+        Some("agent.hub.owed") => {
+            if let Some(me) = me {
+                let owed = origins::Owed {
+                    sid,
+                    origins: origins_in(&msg["origins"]),
+                    status: msg["status"].as_str().unwrap_or("failed").to_string(),
+                    text: clip(msg["text"].as_str().unwrap_or(""), MESSAGE_BYTES),
+                };
+                origins::answer(app, Some(me), owed).await;
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+/// On a remote: a hub's agent answered messages from agents, which are on
+/// the hub. Sent now, or when the hub connects again.
+pub fn owed_to_hub(app: &App, a: &crate::agents::Agent, owed: &origins::Owed) {
+    if a.hub.is_empty() {
+        eprintln!("yardd: {}'s hub does not take answers back; dropped one", a.name);
+        return;
+    }
+    let msg = json!({ "op": "agent.hub.owed", "agentId": a.id, "sessionId": owed.sid, "origins": owed.origins, "status": owed.status, "text": owed.text });
+    let mut outbox = app.tools.outbox.lock().unwrap();
+    if let Some(conn) = app.tools.hub(&a.hub) {
+        if conn.send(msg.to_string()).is_ok() {
+            return;
+        }
+    }
+    if outbox.len() >= OUTBOX_MAX {
+        outbox.remove(0);
+    }
+    outbox.push((a.hub.clone(), msg));
 }
 
 /// `yardd agent-tools`: the stdio MCP server an agent's engine launches.

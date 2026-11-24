@@ -16,7 +16,8 @@ box says so before it is sent. An agent runs on this host or on a remote
 one, picked in its form with the host picker; the account picker shows when
 the engine has more than one account there. A remote agent's card and
 header name its host; while the host is offline they say so and nothing
-can be sent.
+can be sent. Its tools (needs you, messaging another agent, its memory) act
+here on the hub, passed back by its host.
 
 ## Setup
 
@@ -232,6 +233,22 @@ takes a reply in the same thread.
 yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Remote\"] .agent-message"},{"expect":"css:.agent-bar","text":"TEST-agents-box"},{"fill":"label:Message","value":"TEST-from the phone"},{"press":"Enter"},{"expect":"css:.thread","text":"Echo: TEST-from the phone"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"remote-conversation"}]'
 ```
 
+### a-remote-agents-tools-act-on-the-hub
+An agent on a remote host has the same tools: they run on its host's engine
+and act here, where its record and the other agents are. Its `remember`
+lands in its form, its `message_agent` reaches an agent on this host and the
+answer comes back to its conversation there, and its `notify_owner` marks
+its card until the conversation is opened.
+
+```sh
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --save far='agents[name=TEST-Remote].id'
+yv api '{"op":"agent.ask","agentId":"{{far}}","text":"[[tool remember {\"text\":\"TEST-the box builds nightly\"}]] [[tool message_agent {\"to\":\"TEST-Builder\",\"text\":\"TEST-is the build green?\"}]] [[tool notify_owner {\"message\":\"TEST-the box needs a reboot\"}]]"}' --wait '{"op":"notify","title":"TEST-Remote needs you","body":"TEST-the box needs a reboot"}'
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"name":"TEST-Remote","memory":"TEST-the box builds nightly"}]}'
+yv drive new --viewport desktop --steps '[{"expect":"css:.nav-row .dot-needsYou"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Remote\"] .automation-status","hasText":"Needs you · TEST-the box needs a reboot"}},{"expect":"css:.agent-card[aria-label=\"TEST-Remote\"] .mark-approval .mark-bang"},{"shot":"remote-needs-you"},{"click":"css:.agent-card[aria-label=\"TEST-Remote\"] .agent-message"},{"expect":"css:.agent-bar","text":"TEST-agents-box"},{"expect":{"css":".origin-badge","hasText":"Reply from @TEST-Builder"}},{"expect":"css:.thread","text":"Sent to @TEST-Builder (hop 1 of 3)"},{"shot":"remote-reply"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Remote\"] .automation-status","hasText":"Needs you"},"count":0},{"click":"css:.agent-card[aria-label=\"TEST-Builder\"] .agent-message"},{"expect":{"css":".origin-badge","hasText":"From @TEST-Remote"}},{"expect":{"css":".user-message .bubble","hasText":"TEST-is the build green?"}},{"click":"role:button:Agents"},{"click":"role:button:Edit: TEST-Remote"},{"expect":"label:Memory","value":"TEST-the box builds nightly"},{"click":"role:button:Cancel"}]'
+yv api '{"op":"agent.ask","agentId":"{{far}}","text":"[[tool notify_owner {\"message\":\"TEST-still needs that reboot\"}]]"}' --wait '{"op":"notify","title":"TEST-Remote needs you"}'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":"css:.nav-row .dot-needsYou"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Remote\"] .automation-status","hasText":"Needs you · TEST-still needs that reboot"}},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"wait":700},{"shot":"remote-needs-you"},{"click":"css:.agent-card[aria-label=\"TEST-Remote\"] .agent-message"},{"expect":{"css":".origin-badge","hasText":"Reply from @TEST-Builder"}},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"remote-reply"},{"click":"role:button:Open sessions"},{"expect":"css:.nav-row .dot-needsYou","count":0}]'
+```
+
 ### moving-an-agent-says-what-happens-to-its-conversation
 Picking another host for an agent with a conversation says, before saving,
 that the conversation stays readable where it is and the next message
@@ -268,3 +285,6 @@ yv api '{"op":"agent.ask","agentId":"{{remote_agent}}","text":"TEST-anyone there
   next one seeded with the latest exchanges), the preamble, changed notes and
   a fresh context on a remote are covered by `tests/agents.rs` against two
   daemons; here only the form's note about a move is driven.
+- A remote agent's tools when its host cannot reach the hub (the call says
+  so), and a host copy from a hub that does not answer tools (no tools
+  offered), are covered by `tests/agent_tools.rs`, not here.
