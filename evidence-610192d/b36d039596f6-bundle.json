@@ -1,0 +1,187 @@
+{
+  "v": 1,
+  "claim": "A conversation goes blank (only \"Working\" left) after yardd resyncs the window with a mid-connection snapshot while the session streams; it should reload its history",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-some-conversations-just-vanish-1851",
+  "base": "55a9a6ed9834a4334ce684b6945cc98fad9116b9",
+  "head": "610192d6b47cb4a9de65e20ae4655174da155ece",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/store.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/thread.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-24T14:43:37.497Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "b6cd21a8e24b20e597aa92408846dd0c32b323cb",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "5d9bd42f5811a6e5715c4f1c5a2b74281168bc84317d4e7318aad3136565b41e"
+        },
+        {
+          "path": "p1-after-resync-mobile.png",
+          "sha256": "bdd54eeb02afe6a8d5f87e7c399be541f1ecc97320dbfb1daa5d0bc577e6366c"
+        },
+        {
+          "path": "p1-fail-mobile-step10.png",
+          "sha256": "bdd54eeb02afe6a8d5f87e7c399be541f1ecc97320dbfb1daa5d0bc577e6366c"
+        },
+        {
+          "path": "p1-after-resync-desktop.png",
+          "sha256": "77d55a70c1475cf2d31e7a03264efb36d412ca8c97b8ad6787b37acdc1469743"
+        },
+        {
+          "path": "p1-fail-desktop-step10.png",
+          "sha256": "f4fa5d0631863ef59f3bf42a798df5c444332e946fa178f49ddcfe373a2c4a27"
+        }
+      ],
+      "addedAt": "2026-11-24T14:44:13.042Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "b6cd21a8e24b20e597aa92408846dd0c32b323cb",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "02592789ea65c78968b61d22db985c11eeebff26ff29e274f2c121071154a5cd"
+        }
+      ],
+      "addedAt": "2026-11-24T14:44:13.093Z",
+      "cmd": "cd ui && bun test src/store.test.ts",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "610192d6b47cb4a9de65e20ae4655174da155ece",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "86808537400a7ac7bf557b49afbc6ba0da911554496ee9c690dd009cf7db824f"
+        },
+        {
+          "path": "p3-after-resync-mobile.png",
+          "sha256": "e9a41d26e3ef435106cb204c642c6747c97c14060ef4f5c05d7aae30d71b2818"
+        },
+        {
+          "path": "p3-after-resync-desktop.png",
+          "sha256": "61a85a5616159415fe821d8fb2392e71201cff9e5fd62128a6419f4cca41f889"
+        }
+      ],
+      "addedAt": "2026-11-24T14:44:27.917Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "610192d6b47cb4a9de65e20ae4655174da155ece",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "a5918b6ed74dc6d2f901a3912265667bc4808cc2d1ffb60e703c4ba51666e6bb"
+        }
+      ],
+      "addedAt": "2026-11-24T14:44:27.962Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "610192d6b47cb4a9de65e20ae4655174da155ece",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "6c25b14402f30e838116bae89f8754e800d14bb08ca75181116c1b605e6f393c"
+        }
+      ],
+      "addedAt": "2026-11-24T14:45:34.394Z",
+      "cmd": "verify/yv design-check --base 55a9a6ed9834",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "610192d6b47cb4a9de65e20ae4655174da155ece",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-thread.json",
+          "sha256": "cd560a582e97e6d31870be2029278ef62f6afa8b99f21b4c4a31889a55882986"
+        }
+      ],
+      "addedAt": "2026-11-24T14:45:34.482Z",
+      "cmd": "verify/yv map run thread",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "thread/reply-renders",
+        "thread/markdown-table-renders",
+        "thread/markdown-blocks-without-blank-lines",
+        "thread/web-links-open-outside-the-thread",
+        "thread/thinking-folds",
+        "thread/edit-shows-diff",
+        "thread/failed-turn-shows-error",
+        "thread/follow-up-turn",
+        "thread/claude-session-renders",
+        "thread/reply-to-part-of-answer",
+        "thread/no-reply-on-own-message",
+        "thread/queue-a-message-while-working",
+        "thread/remove-a-queued-message",
+        "thread/steer-a-running-turn",
+        "thread/steer-a-selected-queued-message",
+        "thread/stop-returns-the-queue",
+        "thread/edit-a-queued-message",
+        "thread/edit-a-queued-reply-keeps-its-quotes",
+        "thread/draft-survives-switching-sessions",
+        "thread/workspace-subagents",
+        "thread/subagent-nests-and-expands",
+        "thread/working-line-stays-in-view",
+        "thread/pr-link-hover-card",
+        "thread/pr-link-card-states",
+        "thread/pr-link-card-error",
+        "thread/pr-link-keyboard-and-touch",
+        "thread/links-inside-bold-text",
+        "thread/numbered-steps-across-code-blocks",
+        "thread/history-reloads-after-resync"
+      ]
+    }
+  ]
+}

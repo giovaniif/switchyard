@@ -1,0 +1,26 @@
+$ cd ui && bun test src/store.test.ts
+# exit 1 after 28 ms at b6cd21a8e24b20e597aa92408846dd0c32b323cb
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/store.test.ts:
+73 |     expect(historyLoaded(s, "h1~a")).toBe(true);
+74 | 
+75 |     s = server(s, { op: "host.snapshot", hostId: "h1", sessions: [meta("h1~a", "h1", "running")] });
+76 |     s = server(s, event("h1~a", 6, { type: "turn_started" }));
+77 |     expect(s.threads["h1~a"]).toBeDefined();
+78 |     expect(historyLoaded(s, "h1~a")).toBe(false);
+                                          ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/giovani/.yard/wt/better-than-claude-code/yard-some-conversations-just-vanish-1851/ui/src/store.test.ts:78:38)
+(fail) thread loading > a thread holding only early events still needs its history [0.70ms]
+
+ 29 pass
+ 1 fail
+ 94 expect() calls
+Ran 30 tests across 1 file. [23.00ms]
