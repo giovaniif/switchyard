@@ -29,6 +29,7 @@ import {
   type AccountEntry,
   type Automation,
   type Agent,
+  type AgentRequest,
   type McpAuthState,
   type McpStatus,
   type SlackView,
@@ -204,6 +205,8 @@ export interface State {
 }
 
 export type SlackOp = "slack.tokens" | "slack.disconnect" | "slack.retry" | "slack.allow" | "slack.disallow" | "slack.dismiss" | "slack.route";
+/** An agent's own Slack app, step by step (`SlackSetup`). */
+export type SlackAppOp = "slack.grant" | "slack.app.create" | "slack.app.authorize" | "slack.app.botToken" | "slack.app.appToken" | "slack.app.remove";
 
 type Action =
   | { t: "socket"; connected: boolean }
@@ -624,6 +627,12 @@ export interface Actions {
   deleteAgent(id: string): Promise<{ error?: string }>;
   /** A window opened the agent's conversation: its call for the owner (`needsYou`) was seen. */
   agentSeen(id: string): void;
+  /** New agent: one with a placeholder name, opened at its conversation, where it sets itself up. */
+  newAgent(choice: { engine: string; model: string; effort: string }): Promise<{ agent?: Agent; error?: string }>;
+  /** The owner's answer to what an agent asked for. */
+  answerRequest(id: string, part: keyof AgentRequest, allow: boolean): void;
+  /** A step of putting an agent in Slack (`slack.grant`, `slack.app.create`, …); answered with Slack's state or why not. */
+  slackApp(op: SlackAppOp, fields: Record<string, unknown>): Promise<{ slack?: SlackView; error?: string }>;
 
   go(route: Route): void;
   dismissError(): void;
@@ -973,6 +982,18 @@ export function useYard(): { state: State; actions: Actions } {
         return reply.error ? { error: reply.error as string } : {};
       },
       agentSeen: (id) => post({ op: "agent.seen", agentId: id }),
+      newAgent: async (choice) => {
+        const reply = await ask({ op: "agent.new", ...choice }, 30_000);
+        if (reply.error || !reply.agent) return { error: reply.error ?? "No agent was made." };
+        dispatch({ t: "route", route: { page: "agent", id: reply.agent.id } });
+        return { agent: reply.agent as Agent };
+      },
+      answerRequest: (id, part, allow) => post({ op: "agent.request", id, part, allow }),
+      slackApp: async (op, fields) => {
+        // Slack's own calls take a few seconds each; making an app several.
+        const reply = await ask({ ...fields, op }, 60_000);
+        return reply.error ? { error: reply.error as string } : { slack: reply.slack as SlackView };
+      },
       go: (route) => dispatch({ t: "route", route }),
       dismissError: () => dispatch({ t: "dismiss" }),
       create: (input) => post({ op: "session.create", ...input }),

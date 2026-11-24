@@ -1,2 +1,0 @@
-#!/bin/sh
-printf 'TEST-api.service loaded active running TEST API\nTEST-worker.service loaded active running TEST worker\n'

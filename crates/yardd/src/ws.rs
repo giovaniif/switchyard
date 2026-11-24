@@ -317,21 +317,10 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
         bail!("that engine thread is private to yardd");
     }
     if msg["op"].as_str().is_some_and(|op| op.starts_with("slack.")) {
-        return crate::slack::handle(app, msg).await;
+        return crate::slack::handle(app, direct, msg).await;
     }
     if msg["op"].as_str().is_some_and(|op| op.starts_with("agent.")) {
         return crate::agents::handle(app, direct, msg).await;
-    }
-    // A hub asks for this host's evidence for its host agent; a hub from
-    // before agents asks with the old name.
-    if matches!(msg["op"].as_str(), Some("context.collect" | "switchy.context")) {
-        let query = msg["query"].as_str().unwrap_or("");
-        anyhow::ensure!(query.len() <= 8000, "question is too long");
-        let mut reply = crate::host_context::collect(app, query).await;
-        reply["op"] = msg["op"].clone();
-        reply["ref"] = msg["ref"].clone();
-        let _ = direct.send(reply.to_string());
-        return Ok(());
     }
     if msg["op"].as_str().is_some_and(|op| op.starts_with("pr.")) {
         return pr::handle(app, direct, msg).await;

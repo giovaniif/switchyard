@@ -165,3 +165,30 @@ async fn naming_can_be_turned_off() {
 fn crate_private(id: &str) -> bool {
     id.starts_with("private-") || id.starts_with("switchy-")
 }
+
+/// A private naming thread disables the user's MCP servers; Codex's null
+/// optional fields are left out, not sent as empty strings.
+#[tokio::test]
+async fn codex_nullable_config_does_not_break_the_restricted_thread() {
+    let sb = Sandbox::new("naming-null-config");
+    let config = json!({"mcp_servers": {"linear": {
+        "url": "https://example.invalid/mcp", "enabled": true,
+        "tool_timeout_sec": null, "startup_timeout_sec": null,
+        "bearer_token_env_var": null, "http_headers": null
+    }}});
+    fs::write(sb.fake_state().join("config-read.json"), config.to_string()).unwrap();
+    let d = sb.start_with(&ON);
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "[name] hey can you look at the sidebar", json!({})).await;
+    c.wait_turn_done(&sid, 0).await;
+    titled(&mut c, &sid, "Fake named session").await;
+    let starts: Vec<Value> = fs::read_to_string(sb.fake_state().join("thread-starts.jsonl"))
+        .unwrap_or_default()
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    let server = starts.iter().find_map(|s| s["config"]["mcp_servers"].get("linear")).expect("a restricted thread start");
+    assert_eq!(server["enabled"], false);
+    assert_eq!(server["url"], config["mcp_servers"]["linear"]["url"]);
+    assert!(!server.as_object().unwrap().contains_key("tool_timeout_sec"));
+}

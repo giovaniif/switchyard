@@ -20,4 +20,5 @@ test("calls read as what they did", () => {
   expect(ownToolLabel("mcp__switchyard__message_agent", { to: "@Reviewer", text: "look at\n#12" })).toEqual({ title: "Messaged @Reviewer", detail: "look at #12" });
   expect(describeTool("mcp__switchyard__notify_owner", { message: "Need a key" }, "/")).toEqual({ kind: "other", title: "Asked for you", detail: "Need a key" });
   expect(describeTool("mcp__chart__show_chart", {}, "/").title).toBe("show_chart");
+  expect(ownToolLabel("mcp__switchyard__update_setup", { name: "Deployer", about: "Watches deploys" })).toEqual({ title: "Updated its setup", detail: "name, about" });
 });

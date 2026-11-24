@@ -16,7 +16,6 @@ mod git;
 mod grok;
 mod handoff;
 mod guard;
-mod host_context;
 mod hosts;
 mod import;
 mod login;
@@ -95,6 +94,7 @@ async fn main() -> anyhow::Result<()> {
     });
     app.tools.set_url(loopback.map(|ip| format!("http://{}/agent-tools", std::net::SocketAddr::new(ip, port))));
     app.restore(loaded);
+    agents::retire(&app).await;
     remote::start(&app);
 
     // On a normal stop, let the writer finish what is queued before exiting.
@@ -135,6 +135,7 @@ async fn main() -> anyhow::Result<()> {
     });
 
     tokio::spawn(naming::run(app.clone(), app.take_naming()));
+    tokio::spawn(agents::run_turn_ends(app.clone(), app.agents.take_turn_ends()));
     tokio::spawn(origins::run(app.clone(), app.take_replies()));
 
     // Start Codex in the background so the model list is ready early.
@@ -168,6 +169,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ws", get(ws::handler))
         .route("/health", get(health))
         .route("/agent-tools", post(agent_tools::http))
+        .route("/slack/oauth", get(slack::oauth))
         .fallback_service(ServeDir::new(root.join("ui/dist")))
         .layer(middleware::from_fn(cache_headers))
         .with_state(app);

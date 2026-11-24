@@ -545,11 +545,11 @@ impl App {
             self.broadcast(json!({ "op": "event", "sessionId": sid, "seq": seq, "event": event }));
             // An agent's card quotes its last answer; a context that ran out
             // is replaced before the conversation's next turn.
-            if let Some(agent) = s.meta.agent.as_deref() {
+            if s.meta.agent.is_some() {
                 if event["type"] == "assistant_message" {
                     let line: String = event["text"].as_str().unwrap_or("").split_whitespace().collect::<Vec<_>>().join(" ");
                     s.meta.last_message = Some(line.chars().take(160).collect());
-                } else if event["type"] == "error" && !self.agents.is_builtin(agent) && crate::agents::context_ran_out(event["message"].as_str().unwrap_or("")) {
+                } else if event["type"] == "error" && crate::agents::context_ran_out(event["message"].as_str().unwrap_or("")) {
                     s.meta.fresh_context = Some("the engine's context was full".into());
                 }
             }
@@ -596,6 +596,10 @@ impl App {
                 self.store.meta(&s.meta);
                 self.broadcast(json!({ "op": "session", "session": s.meta }));
             }
+            // What the agent asked to change in how it runs waits for this.
+            if turn_completed && s.meta.agent.is_some() {
+                self.agents.turn_ended(sid);
+            }
             if completed {
                 let done = s.events.iter().filter(|e| e["type"] == "turn_completed" && e["status"] == "completed").count();
                 if crate::naming::due(&s.meta, done) {
@@ -624,8 +628,7 @@ impl App {
         if s.engine_ref.as_deref() != Some(engine_ref) {
             s.engine_ref = Some(engine_ref.to_string());
             // A restricted thread starts fresh every turn and never resumes.
-            let fresh = crate::private::internal(sid) || s.meta.agent.as_deref().is_some_and(|a| self.agents.is_builtin(a));
-            if !fresh {
+            if !crate::private::internal(sid) {
                 self.store.engine_ref(sid, engine_ref);
             }
         }

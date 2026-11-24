@@ -17,6 +17,16 @@
 //
 // Socket Mode (/socket): sends hello on connect, records every ack.
 //
+// An agent's own app (slack.rs `slack.grant` and `slack.app.*`): a
+// configuration refresh token is any `xoxe-…` without "bad";
+// tooling.tokens.rotate turns it into `xoxe.xoxp-1-TEST`, which
+// apps.manifest.create (recorded under `manifests`) and apps.manifest.delete
+// take. oauth.v2.access takes code TEST-code with client secret TEST-secret
+// and installs it for UOWNER: its bot token `xoxb-agent-TEST` is @agent
+// (UAGENT), and an app-level token with "agent" in it opens a socket of its
+// own. A message's `app` ("agent" or "shared") picks the socket it goes down;
+// without one, every socket gets it.
+//
 // Control, for tests:
 //   POST /_fake/message {user, text, channel?, thread_ts?, bot_id?, subtype?, mention?}
 //        Slack's events for a message: in a DM `message` (channel_type im);
@@ -33,6 +43,7 @@ const arg = (name) => {
 };
 
 const BOT = "UBOT";
+const AGENT_BOT = "UAGENT";
 const USERS = { UOWNER: "TEST-Owner", USTRANGER: "TEST-Stranger" };
 const CHANNELS = { C0GENERAL: "general", C0OPS: "ops" };
 
@@ -40,12 +51,13 @@ let clock = 1_700_000_000;
 const nextTs = () => `${++clock}.000100`;
 let envelopeN = 0;
 
-const state = { opens: 0, acks: [], calls: [], posts: [], ephemerals: [], reactions: {} };
+const state = { opens: 0, acks: [], calls: [], posts: [], ephemerals: [], reactions: {}, manifests: [], deleted: [] };
 const sockets = new Set();
 
 const tokenKind = (auth) => {
   const token = (auth || "").replace(/^Bearer\s+/i, "");
   if (token.startsWith("xoxb-")) return "bot";
+  if (token.startsWith("xoxe.xoxp-")) return "config";
   if (token.startsWith("xapp-")) return "app";
   return token ? "other" : "none";
 };
@@ -66,11 +78,28 @@ function api(method, p, auth, port) {
   switch (method) {
     case "auth.test":
       if (kind !== "bot" || token.includes("bad")) return refused;
+      if (token.includes("agent")) return { ok: true, url: "https://test-workspace.slack.com/", team: "TEST-workspace", user: "agent", team_id: "T0TEST", user_id: AGENT_BOT, bot_id: "BAGENT" };
       return { ok: true, url: "https://test-workspace.slack.com/", team: "TEST-workspace", user: "switchyard", team_id: "T0TEST", user_id: BOT, bot_id: "BBOT" };
     case "apps.connections.open":
       if (kind !== "app" || token.includes("bad")) return refused;
       state.opens++;
-      return { ok: true, url: `ws://127.0.0.1:${port}/socket?ticket=TEST-ticket-${state.opens}` };
+      return { ok: true, url: `ws://127.0.0.1:${port}/socket?ticket=TEST-ticket-${state.opens}&app=${token.includes("agent") ? "agent" : "shared"}` };
+    case "tooling.tokens.rotate":
+      if (!(p.refresh_token ?? "").startsWith("xoxe-") || p.refresh_token.includes("bad")) return { ok: false, error: "invalid_refresh_token" };
+      return { ok: true, token: "xoxe.xoxp-1-TEST", refresh_token: "xoxe-1-TEST-next", team_id: "T0TEST", user_id: "UOWNER", iat: clock, exp: clock + 43200 };
+    case "apps.manifest.create": {
+      if (kind !== "config") return refused;
+      const manifest = JSON.parse(p.manifest ?? "{}");
+      state.manifests.push(manifest);
+      return { ok: true, app_id: "A0AGENT", credentials: { client_id: "C0AGENT", client_secret: "TEST-secret", verification_token: "v", signing_secret: "s" }, oauth_authorize_url: "https://slack.test/oauth/v2/authorize?client_id=C0AGENT&scope=app_mentions:read,chat:write" };
+    }
+    case "apps.manifest.delete":
+      if (kind !== "config") return refused;
+      state.deleted.push(p.app_id);
+      return { ok: true };
+    case "oauth.v2.access":
+      if (p.code !== "TEST-code" || p.client_secret !== "TEST-secret") return { ok: false, error: "invalid_code" };
+      return { ok: true, access_token: "xoxb-agent-TEST", token_type: "bot", bot_user_id: AGENT_BOT, app_id: "A0AGENT", team: { id: "T0TEST", name: "TEST-workspace" }, authed_user: { id: "UOWNER" } };
     case "chat.postMessage": {
       if (kind !== "bot") return refused;
       if (!p.channel) return { ok: false, error: "channel_not_found" };
@@ -112,9 +141,9 @@ function api(method, p, auth, port) {
   }
 }
 
-function send(envelope) {
+function send(envelope, app) {
   const text = JSON.stringify(envelope);
-  for (const ws of sockets) ws.send(text);
+  for (const ws of sockets) if (!app || ws.data?.app === app) ws.send(text);
 }
 
 function events(p) {
@@ -126,10 +155,10 @@ function events(p) {
   if (p.bot_id) base.bot_id = p.bot_id;
   if (p.subtype) base.subtype = p.subtype;
   const list = [{ ...base, type: "message", channel_type: im ? "im" : channel.startsWith("G") ? "group" : "channel" }];
-  if (!im && base.text.includes(`<@${BOT}>`)) list.unshift({ ...base, type: "app_mention" });
+  if (!im && (base.text.includes(`<@${BOT}>`) || base.text.includes(`<@${AGENT_BOT}>`))) list.unshift({ ...base, type: "app_mention" });
   const envelopes = list.map((event) => {
     const id = `TEST-env-${++envelopeN}`;
-    send({ envelope_id: id, type: "events_api", accepts_response_payload: false, retry_attempt: 0, retry_reason: "", payload: { type: "event_callback", team_id: "T0TEST", api_app_id: "A0TEST", event, event_id: `Ev${envelopeN}`, event_time: clock } });
+    send({ envelope_id: id, type: "events_api", accepts_response_payload: false, retry_attempt: 0, retry_reason: "", payload: { type: "event_callback", team_id: "T0TEST", api_app_id: "A0TEST", event, event_id: `Ev${envelopeN}`, event_time: clock } }, p.app);
     return id;
   });
   return { ts, envelopes };
@@ -143,7 +172,7 @@ const server = Bun.serve({
   async fetch(req, srv) {
     const url = new URL(req.url);
     if (url.pathname === "/socket") {
-      if (srv.upgrade(req)) return;
+      if (srv.upgrade(req, { data: { app: url.searchParams.get("app") ?? "shared" } })) return;
       return new Response("upgrade required", { status: 426 });
     }
     if (url.pathname.startsWith("/api/")) {
