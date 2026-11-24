@@ -11,7 +11,7 @@ Rewritten 2026-11-13. Replaces the 2026-11-06 version. Checked against claude 2.
 - Tauri shell. Rust core, web UI. Personal first.
 - The app drives the installed `claude`, `codex`, `opencode`, `grok` and `gemini` CLIs and turns their event streams into one UI. Which engines exist, their names and what they can do live in one place each side: `crates/yardd/src/engines.rs` and `ui/src/engines.ts`. It never holds a login: credentials stay where each CLI keeps them. It can start a CLI's own login flow on a host (see Engine logins).
 - Chat UI in the Claude Code message style, not a terminal. The terminal is a separate pane.
-- White, minimal theme. One flat session list. A cloud icon marks sessions on a remote host.
+- White, minimal theme. One flat session list of compact rows: the harness's own mark on the left (Claude, Codex, Gemini, Grok, OpenCode; `ui/src/EngineIcon.tsx`, artwork from LobeHub's MIT icons), title over model · status, and the activity mark on the right. A remote session's host is in the row's tooltip. On hover the mark gives way to Archive and the … menu; touch screens keep the mark with … beside it. The same marks replace the old "CC"/"CX" badges in the model picker, Connectors and Usage.
 - New session is a full page with a centered prompt box, not a dialog.
 - Remote sessions run on my own box over SSH and Tailscale, not on claude.ai/code. A claude.ai webview and a hook bridge were considered and dropped.
 - Host CPU, memory and disk are always visible. The daemon queues new sessions when a host is under pressure.

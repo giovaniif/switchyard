@@ -30,6 +30,12 @@
   --scrim: rgba(0, 0, 0, 0.28);
   --off: #b8b8b8;
   --mono: "JetBrains Mono", ui-monospace, monospace;
+  /* The harnesses' own brand colours, for their marks (EngineIcon.tsx). */
+  --brand-claude: #d97757;
+  --brand-gemini: #3186ff;
+  --brand-gemini-green: #08b962;
+  --brand-gemini-red: #f94543;
+  --brand-gemini-yellow: #fabc12;
   --usage-track: #e4e4e7;
   --usage-warning: #c2410c;
   --usage-badge: #fde7c7;
@@ -115,15 +121,18 @@ h1, h2, h3, p { margin: 0; }
   text-align: left;
 }
 .nav-row { height: 36px; padding: 0 10px; font-weight: 500; }
-.session-row { gap: 10px; padding: 8px 10px; }
+/* Compact two-line rows: the harness's mark, title over model · status, the activity mark at the end. */
+.session-row { gap: 9px; padding: 5px 10px 5px 8px; }
+.session-row .engine-icon { flex: none; color: var(--ink); }
+.session-row.offline .engine-icon { opacity: 0.5; }
 .host-row { height: 32px; padding: 0 10px; font-size: 12px; }
 .host-row code { font-size: 11px; color: var(--muted); }
 .host-row code.warn { color: var(--warn-ink); }
 .nav-row:hover, .session-row:hover, .host-row:hover { background: var(--fill); }
 .nav-row.active, .session-row.active, .host-row.active { background: var(--fill-strong); }
 .session-text { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
-.session-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.session-sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.session-title { font-size: 13px; font-weight: 500; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.session-sub { font-size: 11.5px; line-height: 16px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; }
 .dot-idle { border: 1.5px solid #9a9a9a; }
@@ -726,11 +735,22 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .list-head { display: flex; align-items: center; gap: 6px; padding: 10px 10px 4px; border: 0; background: transparent; color: var(--muted); font-size: 11.5px; font-weight: 500; text-align: left; }
 .list-toggle:hover { color: var(--ink); }
 .session-item { position: relative; }
-.session-item .session-row { padding-right: 34px; }
-.row-more { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); opacity: 0; }
-.session-item:hover .row-more, .row-more:focus-visible, .session-item.menu-open .row-more { opacity: 1; }
-.row-more:hover, .session-item.menu-open .row-more { background: var(--fill-strong); color: var(--ink); }
-@media (hover: none) { .row-more { opacity: 1; } }
+/* Archive and ⋯ take the mark's place at the row's end while the pointer is on it. */
+.row-archive, .row-more { position: absolute; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); opacity: 0; }
+.row-more { right: 6px; }
+.row-archive { right: 34px; }
+.session-item:hover :is(.row-archive, .row-more), .session-item:focus-within :is(.row-archive, .row-more), .session-item.menu-open .row-more { opacity: 1; }
+.session-item:hover .session-row .mark, .session-item:focus-within .session-row .mark, .session-item.menu-open .session-row .mark { visibility: hidden; }
+.session-item:hover .session-row, .session-item:focus-within .session-row, .session-item.menu-open .session-row { padding-right: 64px; }
+.row-archive:hover, .row-more:hover, .session-item.menu-open .row-more { background: var(--fill-strong); color: var(--ink); }
+.row-archive:disabled { opacity: 0; pointer-events: none; }
+/* Touch has no hover: the mark stays and ⋯ sits after it; Archive is in the menu. */
+@media (hover: none) {
+  .session-item .session-row { padding-right: 36px; }
+  .row-more { opacity: 1; }
+  .row-archive { display: none; }
+  .session-item:hover .session-row .mark, .session-item:focus-within .session-row .mark { visibility: visible; }
+}
 .row-menu { position: fixed; z-index: 40; width: 230px; display: flex; flex-direction: column; gap: 2px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12); font-size: 13px; }
 .row-menu { max-height: calc(100dvh - 16px); overflow: auto; overscroll-behavior: contain; }
 .row-menu .menu-item { flex: none; height: auto; min-height: 34px; gap: 8px; }
@@ -1248,7 +1268,7 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .session-toolbar .account-trigger-name { display: none; }
 .session-toolbar .account-trigger { min-width: 38px; }
 .session-toolbar .account-avatar, .model-provider { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; font-size: 10px; font-weight: 600; }
-.model-provider { background: var(--ink); color: var(--bg); }
+.model-provider { background: var(--fill-strong); color: var(--ink); }
 .session-toolbar .model-trigger::before { content: ""; width: 1px; height: 18px; background: var(--line); margin-inline-end: 4px; flex: none; }
 .composer-setup { display: inline-flex; min-width: 0; max-width: calc(100% - 3px); height: 36px; gap: 5px; margin-left: 3px; padding-inline: 8px; border: 1px solid var(--line); border-radius: 18px; }
 .composer-setup.permission-full { border-color: var(--warn-border); background: var(--warn-fill); }
@@ -1273,9 +1293,8 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .usage-account-line { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 2px 10px 10px; }
 .usage-account-title { flex: 1; min-width: 0; display: grid; overflow-wrap: anywhere; }
 .usage-account-title strong { font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
-.usage-avatar { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: var(--ink); color: var(--bg); font-size: 10px; font-weight: 700; letter-spacing: .03em; }
-.usage-avatar-codex { background: var(--bg); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
-.usage-avatar-small { width: 16px; height: 16px; border-radius: 4px; font-size: 8px; }
+.usage-avatar { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: var(--fill-strong); color: var(--ink); }
+.usage-avatar-small { width: 16px; height: 16px; border-radius: 4px; background: none; }
 .usage-limits { display: flex; flex-direction: column; gap: 12px; padding: 0 10px 12px; }
 .compact-meter { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 5px 12px; }
 .usage-window { font-weight: 500; }
@@ -1326,8 +1345,7 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .connectors-card-head { align-items: center; gap: 10px 14px; padding: 14px 16px; background: var(--side); border-bottom: 1px solid var(--line); border-radius: 12px 12px 0 0; }
 .connectors-card-attention { border-color: var(--warn-border); }
 .connectors-card-attention .connectors-card-head { background: var(--warn-fill); }
-.connector-account-icon { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 8px; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 12px; }
-.connector-account-codex { background: var(--fill-strong); color: var(--ink); }
+.connector-account-icon { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 8px; background: var(--fill-strong); color: var(--ink); }
 .connector-account-name { display: grid; gap: 2px; flex: 1 1 120px; min-width: 0; overflow-wrap: anywhere; }
 .connector-account-state { font-size: 12px; font-weight: 600; }
 .connectors-card > :is(.connector-filters, .connector-pagination, .connector-search, .connectors-note, .connectors-empty) { margin-inline: 16px; }

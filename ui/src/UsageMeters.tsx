@@ -1,3 +1,4 @@
+import { EngineIcon } from "./EngineIcon";
 import { useEffect, useRef, useState } from "react";
 import { AnchoredPopover } from "./AnchoredPopover";
 import type { Engine, EngineStates } from "./protocol";
@@ -29,7 +30,7 @@ function usageWindow(label: string) {
 
 function UsageAvatar({ engine, small }: { engine: Engine; small?: boolean }) {
   return <span className={`usage-avatar usage-avatar-${engine}${small ? " usage-avatar-small" : ""}`} aria-hidden="true">
-    {engine === "codex" ? "CX" : engine === "claude" ? "CC" : ENGINE_NAME[engine].slice(0, 2).toUpperCase()}
+    <EngineIcon engine={engine} size={small ? 11 : 16} />
   </span>;
 }
 

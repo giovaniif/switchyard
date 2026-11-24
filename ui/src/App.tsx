@@ -28,6 +28,7 @@ import { fileTarget } from "./fileLinks";
 import { saveFile } from "./filePreview";
 import { FileLinks, FileView, fileLabel } from "./FileView";
 import { MermaidDiagram } from "./MermaidDiagram";
+import { EngineIcon } from "./EngineIcon";
 import { AutomationForm, AutomationsPage } from "./AutomationsPage";
 import { ConnectorsPage } from "./ConnectorsPage";
 import { WidgetFrame } from "./WidgetFrame";
@@ -657,9 +658,10 @@ function SessionRow({ state, actions, session: s, active, groups, seenAt, unread
     >
       <button
         className={`session-row ${active ? "active" : ""} ${online ? "" : "offline"} ${mark === "answered" || mark === "unread" ? "unread" : ""}`}
+        title={host !== "local" ? `Runs on ${hostName(state, host)}` : undefined}
         onClick={() => { onRead(); actions.go({ page: "session", id: s.id }); }}
       >
-        <RowMark state={mark} />
+        <EngineIcon engine={s.engine} size={16} />
         <span className="session-text">
           <span className="session-title">{s.title}</span>
           <span className="session-sub">
@@ -675,7 +677,11 @@ function SessionRow({ state, actions, session: s, active, groups, seenAt, unread
             {rowAccount && <span className="row-account"> · {rowAccount}</span>}
           </span>
         </span>
-        {host !== "local" && <Cloud size={14} label={`Runs on ${hostName(state, host)}`} />}
+        <RowMark state={mark} />
+      </button>
+      {/* Shown on hover in place of the mark: archive in one click, the rest under ⋯. */}
+      <button className="btn-icon row-archive" aria-label={`${s.archived ? "Restore" : "Archive"} ${s.title}`} title={s.archived ? "Restore" : "Archive"} disabled={!online} onClick={() => actions.setArchived(s.id, !s.archived)}>
+        <Icon d={ARCHIVE} size={15} />
       </button>
       <button ref={more} className="btn-icon row-more" aria-label={`Actions for ${s.title}`} aria-haspopup="menu" aria-expanded={menu} onClick={() => (menu ? close() : setMenu(true))}>
         <Icon d={MORE} size={16} />
@@ -1501,7 +1507,9 @@ export function ModelPicker(props: {
         aria-label={`Model ${current?.name ?? value.model}`}
         onClick={() => (open ? close() : setOpen(true))}
       >
-        <span className="model-provider" aria-hidden="true">{value.engine === "claude" ? "CC" : value.engine === "codex" ? "CX" : value.engine.slice(0, 2).toUpperCase()}</span>
+        <span className="model-provider" aria-hidden="true">
+          <EngineIcon engine={value.engine} size={14} />
+        </span>
         <span>{current?.name ?? value.model}</span>
         <span className="muted">
           <Icon d={CHEVRON_DOWN} size={12} />
