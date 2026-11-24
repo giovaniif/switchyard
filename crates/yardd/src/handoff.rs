@@ -85,7 +85,7 @@ async fn handoff(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &V
         json!({ "type": "note", "text": format!("Handed off from {}.", engine_name(&source.engine)), "session": sid }),
     );
     let _ = direct.send(json!({ "op": "created", "sessionId": new_sid }).to_string());
-    sessions::begin(app, &new_sid, &brief, &[]).await;
+    sessions::begin(app, &new_sid, &brief, &[], None).await;
     Ok(())
 }
 

@@ -75,6 +75,24 @@ for vp in desktop mobile; do
 done
 ```
 
+### waiting-then-denied-edit-was-not-made
+Viewports: both
+The same for a file edit (Grok and OpenCode, whose edit rows the engine
+titles "Edited"): while the card asks, the row reads "Waiting to edit";
+denied, the fold counts "1 file not edited" and the row reads "Did not edit
+· denied". Until 2026-11-24 it read "Edited notes.txt · denied" and "1 file
+not run", for a file nobody edited.
+
+```sh
+for vp in desktop mobile; do
+  for eng in grok opencode; do
+    if [ $eng = grok ]; then model=fake-small; else model=opencode/fake-free; fi
+    yv api '{"op":"session.create","engine":"'$eng'","model":"'$model'","effort":"","cwd":"{{repo}}","worktree":true,"permission":"ask","text":"[edit] TEST-deny edit '$eng' '$vp'"}' --wait '{"op":"created"}' --save deny_edit_sid=sessionId
+    yv drive 'session:{{deny_edit_sid}}' --viewport $vp --steps '[{"expect":"text:Allow this?","timeout":15000},{"expect":{"css":".tool-row","hasText":"notes.txt"},"text":"Waiting to edit"},{"expect":{"css":".tool-row","hasText":"Edited"},"count":0},{"shot":"waiting-edit-'$eng'"},{"click":{"role":"button","name":"Deny","exact":true}},{"expect":"css:.thread","text":"Left it alone."},{"expect":"role:button:Worked for","text":"1 file not edited"},{"click":"role:button:Worked for"},{"expect":{"css":".tool-row","hasText":"notes.txt"},"text":"Did not edit"},{"expect":{"css":".tool-row","hasText":"notes.txt"},"text":"denied"},{"expect":{"css":".tool-row","hasText":"Edited"},"count":0},{"shot":"denied-edit-'$eng'"}]'
+  done
+done
+```
+
 ### always-allow
 "Always allow" runs it and records the choice.
 

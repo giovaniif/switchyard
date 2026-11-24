@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Automation, SessionMeta } from "./protocol";
-import { describeSchedule, describeNext, describeLast, runsOf, hiddenFromSidebar, scheduleProblem, runTime, runOutcome, RUN_LABEL, runSummary, runTag, runLabel, stripRuns, scheduleLine, cardStatus } from "./automations";
+import { describeSchedule, describeNext, describeLast, runsOf, hiddenFromSidebar, runsAttention, scheduleProblem, runTime, runOutcome, RUN_LABEL, runSummary, runTag, runLabel, stripRuns, scheduleLine, cardStatus } from "./automations";
 import { initial, reduce } from "./store";
 
 const MIN = 60_000;
@@ -108,6 +108,13 @@ describe("runs", () => {
     expect(hiddenFromSidebar(run("a", "x", { archived: true }))).toBe(true);
     expect(hiddenFromSidebar(run("a", "x", { pinned: true }))).toBe(false);
     expect(hiddenFromSidebar(run("a", null))).toBe(false);
+  });
+  test("the Automations button's dot: a run waiting for approval outranks a working one", () => {
+    expect(runsAttention([])).toBe(null);
+    expect(runsAttention([run("a", "x", { status: "idle" }), run("b", "x", { status: "queued" })])).toBe(null);
+    expect(runsAttention([run("a", "x", { status: "running" })])).toBe("working");
+    expect(runsAttention([run("a", "x", { status: "needs_approval" })])).toBe("approval");
+    expect(runsAttention([run("a", "x", { status: "running" }), run("b", "y", { status: "needs_approval" })])).toBe("approval");
   });
 });
 

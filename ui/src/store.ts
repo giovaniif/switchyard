@@ -606,6 +606,8 @@ export interface Actions {
   saveAgent(agent: Partial<Agent>): Promise<{ agent?: Agent; error?: string }>;
   /** Its chats stay, as plain sessions. The built-in agent cannot be deleted. */
   deleteAgent(id: string): void;
+  /** A window opened the agent's conversation: its call for the owner (`needsYou`) was seen. */
+  agentSeen(id: string): void;
 
   go(route: Route): void;
   dismissError(): void;
@@ -935,6 +937,7 @@ export function useYard(): { state: State; actions: Actions } {
         return reply.error || !reply.agent ? { error: reply.error ?? "The agent was not saved." } : { agent: reply.agent as Agent };
       },
       deleteAgent: (id) => post({ op: "agent.delete", id }),
+      agentSeen: (id) => post({ op: "agent.seen", agentId: id }),
       go: (route) => dispatch({ t: "route", route }),
       dismissError: () => dispatch({ t: "dismiss" }),
       create: (input) => post({ op: "session.create", ...input }),

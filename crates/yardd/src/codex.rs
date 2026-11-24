@@ -188,6 +188,13 @@ impl Client {
                 "Apply file changes".to_string(),
                 p["reason"].as_str().unwrap_or("").to_string(),
             ),
+            // Codex asks before an MCP tool runs. Switchyard's own tools act
+            // only on the agent's own conversation and are capped, so they
+            // run unasked; any other server's question is not ours to answer.
+            "mcpServer/elicitation/request" if p["serverName"] == crate::agent_tools::SERVER && sid.as_deref().is_some_and(|s| crate::agent_tools::offered(app, s)) => {
+                self.send(json!({ "id": id, "result": { "action": "accept", "content": {} } }));
+                return;
+            }
             _ => {
                 self.send(json!({ "id": id, "error": { "code": -32601, "message": "not supported" } }));
                 return;
@@ -438,7 +445,12 @@ fn on_item(app: &Arc<App>, sid: &str, started: bool, item: &Value) {
         }
         "mcpToolCall" if !started => crate::widgets::codex_completed(app, sid, item),
         kind @ ("mcpToolCall" | "webSearch" | "dynamicToolCall") => {
-            if started {
+            // Switchyard's own tools read as what they did ("Messaged @Reviewer").
+            // (A completed call is `widgets::codex_completed`'s, above.)
+            let own = (item["server"] == crate::agent_tools::SERVER).then(|| crate::agent_tools::label(item["tool"].as_str().unwrap_or(""), &item["arguments"])).flatten();
+            if let (Some((title, detail)), true) = (own, started) {
+                app.emit(sid, json!({ "type": "tool_started", "itemId": id, "kind": "other", "title": title, "detail": detail }));
+            } else if started {
                 let detail = item["tool"]
                     .as_str()
                     .or_else(|| item["query"].as_str())
@@ -649,6 +661,13 @@ fn restricted_config(config: &Value) -> Value {
     overrides
 }
 
+/// An agent's conversation gets Switchyard's tools: a thread-local
+/// `mcp_servers.switchyard` override, never written to the user's config.
+fn tools_config(app: &App, sid: &str) -> Option<Value> {
+    let launch = crate::agent_tools::launch(app, sid)?;
+    Some(json!({ format!("mcp_servers.{}", crate::agent_tools::SERVER): launch.codex() }))
+}
+
 pub async fn create(app: &Arc<App>, sid: &str) -> Result<()> {
     let meta = app.meta(sid).context("no such session")?;
     let c = client(app, &meta.account).await?;
@@ -667,6 +686,8 @@ pub async fn create(app: &Arc<App>, sid: &str) -> Result<()> {
         params["sandbox"] = json!(if meta.permission == "full" { "danger-full-access" } else { "workspace-write" });
         params["approvalPolicy"] = json!(if meta.permission == "full" { "never" } else { "on-request" });
         params["ephemeral"] = json!(true);
+    } else if let Some(config) = tools_config(app, sid) {
+        params["config"] = config;
     }
     let res = c.request("thread/start", params).await?;
     let thread_id = res["thread"]["id"]
@@ -689,19 +710,20 @@ fn attach(app: &Arc<App>, c: &Client, sid: &str, thread_id: String) {
 async fn resume(app: &Arc<App>, sid: &str, thread_id: String) -> Result<()> {
     let meta = app.meta(sid).context("no such session")?;
     let c = client(app, &meta.account).await?;
-    c.request(
-        "thread/resume",
-        json!({
-            "threadId": thread_id,
-            "cwd": meta.cwd,
-            "model": meta.model,
-            "sandbox": sandbox_mode(),
-            "approvalPolicy": "on-request",
-            // We have our own copy of the history.
-            "excludeTurns": true,
-        }),
-    )
-    .await?;
+    let mut params = json!({
+        "threadId": thread_id,
+        "cwd": meta.cwd,
+        "model": meta.model,
+        "sandbox": sandbox_mode(),
+        "approvalPolicy": "on-request",
+        // We have our own copy of the history.
+        "excludeTurns": true,
+    });
+    // A restart made a new key: the resumed thread gets the server again.
+    if let Some(config) = tools_config(app, sid) {
+        params["config"] = config;
+    }
+    c.request("thread/resume", params).await?;
     attach(app, &c, sid, thread_id);
     Ok(())
 }

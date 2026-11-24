@@ -209,6 +209,19 @@ yv api '{"op":"automation.save","automation":{"id":"{{overnight_id}}","window":n
 yv drive new --viewport desktop --steps '[{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Overnight\"] .automation-when","hasText":"21:00–09:00"},"visible":false}]'
 ```
 
+### a-run-waiting-for-approval-marks-the-button-amber
+A run that stops for approval puts an amber dot named "A run needs approval" on the sidebar's Automations button, not the green "A run is working" one: runs stay out of the sidebar, so this dot is the only sign there that a run waits for the user. Stopping the run clears it (the fake Codex ignores the interrupt while it asks, so yardd ends the turn after its grace period: wait for the dot to go). At 390 px the button is in the drawer.
+
+```sh
+yv api '{"op":"automation.save","automation":{"name":"TEST-Asks first","prompt":"[cmd] TEST-asks first","cwd":"{{repo}}","engine":"codex","model":"fake-fast","effort":"low","permission":"ask","schedule":{"kind":"manual"}}}' --wait '{"op":"automation.saved"}' --save ask_id=automation.id
+yv api '{"op":"automation.run","id":"{{ask_id}}","force":true}' --wait '{"op":"automation.ran"}' --expect '{"op":"automation.ran","outcome":"started"}' --save ask_sid=sessionId
+yv drive new --viewport desktop --steps '[{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Asks first\"] .automation-status","hasText":"Needs approval"},"timeout":30000},{"expect":"role:img:A run needs approval"},{"expect":"css:.nav-row .dot.dot-needs_approval"},{"expect":"role:img:A run is working","visible":false},{"shot":"approval"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":"role:img:A run needs approval"},{"expect":"role:img:A run is working","visible":false},{"shot":"approval"}]'
+yv api '{"op":"session.interrupt","sessionId":"{{ask_sid}}"}'
+yv drive new --viewport desktop --steps '[{"expect":{"css":".nav-row","hasText":"Automations"}},{"expect":"role:img:A run needs approval","visible":false,"timeout":20000},{"expect":"role:img:A run is working","visible":false}]'
+yv state --expect '{"sessions":[{"id":"{{ask_sid}}","status":"idle"}]}'
+```
+
 ## Gotchas
 - Recipes share one isolated yardd and run in order: later recipes use the automation and run the earlier ones made.
 - A drive at both viewports runs on the same data, so the create recipe uses one drive per viewport.

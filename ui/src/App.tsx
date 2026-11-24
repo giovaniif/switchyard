@@ -9,7 +9,7 @@ import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
 import { AgentAvatar, AgentBar, AgentForm, AgentsPage, AgentStart } from "./AgentsPage";
-import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt } from "./agents";
+import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
 import { accountChoices, accountLabel, accountName, accountOf, choiceOnEngine, DEFAULT_ACCOUNT } from "./accounts";
@@ -28,10 +28,10 @@ import { MermaidDiagram } from "./MermaidDiagram";
 import { AutomationForm, AutomationsPage } from "./AutomationsPage";
 import { ConnectorsPage } from "./ConnectorsPage";
 import { WidgetFrame } from "./WidgetFrame";
-import { hiddenFromSidebar } from "./automations";
+import { hiddenFromSidebar, runsAttention } from "./automations";
 import { dragHasSession, dropUpdate, SESSION_DRAG_TYPE, type DropTarget } from "./sidebarDrop";
 import { addsProviders, canSteer, ENGINES, ENGINE_ACCOUNT, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, pickerEngines, queuedHint, shownEffort } from "./engines";
-import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinned, summarize, thoughtLine, type Row, type WorkItem } from "./thread";
+import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinned, summarize, thoughtLine, toolLabel, type Row, type WorkItem } from "./thread";
 import { voiceCue, type Cue } from "./voice";
 import { useVoice } from "./useVoice";
 import { MobileSetup, MobileSetupButton } from "./MobileSetup";
@@ -128,14 +128,31 @@ const RIGHT_PANEL = "M3 5h18v14H3ZM15 5v14";
 const MIC = "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3ZM19 10v2a7 7 0 0 1-14 0v-2M12 19v3";
 const STOP = "M7 7h10v10H7Z";
 const WAVES = "M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3";
+/** What the dot on the Automations row says. */
+const RUNS_MARK = { approval: "A run needs approval", working: "A run is working" } as const;
 /** What the dot on the Agents row says. */
-const AGENTS_MARK = { approval: "An agent needs you", working: "An agent is working", failed: "An agent's turn failed", answered: "An agent answered" } as const;
+const AGENTS_MARK = { approval: "An agent needs approval", needsYou: "An agent needs you", working: "An agent is working", failed: "An agent's turn failed", answered: "An agent answered" } as const;
 
 /** An agent's place: its one conversation, or the empty one before its first message. */
 function AgentView({ state, actions, id }: { state: State; actions: Actions; id: string }) {
   const agent = state.agents.find((a) => a.id === id);
+  const chat = agent ? conversationOf(agent, state.sessions) : undefined;
+  // The agent asked for the user: seen once its conversation is in front of them.
+  const asked = chat?.needsYou?.at;
+  useEffect(() => {
+    if (!asked) return;
+    const look = () => {
+      if (document.visibilityState === "visible" && document.hasFocus()) actions.agentSeen(id);
+    };
+    look();
+    window.addEventListener("focus", look);
+    document.addEventListener("visibilitychange", look);
+    return () => {
+      window.removeEventListener("focus", look);
+      document.removeEventListener("visibilitychange", look);
+    };
+  }, [asked, id]);
   if (!agent) return <AgentsPage state={state} actions={actions} />;
-  const chat = conversationOf(agent, state.sessions);
   if (!chat) return <AgentStart key={agent.id} state={state} actions={actions} agent={agent} />;
   return (
     <PeekScope sessionId={chat.id} peek={actions.peekPr}>
@@ -996,6 +1013,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   const dragged = dragId ? state.sessions[dragId] : undefined;
   // Runs of automations live on the Automations page, not in this list.
   const runs = everything.filter(hiddenFromSidebar);
+  const runsMark = runsAttention(runs);
   const inRun = route.page === "session" && !!state.sessions[route.id]?.automation;
   const agentOpen = route.page === "agent" ? state.agents.find((a) => a.id === route.id)?.chat ?? null : null;
   const seen = useSeen(state.sessions, route.page === "session" ? route.id : agentOpen, state.restore);
@@ -1082,7 +1100,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
         <button className={`nav-row ${route.page === "automations" || route.page === "automation" || inRun ? "active" : ""}`} onClick={() => actions.go({ page: "automations" })}>
           <Icon d={CLOCK} />
           Automations
-          {runs.some((s) => s.status === "running" || s.status === "needs_approval") && <span className="dot dot-running" role="img" aria-label="A run is working" />}
+          {runsMark && <span className={`dot ${runsMark === "approval" ? "dot-needs_approval" : "dot-running"}`} role="img" aria-label={RUNS_MARK[runsMark]} title={RUNS_MARK[runsMark]} />}
         </button>
         <button className={`nav-row ${route.page === "connectors" ? "active" : ""}`} onClick={() => actions.go({ page: "connectors" })}>
           <Icon d={PLUG} />
@@ -2925,6 +2943,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
         actions.startNow(meta.id);
       }}
       onDecide={(id, d) => actions.approve(meta.id, id, d)}
+      agents={state.agents}
     />
     </Fragment>
   );
@@ -3373,12 +3392,12 @@ function WorkEntry({ entry }: { entry: WorkItem }) {
         <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
           <Icon d={CHEVRON_RIGHT} size={12} />
         </span>
-        {/* Codex titles a command "Ran" from the start; until it ends, it has not,
-            and while its approval is open or after a denial it never started. */}
-        <span>{entry.title === "Ran" ? ranLabel(entry) : entry.title}</span>
+        {/* Engines title a command "Ran" and an edit "Edited" from the start;
+            while its approval is open or after a denial it never happened. */}
+        <span>{toolLabel(entry)}</span>
         {entry.detail && <code>{entry.detail}</code>}
         {entry.state === "running" && entry.asked !== "waiting" && <span className="pulse" aria-label="running" />}
-        {entry.asked === "waiting" && entry.title !== "Ran" && <span className="muted">· waiting</span>}
+        {entry.asked === "waiting" && toolLabel(entry) === entry.title && <span className="muted">· waiting</span>}
         {didNotRun(entry) ? (
           <span className="muted">· {entry.asked === "denied" ? "denied" : "not answered"}</span>
         ) : (
@@ -3390,14 +3409,8 @@ function WorkEntry({ entry }: { entry: WorkItem }) {
   );
 }
 
-function ranLabel(entry: ToolItem): string {
-  if (entry.asked === "waiting") return "Waiting to run";
-  if (didNotRun(entry)) return "Did not run";
-  return entry.state === "running" ? "Running" : "Ran";
-}
-
 /** A subagent: one line, collapsed. Open, the steps it took and its report. */
-function AgentEntry({ entry }: { entry: ToolItem }) {
+function AgentEntry({ entry, card = false }: { entry: ToolItem; card?: boolean }) {
   const [open, setOpen] = useState(false);
   const steps = entry.steps ?? [];
   const expandable = steps.length > 0 || !!entry.output;
@@ -3407,19 +3420,42 @@ function AgentEntry({ entry }: { entry: ToolItem }) {
     entry.state !== "running" && entry.ms != null ? duration(entry.ms) : null,
     steps.length ? `${steps.length} ${steps.length === 1 ? "step" : "steps"}` : null,
   ].filter(Boolean);
+  const chevron = (
+    <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
+      <Icon d={CHEVRON_RIGHT} size={12} />
+    </span>
+  );
+  const status = (
+    <>
+      {entry.state === "running" && <span className="pulse" aria-label="running" />}
+      <span className={entry.state === "failed" ? "bad small" : "muted small"}>{parts.join(" · ")}</span>
+    </>
+  );
+  const latestLine = entry.state === "running" && latest && !open ? <code>{latest.detail}</code> : null;
   return (
-    <div className="tool agent">
-      <button className="tool-row" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
-        <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
-          <Icon d={CHEVRON_RIGHT} size={12} />
-        </span>
-        <span>Agent</span>
-        {entry.detail && <span className="agent-what">{entry.detail}</span>}
-        {entry.agent && <span className="agent-type">{entry.agent}</span>}
-        {entry.state === "running" && <span className="pulse" aria-label="running" />}
-        <span className={entry.state === "failed" ? "bad small" : "muted small"}>{parts.join(" · ")}</span>
-        {entry.state === "running" && latest && !open && <code>{latest.detail}</code>}
-      </button>
+    <div className={`tool agent ${card ? "subagent" : ""}`}>
+      {card ? (
+        // The pane lists only subagents, so the task leads and the word "Agent"
+        // goes; type, state and the latest step line up under it in every card.
+        <button className="tool-row subagent-head" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
+          {chevron}
+          <span className="subagent-title">{entry.detail || "Agent"}</span>
+          <span className="subagent-meta">
+            {entry.agent && <span className="agent-type">{entry.agent}</span>}
+            {status}
+          </span>
+          {latestLine && <span className="subagent-latest">{latestLine}</span>}
+        </button>
+      ) : (
+        <button className="tool-row" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
+          {chevron}
+          <span>Agent</span>
+          {entry.detail && <span className="agent-what">{entry.detail}</span>}
+          {entry.agent && <span className="agent-type">{entry.agent}</span>}
+          {status}
+          {latestLine}
+        </button>
+      )}
       {open && (
         <div className="agent-body">
           {steps.length > 0 && (
@@ -3493,21 +3529,34 @@ function ItemView(props: {
   loadAttachment(a: Attachment): Promise<string>;
   onStart(): void;
   onDecide(requestId: string, decision: "allow" | "allow_always" | "deny"): void;
+  /** Whose face goes on a message from another agent. */
+  agents: Agent[];
 }) {
   const { item, onDecide } = props;
   switch (item.kind) {
-    case "user":
-      if (!item.attachments?.length) return <UserBubble text={item.text} />;
+    case "user": {
+      const origin = originLabel(item.origin);
+      if (!item.attachments?.length && !origin) return <UserBubble text={item.text} />;
+      const from = origin && props.agents.find((a) => a.id === origin.agentId);
       return (
         <div className="user-message">
-          <div className="attachments attachments-sent">
+          {origin && (
+            <div className={`origin-badge origin-${item.origin!.kind}`}>
+              {from ? <AgentAvatar agent={from} size="xs" /> : <span className="origin-dot" aria-hidden="true" />}
+              {origin.text}
+            </div>
+          )}
+          {item.attachments?.length ? (
+            <div className="attachments attachments-sent">
             {item.attachments.map((a) => (
               <SentAttachment key={a.id} attachment={a} load={props.loadAttachment} />
             ))}
-          </div>
+            </div>
+          ) : null}
           {item.text && <UserBubble text={item.text} />}
         </div>
       );
+    }
     case "note":
       return (
         <div className="note">
@@ -3603,7 +3652,7 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
       {terminalUsed && <TerminalPane sessionId={meta.id} connected={connected} visible={shown && tab === "terminal"} actions={actions} />}
       {shown && tab === "agents" && (
         <section aria-label="Session subagents" className="pane-body subagents-pane">
-          {agents.length ? agents.map((agent) => <AgentEntry key={agent.key} entry={agent} />) : <p className="muted">No subagents in this session.</p>}
+          {agents.length ? agents.map((agent) => <AgentEntry key={agent.key} entry={agent} card />) : <p className="muted">No subagents in this session.</p>}
         </section>
       )}
       {shown && tab === "procs" && <ProcPane meta={meta} state={state} actions={actions} visible />}
@@ -4940,7 +4989,13 @@ function SessionsPage({ state, actions }: { state: State; actions: Actions }) {
   const sessions = Object.values(state.sessions)
     .filter((s) => !hiddenFromSidebar(s))
     .filter((s) => (filter === "archived" ? s.archived : filter === "all" || !s.archived))
-    .filter((s) => `${s.title} ${s.cwd} ${ENGINE_NAME[s.engine]} ${hostName(state, hostOf(s))}`.toLowerCase().includes(query.toLowerCase()))
+    // Search what the row shows, account included: "Work" should find the
+    // sessions that run on the Work login.
+    .filter((s) =>
+      `${s.title} ${s.cwd} ${ENGINE_NAME[s.engine]} ${accountName(accountsOn(state, hostOf(s)), s.engine, accountOf(s))} ${hostName(state, hostOf(s))}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+    )
     .sort((a, b) => b.updatedAt - a.updatedAt);
   return (
     <div className="hosts">

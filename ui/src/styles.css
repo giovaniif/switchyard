@@ -762,9 +762,18 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .pending-row .pending-action { flex: none; height: 26px; padding: 0 8px; }
 .pending-row .pending-steer { color: var(--ink); font-weight: 600; }
 .subagents-pane { min-height: 0; overflow: auto; gap: 8px; }
-.subagents-pane > .agent { flex: none; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
-.subagents-pane .agent > .tool-row { width: 100%; flex-wrap: wrap; gap: 4px 8px; padding-block: 5px; }
-.subagents-pane .agent-what { white-space: normal; overflow-wrap: anywhere; }
+/* One card per subagent. Cards drop the thread's negative tool margins (which
+   made them overlap); a two-column grid keeps the chevron in its own column
+   and the title, its type and state, and the latest step on one left edge. */
+.subagents-pane > .subagent { flex: none; gap: 0; margin: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.tool-row.subagent-head { display: grid; grid-template-columns: 12px minmax(0, 1fr); align-items: start; gap: 6px 8px; width: 100%; padding: 10px 12px; border-radius: 10px; }
+.tool-row.subagent-head:hover:not(:disabled) { background: var(--side); }
+.subagent-head > .tool-chevron { align-items: center; height: 20px; }
+.subagent-title { grid-column: 2; color: var(--ink); font-weight: 500; line-height: 20px; overflow-wrap: anywhere; }
+.subagent-meta { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.subagent-latest { grid-column: 2; display: flex; min-width: 0; }
+.subagent-latest > code { min-width: 0; color: var(--muted); }
+.subagents-pane .subagent > .agent-body { margin: 0 12px 10px 32px; }
 
 /* import from Claude Code */
 .import-modal { width: min(560px, 100%); }
@@ -785,6 +794,9 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .dot-agents.dot-approval { background: var(--warn); }
 .dot-agents.dot-failed { background: var(--bad-ink); }
 .dot-agents.dot-answered { background: var(--info); box-shadow: 0 0 0 3px var(--info-soft); }
+/* An agent asked for the user: amber like an approval, breathing like the card's mark. */
+.dot-agents.dot-needsYou { background: var(--warn); animation: breathe 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .dot-agents.dot-needsYou { animation: none; } }
 .hosts-inner.automation-list { max-width: none; gap: 24px; }
 /* The empty state keeps the Hosts page's width; only the grid spreads out. */
 .automation-list > .host-empty { max-width: 496px; }
@@ -800,7 +812,7 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .automation-status, .btn-quiet.automation-status { display: flex; align-items: center; gap: 6px; min-width: 0; height: 26px; margin: 2px 0 0 -4px; padding: 0 4px; border-radius: 6px; font-size: 12px; color: var(--muted); text-align: left; }
 .automation-status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
 .automation-status.status-live { color: var(--ok-ink); }
-.automation-status.status-approval, .automation-status.status-warn { color: var(--warn-ink); }
+.automation-status.status-approval, .automation-status.status-warn, .automation-status.status-needsYou { color: var(--warn-ink); }
 .automation-status.status-bad, .automation-message { color: var(--bad-ink); }
 .automation-foot { display: flex; align-items: center; gap: 2px; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
 .automation-foot > .btn-icon { width: 28px; height: 28px; }
@@ -1013,6 +1025,9 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .agent-suggestions .btn-quiet:hover:not(:disabled) { color: var(--ink); background: var(--side); }
 .agent-suggestions .btn-quiet span:first-child { flex: 1 1 0; }
 .agent-says { display: flex; align-items: center; gap: 8px; margin: 4px 0 -4px; font-size: 13px; }
+/* Above a message the user did not type: who sent it. Right-aligned with the bubble. */
+.origin-badge { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin: 0 4px -2px 0; font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.origin-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--off); }
 .row-agent .agent-avatar { display: inline-grid; margin-right: 4px; vertical-align: -2px; }
 .agent-colors { gap: 6px; }
 .btn-icon.agent-swatch { width: 32px; height: 32px; border-radius: 50%; }

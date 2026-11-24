@@ -2,7 +2,7 @@
 // and the create/edit form. Each agent has one conversation, an ordinary
 // session tagged with it (yardd's agents.rs), kept out of the sidebar: this
 // page and the Agents nav row show its state.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Agent, AgentColor, AgentFace, Attachment, Permission } from "./protocol";
 import { hostName, hostOnline, homeOn, modelsOn, type Actions, type State, type UploadTarget } from "./store";
 import { AGENT_COLORS, AGENT_FACES, FACE_PATHS, agentStatus, conversationOf, faceOf, leadingMention, nameProblem, runsOn, scopeLabel, type AgentTone } from "./agents";
@@ -26,7 +26,7 @@ import {
 } from "./App";
 
 const PENCIL = "M4 20h4L19 9l-4-4L4 16ZM13.5 6.5l4 4";
-const MARK: Record<AgentTone, string> = { live: "working", approval: "approval", answered: "answered", ok: "done", bad: "failed", quiet: "idle" };
+const MARK: Record<AgentTone, string> = { live: "working", approval: "approval", needsYou: "approval", answered: "answered", ok: "done", bad: "failed", quiet: "idle" };
 const HOST_QUESTIONS = ["What’s happening on my server?", "What changed since yesterday?", "Where is the API deployed?"];
 
 export const permissionLabel = (p: Permission) => PERMISSIONS.find((x) => x.id === p)?.label ?? p;
@@ -73,7 +73,7 @@ function AgentCard({ state, actions, agent, now, seenAt }: { state: State; actio
       <div className="automation-when muted small">{runsOn(agent, modelsOn(state, "local"), agent.builtin ? "Read-only" : permissionLabel(agent.permission))}</div>
       <div className={`automation-status status-${status.tone}`} title={status.text}>
         <span className={`mark mark-${MARK[status.tone]}`} aria-hidden="true">
-          {status.tone === "approval" && <span className="mark-bang">!</span>}
+          {(status.tone === "approval" || status.tone === "needsYou") && <span className="mark-bang">!</span>}
         </span>
         <span className="automation-status-text">{status.text}</span>
       </div>
@@ -235,6 +235,14 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
   const [about, setAbout] = useState(existing?.about ?? "");
   const [instructions, setInstructions] = useState(existing?.instructions ?? "");
   const [memory, setMemory] = useState(existing?.memory ?? "");
+  // The agent edits its own memory (remember, set_memory): an open form
+  // follows it until the user types there, and leaves it alone on save.
+  const liveMemory = existing?.memory ?? "";
+  const memoryBase = useRef(liveMemory);
+  useEffect(() => {
+    if (memory === memoryBase.current) setMemory(liveMemory);
+    memoryBase.current = liveMemory;
+  }, [liveMemory]);
   const [cwd, setCwd] = useState(existing?.cwd ?? "");
   const [scope, setScope] = useState(existing?.scope ?? "all");
   const [permission, setPermission] = useState<Permission>(existing?.permission ?? "ask");
@@ -263,6 +271,8 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
       .map((s) => s.repo || s.cwd);
     return [...new Set([...readRecent("local"), ...fromSessions])].slice(0, 12);
   }, [state.sessions]);
+  // A typed name's problem shows by the field: the foot of the form is below the fold.
+  const nameIssue = name ? nameProblem(name, state.agents, existing?.id) : null;
   const problem = nameProblem(name, state.agents, existing?.id) ?? (!choice.model ? "Pick a model." : null);
   const save = async () => {
     setSaving(true);
@@ -274,7 +284,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
       face,
       about,
       instructions,
-      memory,
+      ...(!existing || memory !== memoryBase.current ? { memory } : {}),
       engine: choice.engine,
       model: choice.model,
       effort: effortFor(models[choice.engine]?.find((m) => m.id === choice.model), choice.effort),
@@ -325,7 +335,13 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
                 Name
               </label>
               <input id="agent-name" className="field agent-name-input" value={name} maxLength={24} onChange={(e) => setName(e.target.value)} placeholder="Name it" autoFocus={!existing} />
-              <span className="muted small">{name.trim() && !nameProblem(name, state.agents, existing?.id) ? `Mention it as @${name.trim()} in any message.` : "One word, so it can be @mentioned."}</span>
+              {nameIssue ? (
+                <span className="small automation-reason" role="alert">
+                  {nameIssue}
+                </span>
+              ) : (
+                <span className="muted small">{name.trim() ? `Mention it as @${name.trim()} in any message.` : "One word, so it can be @mentioned."}</span>
+              )}
             </div>
           </div>
           <section className="agent-form-card" aria-labelledby="agent-form-look">
@@ -408,7 +424,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
               </div>
             </div>
           </section>
-          {(error || (name && problem)) && (
+          {(error || (name && problem && !nameIssue)) && (
             <div className="small automation-reason" role="alert">
               {error ?? problem}
             </div>
