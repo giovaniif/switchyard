@@ -1,0 +1,40 @@
+$ verify/yv map run approvals --recipe waiting-then-denied-edit-was-not-made
+# exit 1 after 14818 ms at 61e225b2f56b42d85eb41a80ba02361d9feeb1dd
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "approvals",
+      "at": "2026-11-24T04:07:53.813Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "waiting-then-denied-edit-was-not-made",
+          "status": "fail",
+          "ms": 13956,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 1 {\"expect\":{\"css\":\".tool-row\",\"hasText\":\"notes.txt\"},\"text\":\"Waiting to edit\"}: expected {\"css\":\".tool-row\",\"hasText\":\"notes.txt\"} to contain \"Waiting to edit\", got \"Edited",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-1e27/.verify/drives/2026-11-24T04-07-40-195Z/fail-desktop-step1.png and the aria snapshot"
+            }
+          ],
+          "tail": "from Claude\\\"\\n  - button \\\"[edit] TEST-fix the greeting Fake Fast · Idle\\\"\\n  - button \\\"Actions for [edit] TEST-fix the greeting\\\"\\n  - button \\\"TEST-say hello Fake Fast · Idle\\\"\\n  - button \\\"Actions for TEST-say hello\\\"\\n  - button \\\"[think] TEST-plan the refactor Fake Fast · Idle\\\"\\n  - button \\\"Actions for [think] TEST-plan the refactor\\\"\\n  - button \\\"[fail] TEST-failing turn Fake Fast · Idle\\\"\\n  - button \\\"Actions for [fail] TEST-failing turn\\\"\\n  - button \\\"Subscription usage\\\": Usage 47% used\\n  - button \\\"iso-host 4% · 49%\\\"\\n- separator \\\"Resize the sessions sidebar\\\"\\n- main:\\n  - heading \\\"[edit] TEST-deny edit grok desktop\\\" [level=1]\\n  - code: yard/edit-test-deny-edit-grok-a07d\\n  - button \\\"Set up iPhone app\\\"\\n  - button \\\"Collapse workspace\\\" [expanded]\\n  - button \\\"Stop\\\"\\n  - button \\\"Delete\\\"\\n  - text: \\\"[edit] TEST-deny edit grok desktop\\\"\\n  - button \\\"Edited notes.txt · waiting\\\" [disabled]:\\n    - text: Edited\\n    - code: notes.txt\\n    - text: · waiting\\n  - code: notes.txt\\n  - text: +edited by the fake Allow this?\\n  - code: Edit notes.txt\\n  - text: notes.txt\\n  - button \\\"Allow once\\\"\\n  - button \\\"Always allow\\\"\\n  - button \\\"Deny\\\"\\n  - textbox \\\"Message\\\":\\n    - /placeholder: Queue a message for the agent\\n  - button \\\"Attach files\\\"\\n  - button \\\"Dictate\\\"\\n  - button \\\"Voice mode\\\"\\n  - button \\\"Model Fake Small\\\": Fake Small\\n  - 'button \\\"Account: Grok, Default\\\"'\\n  - button \\\"Effort\\\"\\n  - button \\\"Ask first\\\"\\n  - button \\\"Add to queue\\\" [disabled]\\n- region \\\"Workspace\\\":\\n  - separator \\\"Resize the workspace pane\\\"\\n  - button \\\"Terminal\\\" [pressed]\\n  - button \\\"Subagents\\\"\\n  - button \\\"Processes\\\"\\n  - tablist \\\"Terminals\\\":\\n    - tab \\\"1\\\" [selected]\\n    - button \\\"Close terminal\\\"\\n    - button \\\"New terminal\\\"\\n    - button \\\"Attach\\\"\\n  - textbox \\\"Terminal input\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 1 {\\\"expect\\\":{\\\"css\\\":\\\".tool-row\\\",\\\"hasText\\\":\\\"notes.txt\\\"},\\\"text\\\":\\\"Waiting to edit\\\"}: expected {\\\"css\\\":\\\".tool-row\\\",\\\"hasText\\\":\\\"notes.txt\\\"} to contain \\\"Waiting to edit\\\", got \\\"Edited\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-1e27/.verify/drives/2026-11-24T04-07-40-195Z/fail-desktop-step1.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "approvals/waiting-then-denied-edit-was-not-made",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "route": "session:s1a20bbd928a7",
+  "build": {
+    "sha": "9aa2876dbc7213df381721d62a36b8db72c97289",
+    "short": "9aa2876",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T04:08:11.763Z"
+  },
+  "dir": ".verify/evidence/denied-edit-head-allow",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4697,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/denied-edit-head-allow/allowed-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

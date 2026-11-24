@@ -1,0 +1,32 @@
+$ (cd ui && bun test) && verify/yv map run approvals --recipe waiting-then-denied-edit-was-not-made
+# exit 0 after 19628 ms at 9aa2876dbc7213df381721d62a36b8db72c97289
+
+bun test v1.4.4 (38afee6c8)
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "approvals",
+      "at": "2026-11-24T04:08:47.903Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "waiting-then-denied-edit-was-not-made",
+          "status": "pass",
+          "ms": 18605
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
+
+ 427 pass
+ 0 fail
+ 1091 expect() calls
+Ran 427 tests across 29 files. [158.00ms]

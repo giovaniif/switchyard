@@ -1,0 +1,252 @@
+{
+  "v": 1,
+  "claim": "A denied file edit still reads \"Edited notes.txt · denied\" (and \"Edited notes.txt · waiting\" while asked), and the fold says \"1 file not run\": the file was never edited and \"not run\" is a command's word.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-1e27",
+  "base": "ce01769cbfa0faad0754374588d33242ffe1d7a1",
+  "head": "9aa2876dbc7213df381721d62a36b8db72c97289",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/thread.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/thread.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/approvals.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-24T04:07:23.792Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "61e225b2f56b42d85eb41a80ba02361d9feeb1dd",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "cd3455eca9edbc712e6fee6073caa54e688249073840fe4bada1df7e03732538"
+        },
+        {
+          "path": "p1-waiting-desktop.png",
+          "sha256": "a602052929368853024d1a5298b6c95a9a6e0ca541fb05af98a1118f11e33283"
+        },
+        {
+          "path": "p1-denied-desktop.png",
+          "sha256": "4284e733087a5ec56e2097dd57e500400a59e16a5a6d871bbe6a4dd444b61f9e"
+        }
+      ],
+      "addedAt": "2026-11-24T04:07:33.244Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "61e225b2f56b42d85eb41a80ba02361d9feeb1dd",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "d6b5cabefb3012674dcae03d82cc032f585a94871e26f8370b26eba1e639ea43"
+        },
+        {
+          "path": "p2-waiting-mobile.png",
+          "sha256": "5c2d3ba2df752abb9362f861fcf8dec1237dc6506eb53c5c0aa696b528613d18"
+        },
+        {
+          "path": "p2-denied-mobile.png",
+          "sha256": "bcfb947e8f579e2bceae8933b6399527a61357a379248782ee4f7319534e6ccd"
+        }
+      ],
+      "addedAt": "2026-11-24T04:07:38.881Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "61e225b2f56b42d85eb41a80ba02361d9feeb1dd",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "a77364f24690f9f1a884de44bba5ba479d6d85abba1d2d913886bfa9d5538d87"
+        }
+      ],
+      "addedAt": "2026-11-24T04:07:38.930Z",
+      "cmd": "cd ui && bun test src/thread.test.ts",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "test",
+      "at": "61e225b2f56b42d85eb41a80ba02361d9feeb1dd",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "31f2ab6beabe0c96635ebd6ed11bc7a78fcb907202fb604072c3fb5ce035a8fb"
+        }
+      ],
+      "addedAt": "2026-11-24T04:07:38.999Z",
+      "cmd": "verify/yv map run approvals --recipe waiting-then-denied-edit-was-not-made",
+      "exit": 1
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "9aa2876dbc7213df381721d62a36b8db72c97289",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "5123e4e1bea62b10ea15aa38d4687738552f18052f92619da8131cc7533744bb"
+        },
+        {
+          "path": "p5-waiting-desktop.png",
+          "sha256": "ddfc9552076b084ff725e046c596facc6750002d3e0f0fc302d529f7b7b076c4"
+        },
+        {
+          "path": "p5-denied-desktop.png",
+          "sha256": "7cac4389d84904d4404fb700b91b942406d0882ff3ada8dacd1d261445cc744b"
+        }
+      ],
+      "addedAt": "2026-11-24T04:08:17.104Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "9aa2876dbc7213df381721d62a36b8db72c97289",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p6-drive.json",
+          "sha256": "e3efd12a297368a4c6a5999e96ca926d95e21c85c7f49f0b19ccbcd36059a4d4"
+        },
+        {
+          "path": "p6-waiting-mobile.png",
+          "sha256": "ae85770d1f1abaf2eed510b34beeca67a213998a558681b61c8ac8b92001e70b"
+        },
+        {
+          "path": "p6-denied-mobile.png",
+          "sha256": "d48be197f6d3e00c7906687e34e564a0fe6cda2e3b02f90ae07ba2023e0a1843"
+        }
+      ],
+      "addedAt": "2026-11-24T04:08:22.822Z",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "fix",
+      "at": "9aa2876dbc7213df381721d62a36b8db72c97289",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p7-drive.json",
+          "sha256": "eff86fd2b61b469ca607806ea0a6a9ade98626a4b963dd88a5837eb25f6781e4"
+        },
+        {
+          "path": "p7-allowed-desktop.png",
+          "sha256": "91f77e06f658fbc49a578b175a1b1ef5506c04c9ca519992b138b48c82afc5c8"
+        }
+      ],
+      "addedAt": "2026-11-24T04:08:28.233Z",
+      "failedApi": []
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "test",
+      "at": "9aa2876dbc7213df381721d62a36b8db72c97289",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-cmd.log",
+          "sha256": "60b987120249de1262aa1e8d487070ea5c3f6c9cc5a2c66903b74dba456b9dff"
+        }
+      ],
+      "addedAt": "2026-11-24T04:08:28.279Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run approvals --recipe waiting-then-denied-edit-was-not-made",
+      "exit": 0
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "design",
+      "at": "9aa2876dbc7213df381721d62a36b8db72c97289",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-design.json",
+          "sha256": "5a98b8f1036890c01c94abad03b9dae1bef856ffc56763bf69b47cf1e4dcf7a7"
+        }
+      ],
+      "addedAt": "2026-11-24T04:08:47.957Z",
+      "cmd": "verify/yv design-check --base ce01769cbfa0",
+      "exit": 0
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "regression",
+      "at": "9aa2876dbc7213df381721d62a36b8db72c97289",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-map-approvals.json",
+          "sha256": "fdd3cf9898f2c3ed50cb4234c5967c4a6ca4eda2ef82c2bc89dc24e5ae7ca92c"
+        }
+      ],
+      "addedAt": "2026-11-24T04:08:48.046Z",
+      "cmd": "verify/yv map run approvals",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "approvals/pending-shows-card",
+        "approvals/allow-once",
+        "approvals/allow-then-follow-up",
+        "approvals/deny",
+        "approvals/waiting-then-denied-command-did-not-run",
+        "approvals/waiting-then-denied-edit-was-not-made",
+        "approvals/always-allow",
+        "approvals/double-click-allow-once",
+        "approvals/approval-wait-is-not-work"
+      ]
+    }
+  ]
+}

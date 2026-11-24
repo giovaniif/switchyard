@@ -1,0 +1,70 @@
+$ cd ui && bun test src/thread.test.ts
+# exit 1 after 20 ms at 61e225b2f56b42d85eb41a80ba02361d9feeb1dd
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/thread.test.ts:
+307 |     const entries = [call("a", "read"), call("b", "read"), call("c", "command", { state: "failed", asked: "unanswered" }), call("d", "command", { state: "failed" })];
+308 |     expect(summarize(entries)).toBe("Read 2 files, ran 1 command · 1 failed · 1 command not run");
+309 |   });
+310 | 
+311 |   test("a denied edit was not made: the file was not edited, not \"not run\"", () => {
+312 |     expect(summarize([call("e", "edit", { title: "Edited", state: "failed", asked: "denied" })])).toBe("1 file not edited");
+                                                                                                        ^
+error: expect(received).toBe(expected)
+
+Expected: "1 file not edited"
+Received: "1 file not run"
+
+      at <anonymous> (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-1e27/ui/src/thread.test.ts:312:99)
+(fail) summarize, with calls that never ran > a denied edit was not made: the file was not edited, not "not run" [0.42ms]
+312 |     expect(summarize([call("e", "edit", { title: "Edited", state: "failed", asked: "denied" })])).toBe("1 file not edited");
+313 |     expect(summarize([call("e", "edit", { state: "failed", asked: "unanswered" }), call("f", "edit", { state: "failed", asked: "denied" })])).toBe("2 files not edited");
+314 |   });
+315 | 
+316 |   test("each kind says what did not happen, in its own words", () => {
+317 |     expect(summarize([call("r", "read", { state: "failed", asked: "denied" })])).toBe("1 file not read");
+                                                                                       ^
+error: expect(received).toBe(expected)
+
+Expected: "1 file not read"
+Received: "1 file not run"
+
+      at <anonymous> (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-1e27/ui/src/thread.test.ts:317:82)
+(fail) summarize, with calls that never ran > each kind says what did not happen, in its own words [0.17ms]
+324 |   const call = (title: string, extra: Partial<ToolItem> = {}): ToolItem => ({
+325 |     kind: "tool", key: "k", itemId: "k", toolKind: title === "Ran" ? "command" : "edit", title, detail: "notes.txt", state: "ok", ...extra,
+326 |   });
+327 | 
+328 |   test("an edit is not \"Edited\" until it is allowed and done", () => {
+329 |     expect(thread.toolLabel(call("Edited", { state: "running", asked: "waiting" }))).toBe("Waiting to edit");
+                        ^
+TypeError: thread.toolLabel is not a function. (In 'thread.toolLabel(call("Edited", { state: "running", asked: "waiting" }))', 'thread.toolLabel' is undefined)
+      at <anonymous> (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-1e27/ui/src/thread.test.ts:329:19)
+(fail) toolLabel > an edit is not "Edited" until it is allowed and done [0.23ms]
+332 |     expect(thread.toolLabel(call("Edited", { state: "running" }))).toBe("Editing");
+333 |     expect(thread.toolLabel(call("Edited"))).toBe("Edited");
+334 |   });
+335 | 
+336 |   test("a command keeps its words", () => {
+337 |     expect(thread.toolLabel(call("Ran", { state: "running", asked: "waiting" }))).toBe("Waiting to run");
+                        ^
+TypeError: thread.toolLabel is not a function. (In 'thread.toolLabel(call("Ran", { state: "running", asked: "waiting" }))', 'thread.toolLabel' is undefined)
+      at <anonymous> (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-1e27/ui/src/thread.test.ts:337:19)
+(fail) toolLabel > a command keeps its words [0.13ms]
+339 |     expect(thread.toolLabel(call("Ran", { state: "running" }))).toBe("Running");
+340 |     expect(thread.toolLabel(call("Ran"))).toBe("Ran");
+341 |   });
+342 | 
+343 |   test("other titles are the engine's own", () => {
+344 |     expect(thread.toolLabel({ ...call("Read"), toolKind: "read" })).toBe("Read");
+                        ^
+TypeError: thread.toolLabel is not a function. (In 'thread.toolLabel({ ...call("Read"), toolKind: "read" })', 'thread.toolLabel' is undefined)
+      at <anonymous> (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-1e27/ui/src/thread.test.ts:344:19)
+(fail) toolLabel > other titles are the engine's own [0.10ms]
+
+ 28 pass
+ 5 fail
+ 49 expect() calls
+Ran 33 tests across 1 file. [16.00ms]
