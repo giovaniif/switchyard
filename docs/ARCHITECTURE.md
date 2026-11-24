@@ -903,8 +903,9 @@ its engine framing and one arm in `origins::reply`.
   and its one ephemeral note, bots ignored, a channel mention handled once,
   the engine framing, answers in the right thread with reactions, failure,
   approval, stop and unread posts, every envelope acked, reconnects after a
-  `disconnect` and a drop, a refused token shown, and tokens in no snapshot,
-  broadcast or log (file mode 0600). Unit tests cover routing, mention
+  `disconnect` and a drop, a refused token shown, tokens in no snapshot,
+  broadcast or log (file mode 0600), and a message to an agent on a remote
+  host (its origin there, its answer posted from the hub). Unit tests cover routing, mention
   stripping, Slack markup, mrkdwn, splitting and the `slack` framing. The
   `slack` feature map drives the card (empty, refused, connected, a request,
   the default agent) and the badge in a conversation at both viewports,

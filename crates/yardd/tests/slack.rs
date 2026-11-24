@@ -323,3 +323,43 @@ async fn the_connection_shows_refused_tokens_and_comes_back_after_a_disconnect_o
     fake.wait("no connection", |s| s["connections"] == 0).await;
     assert!(!std::fs::read_to_string(sb.data().join("slack.json")).unwrap().contains("secret"));
 }
+
+#[tokio::test]
+async fn slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_the_thread() {
+    let fake = FakeSlack::start();
+    let remote_sb = Sandbox::new("slack-far-remote");
+    let remote = remote_sb.start();
+    let sb = Sandbox::new("slack-far-hub");
+    let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api())]);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    c.send(json!({ "op": "host.add", "name": "TEST-box", "kind": "direct", "url": remote.url() })).await;
+    let hosts = c.wait_for("the remote connected", |m| m["op"] == "hosts" && m["hosts"][0]["status"] == "connected").await;
+    let host = hosts["hosts"][0]["id"].as_str().unwrap().to_string();
+    c.wait_for("the remote's models", |m| (m["op"] == "host.snapshot" || m["op"] == "models") && m["hostId"] == host.as_str() && m["models"]["codex"].as_array().is_some_and(|a| !a.is_empty())).await;
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "name": "Far", "engine": "codex", "model": MODEL, "effort": EFFORT, "host": host }, "ref": "far" })).await;
+    let far = c.wait_after(from, "Far saved", |m| m["ref"] == "far").await["agent"]["id"].as_str().unwrap().to_string();
+    connect(&mut c).await;
+    fake.say(json!({ "user": "UOWNER", "text": "hi" }));
+    slack_state(&mut c, "a request", |s| s["requests"][0]["id"] == "UOWNER").await;
+    op(&mut c, json!({ "op": "slack.allow", "user": "UOWNER" })).await.unwrap();
+
+    // Its conversation on the remote gets the message with its Slack origin...
+    let ts = fake.say(json!({ "user": "UOWNER", "text": "Far: TEST-how is the box?" }));
+    let sid = chat_of(&mut c, &far).await;
+    assert!(sid.starts_with(&format!("{host}~")), "{sid}");
+    c.wait_turn_done(&sid, 0).await;
+    let msgs = user_messages(&c, &sid);
+    assert_eq!(msgs[0]["text"], "TEST-how is the box?");
+    assert_eq!(msgs[0]["origin"]["kind"], "slack");
+    assert_eq!(msgs[0]["origin"]["threadTs"], ts.as_str());
+    assert_eq!(msgs[0]["origin"]["userName"], "TEST-Owner");
+    let input = remote_sb.turn_inputs()[0][0]["text"].as_str().unwrap().to_string();
+    assert!(input.contains("<slack from=\"TEST-Owner\" in=\"a direct message\">\nTEST-how is the box?\n</slack>"), "{input}");
+    // ...and the answer the remote's turn made is posted from the hub, in that thread.
+    let st = fake.wait("the answer in the thread", |s| !FakeSlack::posts(s, &ts).is_empty() && s["reactions"][&ts] == json!(["white_check_mark"])).await;
+    let answer = FakeSlack::posts(&st, &ts);
+    assert_eq!(answer.len(), 1);
+    assert!(answer[0].starts_with("Echo: ") && answer[0].contains("TEST-how is the box?"), "{answer:?}");
+}
