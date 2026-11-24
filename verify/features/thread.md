@@ -47,12 +47,13 @@ yv drive 'session:{{sid_echo}}' --steps '[{"expect":{"css":".prose h3","hasText"
 
 ### web-links-open-outside-the-thread
 Viewports: both
-A labeled web link and a bare URL open in a new tab. Local files, inline code
-and non-web destinations stay inert.
+A labeled web link and a bare URL open in a new tab. A local file link is a
+download button (see `file-links-download`); inline code and other schemes stay
+inert.
 
 ```sh
 yv api '{"op":"session.send","sessionId":"{{sid_echo}}","text":"TEST-links\n\n[Review and comment on the Claude Design prototype](https://claude.ai/artifact/example).\n\n(https://example.com/path?mode=review).\n\n[Local file](/tmp/example.txt) [Script](javascript:alert%281%29) `https://example.com/code`"}' --wait '{"op":"event","event":{"type":"turn_completed"}}'
-yv drive 'session:{{sid_echo}}' --steps '[{"expect":"role:link:Review and comment on the Claude Design prototype"},{"expect":"role:link:https://example.com/path?mode=review"},{"eval":"[...document.querySelectorAll(\".thread .prose a\")].map(a => [a.getAttribute(\"href\"), a.target, a.rel])","equals":[["https://claude.ai/artifact/example","_blank","noopener noreferrer"],["https://example.com/path?mode=review","_blank","noopener noreferrer"]]},{"expect":{"css":".thread .prose code","hasText":"Local file"}},{"expect":{"css":".thread .prose code","hasText":"Script"}},{"expect":{"css":".thread .prose code","hasText":"https://example.com/code"}},{"shot":"web-links"}]'
+yv drive 'session:{{sid_echo}}' --steps '[{"expect":"role:link:Review and comment on the Claude Design prototype"},{"expect":"role:link:https://example.com/path?mode=review"},{"eval":"[...document.querySelectorAll(\".thread .prose a\")].map(a => [a.getAttribute(\"href\"), a.target, a.rel])","equals":[["https://claude.ai/artifact/example","_blank","noopener noreferrer"],["https://example.com/path?mode=review","_blank","noopener noreferrer"]]},{"expect":{"css":".thread .prose button.file-link","hasText":"Local file"}},{"expect":{"css":".thread .prose code","hasText":"Script"}},{"expect":{"css":".thread .prose code","hasText":"https://example.com/code"}},{"shot":"web-links"}]'
 ```
 
 ### thinking-folds
@@ -261,7 +262,7 @@ yv drive 'session:{{wl}}' --viewport mobile --steps '[{"expect":"css:.thread","t
 ### pr-link-hover-card
 Viewports: both
 A GitHub PR link in an answer is a real link (a bare URL shows as
-`owner/repo#number`, as on GitHub; a local file link stays code). A mouse
+`owner/repo#number`, as on GitHub; a local file link is a download button, not a PR link). A mouse
 resting on it opens a card after a moment with the PR's title, an Open pill,
 "1 of 3 checks failed: lint", the review decision, +12 −3, the author and
 "updated 3 h ago", inside the window at 390 px too. Moving away closes it.
@@ -269,7 +270,7 @@ The PR is #4242 from the fake gh, asked through `pr.peek`.
 
 ```sh
 yv api '{"op":"session.send","sessionId":"{{sid_echo}}","text":"TEST-pr links\n\nOpened https://github.com/test-owner/test-demo-app/pull/4242. It builds on [the greeting module](https://github.com/test-owner/test-demo-app/pull/4100); see also [#4243](https://github.com/test-owner/test-demo-app/pull/4243/files) and https://github.com/test-owner/test-demo-app/pull/9999 (gone). Local [`src/greet.ts`](src/greet.ts) stays code."}' --wait '{"op":"event","event":{"type":"turn_completed"}}'
-yv drive 'session:{{sid_echo}}' --steps '[{"expect":{"css":".prose a.pr-link","hasText":"test-owner/test-demo-app#4242"}},{"expect":{"css":".prose code","hasText":"src/greet.ts"}},{"eval":"[...document.querySelectorAll(\".prose a.pr-link\")].slice(-4).map((a) => a.getAttribute(\"href\") + \" \" + a.target).join(\"|\")","equals":"https://github.com/test-owner/test-demo-app/pull/4242 _blank|https://github.com/test-owner/test-demo-app/pull/4100 _blank|https://github.com/test-owner/test-demo-app/pull/4243/files _blank|https://github.com/test-owner/test-demo-app/pull/9999 _blank"},{"hover":{"css":".prose a.pr-link","hasText":"test-owner/test-demo-app#4242"}},{"expect":"role:tooltip","text":"TEST-fix the greeting"},{"expect":"role:tooltip","text":"1 of 3 checks failed: lint"},{"expect":"role:tooltip","text":"Review required"},{"expect":"role:tooltip","text":"+12"},{"expect":"role:tooltip","text":"@test-author · updated 3 h ago"},{"expect":{"css":".pr-pill","hasText":"Open"}},{"expect":"role:tooltip","inViewport":true},{"eval":"document.documentElement.scrollWidth <= window.innerWidth","equals":true},{"shot":"pr-card"},{"hover":"css:.thread .bar h1"},{"expect":"role:tooltip","visible":false}]'
+yv drive 'session:{{sid_echo}}' --steps '[{"expect":{"css":".prose a.pr-link","hasText":"test-owner/test-demo-app#4242"}},{"expect":{"css":".prose button.file-link","hasText":"src/greet.ts"}},{"eval":"[...document.querySelectorAll(\".prose a.pr-link\")].slice(-4).map((a) => a.getAttribute(\"href\") + \" \" + a.target).join(\"|\")","equals":"https://github.com/test-owner/test-demo-app/pull/4242 _blank|https://github.com/test-owner/test-demo-app/pull/4100 _blank|https://github.com/test-owner/test-demo-app/pull/4243/files _blank|https://github.com/test-owner/test-demo-app/pull/9999 _blank"},{"hover":{"css":".prose a.pr-link","hasText":"test-owner/test-demo-app#4242"}},{"expect":"role:tooltip","text":"TEST-fix the greeting"},{"expect":"role:tooltip","text":"1 of 3 checks failed: lint"},{"expect":"role:tooltip","text":"Review required"},{"expect":"role:tooltip","text":"+12"},{"expect":"role:tooltip","text":"@test-author · updated 3 h ago"},{"expect":{"css":".pr-pill","hasText":"Open"}},{"expect":"role:tooltip","inViewport":true},{"eval":"document.documentElement.scrollWidth <= window.innerWidth","equals":true},{"shot":"pr-card"},{"hover":"css:.thread .bar h1"},{"expect":"role:tooltip","visible":false}]'
 ```
 
 ### pr-link-card-states
@@ -306,8 +307,8 @@ yv drive 'session:{{sid_echo}}' --viewport mobile --steps '[{"eval":"document.ad
 
 ### links-inside-bold-text
 Viewports: both
-Bold recommendations keep their link labels, open the correct destinations, and
-keep literal code and non-web destinations inert.
+Bold recommendations keep their link labels, open the correct destinations, turn
+a local file into a download button, and keep literal code and other schemes inert.
 
 ```sh
 yv api '{"op":"session.send","sessionId":"{{sid_echo}}","text":"TEST-bold links\n\n**Merge [TEST change #4242](https://github.com/test-owner/test-demo-app/pull/4242) now.**\n\n**Read [the review guide](https://example.com/guide), or run `check --links`.**\n\n**Keep [Local notes](/tmp/notes.txt), [Script](javascript:alert%281%29), and `[literal](https://example.com/literal)` inert.**"}' --wait '{"op":"event","event":{"type":"turn_completed"}}'
@@ -316,13 +317,46 @@ yv drive 'session:{{sid_echo}}' --steps '[
   {"expect":{"css":".prose strong a","hasText":"the review guide"}},
   {"eval":"[...document.querySelectorAll(\".prose strong a\")].map(a => [a.textContent, a.getAttribute(\"href\"), a.target])","equals":[["TEST change #4242","https://github.com/test-owner/test-demo-app/pull/4242","_blank"],["the review guide","https://example.com/guide","_blank"]]},
   {"expect":{"css":".prose strong code","hasText":"check --links"}},
-  {"expect":{"css":".prose strong code","hasText":"Local notes"}},
+  {"expect":{"css":".prose strong button.file-link","hasText":"Local notes"}},
   {"expect":{"css":".prose strong code","hasText":"Script"}},
   {"expect":{"css":".prose strong code","hasText":"[literal](https://example.com/literal)"}},
   {"shot":"bold-links"},
   {"eval":"document.addEventListener(\"click\", (event) => { const link = event.target.closest(\"a\"); if (link) { event.preventDefault(); window.followedLink = link.href; } }, true)"},
   {"click":"role:link:the review guide"},
   {"eval":"window.followedLink","equals":"https://example.com/guide"}
+]'
+```
+
+### file-links-download
+Viewports: both
+A file the agent links downloads from the session's host, whatever dialect the
+link is in: a path relative to the session's folder with a line number,
+ChatGPT's `sandbox:/mnt/data/…`, an absolute path. The bytes arrive as a file to
+save, never as a page (an agent's HTML does not run). A missing file says so
+next to its link, and the page stays put.
+
+```sh
+printf 'org,domain\n1,example.com\n' > "$(v plain)/TEST-report.csv"
+printf '<script>window.top.__pwned=1</script>' > "$(v plain)/TEST-page.html"
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-files\n\n- [TEST report](TEST-report.csv:2)\n- [TEST sandbox copy](sandbox:/mnt/data/TEST-report.csv)\n- [TEST absolute]({{plain}}/TEST-report.csv)\n- [TEST page](TEST-page.html#L1)\n- [TEST missing](TEST-gone.csv)"}' --wait '{"op":"created"}' --save files_sid=sessionId
+yv drive 'session:{{files_sid}}' --steps '[
+  {"expect":{"css":".prose button.file-link","hasText":"TEST missing"}},
+  {"eval":"(() => { window.__dl = []; const click = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dl.push(fetch(this.href).then((r) => r.blob()).then(async (b) => [this.download, b.type, await b.text()])); return click.call(this); }; return true; })()","equals":true},
+  {"click":{"css":".prose button.file-link","hasText":"TEST report"}},
+  {"click":{"css":".prose button.file-link","hasText":"TEST sandbox copy"}},
+  {"click":{"css":".prose button.file-link","hasText":"TEST absolute"}},
+  {"click":{"css":".prose button.file-link","hasText":"TEST page"}},
+  {"wait":1500},
+  {"eval":"Promise.all(window.__dl)","equals":[["TEST-report.csv","application/octet-stream","org,domain\n1,example.com\n"],["TEST-report.csv","application/octet-stream","org,domain\n1,example.com\n"],["TEST-report.csv","application/octet-stream","org,domain\n1,example.com\n"],["TEST-page.html","application/octet-stream","<script>window.top.__pwned=1</script>"]]},
+  {"eval":"window.__pwned === undefined","equals":true},
+  {"shot":"file-links"}
+]'
+# The refusal is the thing proven here, so its error reply is allowed.
+yv drive 'session:{{files_sid}}' --allow-errors --steps '[
+  {"click":{"css":".prose button.file-link","hasText":"TEST missing"}},
+  {"expect":{"css":".prose .file-link-error","hasText":"TEST-gone.csv was not found"}},
+  {"eval":"location.hash.startsWith(\"#/s/\")","equals":true},
+  {"shot":"file-link-missing"}
 ]'
 ```
 
