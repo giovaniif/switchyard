@@ -785,7 +785,8 @@ fn rewrite(host: &str, name: &str, text: &str) -> Option<Value> {
         }
         // A remote's own remotes are not ours to show.
         // Agents live on the hub: a remote's own are not offered here.
-        "hosts" | "host.snapshot" | "host.down" | "switchy.state" | "agents" => return None,
+        // So does Slack: only the hub's connection is shown.
+        "hosts" | "host.snapshot" | "host.down" | "switchy.state" | "agents" | "slack" => return None,
         "session" => rewrite_session(host, &mut msg["session"]),
         "host" => {
             rewrite_stats(host, name, &mut msg["host"]);

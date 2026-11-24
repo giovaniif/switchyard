@@ -88,6 +88,15 @@ yv drive agents --viewport mobile --steps '[{"click":"role:button:New agent"},{"
 yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"name":"TEST-Desk","color":"rose","face":"wink","instructions":"TEST-plan first","memory":"TEST-remember this","permission":"ask"},{"name":"TEST-Phone","color":"teal"}]}'
 ```
 
+### a-name-problem-shows-by-the-name
+A name the form refuses says why right under the name field, in view, not
+only at the end of the form below the fold: a taken name, then two words.
+Fixed, the line under the field names the mention again (#391).
+
+```sh
+yv drive agents --steps '[{"click":"role:button:New agent"},{"fill":"label:Name","value":"Scout"},{"expect":"role:button:Create agent","enabled":false},{"expect":"css:.agent-form-name [role=alert]","text":"Another agent is already called Scout.","inViewport":true},{"shot":"taken"},{"fill":"label:Name","value":"two words"},{"expect":"css:.agent-form-name [role=alert]","text":"One word","inViewport":true},{"fill":"label:Name","value":"TEST-Fine"},{"expect":"css:.agent-form-name","text":"Mention it as @TEST-Fine"},{"expect":"role:alert","count":0}]'
+```
+
 ### at-mention-from-new-session-goes-to-the-agents-conversation
 `@` offers the agents, filtered by what follows; Enter picks one. A message
 that starts with the mention says where it goes, and Send opens the agent's
@@ -122,6 +131,43 @@ yv drive new --viewport desktop --steps '[{"eval":"(()=>{localStorage.setItem(\"
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":"role:button:Agents"},{"expect":{"css":".session-row","hasText":"TEST-while you were away"},"count":0},{"shot":"drawer"}]'
 ```
 
+### agents-message-each-other-with-badges
+An agent's `message_agent` call puts the message into the other agent's one
+conversation, badged "From @Builder" with the sender's face; when that turn
+ends its answer comes back into the sender's conversation, badged "Reply from
+@Reviewer". The scripted Codex calls the real tools server (`yardd
+agent-tools`) for a `[[tool NAME {json}]]` marker.
+
+```sh
+yv api '{"op":"agent.save","agent":{"name":"TEST-Builder","engine":"codex","model":"fake-fast","effort":"low","color":"orange","about":"TEST-builds things"}}' --wait '{"op":"agent.saved"}' --save builder=agent.id
+yv api '{"op":"agent.ask","agentId":"{{builder}}","text":"[[tool message_agent {\"to\":\"TEST-Reviewer\",\"text\":\"TEST-check the build on main\"}]]"}' --wait '{"op":"event","event":{"type":"user_message","origin":{"kind":"agentReply","name":"TEST-Reviewer"}}}'
+yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Reviewer\"] .agent-message"},{"expect":{"css":".origin-badge","hasText":"From @TEST-Builder"}},{"expect":"css:.origin-badge .agent-avatar"},{"expect":{"css":".user-message .bubble","hasText":"TEST-check the build on main"}},{"eval":"(() => { const b = document.querySelector(\".origin-badge\").getBoundingClientRect(); const m = document.querySelector(\".origin-badge + .bubble\").getBoundingClientRect(); return b.bottom <= m.top && Math.abs(b.right - m.right) <= 6; })()","equals":true},{"shot":"from-badge"},{"click":"role:button:Agents"},{"click":"css:.agent-card[aria-label=\"TEST-Builder\"] .agent-message"},{"expect":{"css":".origin-badge","hasText":"Reply from @TEST-Reviewer"}},{"expect":"css:.thread","text":"Sent to @TEST-Reviewer (hop 1 of 3)"},{"shot":"reply-badge"}]'
+yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Builder\"] .agent-message"},{"expect":{"css":".origin-badge","hasText":"Reply from @TEST-Reviewer"},"inViewport":true},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"reply-badge"}]'
+```
+
+### an-agent-that-needs-you
+An agent's `notify_owner` call shows an OS notification (recorded here) that
+opens its conversation, and marks its card "Needs you · <message>" and the
+Agents row with an amber dot until the user opens the conversation.
+
+```sh
+yv api '{"op":"agent.save","agent":{"name":"TEST-Pager","engine":"codex","model":"fake-fast","effort":"low","color":"rose","about":"TEST-watches the deploys"}}' --wait '{"op":"agent.saved"}' --save pager=agent.id
+yv api '{"op":"agent.ask","agentId":"{{pager}}","text":"[[tool notify_owner {\"message\":\"TEST-the deploy needs your key\"}]]"}' --wait '{"op":"notify","title":"TEST-Pager needs you","body":"TEST-the deploy needs your key"}'
+yv drive new --viewport desktop --steps '[{"expect":"css:.nav-row .dot-needsYou"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Pager\"] .automation-status","hasText":"Needs you · TEST-the deploy needs your key"}},{"expect":"css:.agent-card[aria-label=\"TEST-Pager\"] .mark-approval .mark-bang"},{"shot":"needs-you"},{"click":"css:.agent-card[aria-label=\"TEST-Pager\"] .agent-message"},{"expect":"css:.agent-bar","text":"TEST-Pager"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Pager\"] .automation-status","hasText":"Needs you"},"count":0},{"expect":"css:.nav-row .dot-needsYou","count":0}]'
+yv api '{"op":"agent.ask","agentId":"{{pager}}","text":"[[tool notify_owner {\"message\":\"TEST-still need that key\"}]]"}' --wait '{"op":"notify","title":"TEST-Pager needs you"}'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":"css:.nav-row .dot-needsYou"},{"wait":700},{"shot":"agents-mark"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Pager\"] .automation-status","hasText":"Needs you · TEST-still need that key"}},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"wait":700},{"shot":"needs-you"},{"click":"css:.agent-card[aria-label=\"TEST-Pager\"] .agent-message"},{"expect":"css:.agent-bar","text":"TEST-Pager"},{"click":"role:button:Open sessions"},{"expect":"css:.nav-row .dot-needsYou","count":0}]'
+```
+
+### an-agents-own-memory-shows-in-the-form
+An agent's `remember` call adds a line to its memory: the thread shows a
+"Remembered" step, and its form shows the new memory.
+
+```sh
+yv api '{"op":"agent.ask","agentId":"{{reviewer}}","text":"[[tool remember {\"text\":\"TEST-deploys go out on Fridays\"}]]"}' --wait '{"op":"agents","agents":[{"name":"TEST-Reviewer","memory":"TEST-main is trunk\nTEST-deploys go out on Fridays"}]}'
+yv drive agents --viewport desktop --steps '[{"click":"role:button:Edit: TEST-Reviewer"},{"expect":"label:Memory","value":"TEST-main is trunk\nTEST-deploys go out on Fridays"},{"eval":"document.getElementById(\"agent-memory\").scrollIntoView({block:\"center\"}) ?? true","equals":true},{"wait":300},{"shot":"memory"}]'
+yv drive agents --viewport mobile --steps '[{"click":"role:button:Edit: TEST-Reviewer"},{"expect":"label:Memory","value":"TEST-main is trunk\nTEST-deploys go out on Fridays"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"eval":"document.getElementById(\"agent-memory\").scrollIntoView({block:\"center\"}) ?? true","equals":true},{"wait":300},{"shot":"memory"}]'
+```
+
 ### switchys-address-lands-on-the-agents
 The old `#/assistant` (bookmarks, the Mac app's history) opens the Agents
 page; Cmd-K finds it by Switchy's name and lists each agent, which opens its
@@ -140,7 +186,7 @@ Delete.
 Viewports: desktop
 
 ```sh
-yv drive agents --viewport desktop --steps '[{"click":"role:button:Edit: Scout"},{"expect":"role:button:Delete agent","count":0},{"click":"role:button:Cancel"},{"click":"role:button:Edit: TEST-Reviewer"},{"click":"role:button:Delete agent"},{"expect":"css:.automation-form","text":"Its conversation is deleted too."},{"click":"role:button:Confirm delete"},{"expect":{"css":".agent-card","hasText":"TEST-Reviewer"},"count":0}]'
+yv drive agents --viewport desktop --steps '[{"click":"role:button:Edit: Scout"},{"expect":"role:button:Delete agent","count":0},{"click":"role:button:Cancel"},{"click":"role:button:Edit: TEST-Reviewer"},{"click":"role:button:Delete agent"},{"expect":"css:.automation-form","text":"Its conversation is deleted too."},{"click":"role:button:Confirm delete"},{"expect":"css:.agent-card[aria-label=\"TEST-Reviewer\"]","count":0}]'
 yv api '{"op":"session.open","sessionId":"{{away}}"}' --wait '{"op":"history"}' --expect '{"op":"history","events":[]}'
 ```
 

@@ -104,7 +104,7 @@ async function snapshotSessions(port: number) {
   }
 }
 
-/** The daemon's view: sessions (id, title, status, engine, branch, pinned, archived, group, automation, agent, updatedAt), hosts, models. */
+/** The daemon's view: sessions (id, title, status, engine, branch, pinned, archived, group, automation, agent, needsYou, updatedAt), hosts, models. */
 export async function state(a: Args): Promise<Result> {
   const name = str(a, "iso", DEFAULT_ISO)!;
   const iso = loadIso(name);
@@ -126,6 +126,7 @@ export async function state(a: Args): Promise<Result> {
       cwd: s.cwd,
       automation: s.automation ?? null,
       agent: s.agent ?? null,
+      needsYou: s.needsYou ?? null,
       // Every session.update bumps it, so a recipe can prove nothing was sent.
       updatedAt: s.updatedAt,
     }));

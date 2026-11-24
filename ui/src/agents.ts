@@ -1,6 +1,7 @@
 // Words and rules for agents (yardd's agents.rs): @mentions in a message,
 // the card's status line, the avatar's letter. Pure, so bun test covers them.
-import type { Agent, AgentColor, AgentFace, Models, SessionMeta } from "./protocol";
+import type { Agent, AgentColor, AgentFace, MessageOrigin, Models, SessionMeta } from "./protocol";
+import { isSlack, slackFrom } from "./slack";
 import { ENGINE_NAME } from "./engines";
 
 export const AGENT_COLORS: AgentColor[] = ["blue", "green", "amber", "rose", "violet", "teal", "orange", "slate"];
@@ -104,8 +105,9 @@ const ago = (ms: number) => {
   return `${Math.round(h / 24)} d ago`;
 };
 
-/** `answered`: an answer the user has not opened yet. */
-export type AgentTone = "live" | "approval" | "answered" | "ok" | "bad" | "quiet";
+/** `answered`: an answer the user has not opened yet. `needsYou`: the agent
+ *  asked for the user (`notify_owner`) and they have not opened it since. */
+export type AgentTone = "live" | "approval" | "needsYou" | "answered" | "ok" | "bad" | "quiet";
 
 /** The card's one status line, from the agent's conversation. `seenAt`: the
  *  turn end the user last had open (rowState's `yard.seen`). */
@@ -113,8 +115,10 @@ export function agentStatus(agent: Agent, sessions: Record<string, SessionMeta>,
   const chat = conversationOf(agent, sessions);
   if (!chat) return { tone: "quiet", text: "No messages yet", sessionId: null };
   const at = { sessionId: chat.id };
-  if (chat.status === "running") return { tone: "live", text: "Working…", ...at };
   if (chat.status === "needs_approval") return { tone: "approval", text: "Needs approval", ...at };
+  // Asked for the user: that stays in view, working or not, until they look.
+  if (chat.needsYou) return { tone: "needsYou", text: `Needs you · ${oneLine(chat.needsYou.message)}`, ...at };
+  if (chat.status === "running") return { tone: "live", text: "Working…", ...at };
   if (chat.status === "queued") return { tone: "approval", text: "Waiting for room on the host", ...at };
   const when = ago(now - (chat.turnEndedAt ?? chat.updatedAt));
   if (chat.lastTurn === "failed") return { tone: "bad", text: `Failed ${when}`, ...at };
@@ -125,16 +129,32 @@ export function agentStatus(agent: Agent, sessions: Record<string, SessionMeta>,
 
 /** What the Agents nav row shows: the most pressing state of any agent's
  *  conversation, as the sidebar marks a session. */
-export function agentsAttention(agents: Agent[], sessions: Record<string, SessionMeta>, seenAt: (id: string) => number): "approval" | "working" | "failed" | "answered" | null {
+export function agentsAttention(agents: Agent[], sessions: Record<string, SessionMeta>, seenAt: (id: string) => number): "approval" | "needsYou" | "working" | "failed" | "answered" | null {
   const tones = agents.map((a) => agentStatus(a, sessions, 0, conversationOf(a, sessions) ? seenAt(a.chat!) : Infinity).tone);
   const failedUnseen = agents.some((a) => {
     const c = conversationOf(a, sessions);
     return c?.lastTurn === "failed" && (c.turnEndedAt ?? 0) > seenAt(c.id);
   });
   if (tones.includes("approval")) return "approval";
+  // An agent working on behind a call for the user still needs them.
+  if (agents.some((a) => conversationOf(a, sessions)?.needsYou)) return "needsYou";
   if (tones.includes("live")) return "working";
   if (failedUnseen) return "failed";
   if (tones.includes("answered")) return "answered";
+  return null;
+}
+
+const oneLine = (text: string) => text.split(/\s+/).filter(Boolean).join(" ");
+
+/** The badge above a message the user did not type: who it came from.
+ *  Null for the user's own (and for a kind this build does not know). */
+export function originLabel(origin: MessageOrigin | undefined): { text: string; agentId: string | null } | null {
+  if (!origin || origin.kind === "user") return null;
+  const name = typeof origin.name === "string" && origin.name ? origin.name : null;
+  const agentId = typeof origin.agentId === "string" ? origin.agentId : null;
+  if (origin.kind === "agent") return { text: name ? `From @${name}` : "From another agent", agentId };
+  if (origin.kind === "agentReply") return { text: name ? `Reply from @${name}` : "Reply from another agent", agentId };
+  if (isSlack(origin)) return { text: slackFrom(origin), agentId: null };
   return null;
 }
 
