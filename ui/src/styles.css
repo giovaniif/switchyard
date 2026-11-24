@@ -121,10 +121,22 @@ h1, h2, h3, p { margin: 0; }
   text-align: left;
 }
 .nav-row { height: 36px; padding: 0 10px; font-weight: 500; }
-/* Compact two-line rows: the harness's mark, title over model · status, the activity mark at the end. */
-.session-row { gap: 9px; padding: 5px 10px 5px 8px; }
-.session-row .engine-icon { flex: none; color: var(--ink); }
+/* One-line rows: the harness's mark with the activity as a badge on it, then
+   the title. Model, status and account are in the tooltip (and read out). */
+.session-row { --row-bg: var(--side); gap: 9px; padding: 6px 10px 6px 9px; }
+.session-row:hover { --row-bg: var(--fill); }
+.session-row.active { --row-bg: var(--fill-strong); }
+.row-engine { position: relative; flex: none; display: grid; place-items: center; width: 18px; height: 18px; }
+.row-engine .engine-icon { color: var(--ink); }
 .session-row.offline .engine-icon { opacity: 0.5; }
+/* The badge sits on the mark's corner, cut out of it by a ring of the row's own background. */
+.row-engine .mark { position: absolute; right: -5px; bottom: -5px; width: 13px; height: 13px; border-radius: 50%; background: var(--row-bg); }
+.row-engine .mark-idle, .row-engine .mark-offline, .row-engine .mark-bang { display: none; }
+.row-engine .mark-working::before { width: 10px; height: 10px; border-width: 2px; }
+.row-engine .mark-approval::before { width: 10px; height: 10px; }
+.row-engine .mark-queued::before { width: 7px; height: 7px; border-width: 1.5px; }
+.row-engine .mark-answered::before, .row-engine .mark-unread::before { width: 8px; height: 8px; box-shadow: none; }
+.row-engine .mark-failed::before { width: 8px; height: 8px; }
 .host-row { height: 32px; padding: 0 10px; font-size: 12px; }
 .host-row code { font-size: 11px; color: var(--muted); }
 .host-row code.warn { color: var(--warn-ink); }
@@ -132,7 +144,6 @@ h1, h2, h3, p { margin: 0; }
 .nav-row.active, .session-row.active, .host-row.active { background: var(--fill-strong); }
 .session-text { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
 .session-title { font-size: 13px; font-weight: 500; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.session-sub { font-size: 11.5px; line-height: 16px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; }
 .dot-idle { border: 1.5px solid #9a9a9a; }
@@ -735,21 +746,19 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .list-head { display: flex; align-items: center; gap: 6px; padding: 10px 10px 4px; border: 0; background: transparent; color: var(--muted); font-size: 11.5px; font-weight: 500; text-align: left; }
 .list-toggle:hover { color: var(--ink); }
 .session-item { position: relative; }
-/* Archive and ⋯ take the mark's place at the row's end while the pointer is on it. */
+/* Archive and ⋯ appear at the row's end while the pointer is on it. */
 .row-archive, .row-more { position: absolute; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); opacity: 0; }
 .row-more { right: 6px; }
 .row-archive { right: 34px; }
 .session-item:hover :is(.row-archive, .row-more), .session-item:focus-within :is(.row-archive, .row-more), .session-item.menu-open .row-more { opacity: 1; }
-.session-item:hover .session-row .mark, .session-item:focus-within .session-row .mark, .session-item.menu-open .session-row .mark { visibility: hidden; }
 .session-item:hover .session-row, .session-item:focus-within .session-row, .session-item.menu-open .session-row { padding-right: 64px; }
 .row-archive:hover, .row-more:hover, .session-item.menu-open .row-more { background: var(--fill-strong); color: var(--ink); }
 .row-archive:disabled { opacity: 0; pointer-events: none; }
-/* Touch has no hover: the mark stays and ⋯ sits after it; Archive is in the menu. */
+/* Touch has no hover: ⋯ stays at the end; Archive is in its menu. */
 @media (hover: none) {
   .session-item .session-row { padding-right: 36px; }
   .row-more { opacity: 1; }
   .row-archive { display: none; }
-  .session-item:hover .session-row .mark, .session-item:focus-within .session-row .mark { visibility: visible; }
 }
 .row-menu { position: fixed; z-index: 40; width: 230px; display: flex; flex-direction: column; gap: 2px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12); font-size: 13px; }
 .row-menu { max-height: calc(100dvh - 16px); overflow: auto; overscroll-behavior: contain; }
