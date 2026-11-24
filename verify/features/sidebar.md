@@ -45,7 +45,7 @@ yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{
 
 ### compact-rows-with-engine-marks
 Viewports: both
-A row is one line (34 px at most): the harness's own mark (Claude's starburst,
+A row is one line (36 px at most): the harness's own mark (Claude's starburst,
 the Codex mark; never "CC" or "CX") with what the session is doing as a badge
 on its corner, then the title. Model, status and account are in the row's
 tooltip and read out to screen readers, not shown. No cloud icon; a remote
@@ -56,14 +56,14 @@ yv drive new --viewport desktop --steps '[
   {"expect":{"css":".session-row","hasText":"TEST-hello from Claude"}},
   {"expect":{"css":".session-row .engine-icon-claude"}},
   {"expect":{"css":".session-row .engine-icon-codex"}},
-  {"eval":"(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-run the migration\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\".row-engine .engine-icon\").getBoundingClientRect(); const badge = row.querySelector(\".row-engine .mark-approval\").getBoundingClientRect(); const title = row.querySelector(\".session-title\").getBoundingClientRect(); const visible = [...row.querySelector(\".session-text\").children].filter((e) => !e.classList.contains(\"sr-only\")).length; return [box.height <= 34, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right, icon.right <= title.left, visible, row.title.includes(\"Fake Fast · Needs approval\"), row.querySelectorAll(\".cloud\").length]; })()","equals":[true,true,true,1,true,0]},
+  {"eval":"(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-run the migration\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\".row-engine .engine-icon\").getBoundingClientRect(); const badge = row.querySelector(\".row-engine .mark-approval\").getBoundingClientRect(); const title = row.querySelector(\".session-title\").getBoundingClientRect(); const visible = [...row.querySelector(\".session-text\").children].filter((e) => !e.classList.contains(\"sr-only\")).length; return [box.height <= 36, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right, icon.right <= title.left, visible, row.title.includes(\"Fake Fast · Needs approval\"), row.querySelectorAll(\".cloud\").length]; })()","equals":[true,true,true,1,true,0]},
   {"expect":{"css":".session-row","hasText":"CC"},"visible":false},
   {"shot":"rows"}
 ]'
 yv drive new --viewport mobile --steps '[
   {"click":"role:button:Open sessions"},
   {"expect":{"css":".session-row","hasText":"TEST-hello from Claude"}},
-  {"eval":"(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-run the migration\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\".row-engine .engine-icon\").getBoundingClientRect(); const badge = row.querySelector(\".row-engine .mark-approval\").getBoundingClientRect(); const title = row.querySelector(\".session-title\").getBoundingClientRect(); const visible = [...row.querySelector(\".session-text\").children].filter((e) => !e.classList.contains(\"sr-only\")).length; return [box.height <= 34, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right, icon.right <= title.left, visible, row.title.includes(\"Fake Fast · Needs approval\"), row.querySelectorAll(\".cloud\").length]; })()","equals":[true,true,true,1,true,0]},
+  {"eval":"(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-run the migration\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\".row-engine .engine-icon\").getBoundingClientRect(); const badge = row.querySelector(\".row-engine .mark-approval\").getBoundingClientRect(); const title = row.querySelector(\".session-title\").getBoundingClientRect(); const visible = [...row.querySelector(\".session-text\").children].filter((e) => !e.classList.contains(\"sr-only\")).length; return [box.height <= 36, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right, icon.right <= title.left, visible, row.title.includes(\"Fake Fast · Needs approval\"), row.querySelectorAll(\".cloud\").length]; })()","equals":[true,true,true,1,true,0]},
   {"shot":"rows"}
 ]'
 ```

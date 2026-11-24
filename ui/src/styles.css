@@ -123,7 +123,7 @@ h1, h2, h3, p { margin: 0; }
 .nav-row { height: 36px; padding: 0 10px; font-weight: 500; }
 /* One-line rows: the harness's mark with the activity as a badge on it, then
    the title. Model, status and account are in the tooltip (and read out). */
-.session-row { --row-bg: var(--side); gap: 9px; padding: 6px 10px 6px 9px; }
+.session-row { --row-bg: var(--side); gap: 9px; padding: 8px 10px 8px 9px; }
 .session-row:hover { --row-bg: var(--fill); }
 .session-row.active { --row-bg: var(--fill-strong); }
 .row-engine { position: relative; flex: none; display: grid; place-items: center; width: 18px; height: 18px; }
