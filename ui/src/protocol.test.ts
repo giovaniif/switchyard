@@ -272,6 +272,17 @@ describe("a call that waits for an approval", () => {
     expect(tool(items)).toMatchObject({ state: "failed", asked: "unanswered" });
   });
 
+  // ACP engines fail the asked call on Stop before the turn ends, so the call
+  // is no longer running when turn_completed arrives.
+  test("a call the engine failed while it waited is still unanswered at turn end", () => {
+    const items = fold([
+      ...asked,
+      { type: "tool_completed", itemId: "c1", ok: false },
+      { type: "turn_completed", status: "interrupted", at: 2_000 },
+    ]);
+    expect(tool(items)).toMatchObject({ state: "failed", asked: "unanswered" });
+  });
+
   test("an approval without an itemId changes no call", () => {
     const items = fold([...asked.slice(0, 3), { type: "approval_request", requestId: "r1", kind: "command", title: "echo hi", detail: "" }]);
     expect(tool(items)).not.toHaveProperty("asked");

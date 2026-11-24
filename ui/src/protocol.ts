@@ -760,6 +760,9 @@ export function applyEvent(items: Item[], ev: AgentEvent, seq: number): Item[] {
         if (it.kind === "tool" && it.state === "running" && !goesOn.has(it.itemId) && !(it.parent && goesOn.has(it.parent))) {
           return { ...it, state: "failed" as const, ...(it.asked === "waiting" ? { asked: "unanswered" as const } : {}) };
         }
+        // ACP engines fail the asked call themselves on Stop, before the turn
+        // ends: it still never ran, so it must not count as run and failed.
+        if (it.kind === "tool" && it.asked === "waiting") return { ...it, asked: "unanswered" as const };
         // Nobody chose, so it is not shown as "Denied".
         if (it.kind === "approval" && it.decision === null) return { ...it, unanswered: true };
         return it;
