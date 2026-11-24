@@ -1,0 +1,74 @@
+{
+  "ok": false,
+  "route": "session:s1a20e21e8d0d",
+  "build": {
+    "sha": "eadd1cd66c64dccb8709a6a0ed3233f962b6efed",
+    "short": "eadd1cd",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T15:17:06.562Z"
+  },
+  "dir": ".verify/evidence/file-links-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 12832,
+      "steps": 10,
+      "failed": {
+        "step": 0,
+        "action": {
+          "expect": {
+            "css": ".prose button.file-link",
+            "hasText": "TEST missing"
+          }
+        },
+        "reason": "for: Timeout 10000ms exceeded.",
+        "screenshot": ".verify/evidence/file-links-base/fail-mobile-step0.png",
+        "aria": "- main:\n  - button \"Open sessions\"\n  - heading \"TEST-files\" [level=1]\n  - code: /tmp/yv-default-1652164-mwuu8v72/work/TEST-plain-folder\n  - button \"Set up iPhone app\"\n  - button \"Workspace\"\n  - button \"Delete\"\n  - text: TEST-files - [TEST report](TEST-report.csv:2) - [TEST sandbox copy](sandbox:/mnt/data/TEST-report.csv) - [TEST absolute](/tmp/yv-default-1652164-mwuu8v72/work/TEST-plain-folder/TEST-report.csv) - [TEST page](TEST-page.html#L1) - [TEST missing](TEST-gone.csv)\n  - paragraph: \"Echo: TEST-files\"\n  - list:\n    - listitem:\n      - code: TEST report\n    - listitem:\n      - code: TEST sandbox copy\n    - listitem:\n      - code: TEST absolute\n    - listitem:\n      - code: TEST page\n    - listitem:\n      - code: TEST missing\n  - textbox \"Message\":\n    - /placeholder: Reply\n  - button \"Attach files\"\n  - button \"Dictate\"\n  - button \"Voice mode\"\n  - 'button \"Session setup: Fake Fast, Default, Low, Ask first\"': Fake Fast · Low\n  - button \"Send\" [disabled]"
+      },
+      "captures": [],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 12551,
+      "steps": 10,
+      "failed": {
+        "step": 0,
+        "action": {
+          "expect": {
+            "css": ".prose button.file-link",
+            "hasText": "TEST missing"
+          }
+        },
+        "reason": "for: Timeout 10000ms exceeded.",
+        "screenshot": ".verify/evidence/file-links-base/fail-desktop-step0.png",
+        "aria": "- navigation \"Sessions\":\n  - button \"Go to session or page\": Switchyard Ctrl K\n  - button \"Collapse sessions sidebar\" [expanded]\n  - button \"New session\"\n  - button \"Agents\"\n  - button \"Automations\"\n  - button \"Connectors\"\n  - button \"Import\"\n  - button \"Settings\"\n  - button \"TEST-files Fake Fast · Idle\"\n  - button \"Actions for TEST-files\"\n  - button \"[cmd] TEST-run the migration Fake Fast · Needs approval\"\n  - button \"Actions for [cmd] TEST-run the migration\"\n  - button \"TEST-hello from Claude Haiku 5.5 · Idle\"\n  - button \"Actions for TEST-hello from Claude\"\n  - button \"[edit] TEST-fix the greeting Fake Fast · Idle\"\n  - button \"Actions for [edit] TEST-fix the greeting\"\n  - button \"TEST-say hello Fake Fast · Idle\"\n  - button \"Actions for TEST-say hello\"\n  - button \"[think] TEST-plan the refactor Fake Fast · Idle\"\n  - button \"Actions for [think] TEST-plan the refactor\"\n  - button \"[fail] TEST-failing turn Fake Fast · Idle\"\n  - button \"Actions for [fail] TEST-failing turn\"\n  - button \"Subscription usage\": Usage 47% used\n  - button \"iso-host 4% · 33%\"\n- separator \"Resize the sessions sidebar\"\n- main:\n  - heading \"TEST-files\" [level=1]\n  - code: /tmp/yv-default-1652164-mwuu8v72/work/TEST-plain-folder\n  - button \"Set up iPhone app\"\n  - button \"Collapse workspace\" [expanded]\n  - button \"Delete\"\n  - text: TEST-files - [TEST report](TEST-report.csv:2) - [TEST sandbox copy](sandbox:/mnt/data/TEST-report.csv) - [TEST absolute](/tmp/yv-default-1652164-mwuu8v72/work/TEST-plain-folder/TEST-report.csv) - [TEST page](TEST-page.html#L1) - [TEST missing](TEST-gone.csv)\n  - paragraph: \"Echo: TEST-files\"\n  - list:\n    - listitem:\n      - code: TEST report\n    - listitem:\n      - code: TEST sandbox copy\n    - listitem:\n      - code: TEST absolute\n    - listitem:\n      - code: TEST page\n    - listitem:\n      - code: TEST missing\n  - textbox \"Message\":\n    - /placeholder: Reply\n  - button \"Attach files\"\n  - button \"Dictate\"\n  - button \"Voice mode\"\n  - button \"Model Fake Fast\": Fake Fast\n  - 'button \"Account: Codex, Default\"'\n  - button \"Effort Low\": Low\n  - button \"Ask first\"\n  - button \"Send\" [disabled]\n- region \"Workspace\":\n  - separator \"Resize the workspace pane\"\n  - button \"Terminal\" [pressed]\n  - button \"Subagents\"\n  - button \"Processes\"\n  - tablist \"Terminals\":\n    - tab \"1\" [selected]\n    - button \"Close terminal\"\n    - button \"New terminal\"\n    - button \"Attach\"\n  - textbox \"Terminal input\""
+      },
+      "captures": [],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 0 {\"expect\":{\"css\":\".prose button.file-link\",\"hasText\":\"TEST missing\"}}: for: Timeout 10000ms exceeded.",
+      "hint": "see .verify/evidence/file-links-base/fail-mobile-step0.png and the aria snapshot"
+    },
+    {
+      "code": "step-failed",
+      "msg": "desktop: step 0 {\"expect\":{\"css\":\".prose button.file-link\",\"hasText\":\"TEST missing\"}}: for: Timeout 10000ms exceeded.",
+      "hint": "see .verify/evidence/file-links-base/fail-desktop-step0.png and the aria snapshot"
+    }
+  ]
+}

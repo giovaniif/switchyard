@@ -1,0 +1,224 @@
+{
+  "v": 1,
+  "claim": "File links an agent writes (absolute, relative with a line number, sandbox:/mnt/data) render as inert code; they should download the file from the session's host",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-some-conversations-just-vanish-1851",
+  "base": "2286c07e55d94aee4aecdd614fa7f33b067b7793",
+  "head": "4bf3404b29bc3f88533d4eb4fcad97ae2781c9e7",
+  "changed": [
+    {
+      "status": "M",
+      "path": "app/src-tauri/src/main.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/yardd/src/files.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/common/mod.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/fileLinks.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/fileLinks.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/thread.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-24T15:17:12.113Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "eadd1cd66c64dccb8709a6a0ed3233f962b6efed",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "e134c88a278fe35b958db21ee7a411e59d62e52688d81d2776c74e24948fdeaf"
+        },
+        {
+          "path": "p1-fail-mobile-step0.png",
+          "sha256": "8e19b24c7b689fad6fc041783d85d329a87e64115863b6aba66fb4a399dd1a57"
+        },
+        {
+          "path": "p1-fail-desktop-step0.png",
+          "sha256": "b850ce28b464b0b182013372edef6f681a9cbc0bb4fa74ab1f78ffc06f3c86c5"
+        }
+      ],
+      "addedAt": "2026-11-24T15:17:39.063Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "eadd1cd66c64dccb8709a6a0ed3233f962b6efed",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "c4474ef1dc26eb7e4aa9d0a97767c8f42262e915e631eb02316e2ca638ec5bb7"
+        }
+      ],
+      "addedAt": "2026-11-24T15:17:39.113Z",
+      "cmd": "verify/yv map run thread --recipe file-links-download",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "4bf3404b29bc3f88533d4eb4fcad97ae2781c9e7",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "635e584cba93d7c8a7d3ed93a85a0749bbd4cd280ee40425c3bf594af67ed52a"
+        },
+        {
+          "path": "p3-file-links-mobile.png",
+          "sha256": "87b8fb9b1124eafb143d029298d31c815ababcdb7c07e70c8c5c4dad703e21a9"
+        },
+        {
+          "path": "p3-file-links-desktop.png",
+          "sha256": "39eb8890fc4c60af4c1da86847f6fa853a9a00877f3d07f052ad31b05c11eb36"
+        }
+      ],
+      "addedAt": "2026-11-24T15:18:31.951Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "4bf3404b29bc3f88533d4eb4fcad97ae2781c9e7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "77166a1928f3c725c2db5be490a013bcd0c22a0cd9ad838856150e03e51386ba"
+        }
+      ],
+      "addedAt": "2026-11-24T15:18:31.995Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "4bf3404b29bc3f88533d4eb4fcad97ae2781c9e7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "e4dcd9259ba751f5261a7f861cc27b84f24859c8db621262134f5eb96bbf8bc5"
+        }
+      ],
+      "addedAt": "2026-11-24T15:19:41.451Z",
+      "cmd": "verify/yv design-check --base 2286c07e55d9",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "4bf3404b29bc3f88533d4eb4fcad97ae2781c9e7",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-thread.json",
+          "sha256": "d10688a69c3e6a2254b0ad26fce554cd075c9af94c51b7a0bc58ba2f1f0ecc6d"
+        }
+      ],
+      "addedAt": "2026-11-24T15:19:41.542Z",
+      "cmd": "verify/yv map run thread",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "thread/reply-renders",
+        "thread/markdown-table-renders",
+        "thread/markdown-blocks-without-blank-lines",
+        "thread/web-links-open-outside-the-thread",
+        "thread/thinking-folds",
+        "thread/edit-shows-diff",
+        "thread/failed-turn-shows-error",
+        "thread/follow-up-turn",
+        "thread/claude-session-renders",
+        "thread/reply-to-part-of-answer",
+        "thread/no-reply-on-own-message",
+        "thread/queue-a-message-while-working",
+        "thread/remove-a-queued-message",
+        "thread/steer-a-running-turn",
+        "thread/steer-a-selected-queued-message",
+        "thread/stop-returns-the-queue",
+        "thread/edit-a-queued-message",
+        "thread/edit-a-queued-reply-keeps-its-quotes",
+        "thread/draft-survives-switching-sessions",
+        "thread/workspace-subagents",
+        "thread/workspace-subagents-line-up",
+        "thread/subagent-nests-and-expands",
+        "thread/working-line-stays-in-view",
+        "thread/pr-link-hover-card",
+        "thread/pr-link-card-states",
+        "thread/pr-link-card-error",
+        "thread/pr-link-keyboard-and-touch",
+        "thread/links-inside-bold-text",
+        "thread/file-links-download",
+        "thread/numbered-steps-across-code-blocks"
+      ]
+    }
+  ]
+}

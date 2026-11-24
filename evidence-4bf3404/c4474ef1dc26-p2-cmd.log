@@ -1,0 +1,45 @@
+$ verify/yv map run thread --recipe file-links-download
+# exit 1 after 26947 ms at eadd1cd66c64dccb8709a6a0ed3233f962b6efed
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "thread",
+      "at": "2026-11-24T15:18:06.056Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "file-links-download",
+          "status": "fail",
+          "ms": 26086,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 0 {\"expect\":{\"css\":\".prose button.file-link\",\"hasText\":\"TEST missing\"}}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/better-than-claude-code/yard-some-conversations-just-vanish-1851/.verify/drives/2026-11-24T15-17-40-353Z/fail-mobile-step0.png and the aria snapshot"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 0 {\"expect\":{\"css\":\".prose button.file-link\",\"hasText\":\"TEST missing\"}}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/better-than-claude-code/yard-some-conversations-just-vanish-1851/.verify/drives/2026-11-24T15-17-40-353Z/fail-desktop-step0.png and the aria snapshot"
+            }
+          ],
+          "tail": "n  - button \\\"Subscription usage\\\": Usage 47% used\\n  - button \\\"iso-host 14% · 39%\\\"\\n- separator \\\"Resize the sessions sidebar\\\"\\n- main:\\n  - heading \\\"TEST-files\\\" [level=1]\\n  - code: /tmp/yv-map-thread-1654273-mwuu9fxy/work/TEST-plain-folder\\n  - button \\\"Set up iPhone app\\\"\\n  - button \\\"Collapse workspace\\\" [expanded]\\n  - button \\\"Delete\\\"\\n  - text: TEST-files - [TEST report](TEST-report.csv:2) - [TEST sandbox copy](sandbox:/mnt/data/TEST-report.csv) - [TEST absolute](/tmp/yv-map-thread-1654273-mwuu9fxy/work/TEST-plain-folder/TEST-report.csv) - [TEST page](TEST-page.html#L1) - [TEST missing](TEST-gone.csv)\\n  - paragraph: \\\"Echo: TEST-files\\\"\\n  - list:\\n    - listitem:\\n      - code: TEST report\\n    - listitem:\\n      - code: TEST sandbox copy\\n    - listitem:\\n      - code: TEST absolute\\n    - listitem:\\n      - code: TEST page\\n    - listitem:\\n      - code: TEST missing\\n  - textbox \\\"Message\\\":\\n    - /placeholder: Reply\\n  - button \\\"Attach files\\\"\\n  - button \\\"Dictate\\\"\\n  - button \\\"Voice mode\\\"\\n  - button \\\"Model Fake Fast\\\": Fake Fast\\n  - 'button \\\"Account: Codex, Default\\\"'\\n  - button \\\"Effort Low\\\": Low\\n  - button \\\"Ask first\\\"\\n  - button \\\"Send\\\" [disabled]\\n- region \\\"Workspace\\\":\\n  - separator \\\"Resize the workspace pane\\\"\\n  - button \\\"Terminal\\\" [pressed]\\n  - button \\\"Subagents\\\"\\n  - button \\\"Processes\\\"\\n  - tablist \\\"Terminals\\\":\\n    - tab \\\"1\\\" [selected]\\n    - button \\\"Close terminal\\\"\\n    - button \\\"New terminal\\\"\\n    - button \\\"Attach\\\"\\n  - textbox \\\"Terminal input\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 0 {\\\"expect\\\":{\\\"css\\\":\\\".prose button.file-link\\\",\\\"hasText\\\":\\\"TEST missing\\\"}}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/better-than-claude-code/yard-some-conversations-just-vanish-1851/.verify/drives/2026-11-24T15-17-40-353Z/fail-mobile-step0.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 0 {\\\"expect\\\":{\\\"css\\\":\\\".prose button.file-link\\\",\\\"hasText\\\":\\\"TEST missing\\\"}}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/better-than-claude-code/yard-some-conversations-just-vanish-1851/.verify/drives/2026-11-24T15-17-40-353Z/fail-desktop-step0.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "thread/file-links-download",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

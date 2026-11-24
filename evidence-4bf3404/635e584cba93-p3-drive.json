@@ -1,0 +1,133 @@
+{
+  "ok": true,
+  "route": "session:s1a20e22d9a0d",
+  "build": {
+    "sha": "4bf3404b29bc3f88533d4eb4fcad97ae2781c9e7",
+    "short": "4bf3404",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T15:18:13.946Z"
+  },
+  "dir": ".verify/evidence/file-links-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 8810,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/file-links-head/file-links-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 1,
+          "eval": "(() => { window.__dl = []; const click = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dl.push(fetch(this.href).then((r) => r.blob()).then(async (b) => [this.download, b.type, await b.text()])); return click.call(this); }; return true; })()",
+          "value": true
+        },
+        {
+          "step": 7,
+          "eval": "Promise.all(window.__dl)",
+          "value": [
+            [
+              "TEST-report.csv",
+              "application/octet-stream",
+              "org,domain\n1,example.com\n"
+            ],
+            [
+              "TEST-report.csv",
+              "application/octet-stream",
+              "org,domain\n1,example.com\n"
+            ],
+            [
+              "TEST-report.csv",
+              "application/octet-stream",
+              "org,domain\n1,example.com\n"
+            ],
+            [
+              "TEST-page.html",
+              "application/octet-stream",
+              "<script>window.top.__pwned=1</script>"
+            ]
+          ]
+        },
+        {
+          "step": 8,
+          "eval": "window.__pwned === undefined",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 7789,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/file-links-head/file-links-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 1,
+          "eval": "(() => { window.__dl = []; const click = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dl.push(fetch(this.href).then((r) => r.blob()).then(async (b) => [this.download, b.type, await b.text()])); return click.call(this); }; return true; })()",
+          "value": true
+        },
+        {
+          "step": 7,
+          "eval": "Promise.all(window.__dl)",
+          "value": [
+            [
+              "TEST-report.csv",
+              "application/octet-stream",
+              "org,domain\n1,example.com\n"
+            ],
+            [
+              "TEST-report.csv",
+              "application/octet-stream",
+              "org,domain\n1,example.com\n"
+            ],
+            [
+              "TEST-report.csv",
+              "application/octet-stream",
+              "org,domain\n1,example.com\n"
+            ],
+            [
+              "TEST-page.html",
+              "application/octet-stream",
+              "<script>window.top.__pwned=1</script>"
+            ]
+          ]
+        },
+        {
+          "step": 8,
+          "eval": "window.__pwned === undefined",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
