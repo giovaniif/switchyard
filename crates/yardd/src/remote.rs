@@ -913,6 +913,13 @@ mod tests {
         assert_eq!(serde_json::from_str::<Value>(&stored).unwrap()["hostId"], "h1");
         let data = rewrite_incoming("h1", "box", r#"{"op":"attach.data","sessionId":"s9","id":"a1","data":""}"#).unwrap();
         assert_eq!(serde_json::from_str::<Value>(&data).unwrap()["sessionId"], "h1~s9");
+        // A file link in a remote session reads the file on that host.
+        let get = json!({ "op": "file.get", "sessionId": "h1~s9", "path": "report.csv", "ref": "r2" });
+        assert_eq!(route(&get).as_deref(), Some("h1"));
+        assert_eq!(outgoing(get)["sessionId"], "s9");
+        let file = rewrite_incoming("h1", "box", r#"{"op":"file.data","ref":"r2","sessionId":"s9","name":"report.csv","data":""}"#).unwrap();
+        let file: Value = serde_json::from_str(&file).unwrap();
+        assert_eq!((file["sessionId"].as_str(), file["ref"].as_str()), (Some("h1~s9"), Some("r2")));
     }
 
     #[test]

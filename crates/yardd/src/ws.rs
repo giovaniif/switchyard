@@ -467,6 +467,16 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             reply["ref"] = msg["ref"].clone();
             let _ = direct.send(reply.to_string());
         }
+        // The file behind a link in the conversation, to download. Failures
+        // come back on the same op so the link can say what went wrong.
+        "file.get" => {
+            let sid = str_field(msg, "sessionId")?;
+            let path = str_field(msg, "path")?;
+            let mut reply = crate::files::get(app, sid, path)
+                .unwrap_or_else(|e| json!({ "op": "file.data", "sessionId": sid, "path": path, "error": format!("{e:#}") }));
+            reply["ref"] = msg["ref"].clone();
+            let _ = direct.send(reply.to_string());
+        }
         "session.open" => {
             let sid = str_field(msg, "sessionId")?;
             let _ = direct.send(app.history(sid).to_string());

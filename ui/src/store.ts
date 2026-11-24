@@ -37,6 +37,7 @@ import type { WidgetRecord } from "./widget";
 import { createNotifier } from "./notify";
 import { inMobileApp, type MobileStatus } from "./mobile";
 import { base64ToBlob, fileToBase64, Replies, tooLarge } from "./attach";
+import { fileError } from "./fileLinks";
 
 /** Where an upload goes: a host from the new-session page, or the host of a
  *  session from its reply box. Empty means this machine. */
@@ -607,6 +608,9 @@ function reduceServer(state: State, msg: any): State {
   }
 }
 
+/** A file read for the workspace: where yardd found it and its bytes. */
+export type FileRead = { name: string; path: string; data: Uint8Array } | { error: string };
+
 export interface Actions {
   /** A message for an agent: into its one conversation, which opens.
    *  Resolves with an error fit to show when yardd refused it. */
@@ -650,6 +654,8 @@ export interface Actions {
   upload(file: File, target: UploadTarget): Promise<Attachment>;
   /** An object URL for an attachment of a session, for a thumbnail. */
   attachmentUrl(sessionId: string, attachment: Attachment): Promise<string>;
+  /** Read a file a link in the session names, on the session's host. */
+  readFile(sessionId: string, path: string): Promise<FileRead>;
   setModel(sessionId: string, model: string, effort: string): void;
   setServiceTier(sessionId: string, serviceTier: string): void;
   /** Change what the engine may do unasked; Claude switches at once, Codex from its next turn. */
@@ -878,6 +884,17 @@ export function useYard(): { state: State; actions: Actions } {
     return url;
   };
 
+  const readFile = async (sessionId: string, path: string): Promise<FileRead> => {
+    const reply = await ask({ op: "file.get", sessionId, path }, 2 * 60_000);
+    if (reply.error || typeof reply.data !== "string") return { error: fileError(reply) };
+    const blob = base64ToBlob(reply.data, "application/octet-stream");
+    return {
+      name: typeof reply.name === "string" && reply.name ? reply.name : "file",
+      path: typeof reply.path === "string" ? reply.path : path,
+      data: new Uint8Array(await blob.arrayBuffer()),
+    };
+  };
+
   // Load a session's history the first time it is shown on this connection.
   // A host snapshot drops that host's threads, so reload whatever is gone.
   // An agent's page shows its conversation.
@@ -968,6 +985,7 @@ export function useYard(): { state: State; actions: Actions } {
       },
       upload,
       attachmentUrl,
+      readFile,
       setModel: (sessionId, model, effort) => {
         const session = sessionsRef.current[sessionId];
         if (session) rememberSession({ ...session, model, effort });
