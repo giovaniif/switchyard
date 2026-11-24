@@ -42,6 +42,58 @@ yv drive new --viewport desktop --steps '[{"expect":{"css":".session-row","hasTe
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":{"css":".session-row","hasText":"TEST-say hello"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"},"text":"Needs approval"},{"expect":{"role":"navigation","name":"Sessions"},"text":"TEST-hello from Claude"},{"shot":"sidebar"}]'
 ```
 
+### compact-rows-with-engine-marks
+Viewports: both
+A row is one compact line pair (46 px at most): the harness's own mark on the
+left (Claude's starburst, the Codex mark; never "CC" or "CX"), title over
+model and status, and the activity mark at the right end. No cloud icon; a
+remote host's name is in the row's tooltip.
+
+```sh
+yv drive new --viewport desktop --steps '[
+  {"expect":{"css":".session-row","hasText":"TEST-hello from Claude"}},
+  {"expect":{"css":".session-row .engine-icon-claude"}},
+  {"expect":{"css":".session-row .engine-icon-codex"}},
+  {"eval":"(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-hello from Claude\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\".engine-icon\").getBoundingClientRect(); const text = row.querySelector(\".session-text\").getBoundingClientRect(); const mark = row.querySelector(\".mark\").getBoundingClientRect(); return [box.height <= 46, icon.right <= text.left, mark.left >= text.right, row.querySelectorAll(\".cloud, [aria-label^=\\\"Runs on\\\"]\").length]; })()","equals":[true,true,true,0]},
+  {"expect":{"css":".session-row","hasText":"CC"},"visible":false},
+  {"shot":"rows"}
+]'
+yv drive new --viewport mobile --steps '[
+  {"click":"role:button:Open sessions"},
+  {"expect":{"css":".session-row","hasText":"TEST-hello from Claude"}},
+  {"eval":"(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-hello from Claude\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\".engine-icon\").getBoundingClientRect(); const text = row.querySelector(\".session-text\").getBoundingClientRect(); const mark = row.querySelector(\".mark\").getBoundingClientRect(); return [box.height <= 46, icon.right <= text.left, mark.left >= text.right, row.querySelectorAll(\".cloud, [aria-label^=\\\"Runs on\\\"]\").length]; })()","equals":[true,true,true,0]},
+  {"shot":"rows"}
+]'
+```
+
+### hover-shows-archive-in-place-of-the-mark
+Viewports: both
+On a desktop the activity mark gives way to Archive and ⋯ while the pointer is
+on the row, and Archive takes one click. A phone has no hover: the mark stays
+with ⋯ beside it, and Archive is in the ⋯ menu.
+
+```sh
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-archive me"}' --wait '{"op":"created"}' --save arch_sid=sessionId
+yv drive new --viewport desktop --steps '[
+  {"expect":{"css":".session-row","hasText":"TEST-archive me"}},
+  {"eval":"getComputedStyle(document.querySelector(\"[aria-label=\\\"Archive TEST-archive me\\\"]\")).opacity","equals":"0"},
+  {"hover":{"css":".session-row","hasText":"TEST-archive me"}},
+  {"wait":200},
+  {"eval":"(() => { const item = document.querySelector(\"[aria-label=\\\"Archive TEST-archive me\\\"]\").closest(\".session-item\"); return [getComputedStyle(item.querySelector(\".row-archive\")).opacity, getComputedStyle(item.querySelector(\".mark\")).visibility]; })()","equals":["1","hidden"]},
+  {"shot":"hover"},
+  {"click":"role:button:Archive TEST-archive me"},
+  {"expect":"role:button:Archived"}
+]'
+yv state --expect '{"sessions":[{"id":"{{arch_sid}}","archived":true}]}'
+yv api '{"op":"session.update","sessionId":"{{arch_sid}}","archived":false}'
+yv drive new --viewport mobile --steps '[
+  {"click":"role:button:Open sessions"},
+  {"expect":{"css":".session-row","hasText":"TEST-archive me"}},
+  {"eval":"(() => { const item = [...document.querySelectorAll(\".session-item\")].find((i) => i.textContent.includes(\"TEST-archive me\")); return [getComputedStyle(item.querySelector(\".row-archive\")).display, getComputedStyle(item.querySelector(\".mark\")).visibility, getComputedStyle(item.querySelector(\".row-more\")).opacity]; })()","equals":["none","visible","1"]},
+  {"shot":"touch"}
+]'
+```
+
 ### rows-mark-what-needs-you
 Each row's mark and label say its state: a turning ring while running, an amber
 "!" while it waits for approval, a blue dot and "Answered" for a finished turn
