@@ -1,0 +1,26 @@
+$ verify/yv map run stop --recipe acp-stop-while-asking-says-not-run
+# exit 0 after 18592 ms at ae5fd8f40f0d53b6be448415921cc4d2f7a1ecef
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "stop",
+      "at": "2026-11-24T05:06:00.392Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "acp-stop-while-asking-says-not-run",
+          "status": "pass",
+          "ms": 17737
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+

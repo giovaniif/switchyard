@@ -1,0 +1,324 @@
+{
+  "v": 1,
+  "claim": "An OpenCode/Grok/Gemini (ACP) session in Ask first: Stop while a command or edit asks makes the fold read 'Ran 1 command · 1 failed' / 'Edited 1 file · 1 failed' for a call that never ran",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-992d",
+  "base": "0265f8bb8e70056a583c6e16b942095e27515d85",
+  "head": "ae5fd8f40f0d53b6be448415921cc4d2f7a1ecef",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/protocol.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/stop.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-24T05:03:39.663Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "04ea8bfc8d80be189bdbc94196cf44812bee3c12",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "ad14ddb3213af0fa135aa03b43d775da380cb26ca7500ecc8eff226dd12bd44b"
+        },
+        {
+          "path": "p1-base-cmd-mobile.png",
+          "sha256": "acf1b349348fde78dd8c98e0e543c1700d8e594154f2bdf165c8cdeaed5a4e4a"
+        },
+        {
+          "path": "p1-base-cmd-desktop.png",
+          "sha256": "a8088a9ae062e3b1bf5e2bc02cda1e55b719bf1d48955811e510923fdc3d21ed"
+        }
+      ],
+      "addedAt": "2026-11-24T05:04:46.830Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "04ea8bfc8d80be189bdbc94196cf44812bee3c12",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "944e21c1fa7bcf2df45f944f498c533673c3f9e818e0e1b03752f115d29692e3"
+        },
+        {
+          "path": "p2-base-edit-mobile.png",
+          "sha256": "6ab8b4958a6e66466708e5dfc5510f90e777206223f2794eb3b246eb7f801b20"
+        },
+        {
+          "path": "p2-base-edit-desktop.png",
+          "sha256": "fb8a8666efe9a17b69cadcbb5cac0b86f4202bf706a1309d01318f5bbc37ecac"
+        }
+      ],
+      "addedAt": "2026-11-24T05:04:46.877Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "04ea8bfc8d80be189bdbc94196cf44812bee3c12",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "6793b36a37401576de68f3890f209973407b58d3f3f8bf8e3a61aa1f7e9dac4e"
+        }
+      ],
+      "addedAt": "2026-11-24T05:04:46.923Z",
+      "cmd": "cd ui && bun test src/protocol.test.ts",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "test",
+      "at": "04ea8bfc8d80be189bdbc94196cf44812bee3c12",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "130bfd19035173c2885547e54ef87a7874ab79c4a6d2dbe883b1a0c5c09739c9"
+        }
+      ],
+      "addedAt": "2026-11-24T05:04:46.981Z",
+      "cmd": "verify/yv map run stop --recipe acp-stop-while-asking-says-not-run",
+      "exit": 1
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "ae5fd8f40f0d53b6be448415921cc4d2f7a1ecef",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "ad1993fc1e6f15542fff0558d54f558fcbe5309971438a252abbdd5e0de1ca80"
+        },
+        {
+          "path": "p5-head-cmd-mobile.png",
+          "sha256": "cf2f6a3e9f27f6814019679b6977957d61e7c8efc06ba96c6dd1080647cd49a4"
+        },
+        {
+          "path": "p5-head-cmd-desktop.png",
+          "sha256": "10552b7424bd6aa0880f02a0a4525d9b1716ab764fb3803ced404281bcc1e1ca"
+        }
+      ],
+      "addedAt": "2026-11-24T05:05:41.494Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "ae5fd8f40f0d53b6be448415921cc4d2f7a1ecef",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p6-drive.json",
+          "sha256": "9ab999b37c60054425c6f36a2bc75c9c6020d20a251516b0970452aaabca3240"
+        },
+        {
+          "path": "p6-head-edit-mobile.png",
+          "sha256": "6637beca219ad15aee2a3d9698cd105789faab0445d7a50932d40878c77eb05c"
+        },
+        {
+          "path": "p6-head-edit-desktop.png",
+          "sha256": "c13c9d848e04217d765830b8a90931d0aecd8003bb366ffe15b4e07bf9265d33"
+        }
+      ],
+      "addedAt": "2026-11-24T05:05:41.537Z",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "test",
+      "at": "ae5fd8f40f0d53b6be448415921cc4d2f7a1ecef",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-cmd.log",
+          "sha256": "f5823796ce72e2defd9cc9692ab33d75e10fd14cf9acb2a73dbbd47f00695a0d"
+        }
+      ],
+      "addedAt": "2026-11-24T05:05:41.580Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "test",
+      "at": "ae5fd8f40f0d53b6be448415921cc4d2f7a1ecef",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-cmd.log",
+          "sha256": "f8935b37776955720be8db913c86a30826b0440217d0ebb5f70276c419881964"
+        }
+      ],
+      "addedAt": "2026-11-24T05:05:41.804Z",
+      "cmd": "verify/yv map run stop --recipe acp-stop-while-asking-says-not-run",
+      "exit": 0
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "design",
+      "at": "ae5fd8f40f0d53b6be448415921cc4d2f7a1ecef",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-design.json",
+          "sha256": "2ce7814b182770833997a0ceb04058689fe91aeafac54db2219e4107e7130219"
+        }
+      ],
+      "addedAt": "2026-11-24T05:06:00.438Z",
+      "cmd": "verify/yv design-check --base 0265f8bb8e70",
+      "exit": 0
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "regression",
+      "at": "ae5fd8f40f0d53b6be448415921cc4d2f7a1ecef",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-map-stop.json",
+          "sha256": "89016a9791686e912280b3bc19958f1e688f3ba3e9d52aaf0e197a8720e05ee9"
+        }
+      ],
+      "addedAt": "2026-11-24T05:06:04.306Z",
+      "cmd": "verify/yv map run stop",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "stop/stop-slow-turn",
+        "stop/stop-stuck-codex-turn",
+        "stop/stop-stuck-claude-turn",
+        "stop/stop-stuck-opencode-turn",
+        "stop/stuck-opencode-late-output-is-dropped",
+        "stop/stop-while-asking",
+        "stop/stop-while-asking-says-not-answered",
+        "stop/acp-stop-while-asking-says-not-run"
+      ]
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "regression",
+      "at": "ae5fd8f40f0d53b6be448415921cc4d2f7a1ecef",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-map-approvals.json",
+          "sha256": "664dc1b20249d5e92d4c54fbac91880dd1349501af116313fa05d7ea08795430"
+        }
+      ],
+      "addedAt": "2026-11-24T05:07:28.630Z",
+      "cmd": "verify/yv map run approvals",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "approvals/pending-shows-card",
+        "approvals/allow-once",
+        "approvals/allow-then-follow-up",
+        "approvals/deny",
+        "approvals/waiting-then-denied-command-did-not-run",
+        "approvals/waiting-then-denied-edit-was-not-made",
+        "approvals/always-allow",
+        "approvals/double-click-allow-once",
+        "approvals/approval-wait-is-not-work"
+      ]
+    },
+    {
+      "id": 12,
+      "ref": "head",
+      "kind": "regression",
+      "at": "ae5fd8f40f0d53b6be448415921cc4d2f7a1ecef",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p12-map-thread.json",
+          "sha256": "64ae55a235f2ba8fce9ee5cb6bf2628a9b8ab54a1244b4c2ee8a9c2ed26b4bc2"
+        }
+      ],
+      "addedAt": "2026-11-24T05:08:56.219Z",
+      "cmd": "verify/yv map run thread",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "thread/reply-renders",
+        "thread/markdown-table-renders",
+        "thread/markdown-blocks-without-blank-lines",
+        "thread/web-links-open-outside-the-thread",
+        "thread/thinking-folds",
+        "thread/edit-shows-diff",
+        "thread/failed-turn-shows-error",
+        "thread/follow-up-turn",
+        "thread/claude-session-renders",
+        "thread/reply-to-part-of-answer",
+        "thread/no-reply-on-own-message",
+        "thread/queue-a-message-while-working",
+        "thread/remove-a-queued-message",
+        "thread/steer-a-running-turn",
+        "thread/steer-a-selected-queued-message",
+        "thread/stop-returns-the-queue",
+        "thread/edit-a-queued-message",
+        "thread/edit-a-queued-reply-keeps-its-quotes",
+        "thread/draft-survives-switching-sessions",
+        "thread/workspace-subagents",
+        "thread/workspace-subagents-line-up",
+        "thread/subagent-nests-and-expands",
+        "thread/working-line-stays-in-view",
+        "thread/pr-link-hover-card",
+        "thread/pr-link-card-states",
+        "thread/pr-link-card-error",
+        "thread/pr-link-keyboard-and-touch",
+        "thread/links-inside-bold-text",
+        "thread/numbered-steps-across-code-blocks"
+      ]
+    }
+  ]
+}

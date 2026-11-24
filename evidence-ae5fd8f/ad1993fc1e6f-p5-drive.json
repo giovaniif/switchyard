@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "route": "session:s1a20bf1a4192",
+  "build": {
+    "sha": "ae5fd8f40f0d53b6be448415921cc4d2f7a1ecef",
+    "short": "ae5fd8f",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T05:05:15.086Z"
+  },
+  "dir": ".verify/evidence/acp-stop-asking-head-cmd",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3008,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/acp-stop-asking-head-cmd/head-cmd-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3000,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/acp-stop-asking-head-cmd/head-cmd-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,39 @@
+$ cd ui && bun test src/protocol.test.ts
+# exit 1 after 14 ms at 04ea8bfc8d80be189bdbc94196cf44812bee3c12
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/protocol.test.ts:
+278 |     const items = fold([
+279 |       ...asked,
+280 |       { type: "tool_completed", itemId: "c1", ok: false },
+281 |       { type: "turn_completed", status: "interrupted", at: 2_000 },
+282 |     ]);
+283 |     expect(tool(items)).toMatchObject({ state: "failed", asked: "unanswered" });
+                              ^
+error: expect(received).toMatchObject(expected)
+
+  {
+-   "asked": "unanswered",
++   "asked": "waiting",
++   "detail": "echo hi",
++   "itemId": "c1",
++   "key": "e2",
++   "kind": "tool",
++   "output": null,
+    "state": "failed",
++   "title": "Ran",
++   "toolKind": "command",
+  }
+
+- Expected  - 1
++ Received  + 8
+
+      at <anonymous> (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-992d/ui/src/protocol.test.ts:283:25)
+(fail) a call that waits for an approval > a call the engine failed while it waited is still unanswered at turn end [0.47ms]
+
+ 23 pass
+ 1 fail
+ 42 expect() calls
+Ran 24 tests across 1 file. [10.00ms]

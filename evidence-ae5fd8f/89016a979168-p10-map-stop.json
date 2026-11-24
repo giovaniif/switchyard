@@ -1,0 +1,57 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "stop",
+      "at": "2026-11-24T05:07:28.583Z",
+      "counts": {
+        "pass": 8
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "stop-slow-turn",
+          "status": "pass",
+          "ms": 4990
+        },
+        {
+          "label": "stop-stuck-codex-turn",
+          "status": "pass",
+          "ms": 8303
+        },
+        {
+          "label": "stop-stuck-claude-turn",
+          "status": "pass",
+          "ms": 8975
+        },
+        {
+          "label": "stop-stuck-opencode-turn",
+          "status": "pass",
+          "ms": 9667
+        },
+        {
+          "label": "stuck-opencode-late-output-is-dropped",
+          "status": "pass",
+          "ms": 12170
+        },
+        {
+          "label": "stop-while-asking",
+          "status": "pass",
+          "ms": 8210
+        },
+        {
+          "label": "stop-while-asking-says-not-answered",
+          "status": "pass",
+          "ms": 13453
+        },
+        {
+          "label": "acp-stop-while-asking-says-not-run",
+          "status": "pass",
+          "ms": 17649
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
