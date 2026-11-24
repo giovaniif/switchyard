@@ -1,0 +1,4 @@
+$ grep -q 'A run needs approval' docs/ARCHITECTURE.md && grep -q 'A run needs approval' ui/src/App.tsx && grep -q 'export function runsAttention' ui/src/automations.ts
+# exit 0 after 8 ms at 606fd09252eca41a6c03eb2379a82fcda1a8b8a9
+
+

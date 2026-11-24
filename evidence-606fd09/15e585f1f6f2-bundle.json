@@ -1,0 +1,73 @@
+{
+  "v": 1,
+  "claim": "docs/ARCHITECTURE.md describes the Automations dot as green while a run works, and amber ('A run needs approval') while a run waits for approval, matching #400",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-731f",
+  "base": "66e510b80ab7638c55ed738b6d4a4c32364b2bf7",
+  "head": "606fd09252eca41a6c03eb2379a82fcda1a8b8a9",
+  "changed": [
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-24T03:21:28.968Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "606fd09252eca41a6c03eb2379a82fcda1a8b8a9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-24T03:21:29.007Z",
+      "text": "no-repro: docs-only follow-up to #400; the base doc says only 'a dot while a run works'"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "606fd09252eca41a6c03eb2379a82fcda1a8b8a9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-24T03:21:29.048Z",
+      "text": "no-failing-test: docs-only change, nothing to test; the behaviour it describes is covered by automations/a-run-waiting-for-approval-marks-the-button-amber"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "test",
+      "at": "606fd09252eca41a6c03eb2379a82fcda1a8b8a9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "f16a380e139c82b5826c10dd3e8773a4dcc8ea73661bf23647ca7d63d287accf"
+        }
+      ],
+      "addedAt": "2026-11-24T03:21:29.087Z",
+      "cmd": "grep -q 'A run needs approval' docs/ARCHITECTURE.md && grep -q 'A run needs approval' ui/src/App.tsx && grep -q 'export function runsAttention' ui/src/automations.ts",
+      "exit": 0
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "606fd09252eca41a6c03eb2379a82fcda1a8b8a9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "487f7d6907a6fa7c866e08d1652a4d71c839cd0f682742a5583e116c6706a268"
+        }
+      ],
+      "addedAt": "2026-11-24T03:21:32.325Z",
+      "cmd": "grep -n 'amber one (\"A run needs approval\"' docs/ARCHITECTURE.md",
+      "exit": 0
+    }
+  ]
+}

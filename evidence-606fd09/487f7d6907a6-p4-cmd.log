@@ -1,0 +1,5 @@
+$ grep -n 'amber one ("A run needs approval"' docs/ARCHITECTURE.md
+# exit 0 after 3 ms at 606fd09252eca41a6c03eb2379a82fcda1a8b8a9
+
+207:- **Auto-archive:** when a run's first turn ends, yardd archives it unless it is pinned. Later turns (someone reopened it) do not re-archive. Pinning an archived session unarchives it, so pinning a run brings it back to the sidebar. The sidebar leaves out every unpinned session with `automation` set; a clock row, "Automations", opens the page, with a green dot while a run works and an amber one ("A run needs approval", from `runsAttention()`) while a run waits for approval, which outranks working: the run is not in the sidebar, so this dot is the only sign there that it waits for the user.
+
