@@ -228,5 +228,14 @@ export function runsOf(sessions: Record<string, SessionMeta>, host: string, auto
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
+/** The sidebar Automations button's dot. Runs stay out of the sidebar, so a
+ *  run waiting for approval must outrank one that is only working: this dot is
+ *  the only sign there that it waits for the user. */
+export function runsAttention(runs: SessionMeta[]): "approval" | "working" | null {
+  if (runs.some((s) => s.status === "needs_approval")) return "approval";
+  if (runs.some((s) => s.status === "running")) return "working";
+  return null;
+}
+
 /** Runs live on the Automations page; pinning one brings it back to the list. */
 export const hiddenFromSidebar = (s: SessionMeta): boolean => !!s.automation && !s.pinned;

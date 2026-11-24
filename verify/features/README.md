@@ -60,9 +60,10 @@ prompt).
 | [security](security.md) | Origin checks on the WebSocket, loopback binding |
 | [import](import.md) | Importing Claude Code sessions from the host, with history and resume |
 | [automations](automations.md) | Scheduled runs: the Automations page, create (daily, interval, weekly), Run now, auto-archive, pin, edit, disable, delete, the working-run dot |
-| [agents](agents.md) | Agents: cards, Scout (the host agent, read-only, evidence), the start page, the form, @mentions that route a message, ongoing and new chats, Switchy's old address |
+| [agents](agents.md) | Agents: cards, Scout (the host agent, read-only, evidence), the start page, the form, @mentions that route a message, ongoing and new chats, agents messaging each other (badges), an agent that needs you, an agent's own memory, Switchy's old address |
 | [layout](layout.md) | Viewport behaviour: desktop, the narrow pane cut-off, mobile |
 | [dropdowns](dropdowns.md) | Menus inside the viewport: composer options, workspace tabs, custom schedules, connector host, handover under the same agent |
 | [usage](usage.md) | Usage popover, Subscriptions, reset times and separate account/model controls |
 | [accounts](accounts.md) | More than one login per engine: add, log in, pick for a new session, remove |
 | [connectors](connectors.md) | MCP servers per engine account: states, sign-in (claude.ai, pasted redirects, ChatGPT apps), chart widgets in the thread |
+| [slack](slack.md) | The Slack connector: setup guide and manifest, refused and good tokens, allowing someone who wrote, the default agent, answers posted in the Slack thread, the Slack badge in a conversation, tokens kept out of the page and logs |

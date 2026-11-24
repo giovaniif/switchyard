@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { applyEvent, type AgentEvent, type Item } from "./protocol";
 import type { SessionMeta } from "./protocol";
 import { duration, handoffLinks, layout, stillPinned, summarize, thoughtLine, type ToolItem, type WorkItem } from "./thread";
+import * as thread from "./thread";
 
 const fold = (events: AgentEvent[]): Item[] => events.reduce((acc, ev, i) => applyEvent(acc, ev, i), [] as Item[]);
 const shape = (rows: ReturnType<typeof layout>) =>
@@ -305,6 +306,42 @@ describe("summarize, with calls that never ran", () => {
   test("next to work that ran, the calls that did not are counted apart", () => {
     const entries = [call("a", "read"), call("b", "read"), call("c", "command", { state: "failed", asked: "unanswered" }), call("d", "command", { state: "failed" })];
     expect(summarize(entries)).toBe("Read 2 files, ran 1 command · 1 failed · 1 command not run");
+  });
+
+  test("a denied edit was not made: the file was not edited, not \"not run\"", () => {
+    expect(summarize([call("e", "edit", { title: "Edited", state: "failed", asked: "denied" })])).toBe("1 file not edited");
+    expect(summarize([call("e", "edit", { state: "failed", asked: "unanswered" }), call("f", "edit", { state: "failed", asked: "denied" })])).toBe("2 files not edited");
+  });
+
+  test("each kind says what did not happen, in its own words", () => {
+    expect(summarize([call("r", "read", { state: "failed", asked: "denied" })])).toBe("1 file not read");
+    expect(summarize([call("s", "search", { state: "failed", asked: "denied" })])).toBe("1 search not run");
+    expect(summarize([call("c", "command", { state: "failed", asked: "denied" }), call("e", "edit", { state: "failed", asked: "denied" })])).toBe("2 steps not run");
+  });
+});
+
+describe("toolLabel", () => {
+  const call = (title: string, extra: Partial<ToolItem> = {}): ToolItem => ({
+    kind: "tool", key: "k", itemId: "k", toolKind: title === "Ran" ? "command" : "edit", title, detail: "notes.txt", state: "ok", ...extra,
+  });
+
+  test("an edit is not \"Edited\" until it is allowed and done", () => {
+    expect(thread.toolLabel(call("Edited", { state: "running", asked: "waiting" }))).toBe("Waiting to edit");
+    expect(thread.toolLabel(call("Edited", { state: "failed", asked: "denied" }))).toBe("Did not edit");
+    expect(thread.toolLabel(call("Edited", { state: "failed", asked: "unanswered" }))).toBe("Did not edit");
+    expect(thread.toolLabel(call("Edited", { state: "running" }))).toBe("Editing");
+    expect(thread.toolLabel(call("Edited"))).toBe("Edited");
+  });
+
+  test("a command keeps its words", () => {
+    expect(thread.toolLabel(call("Ran", { state: "running", asked: "waiting" }))).toBe("Waiting to run");
+    expect(thread.toolLabel(call("Ran", { state: "failed", asked: "denied" }))).toBe("Did not run");
+    expect(thread.toolLabel(call("Ran", { state: "running" }))).toBe("Running");
+    expect(thread.toolLabel(call("Ran"))).toBe("Ran");
+  });
+
+  test("other titles are the engine's own", () => {
+    expect(thread.toolLabel({ ...call("Read"), toolKind: "read" })).toBe("Read");
   });
 });
 

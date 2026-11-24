@@ -147,6 +147,8 @@ async fn client(socket: WebSocket, app: Arc<App>) {
             }
         }
     }
+    // A hub's connection: calls passed to it will not be answered.
+    app.tools.conn_closed(&direct);
 }
 
 /// An op's failure. `ref` comes back when the op had one, so a client
@@ -220,7 +222,9 @@ fn list_dirs(path: &str) -> Result<Vec<Value>> {
 /// Start a session from a `session.create` message. `direct` gets `created`
 /// as soon as the session exists (the UI opens it), with the message's `ref`;
 /// automations pass `None` and a title of their own, and tag the session with
-/// their id; an agent's chat is tagged with the agent's.
+/// their id; an agent's chat is tagged with the agent's. `origin`: where the
+/// first message came from when the owner did not type it (set by yardd
+/// only, never read from a client's message).
 pub async fn create_session(
     app: &Arc<App>,
     direct: Option<&mpsc::UnboundedSender<String>>,
@@ -228,6 +232,7 @@ pub async fn create_session(
     title: Option<&str>,
     automation: Option<&str>,
     agent: Option<&str>,
+    origin: Option<&Value>,
 ) -> Result<String> {
     let engine = str_field(msg, "engine")?;
     let model = str_field(msg, "model")?;
@@ -299,13 +304,20 @@ pub async fn create_session(
         }
         let _ = direct.send(created.to_string());
     }
-    sessions::begin(app, &sid, text, &files).await;
+    sessions::begin(app, &sid, text, &files, origin).await;
+    // A title from the task now, rather than its first line until a turn ends.
+    if app.meta(&sid).is_some_and(|m| crate::naming::due_at_start(&m)) {
+        app.name_later(&sid);
+    }
     Ok(sid)
 }
 
 async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value) -> Result<()> {
     if msg["sessionId"].as_str().is_some_and(crate::private::internal) {
         bail!("that engine thread is private to yardd");
+    }
+    if msg["op"].as_str().is_some_and(|op| op.starts_with("slack.")) {
+        return crate::slack::handle(app, msg).await;
     }
     if msg["op"].as_str().is_some_and(|op| op.starts_with("agent.")) {
         return crate::agents::handle(app, direct, msg).await;
@@ -342,7 +354,7 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             app.broadcast(json!({ "op": "mobile.status", "mobile": app.mobile.status() }));
         }
         "session.create" => {
-            create_session(app, Some(direct), msg, None, None, None).await?;
+            create_session(app, Some(direct), msg, None, None, None, None).await?;
         }
         "git.branches" => {
             let cwd = str_field(msg, "cwd")?;
@@ -455,6 +467,16 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             reply["ref"] = msg["ref"].clone();
             let _ = direct.send(reply.to_string());
         }
+        // The file behind a link in the conversation, to download. Failures
+        // come back on the same op so the link can say what went wrong.
+        "file.get" => {
+            let sid = str_field(msg, "sessionId")?;
+            let path = str_field(msg, "path")?;
+            let mut reply = crate::files::get(app, sid, path)
+                .unwrap_or_else(|e| json!({ "op": "file.data", "sessionId": sid, "path": path, "error": format!("{e:#}") }));
+            reply["ref"] = msg["ref"].clone();
+            let _ = direct.send(reply.to_string());
+        }
         "session.open" => {
             let sid = str_field(msg, "sessionId")?;
             let _ = direct.send(app.history(sid).to_string());
@@ -466,7 +488,7 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             if text.is_empty() && files.is_empty() {
                 bail!("the message is empty");
             }
-            sessions::send_message(app, sid, text, &files).await?;
+            sessions::send_message(app, sid, text, &files, None).await?;
         }
         // Taken back to edit (or dropped): the asking window gets it, if it
         // had not reached the agent yet.
@@ -589,6 +611,13 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             // Like Esc in Claude Code: what was queued comes back to the
             // reply box of the window that stopped the turn, unsent.
             let items = app.take_all_queued(sid, |_| true);
+            // Messages from elsewhere are not the owner's to edit: their
+            // senders hear that the turn stopped before reading them.
+            let (theirs, items): (Vec<Value>, Vec<Value>) = items.into_iter().partition(|i| crate::origins::is_tagged(Some(&i["origin"])));
+            if !theirs.is_empty() {
+                let origins = theirs.iter().map(|i| i["origin"].clone()).collect();
+                app.owe(crate::origins::Owed { sid: sid.to_string(), origins, status: "unread".into(), text: String::new() });
+            }
             if !items.is_empty() {
                 let (text, files) = sessions::combine(&items);
                 let _ = direct.send(json!({ "op": "queue.returned", "sessionId": sid, "text": text, "attachments": files }).to_string());
@@ -712,30 +741,36 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
         "host.remove" => remote::remove(app, str_field(msg, "hostId")?)?,
         "host.install" => remote::install(app, str_field(msg, "hostId")?)?,
         "notify" => {
-            let title = msg["title"].as_str().map(str::trim).filter(|t| !t.is_empty()).context("missing `title`")?;
-            let mut note = json!({ "op": "notify", "title": clip(title, 120) });
-            if let Some(body) = msg["body"].as_str().map(str::trim).filter(|b| !b.is_empty()) {
-                note["body"] = json!(clip(body, 400));
-            }
-            if let Some(sid) = msg["sessionId"].as_str().filter(|s| !s.is_empty()) {
-                note["sessionId"] = json!(sid);
-            }
-            // The window opens this on a click, so only web pages are allowed.
-            if let Some(url) = msg["url"].as_str().filter(|u| !u.is_empty()) {
-                if !(url.starts_with("https://") || url.starts_with("http://")) {
-                    bail!("`url` must be an http(s) link");
-                }
-                note["url"] = json!(url);
-            }
-            // Every client is a receiver, the sender included: the caller learns
-            // whether any window was there to show it.
-            let windows = app.tx.receiver_count();
-            app.broadcast(note);
+            let windows = notify(app, msg)?;
             let _ = direct.send(json!({ "op": "notify.sent", "windows": windows }).to_string());
         }
         other => bail!("unknown op `{other}`"),
     }
     Ok(())
+}
+
+/// Show `{ title, body?, sessionId?, url? }` as an OS notification in every
+/// open window. Answers how many windows were connected (counting a caller
+/// on the socket), so a caller can tell nobody was there.
+pub fn notify(app: &App, msg: &Value) -> Result<usize> {
+    let title = msg["title"].as_str().map(str::trim).filter(|t| !t.is_empty()).context("missing `title`")?;
+    let mut note = json!({ "op": "notify", "title": clip(title, 120) });
+    if let Some(body) = msg["body"].as_str().map(str::trim).filter(|b| !b.is_empty()) {
+        note["body"] = json!(clip(body, 400));
+    }
+    if let Some(sid) = msg["sessionId"].as_str().filter(|s| !s.is_empty()) {
+        note["sessionId"] = json!(sid);
+    }
+    // The window opens this on a click, so only web pages are allowed.
+    if let Some(url) = msg["url"].as_str().filter(|u| !u.is_empty()) {
+        if !(url.starts_with("https://") || url.starts_with("http://")) {
+            bail!("`url` must be an http(s) link");
+        }
+        note["url"] = json!(url);
+    }
+    let windows = app.tx.receiver_count();
+    app.broadcast(note);
+    Ok(windows)
 }
 
 /// Stop the session's engine and terminal and forget it.
@@ -748,6 +783,7 @@ pub async fn delete_session(app: &Arc<App>, sid: &str, meta: &crate::state::Meta
         _ => {}
     }
     pty::close_session(app, sid);
+    app.tools.forget(sid);
     app.remove_session(sid);
 }
 

@@ -1,0 +1,365 @@
+//! Slack: a fake Slack (verify/fakes/fake-slack: the Web API and Socket
+//! Mode) drives yardd's connection. Messages from allowed users reach the
+//! agent they name, the default agent, or the agent their thread went to;
+//! everyone else and every bot is ignored; the answer goes back to the
+//! thread with reactions. No real Slack, no real model.
+mod common;
+use common::*;
+use serde_json::{json, Value};
+use std::{
+    io::{BufRead, BufReader, Read, Write},
+    process::{Child, Command, Stdio},
+    time::{Duration, Instant},
+};
+
+const APP_TOKEN: &str = "xapp-1-A0TEST-TESTsecretAPPtoken";
+const BOT_TOKEN: &str = "xoxb-TEST-secretBOTtoken";
+
+/// The fake, on a free port, killed on drop.
+struct FakeSlack {
+    child: Child,
+    port: u16,
+}
+
+impl FakeSlack {
+    fn start() -> FakeSlack {
+        let mut child = Command::new("bun")
+            .arg(repo_root().join("verify/fakes/fake-slack"))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .expect("bun runs verify/fakes/fake-slack");
+        let mut line = String::new();
+        BufReader::new(child.stdout.take().unwrap()).read_line(&mut line).unwrap();
+        let port = serde_json::from_str::<Value>(&line).expect("the fake prints its port")["port"].as_u64().unwrap() as u16;
+        assert!(port != 47717 && !(4510..=4559).contains(&port));
+        FakeSlack { child, port }
+    }
+
+    fn api(&self) -> String {
+        format!("http://127.0.0.1:{}/api/", self.port)
+    }
+
+    fn request(&self, method: &str, path: &str, body: &Value) -> Value {
+        let mut s = std::net::TcpStream::connect(("127.0.0.1", self.port)).unwrap();
+        s.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+        let body = body.to_string();
+        write!(s, "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).unwrap();
+        let mut out = String::new();
+        s.read_to_string(&mut out).unwrap();
+        let body = out.split_once("\r\n\r\n").map(|(_, b)| b).unwrap_or("");
+        serde_json::from_str(body).unwrap_or_else(|_| panic!("fake answered {out}"))
+    }
+
+    /// Slack's events for a message from `user`; returns its ts.
+    fn say(&self, msg: Value) -> String {
+        self.request("POST", "/_fake/message", &msg)["ts"].as_str().unwrap().to_string()
+    }
+
+    fn state(&self) -> Value {
+        self.request("GET", "/_fake/state", &json!({}))
+    }
+
+    async fn wait(&self, what: &str, pred: impl Fn(&Value) -> bool) -> Value {
+        let deadline = Instant::now() + WAIT;
+        loop {
+            let s = self.state();
+            if pred(&s) {
+                return s;
+            }
+            if Instant::now() > deadline {
+                panic!("timed out waiting for the fake Slack: {what}\n{s:#}");
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    }
+
+    /// The bot's posts in one thread.
+    fn posts(state: &Value, thread: &str) -> Vec<String> {
+        state["posts"].as_array().unwrap().iter().filter(|p| p["thread_ts"] == thread).map(|p| p["text"].as_str().unwrap().to_string()).collect()
+    }
+}
+
+impl Drop for FakeSlack {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+async fn ready(c: &mut Client) {
+    c.wait_for("models ready", |m| (m["op"] == "models" || m["op"] == "snapshot") && m["models"]["codex"].as_array().is_some_and(|a| !a.is_empty())).await;
+}
+
+async fn op(c: &mut Client, msg: Value) -> Result<(), String> {
+    let from = c.mark();
+    let op = msg["op"].as_str().unwrap().to_string();
+    c.send(msg).await;
+    let reply = c.wait_after(from, &format!("{op} applied"), |m| m["op"] == "slack" || (m["op"] == "error" && m["for"] == op.as_str())).await;
+    match reply["op"].as_str() {
+        Some("error") => Err(reply["message"].as_str().unwrap_or("").to_string()),
+        _ => Ok(()),
+    }
+}
+
+async fn slack_state(c: &mut Client, what: &str, pred: impl Fn(&Value) -> bool) -> Value {
+    c.wait_for(what, |m| (m["op"] == "slack" && pred(&m["slack"])) || (m["op"] == "snapshot" && pred(&m["slack"]))).await["slack"].clone()
+}
+
+async fn connect(c: &mut Client) {
+    op(c, json!({ "op": "slack.tokens", "appToken": APP_TOKEN, "botToken": BOT_TOKEN })).await.unwrap();
+    let s = slack_state(c, "Slack connected", |s| s["state"] == "connected").await;
+    assert_eq!(s["team"], "TEST-workspace");
+    assert_eq!(s["bot"], "switchyard");
+}
+
+async fn reviewer(c: &mut Client) -> String {
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "name": "Reviewer", "engine": "codex", "model": MODEL, "effort": EFFORT }, "ref": "save" })).await;
+    c.wait_after(from, "agent saved", |m| m["op"] == "agent.saved").await["agent"]["id"].as_str().unwrap().to_string()
+}
+
+/// The agent's conversation, once its first message made it.
+async fn chat_of(c: &mut Client, id: &str) -> String {
+    let m = c.wait_for("the agent's conversation", |m| m["op"] == "agents" && m["agents"].as_array().unwrap().iter().any(|a| a["id"] == id && a["chat"].is_string())).await;
+    m["agents"].as_array().unwrap().iter().find(|a| a["id"] == id).unwrap()["chat"].as_str().unwrap().to_string()
+}
+
+fn user_messages(c: &Client, sid: &str) -> Vec<Value> {
+    c.events(sid).into_iter().filter(|e| e["type"] == "user_message").collect()
+}
+
+#[tokio::test]
+async fn messages_from_slack_reach_the_named_or_default_agent_and_answers_go_back_to_the_thread() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-route");
+    let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api())]);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    assert_eq!(c.log[0]["slack"]["state"], "off");
+    assert_eq!(c.log[0]["slack"]["configured"], false);
+    let id = reviewer(&mut c).await;
+
+    // Tokens of the wrong kind are refused before anything is saved.
+    assert!(op(&mut c, json!({ "op": "slack.tokens", "appToken": BOT_TOKEN, "botToken": BOT_TOKEN })).await.unwrap_err().contains("xapp-"));
+    assert!(op(&mut c, json!({ "op": "slack.tokens", "appToken": APP_TOKEN })).await.unwrap_err().contains("both tokens"));
+    connect(&mut c).await;
+
+    // Not on the allowlist: ignored, told once, and offered for approval.
+    let first = fake.say(json!({ "user": "UOWNER", "text": "Reviewer TEST-hello" }));
+    let s = slack_state(&mut c, "a request to allow the owner", |s| s["requests"][0]["id"] == "UOWNER").await;
+    assert_eq!(s["requests"][0]["name"], "TEST-Owner");
+    assert_eq!(s["requests"][0]["place"], "Direct message");
+    fake.say(json!({ "user": "UOWNER", "text": "Reviewer TEST-hello again" }));
+    fake.wait("both messages seen", |s| s["acks"].as_array().unwrap().len() >= 2).await;
+    c.drain_for(Duration::from_millis(500)).await;
+    let st = fake.state();
+    assert_eq!(st["ephemerals"].as_array().unwrap().len(), 1, "told once: {st:#}");
+    assert!(st["ephemerals"][0]["text"].as_str().unwrap().contains("UOWNER"));
+    assert!(st["posts"].as_array().unwrap().is_empty());
+    assert!(st["reactions"].get(&first).is_none());
+    assert!(!c.log.iter().any(|m| m["op"] == "agents" && m["agents"].as_array().unwrap().iter().any(|a| a["chat"].is_string())));
+    op(&mut c, json!({ "op": "slack.allow", "user": "UOWNER" })).await.unwrap();
+    let s = slack_state(&mut c, "the owner allowed", |s| s["allowed"][0]["id"] == "UOWNER").await;
+    assert_eq!(s["allowed"][0]["name"], "TEST-Owner");
+    assert!(s["requests"].as_array().unwrap().is_empty());
+
+    // A DM naming the agent goes into its one conversation, with its origin.
+    let ts = fake.say(json!({ "user": "UOWNER", "text": "Reviewer: TEST-look at the build" }));
+    let sid = chat_of(&mut c, &id).await;
+    c.wait_turn_done(&sid, 0).await;
+    let msgs = user_messages(&c, &sid);
+    assert_eq!(msgs[0]["text"], "TEST-look at the build");
+    let origin = &msgs[0]["origin"];
+    assert_eq!(origin["kind"], "slack");
+    assert_eq!(origin["team"], "T0TEST");
+    assert_eq!(origin["channel"], "D0OWNER");
+    assert_eq!(origin["channelName"], "Direct message");
+    assert_eq!(origin["threadTs"], ts.as_str());
+    assert_eq!(origin["ts"], ts.as_str());
+    assert_eq!(origin["user"], "UOWNER");
+    assert_eq!(origin["userName"], "TEST-Owner");
+    // The engine reads the text framed with who sent it and where (origins::engine_text).
+    let input = sb.turn_inputs()[0][0]["text"].as_str().unwrap().to_string();
+    assert!(input.contains("<slack from=\"TEST-Owner\" in=\"a direct message\">\nTEST-look at the build\n</slack>"), "{input}");
+    assert!(input.contains("posted back to that Slack thread"), "{input}");
+    let st = fake.wait("the answer in the thread", |s| !FakeSlack::posts(s, &ts).is_empty() && s["reactions"][&ts] == json!(["white_check_mark"])).await;
+    let answer = FakeSlack::posts(&st, &ts);
+    assert_eq!(answer.len(), 1);
+    assert!(answer[0].starts_with("Echo: ") && answer[0].contains("TEST-look at the build"), "{answer:?}");
+    assert!(st["calls"].as_array().unwrap().iter().any(|c| c["method"] == "reactions.add" && c["params"]["name"] == "eyes" && c["params"]["timestamp"] == ts.as_str()));
+
+    // A follow-up in that Slack thread stays with Reviewer without its name.
+    let seq = c.next_seq(&sid);
+    fake.say(json!({ "user": "UOWNER", "text": "TEST-and the tests?", "thread_ts": ts }));
+    c.wait_turn_done(&sid, seq).await;
+    let st = fake.wait("the follow-up's answer", |s| FakeSlack::posts(s, &ts).len() == 2).await;
+    assert!(FakeSlack::posts(&st, &ts)[1].contains("TEST-and the tests?"));
+
+    // No name and no default agent: the bot lists the agents.
+    let lost = fake.say(json!({ "user": "UOWNER", "text": "TEST-anyone there?" }));
+    let st = fake.wait("the list of agents", |s| !FakeSlack::posts(s, &lost).is_empty()).await;
+    let list = &FakeSlack::posts(&st, &lost)[0];
+    assert!(list.starts_with("Which agent?") && list.contains("Scout") && list.contains("Reviewer"), "{list}");
+
+    // With a default agent it goes there. A bot's message never does.
+    op(&mut c, json!({ "op": "slack.route", "agent": id })).await.unwrap();
+    slack_state(&mut c, "the default agent", |s| s["defaultAgent"] == id.as_str()).await;
+    fake.say(json!({ "user": "UOWNER", "bot_id": "BOTHER", "text": "TEST-from a bot" }));
+    fake.say(json!({ "user": "UBOT", "text": "TEST-from myself" }));
+    let seq = c.next_seq(&sid);
+    let plain = fake.say(json!({ "user": "UOWNER", "text": "TEST-plain question" }));
+    c.wait_turn_done(&sid, seq).await;
+    fake.wait("the default agent's answer", |s| !FakeSlack::posts(s, &plain).is_empty()).await;
+    let texts: Vec<String> = user_messages(&c, &sid).iter().map(|m| m["text"].as_str().unwrap().to_string()).collect();
+    assert!(texts.contains(&"TEST-plain question".to_string()));
+    assert!(!texts.iter().any(|t| t.contains("from a bot") || t.contains("from myself")), "{texts:?}");
+
+    // An @mention in a channel comes twice (app_mention and message): one turn.
+    let seq = c.next_seq(&sid);
+    let mention = fake.say(json!({ "user": "UOWNER", "channel": "C0GENERAL", "text": "<@UBOT> Reviewer TEST-check ops" }));
+    c.wait_turn_done(&sid, seq).await;
+    let st = fake.wait("the answer in the channel thread", |s| !FakeSlack::posts(s, &mention).is_empty()).await;
+    assert!(st["posts"].as_array().unwrap().iter().any(|p| p["channel"] == "C0GENERAL" && p["thread_ts"] == mention.as_str()));
+    let msgs = user_messages(&c, &sid);
+    let from_channel: Vec<&Value> = msgs.iter().filter(|m| m["text"] == "TEST-check ops").collect();
+    assert_eq!(from_channel.len(), 1);
+    assert_eq!(from_channel[0]["origin"]["channelName"], "#general");
+    let s = slack_state(&mut c, "the channel listed", |s| s["channels"][0]["id"] == "C0GENERAL").await;
+    assert_eq!(s["channels"][0]["name"], "#general");
+    // In a channel, a message without a mention counts only inside a routed thread.
+    fake.say(json!({ "user": "UOWNER", "channel": "C0GENERAL", "text": "TEST-chatter" }));
+    let seq = c.next_seq(&sid);
+    fake.say(json!({ "user": "UOWNER", "channel": "C0GENERAL", "text": "TEST-in the thread", "thread_ts": mention }));
+    c.wait_turn_done(&sid, seq).await;
+    let texts: Vec<String> = user_messages(&c, &sid).iter().map(|m| m["text"].as_str().unwrap().to_string()).collect();
+    assert!(texts.contains(&"TEST-in the thread".to_string()) && !texts.contains(&"TEST-chatter".to_string()), "{texts:?}");
+
+    // A failed turn says so in the thread and marks the message with :x:.
+    let seq = c.next_seq(&sid);
+    let failing = fake.say(json!({ "user": "UOWNER", "text": "Reviewer [fail] TEST-break" }));
+    c.wait_turn_done(&sid, seq).await;
+    let st = fake.wait("the failure post", |s| !FakeSlack::posts(s, &failing).is_empty() && s["reactions"][&failing] == json!(["x"])).await;
+    assert!(FakeSlack::posts(&st, &failing)[0].starts_with("Reviewer could not finish"));
+
+    // A turn waiting on an approval says so once; Stop then reports it.
+    let seq = c.next_seq(&sid);
+    let asking = fake.say(json!({ "user": "UOWNER", "text": "Reviewer [cmd] TEST-run it" }));
+    c.wait_event(&sid, "approval_request", seq).await;
+    fake.wait("the approval note", |s| FakeSlack::posts(s, &asking).len() == 1).await;
+    // A message that arrives meanwhile waits in the queue; Stop hands it back
+    // to its sender unread (the owner cannot edit someone else's message).
+    let waiting = fake.say(json!({ "user": "UOWNER", "text": "Reviewer TEST-after that" }));
+    c.wait_for("the Slack message queued", |m| m["op"] == "session" && m["session"]["id"] == sid.as_str() && m["session"]["pending"].as_array().is_some_and(|p| p.iter().any(|q| q["origin"]["ts"] == waiting.as_str()))).await;
+    c.send(json!({ "op": "session.interrupt", "sessionId": sid })).await;
+    c.wait_turn_done(&sid, seq).await;
+    let st = fake.wait("the stop note", |s| FakeSlack::posts(s, &asking).len() == 2 && s["reactions"][&asking] == json!(["x"])).await;
+    let notes = FakeSlack::posts(&st, &asking);
+    assert!(notes[0].starts_with("Reviewer needs your approval in Switchyard"), "{notes:?}");
+    assert_eq!(notes[1], "Reviewer was stopped in Switchyard.");
+    let st = fake.wait("the unread note", |s| !FakeSlack::posts(s, &waiting).is_empty() && s["reactions"][&waiting] == json!(["x"])).await;
+    assert_eq!(FakeSlack::posts(&st, &waiting), ["Reviewer was stopped in Switchyard before it read your message."]);
+    assert!(!user_messages(&c, &sid).iter().any(|m| m["text"] == "TEST-after that"));
+
+    // Every envelope was acknowledged.
+    let st = fake.state();
+    let envelopes = st["acks"].as_array().unwrap().len();
+    assert!(envelopes >= 10, "{envelopes} acks");
+
+    // The tokens never reach a client or a log, and their file is the owner's alone.
+    let fresh = daemon.client().await;
+    let snapshot = fresh.log[0].to_string();
+    assert_eq!(fresh.log[0]["slack"]["botToken"], "xoxb-…oken");
+    assert_eq!(fresh.log[0]["slack"]["appToken"], "xapp-…oken");
+    let everything = format!("{snapshot}{}", c.log.iter().map(Value::to_string).collect::<String>());
+    for secret in [APP_TOKEN, BOT_TOKEN, "secretAPP", "secretBOT", "TEST-ticket"] {
+        assert!(!everything.contains(secret), "{secret} reached a client");
+        assert!(!daemon.log_text().contains(secret), "{secret} reached the log");
+    }
+    let file = sb.data().join("slack.json");
+    use std::os::unix::fs::PermissionsExt;
+    assert_eq!(std::fs::metadata(&file).unwrap().permissions().mode() & 0o777, 0o600);
+    assert!(std::fs::read_to_string(&file).unwrap().contains(BOT_TOKEN));
+}
+
+#[tokio::test]
+async fn the_connection_shows_refused_tokens_and_comes_back_after_a_disconnect_or_a_drop() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-connection");
+    let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api())]);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+
+    op(&mut c, json!({ "op": "slack.tokens", "appToken": APP_TOKEN, "botToken": "xoxb-bad-TESTtoken" })).await.unwrap();
+    let s = slack_state(&mut c, "a refused bot token", |s| s["state"] == "error").await;
+    assert_eq!(s["error"], "The bot token was refused (auth.test: invalid_auth).");
+    assert_eq!(s["configured"], true);
+
+    // Replacing one token keeps the other.
+    op(&mut c, json!({ "op": "slack.tokens", "botToken": BOT_TOKEN })).await.unwrap();
+    slack_state(&mut c, "connected", |s| s["state"] == "connected").await;
+    fake.wait("one connection", |s| s["connections"] == 1 && s["opens"] == 1).await;
+
+    // Slack's `disconnect`: a new connection right away.
+    let from = c.mark();
+    fake.request("POST", "/_fake/disconnect", &json!({}));
+    fake.wait("a second connection", |s| s["connections"] == 1 && s["opens"] == 2).await;
+    c.wait_after(from, "connected again", |m| m["op"] == "slack" && m["slack"]["state"] == "connected").await;
+
+    // A dropped socket: dialled again after a short wait.
+    fake.request("POST", "/_fake/drop", &json!({}));
+    fake.wait("a third connection", |s| s["connections"] == 1 && s["opens"] == 3).await;
+
+    // Messages still arrive on the new connection.
+    op(&mut c, json!({ "op": "slack.allow", "user": "UOWNER" })).await.unwrap();
+    let ts = fake.say(json!({ "user": "UOWNER", "text": "Scout TEST-are you there?" }));
+    fake.wait("Scout's answer", |s| !FakeSlack::posts(s, &ts).is_empty()).await;
+
+    // Disconnect forgets the tokens and closes the socket.
+    op(&mut c, json!({ "op": "slack.disconnect" })).await.unwrap();
+    let s = slack_state(&mut c, "off", |s| s["state"] == "off").await;
+    assert_eq!(s["configured"], false);
+    assert_eq!(s["botToken"], "");
+    fake.wait("no connection", |s| s["connections"] == 0).await;
+    assert!(!std::fs::read_to_string(sb.data().join("slack.json")).unwrap().contains("secret"));
+}
+
+#[tokio::test]
+async fn slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_the_thread() {
+    let fake = FakeSlack::start();
+    let remote_sb = Sandbox::new("slack-far-remote");
+    let remote = remote_sb.start();
+    let sb = Sandbox::new("slack-far-hub");
+    let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api())]);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    c.send(json!({ "op": "host.add", "name": "TEST-box", "kind": "direct", "url": remote.url() })).await;
+    let hosts = c.wait_for("the remote connected", |m| m["op"] == "hosts" && m["hosts"][0]["status"] == "connected").await;
+    let host = hosts["hosts"][0]["id"].as_str().unwrap().to_string();
+    c.wait_for("the remote's models", |m| (m["op"] == "host.snapshot" || m["op"] == "models") && m["hostId"] == host.as_str() && m["models"]["codex"].as_array().is_some_and(|a| !a.is_empty())).await;
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "name": "Far", "engine": "codex", "model": MODEL, "effort": EFFORT, "host": host }, "ref": "far" })).await;
+    let far = c.wait_after(from, "Far saved", |m| m["ref"] == "far").await["agent"]["id"].as_str().unwrap().to_string();
+    connect(&mut c).await;
+    fake.say(json!({ "user": "UOWNER", "text": "hi" }));
+    slack_state(&mut c, "a request", |s| s["requests"][0]["id"] == "UOWNER").await;
+    op(&mut c, json!({ "op": "slack.allow", "user": "UOWNER" })).await.unwrap();
+
+    // Its conversation on the remote gets the message with its Slack origin...
+    let ts = fake.say(json!({ "user": "UOWNER", "text": "Far: TEST-how is the box?" }));
+    let sid = chat_of(&mut c, &far).await;
+    assert!(sid.starts_with(&format!("{host}~")), "{sid}");
+    c.wait_turn_done(&sid, 0).await;
+    let msgs = user_messages(&c, &sid);
+    assert_eq!(msgs[0]["text"], "TEST-how is the box?");
+    assert_eq!(msgs[0]["origin"]["kind"], "slack");
+    assert_eq!(msgs[0]["origin"]["threadTs"], ts.as_str());
+    assert_eq!(msgs[0]["origin"]["userName"], "TEST-Owner");
+    let input = remote_sb.turn_inputs()[0][0]["text"].as_str().unwrap().to_string();
+    assert!(input.contains("<slack from=\"TEST-Owner\" in=\"a direct message\">\nTEST-how is the box?\n</slack>"), "{input}");
+    // ...and the answer the remote's turn made is posted from the hub, in that thread.
+    let st = fake.wait("the answer in the thread", |s| !FakeSlack::posts(s, &ts).is_empty() && s["reactions"][&ts] == json!(["white_check_mark"])).await;
+    let answer = FakeSlack::posts(&st, &ts);
+    assert_eq!(answer.len(), 1);
+    assert!(answer[0].starts_with("Echo: ") && answer[0].contains("TEST-how is the box?"), "{answer:?}");
+}

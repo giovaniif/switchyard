@@ -2,13 +2,16 @@
 // and the create/edit form. Each agent has one conversation, an ordinary
 // session tagged with it (yardd's agents.rs), kept out of the sidebar: this
 // page and the Agents nav row show its state.
-import { useEffect, useMemo, useState } from "react";
-import type { Agent, AgentColor, AgentFace, Attachment, Permission } from "./protocol";
-import { hostName, hostOnline, homeOn, modelsOn, type Actions, type State, type UploadTarget } from "./store";
-import { AGENT_COLORS, AGENT_FACES, FACE_PATHS, agentStatus, conversationOf, faceOf, leadingMention, nameProblem, runsOn, scopeLabel, type AgentTone } from "./agents";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Agent, AgentColor, AgentFace, Attachment, Engine, Permission } from "./protocol";
+import { accountsOn, hostName, hostOf, hostOnline, homeOn, modelsOn, type Actions, type State, type UploadTarget } from "./store";
+import { AGENT_COLORS, AGENT_FACES, FACE_PATHS, agentHost, agentStatus, agentWhere, conversationOf, faceOf, leadingMention, moveNote, nameProblem, runsOn, scopeLabel, type AgentTone } from "./agents";
+import { DEFAULT_ACCOUNT, accountChoices, accountLabel, choiceOnEngine } from "./accounts";
 import { ENGINE_NAME, pickerEngines } from "./engines";
 import { useSeen } from "./rowState";
 import {
+  AccountPicker,
+  Cloud,
   Composer,
   EffortPicker,
   FolderPicker,
@@ -26,7 +29,7 @@ import {
 } from "./App";
 
 const PENCIL = "M4 20h4L19 9l-4-4L4 16ZM13.5 6.5l4 4";
-const MARK: Record<AgentTone, string> = { live: "working", approval: "approval", answered: "answered", ok: "done", bad: "failed", quiet: "idle" };
+const MARK: Record<AgentTone, string> = { live: "working", approval: "approval", needsYou: "approval", answered: "answered", ok: "done", bad: "failed", quiet: "idle", offline: "idle" };
 const HOST_QUESTIONS = ["What’s happening on my server?", "What changed since yesterday?", "Where is the API deployed?"];
 
 export const permissionLabel = (p: Permission) => PERMISSIONS.find((x) => x.id === p)?.label ?? p;
@@ -57,9 +60,53 @@ function useNow(every: number): number {
 /** An agent's place: its conversation, or the empty one before its first message. */
 export const openAgent = (agent: Agent, actions: Actions) => actions.go({ page: "agent", id: agent.id });
 
+/** The name of the agent's host while it cannot be reached. */
+const offlineHost = (state: State, agent: Agent): string | undefined => {
+  const host = agentHost(agent);
+  return host !== "local" && !hostOnline(state, host) ? hostName(state, host) : undefined;
+};
+
+/** "Fake Fast · Work · Low · Ask first": the account only where the engine has a choice. */
+const howItRuns = (state: State, agent: Agent) =>
+  runsOn(agent, modelsOn(state, agentHost(agent)), agent.builtin ? "Read-only" : permissionLabel(agent.permission), accountLabel(accountsOn(state, agentHost(agent)), agent));
+
+/** How it runs, after the host it runs on when that is not this one. */
+function RunsLine({ state, agent, className }: { state: State; agent: Agent; className: string }) {
+  const host = agentHost(agent);
+  const text = howItRuns(state, agent);
+  if (host === "local") return <div className={className}>{text}</div>;
+  return (
+    <div className={`${className} agent-runs-remote`} title={`Runs on ${hostName(state, host)}`}>
+      <Cloud size={12} />
+      <span>
+        {hostName(state, host)} · {text}
+      </span>
+    </div>
+  );
+}
+
+/** A note per conversation the agent left on a host it moved away from,
+ *  opening it (read-only there). Newest first. */
+export function EarlierConversations({ state, actions, agent }: { state: State; actions: Actions; agent: Agent }) {
+  const earlier = [...(agent.previous ?? [])].reverse().filter((id) => state.sessions[id]);
+  if (!earlier.length) return null;
+  return (
+    <>
+      {earlier.map((id) => (
+        <div key={id} className="note agent-earlier">
+          Earlier messages with {agent.name} are on {hostName(state, hostOf(state.sessions[id]))}.
+          <button className="btn-text note-link" onClick={() => actions.go({ page: "session", id })}>
+            Open them
+          </button>
+        </div>
+      ))}
+    </>
+  );
+}
+
 function AgentCard({ state, actions, agent, now, seenAt }: { state: State; actions: Actions; agent: Agent; now: number; seenAt(id: string): number }) {
   const chat = conversationOf(agent, state.sessions);
-  const status = agentStatus(agent, state.sessions, now, chat ? seenAt(chat.id) : Infinity);
+  const status = agentStatus(agent, state.sessions, now, chat ? seenAt(chat.id) : Infinity, offlineHost(state, agent));
   return (
     <section className="automation agent-card" aria-label={agent.name}>
       <button className="btn-quiet agent-card-head" title={`Open ${agent.name}'s conversation`} onClick={() => openAgent(agent, actions)}>
@@ -70,10 +117,10 @@ function AgentCard({ state, actions, agent, now, seenAt }: { state: State; actio
         </span>
       </button>
       {agent.about && <p className="agent-about small">{agent.about}</p>}
-      <div className="automation-when muted small">{runsOn(agent, modelsOn(state, "local"), agent.builtin ? "Read-only" : permissionLabel(agent.permission))}</div>
+      <RunsLine state={state} agent={agent} className="automation-when muted small" />
       <div className={`automation-status status-${status.tone}`} title={status.text}>
         <span className={`mark mark-${MARK[status.tone]}`} aria-hidden="true">
-          {status.tone === "approval" && <span className="mark-bang">!</span>}
+          {(status.tone === "approval" || status.tone === "needsYou") && <span className="mark-bang">!</span>}
         </span>
         <span className="automation-status-text">{status.text}</span>
       </div>
@@ -129,13 +176,22 @@ export function AgentsPage({ state, actions }: { state: State; actions: Actions 
 
 /** The agent's header in its conversation and before it: face, name, what it
  *  is for, Edit. */
-export function AgentBar({ agent, actions, children }: { agent: Agent; actions: Actions; children?: React.ReactNode }) {
+/** `host`: where the conversation shown runs, when not the agent's own host
+ *  (one it left behind when it moved). */
+export function AgentBar({ state, agent, actions, host = agentHost(agent), children }: { state: State; agent: Agent; actions: Actions; host?: string; children?: React.ReactNode }) {
   return (
     <header className="bar agent-bar">
       <MenuButton />
       <AgentAvatar agent={agent} size="sm" />
       <h1>{agent.name}</h1>
       {agent.about && <span className="muted small agent-bar-about">{agent.about}</span>}
+      {host !== "local" && (
+        <span className="muted small bar-host">
+          <Cloud size={13} />
+          {hostName(state, host)}
+          {!hostOnline(state, host) && " · offline"}
+        </span>
+      )}
       <span className="spacer" />
       {children}
       <button className="btn-text" onClick={() => actions.go({ page: "agentEdit", id: agent.id })}>
@@ -147,10 +203,13 @@ export function AgentBar({ agent, actions, children }: { agent: Agent; actions: 
 
 /** An agent's conversation before its first message: its face, what it is
  *  for, and the box. */
-export function AgentStart({ state, actions, agent }: { state: State; actions: Actions; agent: Agent }) {
+export function AgentStart({ state, actions, agent, earlier }: { state: State; actions: Actions; agent: Agent; earlier?: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const target = useMemo<UploadTarget>(() => ({}), []);
+  const host = agentHost(agent);
+  const online = hostOnline(state, host);
+  // Its files go to the host its conversation will run on.
+  const target = useMemo<UploadTarget>(() => (host === "local" ? {} : { host }), [host]);
   const send = async (text: string, attachments: Attachment[]) => {
     // A message that names another agent first goes to that one.
     const routed = leadingMention(text, state.agents);
@@ -166,10 +225,10 @@ export function AgentStart({ state, actions, agent }: { state: State; actions: A
       return false;
     }
   };
-  const where = agent.builtin ? scopeLabel(agent.scope, (h) => hostName(state, h)) : agent.cwd ? tilde(agent.cwd, homeOn(state, "local")) : "its own folder";
+  const where = agent.builtin ? scopeLabel(agent.scope, (h) => hostName(state, h)) : agentWhere(agent, (h) => hostName(state, h), tilde(agent.cwd, homeOn(state, host)));
   return (
     <div className="agent-page">
-      <AgentBar agent={agent} actions={actions} />
+      <AgentBar state={state} agent={agent} actions={actions} />
       <div className="new agent-start">
         <div className="new-inner">
           <div className="agent-start-face">
@@ -177,6 +236,7 @@ export function AgentStart({ state, actions, agent }: { state: State; actions: A
           </div>
           <h1>{agent.builtin ? "What would you like to know?" : `Message ${agent.name}`}</h1>
           {agent.about && <p className="agent-start-about muted">{agent.about}</p>}
+          {earlier}
           <Composer
             placeholder={agent.builtin ? `Ask ${agent.name} about your servers or your work` : `Message ${agent.name}`}
             rows={1}
@@ -184,17 +244,26 @@ export function AgentStart({ state, actions, agent }: { state: State; actions: A
             draft={`agent:${agent.id}`}
             target={target}
             upload={agent.builtin ? undefined : actions.upload}
-            busy={sending || !state.connected}
+            busy={sending || !online}
             onSubmit={send}
             mentions={state.agents}
             mentionHint={(other) => (other.id === agent.id ? null : `Goes to ${other.name}`)}
           >
             <span className="muted small agent-runs-chip" title="Set in the agent's settings">
-              {runsOn(agent, modelsOn(state, "local"), agent.builtin ? "Read-only" : permissionLabel(agent.permission))}
+              {howItRuns(state, agent)}
             </span>
           </Composer>
           <div className="new-chips">
             <span className="muted small">{agent.builtin ? `Reads ${where.toLowerCase()}; runs no tools` : `Works in ${where}`}</span>
+            {/* Send is disabled until its host is back; say why, as New session does. */}
+            {!online && host !== "local" && (
+              <>
+                <span className="spacer" />
+                <span className="muted small agent-start-offline" role="status">
+                  {hostName(state, host)} is offline
+                </span>
+              </>
+            )}
           </div>
           {error && (
             <div className="small automation-message" role="alert">
@@ -220,9 +289,12 @@ export function AgentStart({ state, actions, agent }: { state: State; actions: A
 export function AgentForm({ state, actions, id }: { state: State; actions: Actions; id: string }) {
   const existing = id === "new" ? undefined : state.agents.find((a) => a.id === id);
   const builtin = !!existing?.builtin;
-  const models = modelsOn(state, "local");
-  const home = homeOn(state, "local");
-  const workspace = state.workspace.local || home;
+  // Where it runs. Scout reads every host from this one and never moves.
+  const [host, setHost] = useState(() => (existing && !builtin ? agentHost(existing) : "local"));
+  const models = modelsOn(state, host);
+  const home = homeOn(state, host);
+  const workspace = state.workspace[host] || home;
+  const online = hostOnline(state, host);
   const [name, setName] = useState(existing?.name ?? "");
   const [color, setColor] = useState<AgentColor>(existing?.color ?? AGENT_COLORS[state.agents.length % AGENT_COLORS.length]);
   // A new agent's face steps differently from its colour, so the pairs vary,
@@ -235,34 +307,61 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
   const [about, setAbout] = useState(existing?.about ?? "");
   const [instructions, setInstructions] = useState(existing?.instructions ?? "");
   const [memory, setMemory] = useState(existing?.memory ?? "");
+  // The agent edits its own memory (remember, set_memory): an open form
+  // follows it until the user types there, and leaves it alone on save.
+  const liveMemory = existing?.memory ?? "";
+  const memoryBase = useRef(liveMemory);
+  useEffect(() => {
+    if (memory === memoryBase.current) setMemory(liveMemory);
+    memoryBase.current = liveMemory;
+  }, [liveMemory]);
   const [cwd, setCwd] = useState(existing?.cwd ?? "");
   const [scope, setScope] = useState(existing?.scope ?? "all");
   const [permission, setPermission] = useState<Permission>(existing?.permission ?? "ask");
   const [choice, setChoice] = useState(() =>
     existing?.model ? { engine: existing.engine, model: existing.model, effort: existing.effort } : loadChoice(models),
   );
+  const [picked, setPicked] = useState(existing?.account ?? DEFAULT_ACCOUNT);
+  // The account is the host's and the engine's: one that is not there runs on Default.
+  const accounts = accountsOn(state, host);
+  const account = accountChoices(accounts, choice.engine).some((a) => a.id === picked) ? picked : DEFAULT_ACCOUNT;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  // Models arrive after the first render; an agent with no model of its own
-  // shows the host's default until one is picked.
+  // Models arrive after the first render and differ per host. An agent with
+  // no model of its own shows the host's default until one is picked; one
+  // whose model the host does not list falls back to that default too.
   useEffect(() => {
-    if (existing?.model) return;
-    if (!models[choice.engine]?.some((m) => m.id === choice.model)) {
-      const engine = builtin ? (existing?.engine ?? "codex") : choice.engine;
-      const list = models[engine] ?? [];
-      const first = list.find((m) => m.isDefault) ?? list[0];
-      setChoice(first ? { engine, model: first.id, effort: first.defaultEffort ?? first.efforts[0] ?? "" } : loadChoice(models));
-    }
+    const listed = models[choice.engine] ?? [];
+    if (listed.some((m) => m.id === choice.model)) return;
+    if (existing?.model && !listed.length && host === agentHost(existing)) return;
+    const engine = builtin ? (existing?.engine ?? "codex") : choice.engine;
+    const list = models[engine] ?? [];
+    const first = list.find((m) => m.isDefault) ?? list[0];
+    setChoice(first ? { engine, model: first.id, effort: first.defaultEffort ?? first.efforts[0] ?? "" } : loadChoice(models));
   }, [models]);
   const engines = pickerEngines(models, choice.engine).filter((e) => !builtin || e === "codex" || e === "claude");
   const recent = useMemo(() => {
     const fromSessions = Object.values(state.sessions)
-      .filter((s) => !s.host || s.host === "local")
+      .filter((s) => hostOf(s) === host)
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .map((s) => s.repo || s.cwd);
-    return [...new Set([...readRecent("local"), ...fromSessions])].slice(0, 12);
-  }, [state.sessions]);
+    return [...new Set([...readRecent(host), ...fromSessions])].slice(0, 12);
+  }, [state.sessions, host]);
+  const pickHost = (next: string) => {
+    if (next === host) return;
+    setHost(next);
+    // A folder on one host means nothing on another.
+    setCwd("");
+  };
+  // Picking an account under another engine means running on it, as on New session.
+  const pickAccount = (engine: Engine, accountId: string) => {
+    setPicked(accountId);
+    const next = engine === choice.engine ? null : choiceOnEngine(models, engine, choice.effort);
+    if (next) setChoice(next);
+  };
+  // A typed name's problem shows by the field: the foot of the form is below the fold.
+  const nameIssue = name ? nameProblem(name, state.agents, existing?.id) : null;
   const problem = nameProblem(name, state.agents, existing?.id) ?? (!choice.model ? "Pick a model." : null);
   const save = async () => {
     setSaving(true);
@@ -274,29 +373,32 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
       face,
       about,
       instructions,
-      memory,
+      ...(!existing || memory !== memoryBase.current ? { memory } : {}),
       engine: choice.engine,
       model: choice.model,
       effort: effortFor(models[choice.engine]?.find((m) => m.id === choice.model), choice.effort),
-      ...(builtin ? { scope } : { cwd, permission }),
+      account,
+      ...(builtin ? { scope } : { cwd, permission, host }),
     });
     setSaving(false);
     if (r.error) setError(r.error);
     else actions.go({ page: "agents" });
+  };
+  const remove = async () => {
+    setError(null);
+    const r = await actions.deleteAgent(existing!.id);
+    // Its conversation on an offline host keeps it here, said in the form.
+    if (r.error) {
+      setError(r.error);
+      setConfirmDelete(false);
+    } else actions.go({ page: "agents" });
   };
   const deleteControls = existing && !builtin && (
     <div className="row agent-form-delete">
       {confirmDelete ? (
         <>
           <span className="muted small">Its conversation is deleted too.</span>
-          <button
-            type="button"
-            className="btn danger"
-            onClick={() => {
-              actions.deleteAgent(existing.id);
-              actions.go({ page: "agents" });
-            }}
-          >
+          <button type="button" className="btn danger" onClick={() => void remove()}>
             Confirm delete
           </button>
           <button type="button" className="btn-text" onClick={() => setConfirmDelete(false)}>
@@ -310,6 +412,9 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
       )}
     </div>
   );
+  const named = (h: string) => hostName(state, h);
+  const elsewhere = host !== "local" ? ` on ${named(host)}` : "";
+  const moving = builtin ? null : moveNote(existing, host, named);
   return (
     <div className="hosts automations agents">
       <header className="bar">
@@ -325,7 +430,13 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
                 Name
               </label>
               <input id="agent-name" className="field agent-name-input" value={name} maxLength={24} onChange={(e) => setName(e.target.value)} placeholder="Name it" autoFocus={!existing} />
-              <span className="muted small">{name.trim() && !nameProblem(name, state.agents, existing?.id) ? `Mention it as @${name.trim()} in any message.` : "One word, so it can be @mentioned."}</span>
+              {nameIssue ? (
+                <span className="small automation-reason" role="alert">
+                  {nameIssue}
+                </span>
+              ) : (
+                <span className="muted small">{name.trim() ? `Mention it as @${name.trim()} in any message.` : "One word, so it can be @mentioned."}</span>
+              )}
             </div>
           </div>
           <section className="agent-form-card" aria-labelledby="agent-form-look">
@@ -379,11 +490,13 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
               <h2 id="agent-form-where">Where and how</h2>
               <p className="muted small">
                 {builtin
-                  ? `Reads ${scopeLabel(scope, (h) => hostName(state, h)).toLowerCase()} for each question and answers without tools: it cannot change anything. Runs on ${ENGINE_NAME[choice.engine]} on ${hostName(state, "local")}.`
+                  ? `Reads ${scopeLabel(scope, named).toLowerCase()} for each question and answers without tools: it cannot change anything. Runs on ${ENGINE_NAME[choice.engine]} on ${named("local")}.`
                   : cwd
-                    ? `It works in ${tilde(cwd, home)}, one writer at a time.`
-                    : `It works in a folder of its own on ${hostName(state, "local")}.`}
+                    ? `It works in ${tilde(cwd, home)}${elsewhere}, one writer at a time.`
+                    : `It works in a folder of its own on ${named(host)}.`}
                 {!builtin && permission === "full" && " Full access: it runs anything without asking."}
+                {moving && ` ${moving}`}
+                {!online && host !== "local" && ` ${named(host)} is offline: changes can be saved once it is back.`}
               </p>
             </div>
             <div className="agent-form-where">
@@ -392,7 +505,8 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
                   <HostPicker state={state} value={scope} contextScope onChange={setScope} onAddHost={() => actions.go({ page: "hosts" })} />
                 ) : (
                   <>
-                    <FolderPicker host="local" home={home} workspace={workspace} value={cwd} recent={recent} dirs={state.dirs} listDirs={actions.listDirs} onChange={setCwd} placeholder="Its own folder" />
+                    <HostPicker state={state} value={host} onChange={pickHost} onAddHost={() => actions.go({ page: "hosts" })} />
+                    <FolderPicker host={host} home={home} workspace={workspace} value={cwd} recent={recent} dirs={state.dirs} listDirs={actions.listDirs} onChange={setCwd} placeholder="Its own folder" />
                     {cwd && (
                       <button className="btn-text" onClick={() => setCwd("")}>
                         Use its own folder
@@ -403,12 +517,15 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
               </div>
               <div className="automation-pickers">
                 <ModelPicker models={models} value={choice} engines={engines} onChange={setChoice} />
+                {accountChoices(accounts, choice.engine).length > 1 && (
+                  <AccountPicker state={state} host={host} engine={choice.engine} account={account} engines={engines} onPick={pickAccount} onManage={() => actions.go({ page: "hosts", host, tab: "engines" })} />
+                )}
                 <EffortPicker models={models} value={choice} onChange={(effort) => setChoice({ ...choice, effort })} />
                 {!builtin && <PermissionPicker engine={choice.engine} value={permission} onChange={setPermission} />}
               </div>
             </div>
           </section>
-          {(error || (name && problem)) && (
+          {(error || (name && problem && !nameIssue)) && (
             <div className="small automation-reason" role="alert">
               {error ?? problem}
             </div>
@@ -419,7 +536,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
             <button type="button" className="btn-text" onClick={() => actions.go({ page: "agents" })}>
               Cancel
             </button>
-            <button type="button" className="btn-primary" disabled={!!problem || saving || !state.connected || !hostOnline(state, "local")} onClick={() => void save()}>
+            <button type="button" className="btn-primary" disabled={!!problem || saving || !state.connected || !online} onClick={() => void save()}>
               {saving ? "Saving" : existing ? "Save agent" : "Create agent"}
             </button>
           </div>

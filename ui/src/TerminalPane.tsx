@@ -60,6 +60,12 @@ export function TerminalPane(props: { sessionId: string; connected: boolean; vis
   const [active, setActive] = useState<string | null>(null);
   const [selection, setSelection] = useState("");
   const [openError, setOpenError] = useState("");
+  // With no terminal on screen nothing has measured the pane, and a shell
+  // started at 80x24 prints its prompt for that width; the resize that
+  // follows makes readline redraw and leaves a cut-off copy above the real
+  // prompt. So a placeholder view fits the pane first and sends this op
+  // with its size.
+  const [pending, setPending] = useState<"term.open" | "term.new" | null>(null);
   // Terminal 1 starts by itself once; after that an empty list stays empty.
   const started = useRef(false);
   const dims = useRef({ cols: 80, rows: 24 });
@@ -85,8 +91,7 @@ export function TerminalPane(props: { sessionId: string; connected: boolean; vis
         setTabs(list);
         if (list.length === 0 && !started.current) {
           started.current = true;
-          expectNew();
-          actions.post({ op: "term.open", sessionId, ...dims.current });
+          setPending("term.open");
         }
         if (list.length > 0) started.current = true;
       } else if (msg.op === "term.listChanged") {
@@ -112,8 +117,18 @@ export function TerminalPane(props: { sessionId: string; connected: boolean; vis
 
   const newTerminal = () => {
     setOpenError("");
+    if (!shown.current.length) {
+      setPending("term.new");
+      return;
+    }
     expectNew();
     actions.post({ op: "term.new", sessionId, ...dims.current });
+  };
+  const openFitted = (cols: number, rows: number) => {
+    if (!pending) return;
+    expectNew();
+    actions.post({ op: pending, sessionId, cols, rows });
+    setPending(null);
   };
   const closeTerminal = (termId: string) => {
     const list = tabs ?? [];
@@ -201,7 +216,7 @@ export function TerminalPane(props: { sessionId: string; connected: boolean; vis
           <div><button className="btn" disabled={!connected} onClick={newTerminal}>Try again</button></div>
         </div>
       )}
-      {tabs?.length === 0 && !awaiting.current && !openError && (
+      {tabs?.length === 0 && !awaiting.current && !pending && !openError && (
         <div className="pane-body">
           <div className="muted">No terminal is open.</div>
           <div>
@@ -210,6 +225,18 @@ export function TerminalPane(props: { sessionId: string; connected: boolean; vis
             </button>
           </div>
         </div>
+      )}
+      {pending && (
+        <TermView
+          key="pending"
+          termId=""
+          connected={connected}
+          visible={visible}
+          actions={actions}
+          onSize={() => {}}
+          onReader={() => {}}
+          onOpen={openFitted}
+        />
       )}
       {(tabs ?? []).map((t) => (
         <TermView
@@ -236,6 +263,8 @@ function TermView(props: {
   onSelection?: (text: string) => void;
   onSize(cols: number, rows: number): void;
   onReader(read: RowReader | null): void;
+  /** A placeholder with no PTY yet: its first fit opens one at that size. */
+  onOpen?(cols: number, rows: number): void;
 }) {
   const { termId, connected, visible, actions } = props;
   const host = useRef<HTMLDivElement>(null);
@@ -276,7 +305,8 @@ function TermView(props: {
     let waiting = false;
     let gone = false;
     const attach = () => {
-      if (live.current.connected) live.current.actions.post({ op: "term.attach", termId, cols: term.cols, rows: term.rows });
+      if (live.current.onOpen) live.current.onOpen(term.cols, term.rows);
+      else if (live.current.connected) live.current.actions.post({ op: "term.attach", termId, cols: term.cols, rows: term.rows });
     };
     const refit = () => {
       if (gone) return;
@@ -346,11 +376,11 @@ function TermView(props: {
     });
 
     const onData = term.onData((data) => {
-      if (!exited.current) live.current.actions.post({ op: "term.input", termId, data });
+      if (!exited.current && !live.current.onOpen) live.current.actions.post({ op: "term.input", termId, data });
     });
     const onResize = term.onResize(({ cols, rows }) => {
       live.current.onSize(cols, rows);
-      if (!exited.current) live.current.actions.post({ op: "term.resize", termId, cols, rows });
+      if (!exited.current && !live.current.onOpen) live.current.actions.post({ op: "term.resize", termId, cols, rows });
     });
     const onSelect = term.onSelectionChange(() => live.current.onSelection?.(term.getSelection()));
     live.current.onReader((pick) => {
@@ -388,7 +418,7 @@ function TermView(props: {
     const back = connected && !wasConnected.current;
     wasConnected.current = connected;
     const term = termRef.current;
-    if (back && term && sized.current) actions.post({ op: "term.attach", termId, cols: term.cols, rows: term.rows });
+    if (back && term && sized.current && !props.onOpen) actions.post({ op: "term.attach", termId, cols: term.cols, rows: term.rows });
   }, [termId, connected]);
 
   useEffect(() => {

@@ -47,12 +47,13 @@ yv drive 'session:{{sid_echo}}' --steps '[{"expect":{"css":".prose h3","hasText"
 
 ### web-links-open-outside-the-thread
 Viewports: both
-A labeled web link and a bare URL open in a new tab. Local files, inline code
-and non-web destinations stay inert.
+A labeled web link and a bare URL open in a new tab. A local file link is a
+download button (see `file-links-download`); inline code and other schemes stay
+inert.
 
 ```sh
 yv api '{"op":"session.send","sessionId":"{{sid_echo}}","text":"TEST-links\n\n[Review and comment on the Claude Design prototype](https://claude.ai/artifact/example).\n\n(https://example.com/path?mode=review).\n\n[Local file](/tmp/example.txt) [Script](javascript:alert%281%29) `https://example.com/code`"}' --wait '{"op":"event","event":{"type":"turn_completed"}}'
-yv drive 'session:{{sid_echo}}' --steps '[{"expect":"role:link:Review and comment on the Claude Design prototype"},{"expect":"role:link:https://example.com/path?mode=review"},{"eval":"[...document.querySelectorAll(\".thread .prose a\")].map(a => [a.getAttribute(\"href\"), a.target, a.rel])","equals":[["https://claude.ai/artifact/example","_blank","noopener noreferrer"],["https://example.com/path?mode=review","_blank","noopener noreferrer"]]},{"expect":{"css":".thread .prose code","hasText":"Local file"}},{"expect":{"css":".thread .prose code","hasText":"Script"}},{"expect":{"css":".thread .prose code","hasText":"https://example.com/code"}},{"shot":"web-links"}]'
+yv drive 'session:{{sid_echo}}' --steps '[{"expect":"role:link:Review and comment on the Claude Design prototype"},{"expect":"role:link:https://example.com/path?mode=review"},{"eval":"[...document.querySelectorAll(\".thread .prose a\")].map(a => [a.getAttribute(\"href\"), a.target, a.rel])","equals":[["https://claude.ai/artifact/example","_blank","noopener noreferrer"],["https://example.com/path?mode=review","_blank","noopener noreferrer"]]},{"expect":{"css":".thread .prose button.file-link","hasText":"Local file"}},{"expect":{"css":".thread .prose code","hasText":"Script"}},{"expect":{"css":".thread .prose code","hasText":"https://example.com/code"}},{"shot":"web-links"}]'
 ```
 
 ### thinking-folds
@@ -216,6 +217,19 @@ yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","eff
 yv drive 'session:{{workspace_agents_mobile}}' --viewport mobile --steps '[{"expect":"css:.thread","text":"Echo: [subagent] TEST-workspace"},{"click":"role:button:Workspace"},{"expect":{"css":".workspace-tabs [aria-pressed=true]","hasText":"Terminal"}},{"click":"role:button:Subagents"},{"expect":"role:region:Session subagents","text":"TEST-survey the repo"},{"click":{"role":"button","name":"TEST-survey the repo","within":"role:region:Session subagents"}},{"expect":"role:region:Session subagents","text":"TEST-subagent report"},{"expect":"role:region:Session subagents","text":"README.md"},{"shot":"subagents"}]'
 ```
 
+### workspace-subagents-line-up
+Viewports: both
+Several subagents at once, one with a two-line task and two still running:
+each is its own card with space between cards (none overlapping), and every
+card's task, type and state and latest step start on the same left edge.
+
+```sh
+yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","effort":"medium","cwd":"{{repo}}","worktree":true,"text":"[subagents] TEST-fan out desktop"}' --wait '{"op":"created"}' --save fan_desktop=sessionId
+yv drive 'session:{{fan_desktop}}' --viewport desktop --steps '[{"click":{"css":".workspace-tabs .tab","hasText":"Subagents"}},{"expect":"css:.subagents-pane > .agent","count":3},{"expect":{"css":".subagents-pane > .agent","hasText":"running"}},{"eval":"(() => { const cards=[...document.querySelectorAll(\".subagents-pane > .agent\")].map(c=>c.getBoundingClientRect()); const lefts=[...document.querySelectorAll(\".subagents-pane .subagent-title, .subagents-pane .agent-what, .subagents-pane .subagent-meta, .subagents-pane .subagent-latest\")].map(e=>Math.round(e.getBoundingClientRect().left)); return cards.every((c,i)=>!i || c.top>=cards[i-1].bottom+4) && new Set(lefts).size===1; })()","equals":true},{"shot":"subagents-line-up"},{"click":{"role":"button","name":"TEST-Slack connector","within":"role:region:Session subagents"}},{"expect":"role:region:Session subagents","text":"TEST-subagents report: Slack done"},{"shot":"subagent-open"}]'
+yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","effort":"medium","cwd":"{{repo}}","worktree":true,"text":"[subagents] TEST-fan out mobile"}' --wait '{"op":"created"}' --save fan_mobile=sessionId
+yv drive 'session:{{fan_mobile}}' --viewport mobile --steps '[{"click":"role:button:Workspace"},{"click":{"css":".workspace-tabs .tab","hasText":"Subagents"}},{"expect":"css:.subagents-pane > .agent","count":3},{"eval":"(() => { const cards=[...document.querySelectorAll(\".subagents-pane > .agent\")].map(c=>c.getBoundingClientRect()); const lefts=[...document.querySelectorAll(\".subagents-pane .subagent-title, .subagents-pane .agent-what, .subagents-pane .subagent-meta, .subagents-pane .subagent-latest\")].map(e=>Math.round(e.getBoundingClientRect().left)); return cards.every((c,i)=>!i || c.top>=cards[i-1].bottom+4) && new Set(lefts).size===1 && document.documentElement.scrollWidth<=innerWidth; })()","equals":true},{"shot":"subagents-line-up"}]'
+```
+
 ### subagent-nests-and-expands
 A Claude subagent (the Agent tool) shows as one entry in the work log: its
 description, its type and how long it took; collapsed, its steps stay out of
@@ -248,7 +262,7 @@ yv drive 'session:{{wl}}' --viewport mobile --steps '[{"expect":"css:.thread","t
 ### pr-link-hover-card
 Viewports: both
 A GitHub PR link in an answer is a real link (a bare URL shows as
-`owner/repo#number`, as on GitHub; a local file link stays code). A mouse
+`owner/repo#number`, as on GitHub; a local file link is a download button, not a PR link). A mouse
 resting on it opens a card after a moment with the PR's title, an Open pill,
 "1 of 3 checks failed: lint", the review decision, +12 −3, the author and
 "updated 3 h ago", inside the window at 390 px too. Moving away closes it.
@@ -256,7 +270,7 @@ The PR is #4242 from the fake gh, asked through `pr.peek`.
 
 ```sh
 yv api '{"op":"session.send","sessionId":"{{sid_echo}}","text":"TEST-pr links\n\nOpened https://github.com/test-owner/test-demo-app/pull/4242. It builds on [the greeting module](https://github.com/test-owner/test-demo-app/pull/4100); see also [#4243](https://github.com/test-owner/test-demo-app/pull/4243/files) and https://github.com/test-owner/test-demo-app/pull/9999 (gone). Local [`src/greet.ts`](src/greet.ts) stays code."}' --wait '{"op":"event","event":{"type":"turn_completed"}}'
-yv drive 'session:{{sid_echo}}' --steps '[{"expect":{"css":".prose a.pr-link","hasText":"test-owner/test-demo-app#4242"}},{"expect":{"css":".prose code","hasText":"src/greet.ts"}},{"eval":"[...document.querySelectorAll(\".prose a.pr-link\")].slice(-4).map((a) => a.getAttribute(\"href\") + \" \" + a.target).join(\"|\")","equals":"https://github.com/test-owner/test-demo-app/pull/4242 _blank|https://github.com/test-owner/test-demo-app/pull/4100 _blank|https://github.com/test-owner/test-demo-app/pull/4243/files _blank|https://github.com/test-owner/test-demo-app/pull/9999 _blank"},{"hover":{"css":".prose a.pr-link","hasText":"test-owner/test-demo-app#4242"}},{"expect":"role:tooltip","text":"TEST-fix the greeting"},{"expect":"role:tooltip","text":"1 of 3 checks failed: lint"},{"expect":"role:tooltip","text":"Review required"},{"expect":"role:tooltip","text":"+12"},{"expect":"role:tooltip","text":"@test-author · updated 3 h ago"},{"expect":{"css":".pr-pill","hasText":"Open"}},{"expect":"role:tooltip","inViewport":true},{"eval":"document.documentElement.scrollWidth <= window.innerWidth","equals":true},{"shot":"pr-card"},{"hover":"css:.thread .bar h1"},{"expect":"role:tooltip","visible":false}]'
+yv drive 'session:{{sid_echo}}' --steps '[{"expect":{"css":".prose a.pr-link","hasText":"test-owner/test-demo-app#4242"}},{"expect":{"css":".prose button.file-link","hasText":"src/greet.ts"}},{"eval":"[...document.querySelectorAll(\".prose a.pr-link\")].slice(-4).map((a) => a.getAttribute(\"href\") + \" \" + a.target).join(\"|\")","equals":"https://github.com/test-owner/test-demo-app/pull/4242 _blank|https://github.com/test-owner/test-demo-app/pull/4100 _blank|https://github.com/test-owner/test-demo-app/pull/4243/files _blank|https://github.com/test-owner/test-demo-app/pull/9999 _blank"},{"hover":{"css":".prose a.pr-link","hasText":"test-owner/test-demo-app#4242"}},{"expect":"role:tooltip","text":"TEST-fix the greeting"},{"expect":"role:tooltip","text":"1 of 3 checks failed: lint"},{"expect":"role:tooltip","text":"Review required"},{"expect":"role:tooltip","text":"+12"},{"expect":"role:tooltip","text":"@test-author · updated 3 h ago"},{"expect":{"css":".pr-pill","hasText":"Open"}},{"expect":"role:tooltip","inViewport":true},{"eval":"document.documentElement.scrollWidth <= window.innerWidth","equals":true},{"shot":"pr-card"},{"hover":"css:.thread .bar h1"},{"expect":"role:tooltip","visible":false}]'
 ```
 
 ### pr-link-card-states
@@ -293,8 +307,8 @@ yv drive 'session:{{sid_echo}}' --viewport mobile --steps '[{"eval":"document.ad
 
 ### links-inside-bold-text
 Viewports: both
-Bold recommendations keep their link labels, open the correct destinations, and
-keep literal code and non-web destinations inert.
+Bold recommendations keep their link labels, open the correct destinations, turn
+a local file into a download button, and keep literal code and other schemes inert.
 
 ```sh
 yv api '{"op":"session.send","sessionId":"{{sid_echo}}","text":"TEST-bold links\n\n**Merge [TEST change #4242](https://github.com/test-owner/test-demo-app/pull/4242) now.**\n\n**Read [the review guide](https://example.com/guide), or run `check --links`.**\n\n**Keep [Local notes](/tmp/notes.txt), [Script](javascript:alert%281%29), and `[literal](https://example.com/literal)` inert.**"}' --wait '{"op":"event","event":{"type":"turn_completed"}}'
@@ -303,7 +317,7 @@ yv drive 'session:{{sid_echo}}' --steps '[
   {"expect":{"css":".prose strong a","hasText":"the review guide"}},
   {"eval":"[...document.querySelectorAll(\".prose strong a\")].map(a => [a.textContent, a.getAttribute(\"href\"), a.target])","equals":[["TEST change #4242","https://github.com/test-owner/test-demo-app/pull/4242","_blank"],["the review guide","https://example.com/guide","_blank"]]},
   {"expect":{"css":".prose strong code","hasText":"check --links"}},
-  {"expect":{"css":".prose strong code","hasText":"Local notes"}},
+  {"expect":{"css":".prose strong button.file-link","hasText":"Local notes"}},
   {"expect":{"css":".prose strong code","hasText":"Script"}},
   {"expect":{"css":".prose strong code","hasText":"[literal](https://example.com/literal)"}},
   {"shot":"bold-links"},
@@ -311,6 +325,94 @@ yv drive 'session:{{sid_echo}}' --steps '[
   {"click":"role:link:the review guide"},
   {"eval":"window.followedLink","equals":"https://example.com/guide"}
 ]'
+```
+
+### file-links-download
+Viewports: both
+A file the agent links opens in the workspace from the session's host, whatever
+dialect the link is in: a path relative to the session's folder with a line
+number, ChatGPT's `sandbox:/mnt/data/…`, an absolute path. Its Download button
+saves the bytes as a file, never as a page (an agent's HTML shows as source
+and does not run). A missing file says so in the view, and the page stays put.
+
+```sh
+printf 'org,domain\n1,example.com\n' > "$(v plain)/TEST-report.csv"
+printf '<script>window.top.__pwned=1</script>' > "$(v plain)/TEST-page.html"
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-files\n\n- [TEST report](TEST-report.csv:2)\n- [TEST sandbox copy](sandbox:/mnt/data/TEST-report.csv)\n- [TEST absolute]({{plain}}/TEST-report.csv)\n- [TEST page](TEST-page.html#L1)\n- [TEST missing](TEST-gone.csv)"}' --wait '{"op":"created"}' --save files_sid=sessionId
+yv drive 'session:{{files_sid}}' --steps '[
+  {"eval":"(() => { window.__dl = []; const click = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dl.push(fetch(this.href).then((r) => r.blob()).then(async (b) => [this.download, b.type, await b.text()])); return click.call(this); }; return true; })()","equals":true},
+  {"click":{"css":".prose button.file-link","hasText":"TEST report"}},
+  {"expect":{"css":".file-view .file-name","hasText":"TEST-report.csv"}},
+  {"expect":{"css":".file-view .file-meta","hasText":"CSV · 1 row · 2 columns"}},
+  {"expect":{"css":".file-table th","hasText":"domain"}},
+  {"click":{"css":".file-view button.file-download"}},
+  {"wait":1000},
+  {"eval":"Promise.all(window.__dl)","equals":[["TEST-report.csv","application/octet-stream","org,domain\n1,example.com\n"]]},
+  {"shot":"file-links"}
+]'
+yv drive 'session:{{files_sid}}' --steps '[{"click":{"css":".prose button.file-link","hasText":"TEST sandbox copy"}},{"expect":{"css":".file-view .file-meta","hasText":"1 row"}},{"expect":{"css":".file-view .file-path","hasText":"TEST-plain-folder/TEST-report.csv"}}]'
+yv drive 'session:{{files_sid}}' --steps '[{"click":{"css":".prose button.file-link","hasText":"TEST absolute"}},{"expect":{"css":".file-view .file-meta","hasText":"1 row"}}]'
+yv drive 'session:{{files_sid}}' --steps '[
+  {"eval":"(() => { window.__dl = []; const click = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dl.push(fetch(this.href).then((r) => r.blob()).then(async (b) => [this.download, b.type, await b.text()])); return click.call(this); }; return true; })()","equals":true},
+  {"click":{"css":".prose button.file-link","hasText":"TEST page"}},
+  {"expect":{"css":".file-line-hit","hasText":"<script>window.top.__pwned=1</script>"}},
+  {"click":{"css":".file-view button.file-download"}},
+  {"wait":1000},
+  {"eval":"Promise.all(window.__dl)","equals":[["TEST-page.html","application/octet-stream","<script>window.top.__pwned=1</script>"]]},
+  {"eval":"window.__pwned === undefined","equals":true}
+]'
+# The refusal is the thing proven here, so its error reply is allowed.
+yv drive 'session:{{files_sid}}' --allow-errors --steps '[
+  {"click":{"css":".prose button.file-link","hasText":"TEST missing"}},
+  {"expect":{"css":".file-view .file-empty[role=alert]","hasText":"TEST-gone.csv was not found"}},
+  {"expect":{"role":"button","name":"Try again","exact":true}},
+  {"eval":"location.hash.startsWith(\"#/s/\")","equals":true},
+  {"shot":"file-link-missing"}
+]'
+```
+
+### file-viewer-kinds
+Viewports: both
+The workspace's file view fits the file: Markdown as a document (heading sizes,
+quotes, links that open files beside it), a CSV as a grid with its row and
+column count and numbers aligned right, an image on a checkerboard, code with
+line numbers and the linked line marked, and anything else as "No preview"
+with Download. The default workspace keeps its three tabs; the file's tab
+closes with its ×.
+
+```sh
+mkdir -p "$(v plain)/notes"
+printf '# TEST doc\n\nIntro.\n\n## TEST part\n\n> TEST quoted note\n\nSee [TEST nested](notes/TEST-nested.md).\n' > "$(v plain)/TEST-doc.md"
+printf '# TEST nested doc\n' > "$(v plain)/notes/TEST-nested.md"
+printf 'name,"users, total",growth\nAtlas,"1,618",4.5%%\n"Ember, Co.",386,-2%%\n' > "$(v plain)/TEST-grid.csv"
+printf 'one\ntwo\nthree\nfour\n' > "$(v plain)/TEST-code.ts"
+printf 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' | base64 -d > "$(v plain)/TEST-dot.png"
+printf 'PK\003\004\000\001\002' > "$(v plain)/TEST-bundle.zip"
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-kinds\n\n- [TEST doc](TEST-doc.md)\n- [TEST grid](TEST-grid.csv)\n- [TEST code](TEST-code.ts:3)\n- [TEST dot](TEST-dot.png)\n- [TEST bundle](TEST-bundle.zip)"}' --wait '{"op":"created"}' --save kinds_sid=sessionId
+yv drive 'session:{{kinds_sid}}' --steps '[
+  {"expect":"css:.workspace-tabs .file-tab","visible":false},
+  {"click":{"css":".prose button.file-link","hasText":"TEST doc"}},
+  {"expect":{"css":".file-doc h3[data-level=\"1\"]","hasText":"TEST doc"}},
+  {"expect":{"css":".file-doc h3[data-level=\"2\"]","hasText":"TEST part"}},
+  {"expect":{"css":".file-doc blockquote","hasText":"TEST quoted note"}},
+  {"expect":{"css":".file-view .file-meta","hasText":"Markdown"}},
+  {"shot":"markdown"},
+  {"click":{"css":".file-doc button.file-link","hasText":"TEST nested"}},
+  {"expect":{"css":".file-doc h3","hasText":"TEST nested doc"}},
+  {"expect":{"css":".file-view .file-path","hasText":"notes/TEST-nested.md"}},
+  {"click":"role:button:Close TEST-nested.md"},
+  {"expect":"css:.workspace-tabs .file-tab","visible":false}
+]'
+yv drive 'session:{{kinds_sid}}' --steps '[
+  {"click":{"css":".prose button.file-link","hasText":"TEST grid"}},
+  {"expect":{"css":".file-view .file-meta","hasText":"CSV · 2 rows · 3 columns"}},
+  {"eval":"[...document.querySelectorAll(\".file-table thead th\")].map((th) => th.textContent)","equals":["","name","users, total","growth"]},
+  {"eval":"[...document.querySelectorAll(\".file-table tbody tr:nth-child(2) td\")].map((td) => [td.textContent, td.className])","equals":[["2","row-num"],["Ember, Co.",""],["386","num"],["-2%","num"]]},
+  {"shot":"csv"}
+]'
+yv drive 'session:{{kinds_sid}}' --steps '[{"click":{"css":".prose button.file-link","hasText":"TEST code"}},{"expect":{"css":".file-view .file-meta","hasText":"4 lines"}},{"expect":{"css":".file-line-hit","hasText":"three"}},{"expect":"css:.file-line","count":4},{"shot":"code"}]'
+yv drive 'session:{{kinds_sid}}' --steps '[{"click":{"css":".prose button.file-link","hasText":"TEST dot"}},{"expect":"css:.file-image img"},{"eval":"new Promise((done) => { const img = document.querySelector(\".file-image img\"); const check = () => img.complete ? done([img.naturalWidth, img.src.startsWith(\"blob:\")]) : setTimeout(check, 50); check(); })","equals":[1,true]}]'
+yv drive 'session:{{kinds_sid}}' --steps '[{"click":{"css":".prose button.file-link","hasText":"TEST bundle"}},{"expect":{"css":".file-view .file-empty","hasText":"No preview for this file"}},{"expect":{"css":".file-view button.file-download"},"enabled":true},{"shot":"no-preview"}]'
 ```
 
 ### numbered-steps-across-code-blocks

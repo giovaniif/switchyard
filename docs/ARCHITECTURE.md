@@ -54,7 +54,7 @@ Every engine is normalized to one event list per session. The UI replays it on o
 
 | Event | Meaning |
 |---|---|
-| `user_message` | My prompt, with any attachments' details |
+| `user_message` | My prompt, with any attachments' details; a message I did not type carries its `origin` (see Agents) |
 | `turn_started`, `turn_completed` | Turn boundaries, with yardd's clock in `at` (ms) |
 | `assistant_delta`, `assistant_message` | Streamed text, then the final text |
 | `reasoning_delta`, `reasoning` | Thinking: Claude's summarized thinking (`--thinking-display summarized`), Codex's reasoning summary (parts become paragraphs) |
@@ -204,7 +204,7 @@ Scheduled work, built into yardd (`crates/yardd/src/automations.rs`, UI in `ui/s
 - **Scheduler:** one task ticks every 15 s (`YARD_AUTOMATION_TICK_MS` for tests). An enabled automation whose `nextRun` has passed fires, and `nextRun` moves to the next slot after now before it runs. A run missed while yardd was down therefore fires once, not once per missed slot. Saving a changed schedule or window, clearing a window, or enabling recomputes `nextRun`; disabling clears it. A windowed interval jumps to the next allowed window when outside; saving at 14:00 yields 21:00, saving at 23:10 yields 00:00 for hourly 21:00–09:00. An overdue windowed run fires once only if now is inside; outside it only advances and broadcasts/persists `nextRun`, without a session or skip record.
 - **A run** is `session.create` with a worktree, `permission` and the title `<name> · YYYY-MM-DD HH:MM` (`<name> <title> · …` when `automation.run` carries a `title`, e.g. `Loop verify #161 · 2026-11-17 04:38`); the session's `Meta.automation` is the automation's id (set when the session is inserted, so the first broadcast already has it). Before cutting the worktree yardd runs `git fetch origin` (60 s limit, no credential prompt; a failure only logs). The base is the chosen branch or the repository's default (`origin/HEAD`, else main or master), taken from `origin/<branch>` when that exists. A folder that is not a repository with commits runs in place, one at a time.
 - **Skips** (scheduled runs only; "Run now" starts one regardless of the window too): the previous run is still going (a session with this `automation` that is running, waiting for approval or queued), or the engine's usage is above a limit. Claude reports fractions, Codex percentages; a window that already reset is treated as unknown, like the old loop budget check. The outcome is saved as `lastRun` (`started`, `skipped` with a reason, or `failed` with the error).
-- **Auto-archive:** when a run's first turn ends, yardd archives it unless it is pinned. Later turns (someone reopened it) do not re-archive. Pinning an archived session unarchives it, so pinning a run brings it back to the sidebar. The sidebar leaves out every unpinned session with `automation` set; a clock row, "Automations", opens the page, with a dot while a run works.
+- **Auto-archive:** when a run's first turn ends, yardd archives it unless it is pinned. Later turns (someone reopened it) do not re-archive. Pinning an archived session unarchives it, so pinning a run brings it back to the sidebar. The sidebar leaves out every unpinned session with `automation` set; a clock row, "Automations", opens the page, with a green dot while a run works and an amber one ("A run needs approval", from `runsAttention()`) while a run waits for approval, which outranks working: the run is not in the sidebar, so this dot is the only sign there that it waits for the user.
 - **Ops:** `automation.list`, `automation.save { automation }` (an `id` edits; only the fields sent change, so a switch sends `{ id, enabled }` and keeps its window; `window: null` clears it; answers `automation.saved`), `automation.delete { id }` (its runs stay as ordinary sessions: `automation` is cleared), `automation.run { id, force?, prompt?, title? }` (answers `automation.ran { outcome, sessionId, reason }`; `prompt` replaces the saved prompt for that run only, trimmed, non-empty, at most 200 KB; `title` is one line of at most 80 characters put after the name; the saved automation does not change). Every change broadcasts `automations`, and the snapshot carries the list.
 - **Per host:** each host runs its own automations. The four ops route by `host` like `session.create`; a remote's `automations` message gets a `hostId`, and its snapshot reaches the UI as `host.snapshot.automations`. Session ids in a run's reply carry the `<hostId>~` prefix like any session id. The page groups runs by host and the automation id.
 - **The page:** a grid of small cards (`auto-fill`, at least 280 px; one column below 700 px), under a heading per host when more than one host has automations. A card shows only what reads at a glance: the name (a cloud when remote), the schedule in words with the next run, the Enabled switch, and one status line from `cardStatus()`: a working run (turning mark, elapsed time; it opens the run), else the last run (`Last: 22m 33s · 1 h ago`, or Failed/Stopped), or a skip or failure to start with yardd's reason cut to one line (amber or red; the whole reason in the tooltip). Below it a strip of the last ten runs as marks, oldest left, each opening its session with time, duration and outcome in its tooltip and label; a run is named by its start time (`runTime()`: `04:38`, `Mon 03:38`), never by its title, which only repeats the automation's name; what a title adds after the name is kept (`runLabel()`: `04:38 #161` for a `Loop verify #161 · …` run). The marks are the sidebar's (`.mark-*`) plus a filled dot for done, a square for failed and an amber ring for a skip, so they differ by shape too. The footer's icon buttons: Run now, Runs (every run, newest first, with how long it took and a pin, the way a run goes back to the sidebar) and Edit. The labels are pure functions in `automations.ts`; windowed schedules read "Every hour · 21:00–09:00", with e.g. ", Mon–Fri" for start days. The interval form adds an optional "Only between" pair of time pickers and day chips; no selected chips means every day. Next reads yardd's real next slot. The form reuses the new-session host, folder, branch, model and permission pickers.
@@ -230,7 +230,7 @@ Scheduled work, built into yardd (`crates/yardd/src/automations.rs`, UI in `ui/s
   is granted to the loopback page.
 
 - Each session row has a menu (the … button or right-click) with Rename, Pin, Move to group, Remove from group, Archive or Restore, and Delete. `session.rename { sessionId, title, ref }` stores a trimmed, single-line title of up to 60 characters and answers with `session.renamed { ref }`. The title appears on the same session and worktree in every window. `session.update { pinned?, archived?, group? }` stores the flags and group name in the session's metadata. These changes survive restarts and route through the hub for remote sessions. Archiving unpins. `group` is a trimmed name of up to 60 characters. Null or blank clears it, and leaving the field out keeps it.
-- **Session names** (`crates/yardd/src/naming.rs`). A session starts titled with its task's first line (60 characters). After its first completed turn, and again after its third, yardd names it from the conversation: the task plus the latest messages (each cut to 900 characters, 6,000 bytes in all), with instructions for a 3–7 word title. The model is Codex `gpt-5.6-luna` at effort low, else Claude Haiku (`claude-haiku-5-5`) when Codex is not listed or its turn fails, each in a private tool-less thread on the Default account through Switchy's `switchy-` plumbing (Codex: ephemeral, read-only, approvals never; Claude: a fresh restricted sidecar), never saved or shown. This spends the plans a little, a few hundred tokens per name. `YARD_NAMING_CODEX_MODEL` and `YARD_NAMING_CLAUDE_MODEL` pick other models (a model the host does not list is skipped); `YARD_SESSION_NAMES=off` turns naming off (the test harness and `yv iso` with fake engines default to off, since naming adds engine turns; the sidebar map turns it on). One session is named at a time, each try limited to 60 s. The answer is cleaned (first line; quotes, markdown, a `Title:` prefix and a trailing period dropped; at most 12 words, cut at a word to 60 characters); when nothing usable comes back the title stays. OpenCode's free models were tried first and dropped: their anonymous free tier answered "Free usage limit reached" and OpenCode retries that forever. `Meta.titleSource` says where the title came from: absent (first line), `auto`, or `user`. `session.rename` sets `user`, and a `user` title is never replaced, even when the model answers after the rename. Automation runs (their `Loop <kind> · …` titles are looked up by the loops) and hand-offs (`parent`) are never named.
+- **Session names** (`crates/yardd/src/naming.rs`). A session starts titled with its task's first line (60 characters). Right after `session.create` sends the task, yardd names it from the task alone, so a long first turn no longer shows a fragment or a bare link in the sidebar. After its first completed turn, and again after its third, it names it again from the conversation; a session never named yet (one from before naming, or whose every try failed) is named after whichever turn it completes next. Each naming reads the task plus the latest messages (each cut to 900 characters, 6,000 bytes in all), with instructions for a 3–7 word title. The model is Codex `gpt-5.6-luna` at effort low, else Claude Haiku (`claude-haiku-5-5`) when Codex is not listed or its turn fails, each in a private tool-less thread on the Default account through Switchy's `switchy-` plumbing (Codex: ephemeral, read-only, approvals never; Claude: a fresh restricted sidecar), never saved or shown. This spends the plans a little, a few hundred tokens per name. `YARD_NAMING_CODEX_MODEL` and `YARD_NAMING_CLAUDE_MODEL` pick other models (a model the host does not list is skipped); `YARD_SESSION_NAMES=off` turns naming off (the test harness and `yv iso` with fake engines default to off, since naming adds engine turns; the sidebar map turns it on). One session is named at a time, each try limited to 60 s. The answer is cleaned (first line; quotes, markdown, a `Title:` prefix and a trailing period dropped; at most 12 words, cut at a word to 60 characters); when nothing usable comes back the title stays. OpenCode's free models were tried first and dropped: their anonymous free tier answered "Free usage limit reached" and OpenCode retries that forever. `Meta.titleSource` says where the title came from: absent (first line), `auto`, or `user`. `session.rename` sets `user`, and a `user` title is never replaced, even when the model answers after the rename. Automation runs (their `Loop <kind> · …` titles are looked up by the loops) and hand-offs (`parent`) are never named.
 - **Drag and drop** (native HTML5, no library): a row dragged onto a group (its header or rows) moves into it, onto the ungrouped Sessions rows leaves its group, onto Pinned pins it. A group or Sessions drop also unpins, since those sections only show unpinned sessions. `dropUpdate` in `ui/src/sidebarDrop.ts` turns a drop into one `session.update { pinned?, group? }`, or nothing when the session is already there; such a section refuses the drop, so the cursor says no and nothing lights up. The dragged row dims; the section under the pointer is highlighted; a collapsed group opens after 600 ms over it; with no ungrouped rows a "Drop here to remove from group" slot appears while dragging; Escape cancels (the browser's own). The drag carries the session id as `application/x-yard-session`. Archived rows and rows on an unreachable host are not draggable, like the menu. No reordering: order comes from creation and activity and is not stored. Touch has no HTML5 drag, so in the phone drawer (below 700 px) rows are not draggable and the … menu is the way; it is also the keyboard path. The Mac app turns off Tauri's own drop handler (`disable_drag_drop_handler`), which is what lets drags inside the page work.
 - Groups have no record of their own: a group exists while a session names it. The sidebar lists Pinned, then ungrouped sessions (creation order), then one collapsible section per group (sorted by name, newest activity first inside; `sidebarLayout` in `store.ts`). Pinned and archived sessions are not shown inside groups. A group header shows name, count and chevron; its menu renames or ungroups every session that carries the name, archived ones included. Which groups are collapsed is per browser (`yard.groups.collapsed` in localStorage).
 - **Mark as unread/read** in a session row’s menu persists per browser in `yard.seen` (`-1` is an explicit unread mark). An unread chat gets a blue dot, bold title and Unread label. Opening it deliberately or choosing Mark as read clears it; reloading an already open chat preserves the explicit mark. Running, approval, queued and offline states keep their priority. Other windows follow through `storage`.
@@ -265,7 +265,7 @@ Scheduled work, built into yardd (`crates/yardd/src/automations.rs`, UI in `ui/s
 More than one login per engine on a host, for example a personal and a company Claude Code subscription.
 
 - Each engine has a **Default** account: the login the CLI already has, run with yardd's own environment, unchanged. Added accounts (`account.add { engine, name, host? }`) each get a folder `<data dir>/accounts/<id>/`, used as `CLAUDE_CONFIG_DIR` for Claude Code (the sidecar, `claude auth status` and `claude auth login`), as `CODEX_HOME` for Codex (that account's app-server), as `GROK_HOME` for Grok (its agent, `grok models`, `grok login`) and as `XDG_DATA_HOME` for OpenCode (its logins and sessions; its config stays the user's). OpenCode has no variable of its own for this, so commands its agent runs see the moved data folder too. These variables are documented by their CLIs (XDG by the spec OpenCode follows); Switchyard never reads what is in the folders. Names are unique per engine (case-insensitive) and at most 40 plain characters.
-- They are saved in `accounts.json` next to `hosts.json`, per host, and listed in the `snapshot` and the `accounts` broadcast. `account.remove { id, host? }` cancels a login in progress, stops the account's Codex app-server, and deletes the folder, and with it the login. It is refused while any session (archived ones too) uses the account.
+- They are saved in `accounts.json` next to `hosts.json`, per host, and listed in the `snapshot` and the `accounts` broadcast. `account.remove { id, host? }` cancels a login in progress, stops the account's Codex app-server, and deletes the folder, and with it the login. It is refused while any session (archived ones too) uses the account. An agent keeps its own `account` (picked in its form); changing it moves its conversation to a fresh context on that login (see Agents).
 - `engines.status` answers `{ engines: { claude, codex, opencode, grok, gemini }, accounts: { <id>: state } }`: Default under `engines`, the added ones by id. Adding or removing an account triggers a fresh answer.
 - `session.create` takes `account` (an id of that engine; Default when left out) and checks it. It is saved in the session's metadata (`account`, `default` for older rows), so resume after a restart and every later turn use the same account: the Claude sidecar is started with the account's `CLAUDE_CONFIG_DIR`, and the session's Codex thread lives on that account's app-server (a thread is only known to the `CODEX_HOME` that made it). **The account cannot be changed mid-session**; start a new session instead.
 - A hand-off starts a session on another engine, so the source's account does not carry over: it runs on the target engine's Default unless `session.handoff` names an `account` of that engine (the UI does not offer one yet).
@@ -308,6 +308,8 @@ Files and images go with a prompt, on the new-session page and in the reply box:
 - **Codex:** the text gets an "Attached files:" list of absolute paths; each image also goes as a `{ type: "localImage", path }` item on `turn/start` (the `UserInput` shape of codex-cli 0.164, from `codex app-server generate-ts`).
 - **Claude:** yardd sends the sidecar `{ type: "user", text, attachments }`. The sidecar (`message.ts`) puts each image first as a base64 image block, then one text block with the same path list. Images over 3.75 MB (5 MB of base64, the API's limit) are named by path only.
 - **Thumbnails** in the thread come from `attach.get { ref, sessionId, id }` -> `attach.data { sessionId, id, mime, data }`, routed by session like any session op, so they work for remote sessions. yardd serves only attachments that the session's own prompts carry. Replies with a `ref` skip the reducer.
+- **File links** in an answer open the file in the workspace. Agents write them in every dialect: an absolute path, one relative to the session's folder, `~/…`, `file:///…`, ChatGPT's `sandbox:/mnt/data/…` (read from the session's folder by name), often with a position (`a.ts:42`, `a.ts#L42-L50`). `ui/src/fileLinks.ts` decides which link destinations are files (any other scheme stays inert); clicking one sends `file.get { ref, sessionId, path }`, routed by session, and yardd (`crates/yardd/src/files.rs`) answers `file.data { sessionId, path, name, data | error }` with the first existing file the text can mean. It refuses folders and anything over the 10 MB upload cap, which is what fits across a remote host's link. An older host answers "unknown op", shown as an older Switchyard.
+- **The file view** (`ui/src/FileView.tsx`, logic in `ui/src/filePreview.ts`) is a fourth workspace tab that exists only while a file is open (its × closes it; the default workspace keeps its three tabs). On a phone the workspace covers the conversation as usual. The header shows the name, what it is ("CSV · 92 rows · 4 columns · 9 KB"), the path with `~` for home, Reload and Download. Markdown renders with the thread's renderer, headings sized by level, and its links open relative to the file. CSV/TSV is a grid (RFC 4180 quotes, `;` sniffed, sticky header and row numbers, number columns right-aligned, first 1,000 rows). PNG/JPEG/GIF/WebP show on a checkerboard (SVG is left out: it can carry script). Other UTF-8 text shows with line numbers, the linked line marked and scrolled to. Binary or over 2 MB: "No preview" and Download. Download saves the bytes already read as `application/octet-stream` through a `download` link, never opens them, so an agent's HTML can't run on yardd's origin. The Mac app's `on_download` lets WebKit save to ~/Downloads and shows the file in Finder; without a handler wry cancels every download. Where a session has no workspace (an agent with no folder), a file link downloads directly.
 - Hand-off briefs list each prompt's attachments by name and path.
 - The desktop window disables Tauri's own drop handler so the page gets file drops; a drop outside the composer is ignored instead of opening the file.
 - Not built: removing attachment files when their session is deleted.
@@ -352,7 +354,7 @@ The right pane has a Pull request tab.
 - It shows the branch's PR: state, base and head, review decision, checks and review threads, unresolved first. It loads when first opened, refreshes when a turn ends, and polls every 60 s while visible.
 - **Send to session** turns a review thread into a normal prompt quoting the comment with its file and line.
 - **Review with another engine** starts a new session in the same folder on Codex for Claude work, Claude for anything else (or the first engine with models), asking for a review of `git diff <base>...HEAD` and no file changes. The prompt leaves out the PR title and comments, because they are untrusted text.
-- **Hover cards on PR links.** A `https://github.com/<owner>/<repo>/pull/<n>` link in an answer (a Markdown link, or a bare URL shown as `owner/repo#n`) is the one link the thread renders as a real link (new tab); other links still show only their label. A mouse resting on it for 350 ms, or keyboard focus, opens a card: title, Open / Draft / Merged / Closed, checks ("1 of 3 checks failed: lint"), review decision, +/− lines, author, "updated 3 h ago". A touch just follows the link. The card is fixed on `document.body`, flips above the link when there is no room below, stays inside the window, and closes on leaving link and card, Escape, scroll or resize.
+- **Hover cards on PR links.** A `https://github.com/<owner>/<repo>/pull/<n>` link in an answer (a Markdown link, or a bare URL shown as `owner/repo#n`) is a real link (new tab), like other web links; a file link opens the file view (above), and any other link shows only its label. A mouse resting on it for 350 ms, or keyboard focus, opens a card: title, Open / Draft / Merged / Closed, checks ("1 of 3 checks failed: lint"), review decision, +/− lines, author, "updated 3 h ago". A touch just follows the link. The card is fixed on `document.body`, flips above the link when there is no room below, stays inside the window, and closes on leaving link and card, Escape, scroll or resize.
   - `pr.peek { sessionId, url, ref }` answers `{ op: "pr.peek", sessionId, ref, url, pr }` or `{ …, error }` to the asking client only. It carries `sessionId` so the hub routes it to the session's host, which runs `gh pr view <url> --json …` with its own login. yardd accepts only that URL shape (a tab such as `/files`, an anchor or a query is stripped) and rebuilds it from checked parts before gh sees it, so agent text never becomes a flag.
   - yardd keeps each answer per URL for 60 s (a failure for 10 s) and runs one gh for concurrent asks of the same URL; the UI keeps the same per host and URL (`ui/src/prPeek.ts`), so hovering down a list of links costs one gh per PR a minute. An older host answers "unknown op", shown in the card as an older Switchyard.
 - Not built: creating a PR, pushing, replying to or resolving threads.
@@ -478,9 +480,15 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   folder, `<data dir>/agents/<id>/`), `permission` (Ask first unless the user
   picks another; Full access only when picked), `instructions` (who it is:
   Orca's SOUL.md), `memory` (what to keep in mind: MEMORY.md), `chat` (its
-  conversation's session id, made with its first message). Agents live on the
-  hub and run on this host; a remote yardd's own `agents` broadcast is
-  dropped by the hub, as is the `agent` tag of a remote's sessions in the UI.
+  conversation's session id, made with its first message; `<hostId>~<id>`
+  for one on a remote), `host` (`local`, or a remote host's id; Scout's is
+  always `local`), `previous` (conversations it left on a host it moved
+  away from) and `seed` (what its next conversation starts from after a
+  move; never sent to the UI). The record always lives on the hub; a remote
+  yardd's own `agents` broadcast is dropped by the hub. The UI knows a
+  remote session as an agent's by id (`chat` or `previous`), not by the
+  remote's `agent` tag, which may name one of the remote's own; a local
+  session tagged with an agent the window does not know is an ordinary one.
 - **Ops:** `agent.list`, `agent.save { agent }` (an `id` edits; only the fields
   sent change; answers `agent.saved`), `agent.delete { id }` (deletes its
   conversation too, after a confirm in the UI; refused for Scout),
@@ -488,8 +496,8 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   `agents`; the snapshot carries the list.
 - **The one conversation.** Every message to an agent goes into its
   conversation, queued while a turn runs (`sessions::send_message`): from its
-  page, from an `@mention` in any message box, and later from other agents
-  and Slack. The first message makes it (a `session.create` in the agent's
+  page, from an `@mention` in any message box, from other agents
+  (`message_agent`) and from Slack (see Slack below). The first message makes it (a `session.create` in the agent's
   folder tagged `Meta.agent`); yardd answers `created { sessionId, ref }` as
   soon as it is known. In the agent's own folder it does not hold the folder;
   in a folder the user chose it runs in place, one writer at a time.
@@ -501,12 +509,49 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   the engine reported a full context (an `error` mentioning the context
   window, prompt length or compaction sets `Meta.fresh_context`), the engine
   could not continue the thread (a send that fails, such as a lost thread,
-  is retried once this way), or the agent's engine, model, account or folder
-  changed in Edit (`agent.save` moves the conversation's metadata with it and
+  is retried once this way), or the agent's engine, model, account ("its
+  account changed": a thread lives on the old login's app-server or config
+  dir) or folder changed in Edit (`agent.save` moves the conversation's metadata with it and
   refuses while a turn runs). Changed instructions, memory, name or
   description keep the thread and reach the agent with its next message
   (`<notes_changed>`, `Meta.notes_changed`); effort and permission apply from
   the next turn. The user sees one continuous thread.
+- **On a remote host.** An agent whose `host` is a remote runs its one
+  conversation as a session on that host, in its own folder there
+  (`<remote data dir>/agents/<id>/`, made with the first message) or a folder
+  picked from that host's dirs. The hub hands the host a copy of the record
+  (`agent.hosted.save`, with `hosted: true`; kept in the host's
+  `agents.json`, never listed, mentioned or edited there), so the host's own
+  `agents::prepare` adds the preamble, changed notes and a fresh context
+  exactly as for a local agent, also for a reply sent straight to the session
+  through the hub; the host checks the folder and the account (accounts are
+  per host) and refuses a change mid-turn. A message (`agent.ask` from the
+  page or a mention) goes from the hub to the host as `agent.hosted.ask`
+  over a daemon-owned connection (`remote::request`, so no window has to be
+  open), answered with `created`; the hub prefixes the id and keeps it as
+  `chat`. A host that lost its copy gets it again and the message is retried
+  once. Files attached on another host are refused with a message (they are
+  not on that host). **Offline:** sending, editing and deleting are refused
+  with a message that says so ("Far runs on box, which is offline. Your
+  message was not sent."); nothing is queued on the hub. The card's status
+  line says "<host> is offline", the header names the host with "· offline",
+  the start page and the conversation's dock say so, Send is disabled, and
+  the form cannot save. **A host from before remote agents** answers
+  `unknown op`: the hub says to use Update Switchyard on its card.
+- **Moving between hosts** (the host picker in Edit). A conversation cannot
+  cross hosts, so the agent leaves it where it is, readable, in `previous`,
+  and its next message starts a new one on the new host with the preamble and
+  the latest exchanges (`seed`, the same recap as a fresh context) and the
+  note "Started a fresh context: it moved to <host>." Refused while a turn
+  runs (a remote answers `agent.hosted.leave` with the recap only when idle,
+  then drops its copy). The new host must be online; an offline old host
+  keeps its conversation unread and the note says so. The agent's page shows
+  "Earlier messages with <name> are on <host>. Open them" above the thread;
+  that conversation opens read-only, its dock saying the agent moved, with a
+  link back. The form says what will happen before saving. Deleting an agent
+  deletes every conversation it had, on every host (`agent.hosted.delete`),
+  and is refused while one of those hosts is offline; yardd answers
+  `agent.deleted` and the form shows a refusal.
 - **The preamble:** the first turn hands the engine "You are <name>, an agent
   the user set up in Switchyard…", what it is for, its instructions and
   memory, then "The user's message:" and the text (`agents::prepare`, called
@@ -548,16 +593,144 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   chance. The **form** (`#/agents/<id>/edit`, `new`) is one centred column:
   the face large with the name under it, then cards for Look (face, colour),
   Role (what it is for, instructions, memory) and Where and how, and a footer
-  that stays in reach with Delete, Cancel and Save. It reuses the folder,
-  model, effort and permission pickers; Scout's has the context host picker
-  instead and no permission. Deleting asks once more and says the
+  that stays in reach with Delete, Cancel and Save. It reuses New session's
+  host, folder, model, account, effort and permission pickers: the folder,
+  models and accounts are the picked host's (a new host clears the folder),
+  and the account picker shows only when the engine has more than one
+  account there. Scout's has the context host picker instead and no
+  permission. The explanation line and the card's how-it-runs line name the
+  host when it is not this one (a cloud before it on the card), and the
+  account where the engine has a choice. Deleting asks once more and says the
   conversation goes too.
-- **Slack (planned, step 3).** A Slack thread is not a session of its own:
-  a message from Slack goes into the agent's one conversation, tagged with
-  its source (shown inline as a Slack badge with channel and person), and the
-  answer to that message is posted back to the Slack thread it came from.
-  yardd records, per message, the Slack team, channel, thread and message it
-  came from, so each answer knows where to go.
+- **Origins** (`origins.rs`). A message into a conversation that the owner
+  did not type carries an `origin`, kept on its `user_message` (and on the
+  queued message before that) and shown in the thread as a small badge above
+  the bubble, the sender's face and words (`originLabel` in agents.ts; React
+  text only): `{ kind: "agent", agentId, name, hops }` is "From @Name",
+  `{ kind: "agentReply", agentId, name, hops }` is "Reply from @Name",
+  `{ kind: "slack", team, channel, channelName, threadTs, ts, user, userName }`
+  is "From Gio on Slack · #general" with an aubergine dot. None,
+  or `{ kind: "user" }`, is the owner (no badge); a kind the UI does not know
+  shows none. Origins are set by yardd only, never read from a client's op.
+  The engine reads such a message framed with where it came from
+  (`origins::engine_text`: `<message from="@Builder">…</message>` and that the
+  answer goes back; `<reply from="@Reviewer">…</reply>`; `<slack from="Gio"
+  in="#general">…</slack>` with names flattened to one line without quotes or
+  angle brackets, so a Slack display name cannot break the frame); the thread shows only
+  the text. Queued messages from several origins become one turn but stay
+  separate `user_message`s, each with its badge. `Meta.answering` keeps the
+  origins of the messages the running turn answers: set when it starts, grown
+  by steered messages (before the engine reads them, so a turn that ends at
+  once still owes them). When the turn ends, `App::emit` hands them with its
+  final answer, or its error, to the **reply hook** (`origins::reply`, run off
+  a channel by a task in main): one match on `kind`, where `agent` delivers
+  the answer into the sender's conversation as an `agentReply` (which starts
+  its turn) and a reply is not answered back. A failed turn sends "<Name>'s
+  turn failed before it answered: …", a stopped one "<Name> was stopped before
+  it answered"; Stop also takes such messages out of the queue (they never
+  land in the owner's reply box) and their senders hear "… stopped before it
+  read your message". A yardd restart mid-turn fails the turn, so the sender
+  hears that too. The `slack` arm hands all of a turn's Slack origins at once
+  to `slack::answer` (one post per Slack thread). Slack origins also hear,
+  once per turn, that the turn waits on an approval: `App::emit` owes them an
+  `approval` status at the turn's first `approval_request`
+  (`origins::wants_approval_note`); an `agent` origin ignores it and waits
+  for the answer.
+- **Agents' own tools** (`agent_tools.rs`). Every user-made agent gets five
+  tools in its conversation on every engine: `notify_owner { message }`,
+  `message_agent { to, text }`, `list_agents`, `remember { text }` (adds a
+  line) and `set_memory { text }` (replaces it). Scout, private threads and
+  the owner's own sessions never get them.
+  - **How they reach the engines.** yardd is also a stdio MCP server:
+    `yardd agent-tools`. An agent's conversation hands its engine that server
+    with two variables, `YARD_TOOLS_URL` (`http://127.0.0.1:<port>/agent-tools`)
+    and `YARD_TOOLS_KEY` (32 random bytes, one per conversation for this
+    yardd's life, dropped with the session): Claude through the sidecar's
+    `start.tools` (the SDK's `mcpServers.switchyard`, with `allowedTools:
+    ["mcp__switchyard"]` so they run unasked); Codex as a thread-local
+    `config` override `mcp_servers.switchyard` on `thread/start` and
+    `thread/resume` (never written to the user's config); OpenCode, Grok and
+    Gemini in `mcpServers` on ACP `session/new`, `session/resume` and
+    `session/load`. The server answers `initialize` itself and passes
+    `tools/list` and `tools/call` to yardd: `POST /agent-tools`, which answers
+    only loopback peers, never a request with an `Origin` header, and only a
+    key it made, and acts for the one conversation the key names. One
+    implementation for four engines, and the key, not the model, decides who
+    is calling. Chosen over Codex's dynamic tools and an SDK in-process server
+    (one engine each). Without a loopback bind (`YARD_BIND` lists only other
+    addresses) no engine is offered the tools. Our tools never ask for
+    approval: Codex's MCP elicitation from `switchyard` is accepted, and an
+    ACP permission request for a `switchyard_*` call is allowed; they act only
+    on the agent's own conversation and are capped. Each engine shows a call
+    as a normal step, labelled by `agent_tools::label` (and its twin in the
+    sidecar's `agentTools.ts`): "Asked for you", "Messaged @Reviewer",
+    "Remembered", "Updated memory", "Listed agents".
+  - **Needs you.** `notify_owner` broadcasts the `notify` op (as `yv notify`
+    does) titled "<Name> needs you", with the message and the conversation's
+    id, so a click opens the conversation; and sets `Meta.needsYou { message,
+    at }`. The card reads "Needs you · <message>" with the amber "!" mark and
+    the Agents row gets a breathing amber dot (after a pending approval, before
+    working), until a focused window shows the conversation and sends
+    `agent.seen { agentId }`, which clears it for every window. At most 3 per
+    agent per hour; the 4th says when it may try again.
+  - **Message another agent.** `to` is a name (case and a leading `@`
+    ignored); the description of `message_agent` lists the agents there are.
+    The message goes into the target's one conversation with origin `agent`
+    (made with it if it had none; queued while it works) and the call
+    answers at once; delivery that fails comes back as a reply. Hops: one
+    more than the longest chain among the messages the sender's turn answers;
+    a 4th hop, a message to oneself or an unknown name is refused in the tool
+    result. At most 30 messages per agent per hour.
+  - **Memory.** `remember` and `set_memory` change `memory` (the 20,000
+    character cap, refused past it) and broadcast `agents`. The engine knows
+    already, so it is not a notes change. An open form follows the new memory
+    unless the user has typed in it, and Save leaves an untouched memory out.
+  - **On a remote host.** A remote agent's engine runs on its host, but
+    everything its tools act on is on the hub: the record and its memory, the
+    other agents, the owner's windows. So the host's engine gets the same
+    stdio server and talks to the host's own yardd, over the host's loopback,
+    with a key the host made for that one conversation; the host's
+    `/agent-tools` sees that the conversation belongs to a hosted copy and
+    passes the call to the hub instead of running it. The way back is the
+    connection the hub already keeps open to every host (`remote::monitor`,
+    over the SSH tunnel): on connecting it sends `agent.hosted.hub { hub }`
+    (the hub's id, made once and kept in its data folder as `hub-id`), and
+    the host remembers that connection for that hub until it closes. Every
+    copy names the hub that pushed it (`Agent::hub`, set by
+    `agents::push`); a call goes to that hub only, as `agent.hub.call {
+    ref, agentId, sessionId, method, params, answering }`, and is answered
+    on the same connection with `agent.hosted.answer { ref, result,
+    needsYou?, memory? }` (an answer from any other connection is ignored).
+    The hub runs it only for an agent whose `host` is the remote asking
+    (`agent_tools::from_host`), as the conversation `<host>~<id>`: the
+    notification names that id, the rate caps and hop count are the hub's,
+    `message_agent` lists the hub's agents, and memory lands in the hub's
+    record. The host then sets `needsYou` on its session (the hub's
+    `agent.seen` clears it there with `agent.hosted.seen`) and the copy's
+    memory, without a notes change. Messages and answers between agents, and
+    Slack's, go through the hub too: the hub's `agents::deliver` sends one to a remote
+    agent as `agent.hosted.ask` with its `origin` (the host keeps only the
+    kinds and fields yardd makes, `origins::from_hub`), and a hosted agent's
+    turn that owes answers (to agents or Slack, the approval note included)
+    passes them to the hub as `agent.hub.owed`, which runs the reply hook
+    there, so Slack reaches a remote agent like a local one; answers owed while the hub is away wait in
+    memory (up to 200) until it says hello again. Security: the engine still
+    reaches only loopback on its own host with a per-conversation key; no
+    port is opened (the hub dials the host, as before); and the hub acts
+    only for the agents it placed on that host, which that host already
+    runs. **Version skew:** a hub from before this does not name itself, so
+    its copies have no `hub` and get no tools (the preamble does not mention
+    them); an older host answers the hello with `unknown op`, which the hub
+    ignores, and it cannot run remote agents at all (`agent.hosted.save`
+    is refused with "Use Update Switchyard"). While the hub is not connected,
+    a call waits up to 5 s for it, then fails with a line the model reads
+    ("…is not connected to this host right now"); `tools/list` then names
+    no agents.
+- **Slack (built, step 3; see Slack below).** A Slack thread is not a session
+  of its own: a message from Slack goes into the agent's one conversation
+  with origin `{ kind: "slack", … }` (the team, channel, thread and message it
+  came from, shown as a Slack badge with person and channel), and the reply
+  hook's `slack` arm posts the answer to that message back to the Slack thread.
 - **Scout, the host agent.** Its conversation is restricted (`private::restricted`):
   always Plan only (`session.setPermission` refuses another), and every turn
   runs on a fresh engine thread with no tools: Codex gets an ephemeral
@@ -609,14 +782,141 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
 - Tests (`tests/agents.rs`, scripted engines): the registry and its refusals,
   the preamble on the first turn only, one conversation per agent, deleting
   an agent with its conversation, a fresh context after a full context, a
-  model change and a lost thread, changed notes reaching the thread, Scout's evidence step, fresh restricted threads on both engines,
+  model change, an account change and a lost thread, changed notes reaching the thread,
+  an agent on a remote (the record on the hub and a hosted copy there, the folder and account
+  checked there, the preamble on the remote's first turn, replies and mentions in the same
+  conversation, notes and a model change there, files from the hub refused, sending, editing and
+  deleting refused offline), moving to a remote and back (the recap carried, refused mid-turn,
+  the old conversations kept, then deleted with the agent), Scout's evidence step, fresh restricted threads on both engines,
   history in the second input, Plan only, a restart, remote scope and offline
   coverage, Stop, the queue, the old op name, and an old `switchy.json` left
   alone. The `agents`
   feature map drives the page, card alignment, the empty conversation, the
-  form, mentions, the one conversation and the Agents row's mark at both
-  viewports. Not proven: a real model's answer to a preamble or to
+  form (with the host and account pickers and the note about a move), mentions (also to a
+  remote agent), the one conversation, a remote agent's card, conversation and offline state,
+  and the Agents row's mark at both viewports. Not proven: a real model's answer to a preamble or to
   evidence.
-- Not built yet: agents' own tools (reaching the owner with "needs you",
-  messaging another agent), Slack (see above), agents on a remote host,
-  per-agent accounts in the form, an agent editing its own memory.
+- Tests for the tools (`tests/agent_tools.rs`): the scripted engines call the
+  real `yardd agent-tools` over stdio for a `[[tool NAME {json}]]` marker
+  (`tests/fake-codex/agent-tools.mjs`, on Codex, the Claude sidecar and ACP):
+  needs you with its cap and `agent.seen`, a message and its answer back with
+  both origins kept across a restart, the hop limit and a message to oneself,
+  failed and stopped answers, memory edits and the cap, OpenCode running them
+  unasked, Scout and plain sessions without them, the endpoint's key
+  check, a remote agent's tools acting on the hub (two daemons: `remember`
+  in the hub's record and the host's copy, `message_agent` both ways with
+  the answers back, `notify_owner` on the hub's windows and its mark
+  cleared by `agent.seen`), and a hosted copy without a hub (no tools) or
+  with its hub away (the call says so), then answered only on the hub's
+  own connection. The `agents` map drives the badges, the Needs-you card and row, and
+  memory in the form at both viewports, and a remote agent's tools. Checked against the real CLIs
+  without a turn: Codex 0.171 takes the `mcp_servers.switchyard` override,
+  starts the server and runs `mcpServer/tool/call` through it; the real
+  sidecar with Claude Code starts it from `start.tools` and runs `mcp_call`.
+  Not proven: a real model choosing to call them, Codex's approval prompt for
+  an MCP call during a real turn (answered by the elicitation accept, not
+  seen live), and how OpenCode, Grok and Gemini name the calls (matched by
+  `switchyard` plus the tool name).
+- Not built yet: one thread across a move between hosts (the earlier
+  conversation is linked instead), files attached on one host sent to an
+  agent on another.
+
+## Slack
+
+The owner talks to his agents from Slack. `crates/yardd/src/slack.rs`; UI
+`ui/src/SlackCard.tsx` (the card), `ui/src/slack.ts` (manifest, token checks,
+status words, the badge's words). Messages and answers ride the shared
+origins and reply hook (see Agents, Origins): Slack adds the `slack` kind,
+its engine framing and one arm in `origins::reply`.
+
+- **Transport: Socket Mode.** The server is tailnet-only, so Slack cannot
+  call it (no Events API webhooks). The app-level token (`xapp-`, scope
+  `connections:write`) opens a WebSocket with `apps.connections.open`; the bot
+  token (`xoxb-`) makes the Web API calls (`auth.test`, `chat.postMessage`,
+  `chat.postEphemeral`, `reactions.add/remove`, `users.info`,
+  `conversations.info`), form-encoded with a bearer header. Every envelope is
+  acknowledged; `disconnect` dials again at once (`link_disabled` is shown as
+  an error); a drop or a refusal backs off from 1 s to a minute; with no frame
+  for 90 s (yardd pings every 30 s) the connection is redialled; new tokens or
+  Retry dial at once. TLS is rustls on ring (reqwest and tokio-tungstenite),
+  as the app's updater already builds it. Configure Slack on one yardd only:
+  two connections with the same app token split Slack's events between them.
+- **Tokens** are kept in `slack.json` in the data dir, written with mode 0600
+  (aside, then renamed). They never leave yardd: the snapshot and the `slack`
+  broadcast carry `xoxb-…WXYZ` only, and no log line or error names them (the
+  Socket Mode address, which holds a ticket, is not logged either).
+- **Who may talk to agents:** an allowlist of Slack user ids, empty at first.
+  Anyone else is ignored, gets one ephemeral "not allowed" note with their
+  member id, and shows on the card as a request (Allow, Dismiss). That is how
+  the owner adds himself: his first DM after connecting. Bots, this app
+  included, and edits, joins and other subtypes are ignored.
+- **Routing.** A DM or an @mention goes to: the agent of its Slack thread (a
+  follow-up stays with the agent the thread's first routed message went to,
+  saved as `team/channel/thread_ts`, the newest 1,000); else the agent whose
+  name starts the text (`Reviewer …`, `@Reviewer …`, `Reviewer: …`, any case;
+  the name is dropped); else the channel's default agent, then the default
+  agent; else the bot answers in the thread with the agents' names. In a
+  channel, a message without a mention counts only inside a routed thread
+  (events `message.channels`/`message.groups`); a mention arrives as both
+  `app_mention` and a channel message and is handled once. Slack markup reads
+  as text (`<url|label>` as `label (url)`, `<@U1>` as `@U1`). Files are not
+  passed on. Delivery is `agents::deliver`, the same path `message_agent`
+  uses: into the agent's one conversation, made if it has none, queued while
+  a turn runs.
+- **Answers** (`slack::answer`, the reply hook's `slack` arm). The message
+  gets :eyes: when it reaches the agent (queued or not). When the turn that
+  answered it ends: completed, the final answer is posted in the thread
+  (`thread_ts` = the message's thread or its own ts), Markdown turned into
+  mrkdwn (bold, italics, strikes, links, headings, bullets; `&`, `<`, `>`
+  escaped everywhere so an answer can never mention `<!channel>` or a user;
+  code kept, fences without a language), split at 3,500 bytes between lines
+  with code blocks closed and reopened, and :white_check_mark:; failed,
+  "Reviewer could not finish: <error>" and :x:; stopped, "Reviewer was
+  stopped in Switchyard." and :x:; a queued Slack message that Stop took
+  back, "Reviewer was stopped in Switchyard before it read your message." and
+  :x:. A turn waiting on an approval posts "Reviewer needs your approval in
+  Switchyard: <title>" once (the `approval` status above). One post per Slack
+  thread, however many of its messages the turn answered; posts go out one
+  at a time so a thread reads them in order. A post that fails leaves a note
+  in the conversation. An error before the agent is reached (it is queued for
+  room on the host, say) is posted in the thread with :x:.
+- **Setup** (Connectors page, Messaging, Slack): Create on Slack opens
+  api.slack.com with the app manifest filled in (`manifest_json`), or Copy
+  manifest and paste it under Create New App, From a manifest. The manifest
+  turns Socket Mode on and asks for `app_mentions:read`, `chat:write`,
+  `im:history`, `im:read`, `im:write`, `channels:history`, `channels:read`,
+  `groups:history`, `groups:read`, `users:read`, `reactions:write`, with bot
+  events `app_mention`, `message.im`, `message.channels`, `message.groups`.
+  Install it, copy the Bot User OAuth Token, generate an app-level token with
+  `connections:write` under Basic Information, paste both, then DM the bot
+  and Allow yourself on the card. The card then shows the connection ("As
+  @switchyard in Acme", or the error with Retry), requests, allowed people,
+  the default agent and a row per channel the bot was mentioned in, each with
+  an agent picker; Replace tokens and Disconnect (forgets the tokens) in its
+  footer. Ops: `slack.tokens`, `slack.disconnect`, `slack.retry`,
+  `slack.allow`, `slack.disallow`, `slack.dismiss`, `slack.route { agent,
+  channel? }`; each broadcasts `slack`. Slack lives on the hub: a remote's
+  `slack` broadcast is dropped.
+- **Tests.** `YARD_SLACK_API` points the Web API (and so Socket Mode)
+  elsewhere: `verify/fakes/fake-slack` is a Bun fake of the Web API methods
+  above and Socket Mode, with control endpoints to send a message, a
+  `disconnect` or a drop and to read posts, reactions and acks.
+  `tests/slack.rs`: routing by name, default agent and thread, the allowlist
+  and its one ephemeral note, bots ignored, a channel mention handled once,
+  the engine framing, answers in the right thread with reactions, failure,
+  approval, stop and unread posts, every envelope acked, reconnects after a
+  `disconnect` and a drop, a refused token shown, tokens in no snapshot,
+  broadcast or log (file mode 0600), and a message to an agent on a remote
+  host (its origin there, its answer posted from the hub). Unit tests cover routing, mention
+  stripping, Slack markup, mrkdwn, splitting and the `slack` framing. The
+  `slack` feature map drives the card (empty, refused, connected, a request,
+  the default agent) and the badge in a conversation at both viewports,
+  against the fake.
+- **Not checked:** a real Slack workspace. Nothing here has talked to
+  slack.com: the manifest import, real event shapes beyond Slack's documented
+  ones, rate limits, Enterprise Grid ids and the TLS path to slack.com are
+  untested. Slack connects from the hub only (Slack on a remote host is not
+  offered); an agent on a remote host is reached through the hub like any
+  `agents::deliver` (see Agents' own tools, On a remote host). A note about
+  a Slack post that failed lands in a local conversation only: for a remote
+  agent's it is logged on the hub instead.

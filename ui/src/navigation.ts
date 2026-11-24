@@ -31,11 +31,11 @@ const PAGES: NavigationEntry[] = [
 /** Search the whole session catalog, including archived conversations and runs.
  *  The empty query lists recent sessions the sidebar shows: an hourly
  *  automation's archived runs would otherwise be all of them. */
-export function navigationEntries(sessions: SessionMeta[], context: { localName: string; hosts: Pick<HostEntry, "id" | "name">[]; agents?: Pick<Agent, "id" | "name" | "about" | "builtin">[] }, query: string): NavigationEntry[] {
+export function navigationEntries(sessions: SessionMeta[], context: { localName: string; hosts: Pick<HostEntry, "id" | "name">[]; agents?: Pick<Agent, "id" | "name" | "about" | "builtin" | "chat" | "previous">[] }, query: string): NavigationEntry[] {
   const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
   const matches = (e: NavigationEntry) => words.every((word) => `${e.title} ${e.detail} ${e.search ?? ""}`.toLowerCase().includes(word));
   // Agents' conversations are reached through their agent, below.
-  const own = sessions.filter((s) => !isAgentConversation(s));
+  const own = sessions.filter((s) => !isAgentConversation(s, context.agents ?? []));
   const listed = words.length ? own : own.filter((s) => !s.archived && !hiddenFromSidebar(s));
   const recent = [...listed].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
   const rows = recent.map((s): NavigationEntry => {

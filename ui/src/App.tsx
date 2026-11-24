@@ -8,8 +8,8 @@ import { Subscriptions, UsageStrip, type UsageAccount } from "./UsageMeters";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
-import { AgentAvatar, AgentBar, AgentForm, AgentsPage, AgentStart } from "./AgentsPage";
-import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, leadingMention, matchAgents, mentionAt } from "./agents";
+import { AgentAvatar, AgentBar, AgentForm, AgentsPage, AgentStart, EarlierConversations } from "./AgentsPage";
+import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
 import { accountChoices, accountLabel, accountName, accountOf, choiceOnEngine, DEFAULT_ACCOUNT } from "./accounts";
@@ -24,14 +24,17 @@ import { PR_URL_SOURCE, prLink, shortLabel } from "./prPeek";
 import { ProcPane } from "./ProcPane";
 import { draftOf, fenceSegments, keepDraft, lineCount, onAppend, quoteInComposer, quoteSegments, type Snippet, splitQuotes, withQuotes } from "./compose";
 import { blockSegments, fencedBlocks, type MdTable } from "./markdown";
+import { fileTarget } from "./fileLinks";
+import { saveFile } from "./filePreview";
+import { FileLinks, FileView, fileLabel } from "./FileView";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { AutomationForm, AutomationsPage } from "./AutomationsPage";
 import { ConnectorsPage } from "./ConnectorsPage";
 import { WidgetFrame } from "./WidgetFrame";
-import { hiddenFromSidebar } from "./automations";
+import { hiddenFromSidebar, runsAttention } from "./automations";
 import { dragHasSession, dropUpdate, SESSION_DRAG_TYPE, type DropTarget } from "./sidebarDrop";
 import { addsProviders, canSteer, ENGINES, ENGINE_ACCOUNT, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, pickerEngines, queuedHint, shownEffort } from "./engines";
-import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinned, summarize, thoughtLine, type Row, type WorkItem } from "./thread";
+import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinned, summarize, thoughtLine, toolLabel, type Row, type WorkItem } from "./thread";
 import { voiceCue, type Cue } from "./voice";
 import { useVoice } from "./useVoice";
 import { MobileSetup, MobileSetupButton } from "./MobileSetup";
@@ -104,14 +107,14 @@ export const Icon = ({ d, size = 14, width = 2 }: { d: string; size?: number; wi
 );
 export const PLUS = "M12 5v14M5 12h14";
 const CLOCK = "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z";
-const IMPORT = "M12 3v12M7 10l5 5 5-5M5 21h14";
+export const IMPORT = "M12 3v12M7 10l5 5 5-5M5 21h14";
 export const CHEVRON_RIGHT = "M9 6l6 6-6 6";
 const CHEVRON_DOWN = "M6 9l6 6 6-6";
 const ARROW_UP = "M12 19V5M5 12l7-7 7 7";
-const REFRESH = "M21 12a9 9 0 1 1-3-6.7M21 4v5h-5";
+export const REFRESH = "M21 12a9 9 0 1 1-3-6.7M21 4v5h-5";
 export const CLOUD = "M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z";
 const PAPERCLIP = "M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48";
-const FILE = "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8ZM14 3v5h5";
+export const FILE = "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8ZM14 3v5h5";
 const CLOSE = "M18 6 6 18M6 6l12 12";
 const MORE = "M5 12h.01M12 12h.01M19 12h.01";
 const REPLY = "M9 17 4 12l5-5M20 18v-2a4 4 0 0 0-4-4H4";
@@ -128,18 +131,37 @@ const RIGHT_PANEL = "M3 5h18v14H3ZM15 5v14";
 const MIC = "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3ZM19 10v2a7 7 0 0 1-14 0v-2M12 19v3";
 const STOP = "M7 7h10v10H7Z";
 const WAVES = "M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3";
+/** What the dot on the Automations row says. */
+const RUNS_MARK = { approval: "A run needs approval", working: "A run is working" } as const;
 /** What the dot on the Agents row says. */
-const AGENTS_MARK = { approval: "An agent needs you", working: "An agent is working", failed: "An agent's turn failed", answered: "An agent answered" } as const;
+const AGENTS_MARK = { approval: "An agent needs approval", needsYou: "An agent needs you", working: "An agent is working", failed: "An agent's turn failed", answered: "An agent answered" } as const;
 
 /** An agent's place: its one conversation, or the empty one before its first message. */
 function AgentView({ state, actions, id }: { state: State; actions: Actions; id: string }) {
   const agent = state.agents.find((a) => a.id === id);
+  const chat = agent ? conversationOf(agent, state.sessions) : undefined;
+  // The agent asked for the user: seen once its conversation is in front of them.
+  const asked = chat?.needsYou?.at;
+  useEffect(() => {
+    if (!asked) return;
+    const look = () => {
+      if (document.visibilityState === "visible" && document.hasFocus()) actions.agentSeen(id);
+    };
+    look();
+    window.addEventListener("focus", look);
+    document.addEventListener("visibilitychange", look);
+    return () => {
+      window.removeEventListener("focus", look);
+      document.removeEventListener("visibilitychange", look);
+    };
+  }, [asked, id]);
   if (!agent) return <AgentsPage state={state} actions={actions} />;
-  const chat = conversationOf(agent, state.sessions);
-  if (!chat) return <AgentStart key={agent.id} state={state} actions={actions} agent={agent} />;
+  // What it said on a host it moved away from stays there, a click away.
+  const earlier = <EarlierConversations state={state} actions={actions} agent={agent} />;
+  if (!chat) return <AgentStart key={agent.id} state={state} actions={actions} agent={agent} earlier={earlier} />;
   return (
     <PeekScope sessionId={chat.id} peek={actions.peekPr}>
-      <SessionView key={chat.id} meta={chat} state={state} actions={actions} />
+      <SessionView key={chat.id} meta={chat} state={state} actions={actions} before={earlier} />
     </PeekScope>
   );
 }
@@ -934,7 +956,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   // Runs of automations live on the Automations page, and agents'
   // conversations on the Agents page, not in this list.
   const everything = Object.values(state.sessions);
-  const all = everything.filter((s) => !hiddenFromSidebar(s) && !isAgentConversation(s));
+  const all = everything.filter((s) => !hiddenFromSidebar(s) && !isAgentConversation(s, state.agents));
   const { pinned, ungrouped: active, groups, archived } = sidebarLayout(all);
   // Every group a session can be moved to, including ones whose only live
   // members are pinned.
@@ -996,12 +1018,13 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   const dragged = dragId ? state.sessions[dragId] : undefined;
   // Runs of automations live on the Automations page, not in this list.
   const runs = everything.filter(hiddenFromSidebar);
+  const runsMark = runsAttention(runs);
   const inRun = route.page === "session" && !!state.sessions[route.id]?.automation;
   const agentOpen = route.page === "agent" ? state.agents.find((a) => a.id === route.id)?.chat ?? null : null;
   const seen = useSeen(state.sessions, route.page === "session" ? route.id : agentOpen, state.restore);
   // The Agents row carries what the sidebar would show for their conversations.
   const agentsMark = agentsAttention(state.agents, state.sessions, seen.seenAt);
-  const inAgent = route.page === "session" && isAgentConversation(state.sessions[route.id] ?? {});
+  const inAgent = route.page === "session" && !!state.sessions[route.id] && isAgentConversation(state.sessions[route.id], state.agents);
   // Going to an archived session shows the section, so its row stays in
   // view. Only on going there: archiving the session already open leaves the
   // section as it was (it used to spring open on every archive).
@@ -1082,7 +1105,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
         <button className={`nav-row ${route.page === "automations" || route.page === "automation" || inRun ? "active" : ""}`} onClick={() => actions.go({ page: "automations" })}>
           <Icon d={CLOCK} />
           Automations
-          {runs.some((s) => s.status === "running" || s.status === "needs_approval") && <span className="dot dot-running" role="img" aria-label="A run is working" />}
+          {runsMark && <span className={`dot ${runsMark === "approval" ? "dot-needs_approval" : "dot-running"}`} role="img" aria-label={RUNS_MARK[runsMark]} title={RUNS_MARK[runsMark]} />}
         </button>
         <button className={`nav-row ${route.page === "connectors" ? "active" : ""}`} onClick={() => actions.go({ page: "connectors" })}>
           <Icon d={PLUG} />
@@ -1282,11 +1305,12 @@ export function EffortPicker({ models, value, onChange }: { models: Models; valu
   );
 }
 
-function AccountPicker({
+export function AccountPicker({
   state,
   host,
   engine,
   account,
+  engines,
   onPick,
   onManage,
 }: {
@@ -1294,6 +1318,8 @@ function AccountPicker({
   host: string;
   engine: Engine;
   account: string;
+  /** The engines whose accounts may be picked; every engine the host lists when left out. */
+  engines?: Engine[];
   onPick?(engine: Engine, account: string): void;
   onManage(): void;
 }) {
@@ -1333,7 +1359,7 @@ function AccountPicker({
           </div>
           {onPick ? (
             <div role="menu" aria-label="Engine accounts">
-              {pickerEngines(modelsOn(state, host), engine).flatMap((e) =>
+              {(engines ?? pickerEngines(modelsOn(state, host), engine)).flatMap((e) =>
                 accountChoices(accounts, e).map((a) => (
                   <button
                     key={`${e}:${a.id}`}
@@ -2776,7 +2802,7 @@ export function BranchPicker(props: { current: string; branches: string[]; value
 
 /* ---------- session ---------- */
 
-function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State; actions: Actions }) {
+function SessionView({ meta, state, actions, before }: { meta: SessionMeta; state: State; actions: Actions; before?: React.ReactNode }) {
   const [workspace, setWorkspace] = useState(false);
   const [workspaceCollapsed, setWorkspaceCollapsed] = usePanelCollapsed("yard.workspaceCollapsed");
   const wide = !useMedia(WORKSPACE_NARROW);
@@ -2865,17 +2891,38 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
   const sessionAccount = accountLabel(accounts, meta);
   // The engines' own /login cannot run inside a session; the app's does it.
   const agent = agentOf(state.agents, meta);
+  // A conversation an agent left behind when it moved: read, not answered.
+  const earlier = !!agent && isEarlierConversation(agent, meta.id);
+  // The agents live on the hub: a remote session's box offers them only in
+  // an agent's own conversation.
+  const mentionable = host === "local" || !!agent;
   const restricted = !!agent?.builtin;
   // Scout only reads, and an agent in its own folder has no project: no
   // terminal, subagents or processes to show.
   const noPane = !!agent && (agent.builtin || !agent.cwd);
+  // A file link opens the file in the workspace; where there is none (an
+  // agent with no folder), it downloads.
+  const [openedFile, setOpenedFile] = useState<{ path: string; nonce: number } | null>(null);
+  useEffect(() => setOpenedFile(null), [meta.id]);
+  const openFile = async (path: string): Promise<string | null> => {
+    if (noPane) {
+      const read = await actions.readFile(meta.id, path);
+      if ("error" in read) return read.error;
+      saveFile(read.name, read.data);
+      return null;
+    }
+    setOpenedFile((f) => ({ path, nonce: (f?.nonce ?? 0) + 1 }));
+    if (wide) setWorkspaceCollapsed(false);
+    else openWorkspace();
+    return null;
+  };
   const submit = async (text: string, attachments: Attachment[]) => {
     if (/^\/login\s*$/.test(text.trim()) && !attachments.length) {
       setLoggingIn(true);
       return;
     }
     // A reply that starts with another agent's @Name goes to that agent's chat.
-    const routed = host === "local" ? leadingMention(text, state.agents) : null;
+    const routed = mentionable ? leadingMention(text, state.agents) : null;
     if (routed && routed.agent.id !== agent?.id) {
       if (!routed.rest && !attachments.length) return false;
       const r = await actions.askAgent(routed.agent.id, routed.rest, attachments.map((a) => a.id));
@@ -2925,15 +2972,17 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
         actions.startNow(meta.id);
       }}
       onDecide={(id, d) => actions.approve(meta.id, id, d)}
+      agents={state.agents}
     />
     </Fragment>
   );
 
   return (
+    <FileLinks.Provider value={openFile}>
     <div className={`session ${!wide && workspace ? "workspace-open" : ""}`}>
       <main className="thread">
         {agent ? (
-          <AgentBar agent={agent} actions={actions}>
+          <AgentBar state={state} agent={agent} actions={actions} host={host}>
             {busy && online && (
               <button className="btn-text" onClick={() => actions.interrupt(meta.id)}>
                 Stop
@@ -2999,15 +3048,30 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
           }}
         >
           <div className="column">
+            {before}
             {rows.map((row) => (
               <RowView key={row.key} row={row} render={renderItem} widget={(t) => t.app && <WidgetFrame sessionId={meta.id} app={t.app} actions={actions} />} />
             ))}
             {working && <Working since={turnStart} />}
           </div>
         </div>
-        {online && <QuoteReply sessionId={meta.id} />}
+        {online && !earlier && <QuoteReply sessionId={meta.id} />}
+        {earlier ? (
+          <div className="dock">
+            <div className="muted small offline-note agent-earlier-dock">
+              {agent!.name} moved to {hostName(state, agent!.host || "local")}; this conversation stays here to read.
+              <button className="btn-text note-link" onClick={() => actions.go({ page: "agent", id: agent!.id })}>
+                Open its conversation
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="dock">
-          {!online && <div className="muted small offline-note">{hostName(state, host)} is offline. This session comes back when it reconnects.</div>}
+          {!online && (
+            <div className="muted small offline-note">
+              {agent ? `${agent.name} runs on ${hostName(state, host)}, which is offline. Messages can't be sent until it is back.` : `${hostName(state, host)} is offline. This session comes back when it reconnects.`}
+            </div>
+          )}
           {online && <EngineNotice state={state} host={host} engine={meta.engine} account={accountOf(meta)} onLogin={() => setLoggingIn(true)} />}
           {loggingIn && (
             <LoginDialog state={state} actions={actions} host={host} engine={meta.engine} account={accountOf(meta)} onClose={() => setLoggingIn(false)} />
@@ -3024,7 +3088,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
           )}
           <Composer
             placeholder={!online ? "Offline" : busy ? "Queue a message for the agent" : agent ? `Reply to ${agent.name}` : "Reply"}
-            mentions={host === "local" ? state.agents : undefined}
+            mentions={mentionable ? state.agents : undefined}
             mentionHint={toAgent}
             rows={1}
             busy={meta.status === "queued" || !online}
@@ -3061,9 +3125,11 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
             )}
           </Composer>
         </div>
+        )}
       </main>
-      {!noPane && <WorkPane key={meta.id} shown={workspaceShown} connected={online} actions={actions} meta={meta} state={state} items={items} closeButton={workspaceCloseButton} onClose={closeWorkspace} />}
+      {!noPane && <WorkPane key={meta.id} shown={workspaceShown} connected={online} actions={actions} meta={meta} state={state} items={items} closeButton={workspaceCloseButton} onClose={closeWorkspace} file={openedFile} onOpenFile={openFile} onCloseFile={() => setOpenedFile(null)} />}
     </div>
+    </FileLinks.Provider>
   );
 }
 
@@ -3373,12 +3439,12 @@ function WorkEntry({ entry }: { entry: WorkItem }) {
         <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
           <Icon d={CHEVRON_RIGHT} size={12} />
         </span>
-        {/* Codex titles a command "Ran" from the start; until it ends, it has not,
-            and while its approval is open or after a denial it never started. */}
-        <span>{entry.title === "Ran" ? ranLabel(entry) : entry.title}</span>
+        {/* Engines title a command "Ran" and an edit "Edited" from the start;
+            while its approval is open or after a denial it never happened. */}
+        <span>{toolLabel(entry)}</span>
         {entry.detail && <code>{entry.detail}</code>}
         {entry.state === "running" && entry.asked !== "waiting" && <span className="pulse" aria-label="running" />}
-        {entry.asked === "waiting" && entry.title !== "Ran" && <span className="muted">· waiting</span>}
+        {entry.asked === "waiting" && toolLabel(entry) === entry.title && <span className="muted">· waiting</span>}
         {didNotRun(entry) ? (
           <span className="muted">· {entry.asked === "denied" ? "denied" : "not answered"}</span>
         ) : (
@@ -3390,14 +3456,8 @@ function WorkEntry({ entry }: { entry: WorkItem }) {
   );
 }
 
-function ranLabel(entry: ToolItem): string {
-  if (entry.asked === "waiting") return "Waiting to run";
-  if (didNotRun(entry)) return "Did not run";
-  return entry.state === "running" ? "Running" : "Ran";
-}
-
 /** A subagent: one line, collapsed. Open, the steps it took and its report. */
-function AgentEntry({ entry }: { entry: ToolItem }) {
+function AgentEntry({ entry, card = false }: { entry: ToolItem; card?: boolean }) {
   const [open, setOpen] = useState(false);
   const steps = entry.steps ?? [];
   const expandable = steps.length > 0 || !!entry.output;
@@ -3407,19 +3467,42 @@ function AgentEntry({ entry }: { entry: ToolItem }) {
     entry.state !== "running" && entry.ms != null ? duration(entry.ms) : null,
     steps.length ? `${steps.length} ${steps.length === 1 ? "step" : "steps"}` : null,
   ].filter(Boolean);
+  const chevron = (
+    <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
+      <Icon d={CHEVRON_RIGHT} size={12} />
+    </span>
+  );
+  const status = (
+    <>
+      {entry.state === "running" && <span className="pulse" aria-label="running" />}
+      <span className={entry.state === "failed" ? "bad small" : "muted small"}>{parts.join(" · ")}</span>
+    </>
+  );
+  const latestLine = entry.state === "running" && latest && !open ? <code>{latest.detail}</code> : null;
   return (
-    <div className="tool agent">
-      <button className="tool-row" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
-        <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
-          <Icon d={CHEVRON_RIGHT} size={12} />
-        </span>
-        <span>Agent</span>
-        {entry.detail && <span className="agent-what">{entry.detail}</span>}
-        {entry.agent && <span className="agent-type">{entry.agent}</span>}
-        {entry.state === "running" && <span className="pulse" aria-label="running" />}
-        <span className={entry.state === "failed" ? "bad small" : "muted small"}>{parts.join(" · ")}</span>
-        {entry.state === "running" && latest && !open && <code>{latest.detail}</code>}
-      </button>
+    <div className={`tool agent ${card ? "subagent" : ""}`}>
+      {card ? (
+        // The pane lists only subagents, so the task leads and the word "Agent"
+        // goes; type, state and the latest step line up under it in every card.
+        <button className="tool-row subagent-head" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
+          {chevron}
+          <span className="subagent-title">{entry.detail || "Agent"}</span>
+          <span className="subagent-meta">
+            {entry.agent && <span className="agent-type">{entry.agent}</span>}
+            {status}
+          </span>
+          {latestLine && <span className="subagent-latest">{latestLine}</span>}
+        </button>
+      ) : (
+        <button className="tool-row" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
+          {chevron}
+          <span>Agent</span>
+          {entry.detail && <span className="agent-what">{entry.detail}</span>}
+          {entry.agent && <span className="agent-type">{entry.agent}</span>}
+          {status}
+          {latestLine}
+        </button>
+      )}
       {open && (
         <div className="agent-body">
           {steps.length > 0 && (
@@ -3493,21 +3576,34 @@ function ItemView(props: {
   loadAttachment(a: Attachment): Promise<string>;
   onStart(): void;
   onDecide(requestId: string, decision: "allow" | "allow_always" | "deny"): void;
+  /** Whose face goes on a message from another agent. */
+  agents: Agent[];
 }) {
   const { item, onDecide } = props;
   switch (item.kind) {
-    case "user":
-      if (!item.attachments?.length) return <UserBubble text={item.text} />;
+    case "user": {
+      const origin = originLabel(item.origin);
+      if (!item.attachments?.length && !origin) return <UserBubble text={item.text} />;
+      const from = origin && props.agents.find((a) => a.id === origin.agentId);
       return (
         <div className="user-message">
-          <div className="attachments attachments-sent">
+          {origin && (
+            <div className={`origin-badge origin-${item.origin!.kind}`} title={item.origin!.kind === "slack" ? "Its answer is posted back to the Slack thread." : undefined}>
+              {from ? <AgentAvatar agent={from} size="xs" /> : <span className="origin-dot" aria-hidden="true" />}
+              {origin.text}
+            </div>
+          )}
+          {item.attachments?.length ? (
+            <div className="attachments attachments-sent">
             {item.attachments.map((a) => (
               <SentAttachment key={a.id} attachment={a} load={props.loadAttachment} />
             ))}
-          </div>
+            </div>
+          ) : null}
           {item.text && <UserBubble text={item.text} />}
         </div>
       );
+    }
     case "note":
       return (
         <div className="note">
@@ -3572,7 +3668,7 @@ function FileDiff({ file }: { file: ChangedFile }) {
   );
 }
 
-function WorkPane({ shown, connected, actions, meta, state, items, closeButton, onClose }: {
+function WorkPane({ shown, connected, actions, meta, state, items, closeButton, onClose, file, onOpenFile, onCloseFile }: {
   shown: boolean;
   connected: boolean;
   actions: Actions;
@@ -3581,9 +3677,17 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
   items: Item[];
   closeButton: RefObject<HTMLButtonElement | null>;
   onClose(): void;
+  /** A file a link opened: its tab shows while it is open. */
+  file: { path: string; nonce: number } | null;
+  onOpenFile(path: string): Promise<string | null>;
+  onCloseFile(): void;
 }) {
   const [paneW, setPaneW] = useWidth("yard.paneWidth", PANE_W);
-  const [tab, setTab] = useState<"terminal" | "agents" | "procs">("terminal");
+  const [tab, setTab] = useState<"terminal" | "agents" | "procs" | "file">("terminal");
+  useEffect(() => {
+    if (file) setTab("file");
+    else setTab((t) => (t === "file" ? "terminal" : t));
+  }, [file?.path, file?.nonce]);
   const [terminalUsed, setTerminalUsed] = useState(shown);
   const agents = useMemo(() => tab === "agents" ? sessionSubagents(items) : [], [tab, items]);
   useEffect(() => {
@@ -3597,16 +3701,28 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
         <button className={`tab ${tab === "terminal" ? "active" : ""}`} aria-pressed={tab === "terminal"} onClick={() => setTab("terminal")}>Terminal</button>
         <button className={`tab ${tab === "agents" ? "active" : ""}`} aria-pressed={tab === "agents"} onClick={() => setTab("agents")}>Subagents</button>
         <button className={`tab ${tab === "procs" ? "active" : ""}`} aria-pressed={tab === "procs"} onClick={() => setTab("procs")}>Processes</button>
+        {file && (
+          <span className={`file-tab ${tab === "file" ? "active" : ""}`}>
+            <button className={`tab ${tab === "file" ? "active" : ""}`} aria-pressed={tab === "file"} aria-label={fileLabel(file.path)} title={file.path} onClick={() => setTab("file")}>
+              <Icon d={FILE} size={13} />
+              <span className="file-tab-name">{fileLabel(file.path)}</span>
+            </button>
+            <button className="btn-icon file-tab-close" aria-label={`Close ${fileLabel(file.path)}`} onClick={onCloseFile}>
+              <Icon d={CLOSE} size={12} />
+            </button>
+          </span>
+        )}
         <span className="spacer" />
         {tab === "procs" && <button className="btn-icon" aria-label="Refresh processes" onClick={() => actions.loadProcs(meta.id)}><Icon d={REFRESH} /></button>}
       </header>
       {terminalUsed && <TerminalPane sessionId={meta.id} connected={connected} visible={shown && tab === "terminal"} actions={actions} />}
       {shown && tab === "agents" && (
         <section aria-label="Session subagents" className="pane-body subagents-pane">
-          {agents.length ? agents.map((agent) => <AgentEntry key={agent.key} entry={agent} />) : <p className="muted">No subagents in this session.</p>}
+          {agents.length ? agents.map((agent) => <AgentEntry key={agent.key} entry={agent} card />) : <p className="muted">No subagents in this session.</p>}
         </section>
       )}
       {shown && tab === "procs" && <ProcPane meta={meta} state={state} actions={actions} visible />}
+      {file && tab === "file" && <FileView sessionId={meta.id} path={file.path} nonce={file.nonce} home={homeOn(state, hostOf(meta))} actions={actions} onOpen={onOpenFile} />}
     </section>
   );
 }
@@ -3615,6 +3731,41 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
 
 const WEB_URL = /https?:\/\/(?:[^\s<>()\[\]{}"`']|\([^\s<>()]*\))+/;
 const INLINE = new RegExp(`(${[/\[`?[^\]`]+`?\]\([^)]+\)/.source, /`[^`]+`/.source, /\*\*[^*]+\*\*/.source, PR_URL_SOURCE, WEB_URL.source].join("|")})`, "gi");
+
+/** A link to a file on the session's host. Clicking opens it in the
+ *  workspace; a failure to download one where there is no workspace shows
+ *  next to the link. */
+function FileLink({ path, label }: { path: string; label: string }) {
+  const open = useContext(FileLinks);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!open) return <code>{label}</code>;
+  return (
+    <>
+      <button
+        type="button"
+        className="file-link"
+        title={`Open ${path}`}
+        aria-busy={busy || undefined}
+        onClick={async () => {
+          if (busy) return;
+          setBusy(true);
+          setError(null);
+          setError(await open(path));
+          setBusy(false);
+        }}
+      >
+        <Icon d={FILE} size={12} />
+        {label}
+      </button>
+      {error && (
+        <span className="file-link-error" role="alert">
+          {error}
+        </span>
+      )}
+    </>
+  );
+}
 
 function webHref(raw: string): string | null {
   if (!/^https?:\/\/[^\s\\]+$/i.test(raw)) return null;
@@ -3642,6 +3793,8 @@ function inline(text: string): ReactNode[] {
         </Fragment>
       );
     }
+    const file = link && fileTarget(link[2]);
+    if (file) return <FileLink key={i} path={file} label={link[1]} />;
     if (link) return <code key={i}>{link[1]}</code>;
     if (part.startsWith("`") && part.endsWith("`") && part.length > 2) return <code key={i}>{part.slice(1, -1)}</code>;
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) return <strong key={i}>{inline(part.slice(2, -2))}</strong>;
@@ -3704,7 +3857,22 @@ export function Markdown({ text, quotable }: { text: string; quotable?: boolean 
                 case "table":
                   return <MdTableView key={key} table={seg.table} />;
                 case "heading":
-                  return <h3 key={key}>{inline(seg.text)}</h3>;
+                  return (
+                    <h3 key={key} data-level={seg.level}>
+                      {inline(seg.text)}
+                    </h3>
+                  );
+                case "quote":
+                  return (
+                    <blockquote key={key}>
+                      {seg.lines.map((l, k) => (
+                        <span key={k}>
+                          {k > 0 && <br />}
+                          {inline(l)}
+                        </span>
+                      ))}
+                    </blockquote>
+                  );
                 case "ul":
                 case "ol": {
                   const List = seg.kind;
@@ -4940,7 +5108,13 @@ function SessionsPage({ state, actions }: { state: State; actions: Actions }) {
   const sessions = Object.values(state.sessions)
     .filter((s) => !hiddenFromSidebar(s))
     .filter((s) => (filter === "archived" ? s.archived : filter === "all" || !s.archived))
-    .filter((s) => `${s.title} ${s.cwd} ${ENGINE_NAME[s.engine]} ${hostName(state, hostOf(s))}`.toLowerCase().includes(query.toLowerCase()))
+    // Search what the row shows, account included: "Work" should find the
+    // sessions that run on the Work login.
+    .filter((s) =>
+      `${s.title} ${s.cwd} ${ENGINE_NAME[s.engine]} ${accountName(accountsOn(state, hostOf(s)), s.engine, accountOf(s))} ${hostName(state, hostOf(s))}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+    )
     .sort((a, b) => b.updatedAt - a.updatedAt);
   return (
     <div className="hosts">
