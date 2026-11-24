@@ -488,8 +488,8 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   `agents`; the snapshot carries the list.
 - **The one conversation.** Every message to an agent goes into its
   conversation, queued while a turn runs (`sessions::send_message`): from its
-  page, from an `@mention` in any message box, and later from other agents
-  and Slack. The first message makes it (a `session.create` in the agent's
+  page, from an `@mention` in any message box, from other agents
+  (`message_agent`) and from Slack (see Slack below). The first message makes it (a `session.create` in the agent's
   folder tagged `Meta.agent`); yardd answers `created { sessionId, ref }` as
   soon as it is known. In the agent's own folder it does not hold the folder;
   in a folder the user chose it runs in place, one writer at a time.
@@ -557,12 +557,16 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   queued message before that) and shown in the thread as a small badge above
   the bubble, the sender's face and words (`originLabel` in agents.ts; React
   text only): `{ kind: "agent", agentId, name, hops }` is "From @Name",
-  `{ kind: "agentReply", agentId, name, hops }` is "Reply from @Name". None,
+  `{ kind: "agentReply", agentId, name, hops }` is "Reply from @Name",
+  `{ kind: "slack", team, channel, channelName, threadTs, ts, user, userName }`
+  is "From Gio on Slack · #general" with an aubergine dot. None,
   or `{ kind: "user" }`, is the owner (no badge); a kind the UI does not know
   shows none. Origins are set by yardd only, never read from a client's op.
   The engine reads such a message framed with where it came from
   (`origins::engine_text`: `<message from="@Builder">…</message>` and that the
-  answer goes back; `<reply from="@Reviewer">…</reply>`); the thread shows only
+  answer goes back; `<reply from="@Reviewer">…</reply>`; `<slack from="Gio"
+  in="#general">…</slack>` with names flattened to one line without quotes or
+  angle brackets, so a Slack display name cannot break the frame); the thread shows only
   the text. Queued messages from several origins become one turn but stay
   separate `user_message`s, each with its badge. `Meta.answering` keeps the
   origins of the messages the running turn answers: set when it starts, grown
@@ -576,7 +580,12 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   it answered"; Stop also takes such messages out of the queue (they never
   land in the owner's reply box) and their senders hear "… stopped before it
   read your message". A yardd restart mid-turn fails the turn, so the sender
-  hears that too. Slack adds one arm (and its badge).
+  hears that too. The `slack` arm hands all of a turn's Slack origins at once
+  to `slack::answer` (one post per Slack thread). Slack origins also hear,
+  once per turn, that the turn waits on an approval: `App::emit` owes them an
+  `approval` status at the turn's first `approval_request`
+  (`origins::wants_approval_note`); an `agent` origin ignores it and waits
+  for the answer.
 - **Agents' own tools** (`agent_tools.rs`). Every user-made agent gets five
   tools in its conversation on every engine: `notify_owner { message }`,
   `message_agent { to, text }`, `list_agents`, `remember { text }` (adds a
@@ -626,11 +635,11 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
     character cap, refused past it) and broadcast `agents`. The engine knows
     already, so it is not a notes change. An open form follows the new memory
     unless the user has typed in it, and Save leaves an untouched memory out.
-- **Slack (planned, step 3).** A Slack thread is not a session of its own:
-  a message from Slack goes into the agent's one conversation with origin
-  `{ kind: "slack", … }` (the team, channel, thread and message it came from,
-  shown as a Slack badge with channel and person), and the reply hook's
-  `slack` arm posts the answer to that message back to the Slack thread.
+- **Slack (built, step 3; see Slack below).** A Slack thread is not a session
+  of its own: a message from Slack goes into the agent's one conversation
+  with origin `{ kind: "slack", … }` (the team, channel, thread and message it
+  came from, shown as a Slack badge with person and channel), and the reply
+  hook's `slack` arm posts the answer to that message back to the Slack thread.
 - **Scout, the host agent.** Its conversation is restricted (`private::restricted`):
   always Plan only (`session.setPermission` refuses another), and every turn
   runs on a fresh engine thread with no tools: Codex gets an ephemeral
@@ -706,5 +715,100 @@ over Switchy's quick questions. `crates/yardd/src/agents.rs`; UI
   an MCP call during a real turn (answered by the elicitation accept, not
   seen live), and how OpenCode, Grok and Gemini name the calls (matched by
   `switchyard` plus the tool name).
-- Not built yet: Slack (see above), agents on a remote host, per-agent
-  accounts in the form.
+- Not built yet: agents on a remote host, per-agent accounts in the form.
+
+## Slack
+
+The owner talks to his agents from Slack. `crates/yardd/src/slack.rs`; UI
+`ui/src/SlackCard.tsx` (the card), `ui/src/slack.ts` (manifest, token checks,
+status words, the badge's words). Messages and answers ride the shared
+origins and reply hook (see Agents, Origins): Slack adds the `slack` kind,
+its engine framing and one arm in `origins::reply`.
+
+- **Transport: Socket Mode.** The server is tailnet-only, so Slack cannot
+  call it (no Events API webhooks). The app-level token (`xapp-`, scope
+  `connections:write`) opens a WebSocket with `apps.connections.open`; the bot
+  token (`xoxb-`) makes the Web API calls (`auth.test`, `chat.postMessage`,
+  `chat.postEphemeral`, `reactions.add/remove`, `users.info`,
+  `conversations.info`), form-encoded with a bearer header. Every envelope is
+  acknowledged; `disconnect` dials again at once (`link_disabled` is shown as
+  an error); a drop or a refusal backs off from 1 s to a minute; with no frame
+  for 90 s (yardd pings every 30 s) the connection is redialled; new tokens or
+  Retry dial at once. TLS is rustls on ring (reqwest and tokio-tungstenite),
+  as the app's updater already builds it. Configure Slack on one yardd only:
+  two connections with the same app token split Slack's events between them.
+- **Tokens** are kept in `slack.json` in the data dir, written with mode 0600
+  (aside, then renamed). They never leave yardd: the snapshot and the `slack`
+  broadcast carry `xoxb-…WXYZ` only, and no log line or error names them (the
+  Socket Mode address, which holds a ticket, is not logged either).
+- **Who may talk to agents:** an allowlist of Slack user ids, empty at first.
+  Anyone else is ignored, gets one ephemeral "not allowed" note with their
+  member id, and shows on the card as a request (Allow, Dismiss). That is how
+  the owner adds himself: his first DM after connecting. Bots, this app
+  included, and edits, joins and other subtypes are ignored.
+- **Routing.** A DM or an @mention goes to: the agent of its Slack thread (a
+  follow-up stays with the agent the thread's first routed message went to,
+  saved as `team/channel/thread_ts`, the newest 1,000); else the agent whose
+  name starts the text (`Reviewer …`, `@Reviewer …`, `Reviewer: …`, any case;
+  the name is dropped); else the channel's default agent, then the default
+  agent; else the bot answers in the thread with the agents' names. In a
+  channel, a message without a mention counts only inside a routed thread
+  (events `message.channels`/`message.groups`); a mention arrives as both
+  `app_mention` and a channel message and is handled once. Slack markup reads
+  as text (`<url|label>` as `label (url)`, `<@U1>` as `@U1`). Files are not
+  passed on. Delivery is `agents::deliver`, the same path `message_agent`
+  uses: into the agent's one conversation, made if it has none, queued while
+  a turn runs.
+- **Answers** (`slack::answer`, the reply hook's `slack` arm). The message
+  gets :eyes: when it reaches the agent (queued or not). When the turn that
+  answered it ends: completed, the final answer is posted in the thread
+  (`thread_ts` = the message's thread or its own ts), Markdown turned into
+  mrkdwn (bold, italics, strikes, links, headings, bullets; `&`, `<`, `>`
+  escaped everywhere so an answer can never mention `<!channel>` or a user;
+  code kept, fences without a language), split at 3,500 bytes between lines
+  with code blocks closed and reopened, and :white_check_mark:; failed,
+  "Reviewer could not finish: <error>" and :x:; stopped, "Reviewer was
+  stopped in Switchyard." and :x:; a queued Slack message that Stop took
+  back, "Reviewer was stopped in Switchyard before it read your message." and
+  :x:. A turn waiting on an approval posts "Reviewer needs your approval in
+  Switchyard: <title>" once (the `approval` status above). One post per Slack
+  thread, however many of its messages the turn answered; posts go out one
+  at a time so a thread reads them in order. A post that fails leaves a note
+  in the conversation. An error before the agent is reached (it is queued for
+  room on the host, say) is posted in the thread with :x:.
+- **Setup** (Connectors page, Messaging, Slack): Create on Slack opens
+  api.slack.com with the app manifest filled in (`manifest_json`), or Copy
+  manifest and paste it under Create New App, From a manifest. The manifest
+  turns Socket Mode on and asks for `app_mentions:read`, `chat:write`,
+  `im:history`, `im:read`, `im:write`, `channels:history`, `channels:read`,
+  `groups:history`, `groups:read`, `users:read`, `reactions:write`, with bot
+  events `app_mention`, `message.im`, `message.channels`, `message.groups`.
+  Install it, copy the Bot User OAuth Token, generate an app-level token with
+  `connections:write` under Basic Information, paste both, then DM the bot
+  and Allow yourself on the card. The card then shows the connection ("As
+  @switchyard in Acme", or the error with Retry), requests, allowed people,
+  the default agent and a row per channel the bot was mentioned in, each with
+  an agent picker; Replace tokens and Disconnect (forgets the tokens) in its
+  footer. Ops: `slack.tokens`, `slack.disconnect`, `slack.retry`,
+  `slack.allow`, `slack.disallow`, `slack.dismiss`, `slack.route { agent,
+  channel? }`; each broadcasts `slack`. Slack lives on the hub: a remote's
+  `slack` broadcast is dropped.
+- **Tests.** `YARD_SLACK_API` points the Web API (and so Socket Mode)
+  elsewhere: `verify/fakes/fake-slack` is a Bun fake of the Web API methods
+  above and Socket Mode, with control endpoints to send a message, a
+  `disconnect` or a drop and to read posts, reactions and acks.
+  `tests/slack.rs`: routing by name, default agent and thread, the allowlist
+  and its one ephemeral note, bots ignored, a channel mention handled once,
+  the engine framing, answers in the right thread with reactions, failure,
+  approval, stop and unread posts, every envelope acked, reconnects after a
+  `disconnect` and a drop, a refused token shown, and tokens in no snapshot,
+  broadcast or log (file mode 0600). Unit tests cover routing, mention
+  stripping, Slack markup, mrkdwn, splitting and the `slack` framing. The
+  `slack` feature map drives the card (empty, refused, connected, a request,
+  the default agent) and the badge in a conversation at both viewports,
+  against the fake.
+- **Not checked:** a real Slack workspace. Nothing here has talked to
+  slack.com: the manifest import, real event shapes beyond Slack's documented
+  ones, rate limits, Enterprise Grid ids and the TLS path to slack.com are
+  untested. A Slack message is only answered by the agent's conversation on
+  the hub; Slack on a remote host is not offered.

@@ -29,6 +29,7 @@ mod private;
 mod pty;
 mod remote;
 mod sessions;
+mod slack;
 mod state;
 mod store;
 mod sweep;
@@ -113,6 +114,7 @@ async fn main() -> anyhow::Result<()> {
     tokio::spawn(automations::run_scheduler(app.clone()));
     tokio::spawn(claude::run_usage_refresh(app.clone()));
     tokio::spawn(sweep::run(app.clone()));
+    tokio::spawn(slack::run(app.clone()));
 
     // Queued messages: into the running turn at a step, or the next turn.
     // In order per session (tokio's Mutex queues waiters first come, first

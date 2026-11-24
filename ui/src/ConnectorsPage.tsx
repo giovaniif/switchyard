@@ -12,6 +12,7 @@ import { accountsOn, hostName, hostOnline, mcpAuthKey, mcpKey, type Actions, typ
 import { Icon, MenuButton, PLUS } from "./App";
 import { loadHost } from "./sessionDefaults";
 import { ENGINE_NAME } from "./engines";
+import { SlackCard } from "./SlackCard";
 
 const REFRESH = "M21 12a9 9 0 1 1-3-6.7M21 4v5h-5";
 const ENGINES: Engine[] = ["claude", "codex"];
@@ -80,6 +81,15 @@ export function ConnectorsPage({ state, actions, usage }: { state: State; action
             {shown.map(({ key, engine, account, accountName }) => <AccountCard key={key} state={state} actions={actions} host={host} engine={engine} account={account} accountName={accountName} online={online} />)}
             {!shown.length && <p className="muted">No accounts for this engine on {hostName(state, host)}.</p>}
           </div>
+          {state.slack && (
+            <div className="connector-apps">
+              <div className="connector-section-head">
+                <h2>Messaging</h2>
+                <p className="muted small">Write to your agents from other apps. Each answer goes back where you asked.</p>
+              </div>
+              <SlackCard state={state} actions={actions} />
+            </div>
+          )}
         </div>
       </div>
     </div>
