@@ -1,0 +1,250 @@
+{
+  "v": 1,
+  "claim": "An automation run waiting for approval puts the same green 'A run is working' dot on the sidebar's Automations button as a busy run; runs stay out of the sidebar, so nothing there says a run is waiting for the user. Fix: an amber 'A run needs approval' dot.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-731f",
+  "base": "7220075e7901c6de6da9c1883f94511ea012d3f6",
+  "head": "04d9763e120692206a8056c720498bcc672af282",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/automations.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/automations.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/automations.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-24T03:08:35.726Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "cb719f55a59666b0a7b6e61f82cd65a0c58d2e73",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "b0d735ec60f08a943379befe1893b4030306f23a586243c8d7de34964d856c49"
+        },
+        {
+          "path": "p1-base-desktop.png",
+          "sha256": "ae4deb1991e776efa3c5d8f8658c1c03db59f4f096ca120da4697993986a56fa"
+        }
+      ],
+      "addedAt": "2026-11-24T03:08:44.644Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "cb719f55a59666b0a7b6e61f82cd65a0c58d2e73",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "b32fe64ba49a68cc6ab06224d38d374a09831f2ca2895764029129320f746533"
+        },
+        {
+          "path": "p2-base-mobile.png",
+          "sha256": "0fdd2f44a659c6651bc101be913afd4b6221d65b80c3d8ef92565fe005d0cb49"
+        }
+      ],
+      "addedAt": "2026-11-24T03:08:44.689Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "cb719f55a59666b0a7b6e61f82cd65a0c58d2e73",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "d7e9144109b171d8c91f8cc544948e758f141cfa58d0443b4aee3eb84bf9bdbd"
+        }
+      ],
+      "addedAt": "2026-11-24T03:08:44.732Z",
+      "cmd": "verify/yv map run automations --recipe a-run-waiting-for-approval-marks-the-button-amber",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "04d9763e120692206a8056c720498bcc672af282",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "ae084cd164112cd894966b3b68e9276093cefd17d4b1fd3ab942ce9fb470f8e3"
+        },
+        {
+          "path": "p4-head-desktop.png",
+          "sha256": "521a65a9c724f39a6803073203594181ff8732e53ab4d89c59915b8e28e7d397"
+        }
+      ],
+      "addedAt": "2026-11-24T03:09:07.200Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "04d9763e120692206a8056c720498bcc672af282",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "c5a11b03497d0ece79043fca3a3089ea94fcde3d704a52d630a292d685cf99ea"
+        },
+        {
+          "path": "p5-head-mobile.png",
+          "sha256": "863752cca26529c0acef485ed06033e4baa4b35f3633e12b14503ac629f38157"
+        }
+      ],
+      "addedAt": "2026-11-24T03:09:07.242Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "04d9763e120692206a8056c720498bcc672af282",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "bf4dd6e7b770d658601be824f91cf4a0365e234f37d2c67ba66312a5b5111362"
+        }
+      ],
+      "addedAt": "2026-11-24T03:09:07.280Z",
+      "cmd": "verify/yv map run automations --recipe a-run-waiting-for-approval-marks-the-button-amber && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "04d9763e120692206a8056c720498bcc672af282",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "324cec6eef66af5431c10c0da04402650bbfdd9be84ceab7481452d1272ca27f"
+        }
+      ],
+      "addedAt": "2026-11-24T03:09:18.867Z",
+      "cmd": "verify/yv design-check --base 7220075e7901",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "04d9763e120692206a8056c720498bcc672af282",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-automations.json",
+          "sha256": "2dce89f4b42cb0f7170b9b14d2959f13c3b2c423bb27afb83b42ab09423f18a9"
+        }
+      ],
+      "addedAt": "2026-11-24T03:09:18.948Z",
+      "cmd": "verify/yv map run automations",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "automations/list-shows-schedule-next-and-last",
+        "automations/create-from-the-form",
+        "automations/run-now-archives-and-lists-the-run",
+        "automations/pinning-a-run-brings-it-back",
+        "automations/run-time-is-how-long-it-ran",
+        "automations/grid-of-cards-and-the-run-strip",
+        "automations/edit-changes-the-schedule",
+        "automations/edit-keeps-an-unlisted-model",
+        "automations/disable-stops-the-schedule",
+        "automations/reload-and-back-keep-the-page",
+        "automations/delete-removes-the-automation-and-frees-its-runs",
+        "automations/claude-usage-limit-skips",
+        "automations/run-now-failure-says-why-once",
+        "automations/interval-and-weekly-schedules-from-the-form",
+        "automations/a-working-run-dots-the-automations-button",
+        "automations/manual-run-with-its-own-prompt",
+        "automations/interval-active-window",
+        "automations/a-run-waiting-for-approval-marks-the-button-amber"
+      ]
+    },
+    {
+      "id": 9,
+      "ref": "base",
+      "kind": "repro",
+      "at": "cb719f55a59666b0a7b6e61f82cd65a0c58d2e73",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p9-drive.json",
+          "sha256": "738c53e6d2e1ed10334ec90edf431cc1c52fdc8aedac373b53f6248efb7ff071"
+        },
+        {
+          "path": "p9-base-open-mobile.png",
+          "sha256": "7693dc74dbf4827b1bca08a1fb24571d15e7e16a4d51a28df7280fb77c81e748"
+        }
+      ],
+      "addedAt": "2026-11-24T03:12:31.912Z",
+      "failedApi": []
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "fix",
+      "at": "04d9763e120692206a8056c720498bcc672af282",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p10-drive.json",
+          "sha256": "70783bbd07536a4980535c06e0b5def85e29efac2318d6e502f4e20174e10227"
+        },
+        {
+          "path": "p10-head-open-mobile.png",
+          "sha256": "692b6bfae5198e0ca8df7b5b696d9a56a56fbe2158f366b99575a8f636e220a6"
+        }
+      ],
+      "addedAt": "2026-11-24T03:12:44.751Z",
+      "failedApi": []
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "cb719f55a59666b0a7b6e61f82cd65a0c58d2e73",
+    "short": "cb719f5",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T03:08:39.776Z"
+  },
+  "dir": ".verify/evidence/automations-dot-approval-base-m",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2059,
+      "steps": 3,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/automations-dot-approval-base-m/base-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

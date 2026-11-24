@@ -1,0 +1,32 @@
+$ verify/yv map run automations --recipe a-run-waiting-for-approval-marks-the-button-amber && (cd ui && bun test)
+# exit 0 after 11541 ms at 04d9763e120692206a8056c720498bcc672af282
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "automations",
+      "at": "2026-11-24T03:09:18.615Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "a-run-waiting-for-approval-marks-the-button-amber",
+          "status": "pass",
+          "ms": 10386
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+bun test v1.4.4 (38afee6c8)
+
+
+ 422 pass
+ 0 fail
+ 1076 expect() calls
+Ran 422 tests across 29 files. [195.00ms]
