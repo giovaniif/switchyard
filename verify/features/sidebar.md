@@ -35,11 +35,65 @@ yv iso down
 
 ### rows-show-status
 Expect at both viewports: every seeded session has a row; the approval one
-says "Needs approval". At 390 px the sidebar is a drawer, opened first.
+carries "Needs approval" (shown as its badge, read out to screen readers). At
+390 px the sidebar is a drawer, opened first.
 
 ```sh
 yv drive new --viewport desktop --steps '[{"expect":{"css":".session-row","hasText":"TEST-say hello"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"},"text":"Needs approval"},{"expect":{"role":"navigation","name":"Sessions"},"text":"TEST-hello from Claude"},{"shot":"sidebar"}]'
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":{"css":".session-row","hasText":"TEST-say hello"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"},"text":"Needs approval"},{"expect":{"role":"navigation","name":"Sessions"},"text":"TEST-hello from Claude"},{"shot":"sidebar"}]'
+```
+
+### compact-rows-with-engine-marks
+Viewports: both
+A row is one line (36 px at most): the harness's own mark (Claude's starburst,
+the Codex mark; never "CC" or "CX") with what the session is doing as a badge
+on its corner, then the title. Model, status and account are in the row's
+tooltip and read out to screen readers, not shown. No cloud icon; a remote
+host's name is in the tooltip too.
+
+```sh
+yv drive new --viewport desktop --steps '[
+  {"expect":{"css":".session-row","hasText":"TEST-hello from Claude"}},
+  {"expect":{"css":".session-row .engine-icon-claude"}},
+  {"expect":{"css":".session-row .engine-icon-codex"}},
+  {"eval":"(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-run the migration\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\".row-engine .engine-icon\").getBoundingClientRect(); const badge = row.querySelector(\".row-engine .mark-approval\").getBoundingClientRect(); const title = row.querySelector(\".session-title\").getBoundingClientRect(); const visible = [...row.querySelector(\".session-text\").children].filter((e) => !e.classList.contains(\"sr-only\")).length; return [box.height <= 36, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right, icon.right <= title.left, visible, row.title.includes(\"Fake Fast · Needs approval\"), row.querySelectorAll(\".cloud\").length]; })()","equals":[true,true,true,1,true,0]},
+  {"expect":{"css":".session-row","hasText":"CC"},"visible":false},
+  {"shot":"rows"}
+]'
+yv drive new --viewport mobile --steps '[
+  {"click":"role:button:Open sessions"},
+  {"expect":{"css":".session-row","hasText":"TEST-hello from Claude"}},
+  {"eval":"(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-run the migration\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\".row-engine .engine-icon\").getBoundingClientRect(); const badge = row.querySelector(\".row-engine .mark-approval\").getBoundingClientRect(); const title = row.querySelector(\".session-title\").getBoundingClientRect(); const visible = [...row.querySelector(\".session-text\").children].filter((e) => !e.classList.contains(\"sr-only\")).length; return [box.height <= 36, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right, icon.right <= title.left, visible, row.title.includes(\"Fake Fast · Needs approval\"), row.querySelectorAll(\".cloud\").length]; })()","equals":[true,true,true,1,true,0]},
+  {"shot":"rows"}
+]'
+```
+
+### hover-shows-archive
+Viewports: both
+On a desktop, Archive and ⋯ appear at the row's end while the pointer is on
+it, and Archive takes one click. A phone has no hover: ⋯ stays, and Archive is
+in its menu.
+
+```sh
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-archive me"}' --wait '{"op":"created"}' --save arch_sid=sessionId
+yv drive new --viewport desktop --steps '[
+  {"expect":{"css":".session-row","hasText":"TEST-archive me"}},
+  {"eval":"getComputedStyle(document.querySelector(\"[aria-label=\\\"Archive TEST-archive me\\\"]\")).opacity","equals":"0"},
+  {"hover":{"css":".session-row","hasText":"TEST-archive me"}},
+  {"wait":200},
+  {"eval":"(() => { const item = document.querySelector(\"[aria-label=\\\"Archive TEST-archive me\\\"]\").closest(\".session-item\"); return getComputedStyle(item.querySelector(\".row-archive\")).opacity; })()","equals":"1"},
+  {"shot":"hover"},
+  {"click":"role:button:Archive TEST-archive me"},
+  {"expect":"role:button:Archived"}
+]'
+yv state --expect '{"sessions":[{"id":"{{arch_sid}}","archived":true}]}'
+yv api '{"op":"session.update","sessionId":"{{arch_sid}}","archived":false}'
+yv drive new --viewport mobile --steps '[
+  {"click":"role:button:Open sessions"},
+  {"expect":{"css":".session-row","hasText":"TEST-archive me"}},
+  {"eval":"(() => { const item = [...document.querySelectorAll(\".session-item\")].find((i) => i.textContent.includes(\"TEST-archive me\")); return [getComputedStyle(item.querySelector(\".row-archive\")).display, getComputedStyle(item.querySelector(\".row-more\")).opacity]; })()","equals":["none","1"]},
+  {"shot":"touch"}
+]'
 ```
 
 ### rows-mark-what-needs-you

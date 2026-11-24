@@ -28,6 +28,7 @@ import { fileTarget } from "./fileLinks";
 import { saveFile } from "./filePreview";
 import { FileLinks, FileView, fileLabel } from "./FileView";
 import { MermaidDiagram } from "./MermaidDiagram";
+import { EngineIcon } from "./EngineIcon";
 import { AutomationForm, AutomationsPage } from "./AutomationsPage";
 import { ConnectorsPage } from "./ConnectorsPage";
 import { WidgetFrame } from "./WidgetFrame";
@@ -627,6 +628,9 @@ function SessionRow({ state, actions, session: s, active, groups, seenAt, unread
   }, [menu]);
   const rowAccount = accountLabel(accountsOn(state, host), s);
   const rowAgent = agentOf(state.agents, s);
+  const rowModel = modelName(modelsOn(state, host), s.engine, s.model);
+  // The row shows only the title; the rest is a hover away.
+  const rowDetail = [rowAgent ? rowAgent.name : rowModel, ROW_LABEL[mark], rowAccount, host !== "local" ? `Runs on ${hostName(state, host)}` : ""].filter(Boolean).join(" · ");
   const worktree = !!(s.branch && s.repo);
   const remove = (removeWorktree: boolean) => {
     close();
@@ -657,25 +661,27 @@ function SessionRow({ state, actions, session: s, active, groups, seenAt, unread
     >
       <button
         className={`session-row ${active ? "active" : ""} ${online ? "" : "offline"} ${mark === "answered" || mark === "unread" ? "unread" : ""}`}
+        title={rowDetail}
         onClick={() => { onRead(); actions.go({ page: "session", id: s.id }); }}
       >
-        <RowMark state={mark} />
+        {/* The harness's mark, with what the session is doing as a badge on it. */}
+        <span className="row-engine">
+          <EngineIcon engine={s.engine} size={16} />
+          <RowMark state={mark} />
+        </span>
         <span className="session-text">
           <span className="session-title">{s.title}</span>
-          <span className="session-sub">
-            {rowAgent ? (
-              <span className="row-agent">
-                <AgentAvatar agent={rowAgent} size="xs" />
-                {rowAgent.name}
-              </span>
-            ) : (
-              modelName(modelsOn(state, host), s.engine, s.model)
-            )}{" "}
-            · <span className={`row-status row-status-${mark}`}>{ROW_LABEL[mark]}</span>
+          {/* The badge is colour and motion; screen readers get the words. */}
+          <span className="sr-only">
+            {" · "}
+            {rowAgent ? rowAgent.name : rowModel} · <span className={`row-status row-status-${mark}`}>{ROW_LABEL[mark]}</span>
             {rowAccount && <span className="row-account"> · {rowAccount}</span>}
           </span>
         </span>
-        {host !== "local" && <Cloud size={14} label={`Runs on ${hostName(state, host)}`} />}
+      </button>
+      {/* Shown on hover: archive in one click, the rest under ⋯. */}
+      <button className="btn-icon row-archive" aria-label={`${s.archived ? "Restore" : "Archive"} ${s.title}`} title={s.archived ? "Restore" : "Archive"} disabled={!online} onClick={() => actions.setArchived(s.id, !s.archived)}>
+        <Icon d={ARCHIVE} size={15} />
       </button>
       <button ref={more} className="btn-icon row-more" aria-label={`Actions for ${s.title}`} aria-haspopup="menu" aria-expanded={menu} onClick={() => (menu ? close() : setMenu(true))}>
         <Icon d={MORE} size={16} />
@@ -1501,7 +1507,9 @@ export function ModelPicker(props: {
         aria-label={`Model ${current?.name ?? value.model}`}
         onClick={() => (open ? close() : setOpen(true))}
       >
-        <span className="model-provider" aria-hidden="true">{value.engine === "claude" ? "CC" : value.engine === "codex" ? "CX" : value.engine.slice(0, 2).toUpperCase()}</span>
+        <span className="model-provider" aria-hidden="true">
+          <EngineIcon engine={value.engine} size={14} />
+        </span>
         <span>{current?.name ?? value.model}</span>
         <span className="muted">
           <Icon d={CHEVRON_DOWN} size={12} />

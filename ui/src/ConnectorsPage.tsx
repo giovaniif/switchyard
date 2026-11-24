@@ -2,6 +2,7 @@
 // config files, ChatGPT apps) each engine account can use on each host, whether
 // it works, and a way to sign it in. Opening the page asks yardd to list them;
 // for Claude that starts Claude Code with no prompt, so it spends no usage.
+import { EngineIcon } from "./EngineIcon";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { SelectPicker } from "./SelectPicker";
@@ -130,7 +131,9 @@ function AccountCard(props: { state: State; actions: Actions; host: string; engi
   return (
     <section className={`host-card connectors-card ${needsSignIn ? "connectors-card-attention" : ""}`} aria-label={`${ENGINE_NAME[engine]} · ${props.accountName}`}>
       <header className="connectors-card-head">
-        <span className={`connector-account-icon connector-account-${engine}`} aria-hidden="true">{engine === "claude" ? "CC" : "CX"}</span>
+        <span className={`connector-account-icon connector-account-${engine}`} aria-hidden="true">
+          <EngineIcon engine={engine} size={18} />
+        </span>
         <div className="connector-account-name">
           <strong>{props.accountName}</strong>
           <span className="muted small">{ENGINE_NAME[engine]}{engineState?.account ? ` · ${engineState.account}` : ""}</span>
