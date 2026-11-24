@@ -2,6 +2,26 @@
 
 Each version is a [GitHub release](https://github.com/giovaniif/better-than-claude-code/releases) with the signed Mac app and the Linux packages. The section for a version becomes its release notes.
 
+## 0.18.0 (2026-11-24)
+
+- **Agents.** The Agents page replaces Switchy. An agent is a name you mention (`@Reviewer`) with a colour, what it's for, how it runs (engine, model, effort, folder, permission) and two notes: instructions and memory. Each agent keeps one ongoing conversation. Type `@Name` in any message box to send it there, or start a new chat from its card. **Scout** is built in and answers quick questions about your hosts, read-only, like Switchy did. Switchy's old history isn't carried over.
+- **Agents have their own tools**, on every engine:
+  - **Needs you:** an agent can notify you. The notification opens its conversation, and its card shows "Needs you" until you look.
+  - **Ask another agent:** an agent can message another agent and gets the reply back in its own conversation. Each message is labelled "From @Name" or "Reply from @Name".
+  - **Memory:** an agent can update its own memory, which you see in its form.
+  - Limits stop runaway loops: 3 notifications an hour, 3 hops per chain, and no messaging itself.
+- **Per-agent accounts and agents on a remote host.** The agent form picks which account an agent uses when its engine has more than one. It can also run an agent on a connected remote host, in its own folder there. The agent's tools, @mentions and Slack all work as they do here. When that host is offline, the card says so and sending is refused. Moving an agent to another host starts its conversation fresh there, carrying over the latest messages. Remote hosts need this version too.
+- **Slack for agents.** Connect a Slack app on the Connectors page (new Messaging section; the guide includes a manifest to copy). DM the bot or @mention it with an agent's name, and the message goes into that agent's conversation with a "From <you> on Slack" label. The answer is posted back to your Slack thread. Only people you allow can reach your agents; anyone else is ignored and listed for you to Allow or Dismiss.
+- **Sessions are named as they start**, from the task, and again once the work is clearer. Sessions that were never named get a name after their next turn.
+- **Subagents pane.** Each subagent is its own aligned card: the task, then its type and state, then its latest step.
+- **Automations** shows an amber dot when a run is waiting for your approval.
+- **Sessions page** search also matches the account name shown on each row.
+- **Fixed:**
+  - Messaging a session whose folder was removed (for example, a worktree cleaned up after its PR merged) now says the folder no longer exists, instead of a misleading Claude "failed to launch… musl" error.
+  - The first terminal opens at its pane's size, so the prompt no longer shows twice.
+  - A denied edit reads "Did not edit", and stopping an OpenCode/Grok/Gemini call that was asking for approval reads "1 command not run".
+  - When the agent form refuses a name, it says why under the name field.
+
 ## 0.17.0 (2026-11-23)
 
 - **Sessions name themselves.** A new session no longer stays titled with the first line of its task. After its first reply, and again after its third, a small model reads the conversation and gives it a short, clear name such as "Fix login redirect loop". It uses Codex `gpt-5.6-luna` at low effort, else Claude Haiku: a few hundred tokens of your plan per name, in a private thread with no tools. A name you set with Rename is never changed, and automation runs keep their names. `YARD_SESSION_NAMES=off` turns it off.
