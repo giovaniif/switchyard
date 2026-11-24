@@ -1,0 +1,75 @@
+{
+  "ok": true,
+  "route": "sessions",
+  "build": {
+    "sha": "aa2cf2e13327174f911f6003cd760128c2d3c79d",
+    "short": "aa2cf2e",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T02:09:14.292Z"
+  },
+  "dir": ".verify/evidence/sessions-search-account-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2016,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/sessions-search-account-base/before-search-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/sessions-search-account-base/search-by-account-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 1924,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/sessions-search-account-base/before-search-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/sessions-search-account-base/search-by-account-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

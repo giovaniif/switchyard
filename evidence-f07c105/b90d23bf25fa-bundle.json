@@ -1,0 +1,197 @@
+{
+  "v": 1,
+  "claim": "On the Sessions page each row names its account (\"Codex · TEST-Codex · iso-host\"), but searching for that account name says \"No sessions match your search.\"",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-23-ab19",
+  "base": "c7c8025f135ee4a465e46155aac8e0b4107603bf",
+  "head": "f07c10577c2aa8e6dcd11b21ae4d393c3150a23d",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/focused-pages.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-24T02:09:10.179Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "aa2cf2e13327174f911f6003cd760128c2d3c79d",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "8d3a2eda126963effbfe7615b513586bc6f7fbf9a6a36f24f0101b4f2bfaa7a3"
+        },
+        {
+          "path": "p1-before-search-mobile.png",
+          "sha256": "053f631b046ee395d92438628fab85991f951ae1eb962df92eeea88f733d16d4"
+        },
+        {
+          "path": "p1-search-by-account-mobile.png",
+          "sha256": "e03d07a75e2c21a5ef7a93157c2ab47965f4c240a8aac875a35c9f8c6cf46c6a"
+        },
+        {
+          "path": "p1-before-search-desktop.png",
+          "sha256": "f6328852d9664e1df8f20590837d07fb54a7e60975f42e3d87af77f8ece19624"
+        },
+        {
+          "path": "p1-search-by-account-desktop.png",
+          "sha256": "87799babf99c51e25c17c711a4de63cd98e8717fe77c998bb4d6f0cd6871b757"
+        }
+      ],
+      "addedAt": "2026-11-24T02:09:19.126Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "aa2cf2e13327174f911f6003cd760128c2d3c79d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "159dfcb9061bdd83387cb2b8c438c264223d4b28310ddc4416f8726e8afee1fa"
+        }
+      ],
+      "addedAt": "2026-11-24T02:09:19.176Z",
+      "cmd": "verify/yv map run focused-pages --recipe sessions-search-finds-the-account",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "f07c10577c2aa8e6dcd11b21ae4d393c3150a23d",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-2-drive.json",
+          "sha256": "373e204e5f6e534edf11ca8187360e1d99de3aca66475d07d38aa79ceee1974c"
+        },
+        {
+          "path": "p3-2-before-search-mobile.png",
+          "sha256": "053f631b046ee395d92438628fab85991f951ae1eb962df92eeea88f733d16d4"
+        },
+        {
+          "path": "p3-2-search-by-account-mobile.png",
+          "sha256": "b6c97b3b3f1a5d6c3a9ac43da9155d51101768f78c1d276ef046a8ac21fb7677"
+        },
+        {
+          "path": "p3-2-before-search-desktop.png",
+          "sha256": "0490e5f113db16278f1d86b0a1e34efc46c159437e00434b453449987cc8b6a3"
+        },
+        {
+          "path": "p3-2-search-by-account-desktop.png",
+          "sha256": "f3fd215251b93d138a06f9aa59e25a3e3788a09243c5e390515bbab42f300b2c"
+        }
+      ],
+      "addedAt": "2026-11-24T02:12:43.035Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "f07c10577c2aa8e6dcd11b21ae4d393c3150a23d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "a6700aeba13ff9a07c62041324cf5462b118fe2bb29422d7237d9cef6a32c895"
+        }
+      ],
+      "addedAt": "2026-11-24T02:12:43.082Z",
+      "cmd": "verify/yv map run focused-pages --recipe sessions-search-finds-the-account",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "f07c10577c2aa8e6dcd11b21ae4d393c3150a23d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "319221774b5f15011246f3378bf7b7b59664029a77fcc6f0d216322971780743"
+        }
+      ],
+      "addedAt": "2026-11-24T02:12:49.071Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "f07c10577c2aa8e6dcd11b21ae4d393c3150a23d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "d0ade83794782044776de718e5fd6ac4a9f1d1cd3008212757c80b12075c29e6"
+        }
+      ],
+      "addedAt": "2026-11-24T02:12:49.294Z",
+      "cmd": "verify/yv design-check --base c7c8025f135e",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "f07c10577c2aa8e6dcd11b21ae4d393c3150a23d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-focused-pages.json",
+          "sha256": "942b56d798a834200867e1f909213afe701806cca9b86a70eb87939d081ccd4d"
+        }
+      ],
+      "addedAt": "2026-11-24T02:12:49.381Z",
+      "cmd": "verify/yv map run focused-pages",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "focused-pages/selected-host-tabs",
+        "focused-pages/compact-usage-popover",
+        "focused-pages/usage-popover-leads-with-trigger-account",
+        "focused-pages/usage-row-lines-up-with-host-rows",
+        "focused-pages/subscriptions-page",
+        "focused-pages/account-picker-separate-from-model",
+        "focused-pages/other-engine-account-and-fixed-session",
+        "focused-pages/sessions-search-and-archive",
+        "focused-pages/sessions-visibility-tabs",
+        "focused-pages/sessions-search-no-match-says-so",
+        "focused-pages/sessions-search-finds-the-account",
+        "focused-pages/host-rows-line-up-with-the-page",
+        "focused-pages/session-rows-line-up-with-the-page",
+        "focused-pages/session-rows-have-straight-dividers",
+        "focused-pages/offline-host-and-selection-fallback",
+        "focused-pages/workspace-widths-and-views",
+        "focused-pages/manage-accounts-opens-logins",
+        "focused-pages/sidebar-skips-duplicate-page-links"
+      ]
+    }
+  ]
+}

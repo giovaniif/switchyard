@@ -1,0 +1,110 @@
+{
+  "ok": false,
+  "route": "sessions",
+  "build": {
+    "sha": "f07c10577c2aa8e6dcd11b21ae4d393c3150a23d",
+    "short": "f07c105",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T02:09:57.602Z"
+  },
+  "dir": ".verify/evidence/sessions-search-account-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 12215,
+      "steps": 11,
+      "failed": {
+        "step": 9,
+        "action": {
+          "expect": {
+            "css": ".focused-session-row",
+            "hasText": "TEST-on the codex account"
+          },
+          "count": 0
+        },
+        "reason": "expected {\"css\":\".focused-session-row\",\"hasText\":\"TEST-on the codex account\"} to be absent or hidden",
+        "screenshot": ".verify/evidence/sessions-search-account-head/fail-mobile-step9.png",
+        "aria": "- banner:\n  - button \"Open sessions\"\n  - heading \"Sessions\" [level=1]\n  - button \"New session\"\n- group \"Session visibility\":\n  - button \"Active\" [pressed]\n  - button \"All sessions\"\n  - button \"Archived\"\n- textbox \"Search sessions\": default\n- button \"TEST-on the codex account Codex · TEST-Codex · iso-host Idle —\":\n  - strong: TEST-on the codex account\n  - text: Codex · TEST-Codex · iso-host Idle —\n- button \"[cmd] TEST-run the migration Codex · Default · iso-host Idle —\":\n  - strong: \"[cmd] TEST-run the migration\"\n  - text: Codex · Default · iso-host Idle —\n- button \"TEST-hello from Claude Claude · Default · iso-host Idle —\":\n  - strong: TEST-hello from Claude\n  - text: Claude · Default · iso-host Idle —\n- button \"[edit] TEST-fix the greeting Codex · Default · iso-host Idle —\":\n  - strong: \"[edit] TEST-fix the greeting\"\n  - text: Codex · Default · iso-host Idle —\n- button \"TEST-say hello Codex · Default · iso-host Idle —\":\n  - strong: TEST-say hello\n  - text: Codex · Default · iso-host Idle —\n- button \"[think] TEST-plan the refactor Codex · Default · iso-host Idle —\":\n  - strong: \"[think] TEST-plan the refactor\"\n  - text: Codex · Default · iso-host Idle —\n- button \"[fail] TEST-failing turn Codex · Default · iso-host Idle —\":\n  - strong: \"[fail] TEST-failing turn\"\n  - text: Codex · Default · iso-host Idle —"
+      },
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/sessions-search-account-head/before-search-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/sessions-search-account-head/search-by-account-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 12259,
+      "steps": 11,
+      "failed": {
+        "step": 9,
+        "action": {
+          "expect": {
+            "css": ".focused-session-row",
+            "hasText": "TEST-on the codex account"
+          },
+          "count": 0
+        },
+        "reason": "expected {\"css\":\".focused-session-row\",\"hasText\":\"TEST-on the codex account\"} to be absent or hidden",
+        "screenshot": ".verify/evidence/sessions-search-account-head/fail-desktop-step9.png",
+        "aria": "- navigation \"Sessions\":\n  - button \"Go to session or page\": Switchyard Ctrl K\n  - button \"Collapse sessions sidebar\" [expanded]\n  - button \"New session\"\n  - button \"Agents\"\n  - button \"Automations\"\n  - button \"Connectors\"\n  - button \"Import\"\n  - button \"Settings\"\n  - button \"TEST-on the codex account Fake Fast · Idle · TEST-Codex\"\n  - button \"Actions for TEST-on the codex account\"\n  - button \"[cmd] TEST-run the migration Fake Fast · Idle · Default\"\n  - button \"Actions for [cmd] TEST-run the migration\"\n  - button \"TEST-hello from Claude Haiku 5.5 · Idle · Default\"\n  - button \"Actions for TEST-hello from Claude\"\n  - button \"[edit] TEST-fix the greeting Fake Fast · Idle · Default\"\n  - button \"Actions for [edit] TEST-fix the greeting\"\n  - button \"TEST-say hello Fake Fast · Idle · Default\"\n  - button \"Actions for TEST-say hello\"\n  - button \"[think] TEST-plan the refactor Fake Fast · Idle · Default\"\n  - button \"Actions for [think] TEST-plan the refactor\"\n  - button \"[fail] TEST-failing turn Fake Fast · Idle · Default\"\n  - button \"Actions for [fail] TEST-failing turn\"\n  - button \"Subscription usage\": Usage 47% used\n  - button \"iso-host 3% · 49%\"\n- separator \"Resize the sessions sidebar\"\n- banner:\n  - heading \"Sessions\" [level=1]\n  - button \"New session\"\n- group \"Session visibility\":\n  - button \"Active\" [pressed]\n  - button \"All sessions\"\n  - button \"Archived\"\n- textbox \"Search sessions\": default\n- button \"TEST-on the codex account Codex · TEST-Codex · iso-host Idle —\":\n  - strong: TEST-on the codex account\n  - text: Codex · TEST-Codex · iso-host Idle —\n- button \"[cmd] TEST-run the migration Codex · Default · iso-host Idle —\":\n  - strong: \"[cmd] TEST-run the migration\"\n  - text: Codex · Default · iso-host Idle —\n- button \"TEST-hello from Claude Claude · Default · iso-host Idle —\":\n  - strong: TEST-hello from Claude\n  - text: Claude · Default · iso-host Idle —\n- button \"[edit] TEST-fix the greeting Codex · Default · iso-host Idle —\":\n  - strong: \"[edit] TEST-fix the greeting\"\n  - text: Codex · Default · iso-host Idle —\n- button \"TEST-say hello Codex · Default · iso-host Idle —\":\n  - strong: TEST-say hello\n  - text: Codex · Default · iso-host Idle —\n- button \"[think] TEST-plan the refactor Codex · Default · iso-host Idle —\":\n  - strong: \"[think] TEST-plan the refactor\"\n  - text: Codex · Default · iso-host Idle —\n- button \"[fail] TEST-failing turn Codex · Default · iso-host Idle —\":\n  - strong: \"[fail] TEST-failing turn\"\n  - text: Codex · Default · iso-host Idle —"
+      },
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/sessions-search-account-head/before-search-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/sessions-search-account-head/search-by-account-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 9 {\"expect\":{\"css\":\".focused-session-row\",\"hasText\":\"TEST-on the codex account\"},\"count\":0}: expected {\"css\":\".focused-session-row\",\"hasText\":\"TEST-on the codex account\"} to be absent or hidden",
+      "hint": "see .verify/evidence/sessions-search-account-head/fail-mobile-step9.png and the aria snapshot"
+    },
+    {
+      "code": "step-failed",
+      "msg": "desktop: step 9 {\"expect\":{\"css\":\".focused-session-row\",\"hasText\":\"TEST-on the codex account\"},\"count\":0}: expected {\"css\":\".focused-session-row\",\"hasText\":\"TEST-on the codex account\"} to be absent or hidden",
+      "hint": "see .verify/evidence/sessions-search-account-head/fail-desktop-step9.png and the aria snapshot"
+    }
+  ]
+}

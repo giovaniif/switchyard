@@ -1,0 +1,26 @@
+$ verify/yv map run focused-pages --recipe sessions-search-finds-the-account
+# exit 0 after 5941 ms at f07c10577c2aa8e6dcd11b21ae4d393c3150a23d
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "focused-pages",
+      "at": "2026-11-24T02:12:49.019Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "sessions-search-finds-the-account",
+          "status": "pass",
+          "ms": 4686
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
