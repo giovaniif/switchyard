@@ -28,7 +28,7 @@ import { MermaidDiagram } from "./MermaidDiagram";
 import { AutomationForm, AutomationsPage } from "./AutomationsPage";
 import { ConnectorsPage } from "./ConnectorsPage";
 import { WidgetFrame } from "./WidgetFrame";
-import { hiddenFromSidebar } from "./automations";
+import { hiddenFromSidebar, runsAttention } from "./automations";
 import { dragHasSession, dropUpdate, SESSION_DRAG_TYPE, type DropTarget } from "./sidebarDrop";
 import { addsProviders, canSteer, ENGINES, ENGINE_ACCOUNT, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, pickerEngines, queuedHint, shownEffort } from "./engines";
 import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinned, summarize, thoughtLine, type Row, type WorkItem } from "./thread";
@@ -128,6 +128,8 @@ const RIGHT_PANEL = "M3 5h18v14H3ZM15 5v14";
 const MIC = "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3ZM19 10v2a7 7 0 0 1-14 0v-2M12 19v3";
 const STOP = "M7 7h10v10H7Z";
 const WAVES = "M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3";
+/** What the dot on the Automations row says. */
+const RUNS_MARK = { approval: "A run needs approval", working: "A run is working" } as const;
 /** What the dot on the Agents row says. */
 const AGENTS_MARK = { approval: "An agent needs approval", needsYou: "An agent needs you", working: "An agent is working", failed: "An agent's turn failed", answered: "An agent answered" } as const;
 
@@ -1011,6 +1013,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   const dragged = dragId ? state.sessions[dragId] : undefined;
   // Runs of automations live on the Automations page, not in this list.
   const runs = everything.filter(hiddenFromSidebar);
+  const runsMark = runsAttention(runs);
   const inRun = route.page === "session" && !!state.sessions[route.id]?.automation;
   const agentOpen = route.page === "agent" ? state.agents.find((a) => a.id === route.id)?.chat ?? null : null;
   const seen = useSeen(state.sessions, route.page === "session" ? route.id : agentOpen, state.restore);
@@ -1097,7 +1100,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
         <button className={`nav-row ${route.page === "automations" || route.page === "automation" || inRun ? "active" : ""}`} onClick={() => actions.go({ page: "automations" })}>
           <Icon d={CLOCK} />
           Automations
-          {runs.some((s) => s.status === "running" || s.status === "needs_approval") && <span className="dot dot-running" role="img" aria-label="A run is working" />}
+          {runsMark && <span className={`dot ${runsMark === "approval" ? "dot-needs_approval" : "dot-running"}`} role="img" aria-label={RUNS_MARK[runsMark]} title={RUNS_MARK[runsMark]} />}
         </button>
         <button className={`nav-row ${route.page === "connectors" ? "active" : ""}`} onClick={() => actions.go({ page: "connectors" })}>
           <Icon d={PLUG} />
