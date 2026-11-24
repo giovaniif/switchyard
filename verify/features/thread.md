@@ -329,35 +329,90 @@ yv drive 'session:{{sid_echo}}' --steps '[
 
 ### file-links-download
 Viewports: both
-A file the agent links downloads from the session's host, whatever dialect the
-link is in: a path relative to the session's folder with a line number,
-ChatGPT's `sandbox:/mnt/data/…`, an absolute path. The bytes arrive as a file to
-save, never as a page (an agent's HTML does not run). A missing file says so
-next to its link, and the page stays put.
+A file the agent links opens in the workspace from the session's host, whatever
+dialect the link is in: a path relative to the session's folder with a line
+number, ChatGPT's `sandbox:/mnt/data/…`, an absolute path. Its Download button
+saves the bytes as a file, never as a page (an agent's HTML shows as source
+and does not run). A missing file says so in the view, and the page stays put.
 
 ```sh
 printf 'org,domain\n1,example.com\n' > "$(v plain)/TEST-report.csv"
 printf '<script>window.top.__pwned=1</script>' > "$(v plain)/TEST-page.html"
 yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-files\n\n- [TEST report](TEST-report.csv:2)\n- [TEST sandbox copy](sandbox:/mnt/data/TEST-report.csv)\n- [TEST absolute]({{plain}}/TEST-report.csv)\n- [TEST page](TEST-page.html#L1)\n- [TEST missing](TEST-gone.csv)"}' --wait '{"op":"created"}' --save files_sid=sessionId
 yv drive 'session:{{files_sid}}' --steps '[
-  {"expect":{"css":".prose button.file-link","hasText":"TEST missing"}},
   {"eval":"(() => { window.__dl = []; const click = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dl.push(fetch(this.href).then((r) => r.blob()).then(async (b) => [this.download, b.type, await b.text()])); return click.call(this); }; return true; })()","equals":true},
   {"click":{"css":".prose button.file-link","hasText":"TEST report"}},
-  {"click":{"css":".prose button.file-link","hasText":"TEST sandbox copy"}},
-  {"click":{"css":".prose button.file-link","hasText":"TEST absolute"}},
-  {"click":{"css":".prose button.file-link","hasText":"TEST page"}},
-  {"wait":1500},
-  {"eval":"Promise.all(window.__dl)","equals":[["TEST-report.csv","application/octet-stream","org,domain\n1,example.com\n"],["TEST-report.csv","application/octet-stream","org,domain\n1,example.com\n"],["TEST-report.csv","application/octet-stream","org,domain\n1,example.com\n"],["TEST-page.html","application/octet-stream","<script>window.top.__pwned=1</script>"]]},
-  {"eval":"window.__pwned === undefined","equals":true},
+  {"expect":{"css":".file-view .file-name","hasText":"TEST-report.csv"}},
+  {"expect":{"css":".file-view .file-meta","hasText":"CSV · 1 row · 2 columns"}},
+  {"expect":{"css":".file-table th","hasText":"domain"}},
+  {"click":{"css":".file-view button.file-download"}},
+  {"wait":1000},
+  {"eval":"Promise.all(window.__dl)","equals":[["TEST-report.csv","application/octet-stream","org,domain\n1,example.com\n"]]},
   {"shot":"file-links"}
+]'
+yv drive 'session:{{files_sid}}' --steps '[{"click":{"css":".prose button.file-link","hasText":"TEST sandbox copy"}},{"expect":{"css":".file-view .file-meta","hasText":"1 row"}},{"expect":{"css":".file-view .file-path","hasText":"TEST-plain-folder/TEST-report.csv"}}]'
+yv drive 'session:{{files_sid}}' --steps '[{"click":{"css":".prose button.file-link","hasText":"TEST absolute"}},{"expect":{"css":".file-view .file-meta","hasText":"1 row"}}]'
+yv drive 'session:{{files_sid}}' --steps '[
+  {"eval":"(() => { window.__dl = []; const click = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dl.push(fetch(this.href).then((r) => r.blob()).then(async (b) => [this.download, b.type, await b.text()])); return click.call(this); }; return true; })()","equals":true},
+  {"click":{"css":".prose button.file-link","hasText":"TEST page"}},
+  {"expect":{"css":".file-line-hit","hasText":"<script>window.top.__pwned=1</script>"}},
+  {"click":{"css":".file-view button.file-download"}},
+  {"wait":1000},
+  {"eval":"Promise.all(window.__dl)","equals":[["TEST-page.html","application/octet-stream","<script>window.top.__pwned=1</script>"]]},
+  {"eval":"window.__pwned === undefined","equals":true}
 ]'
 # The refusal is the thing proven here, so its error reply is allowed.
 yv drive 'session:{{files_sid}}' --allow-errors --steps '[
   {"click":{"css":".prose button.file-link","hasText":"TEST missing"}},
-  {"expect":{"css":".prose .file-link-error","hasText":"TEST-gone.csv was not found"}},
+  {"expect":{"css":".file-view .file-empty[role=alert]","hasText":"TEST-gone.csv was not found"}},
+  {"expect":{"role":"button","name":"Try again","exact":true}},
   {"eval":"location.hash.startsWith(\"#/s/\")","equals":true},
   {"shot":"file-link-missing"}
 ]'
+```
+
+### file-viewer-kinds
+Viewports: both
+The workspace's file view fits the file: Markdown as a document (heading sizes,
+quotes, links that open files beside it), a CSV as a grid with its row and
+column count and numbers aligned right, an image on a checkerboard, code with
+line numbers and the linked line marked, and anything else as "No preview"
+with Download. The default workspace keeps its three tabs; the file's tab
+closes with its ×.
+
+```sh
+mkdir -p "$(v plain)/notes"
+printf '# TEST doc\n\nIntro.\n\n## TEST part\n\n> TEST quoted note\n\nSee [TEST nested](notes/TEST-nested.md).\n' > "$(v plain)/TEST-doc.md"
+printf '# TEST nested doc\n' > "$(v plain)/notes/TEST-nested.md"
+printf 'name,"users, total",growth\nAtlas,"1,618",4.5%%\n"Ember, Co.",386,-2%%\n' > "$(v plain)/TEST-grid.csv"
+printf 'one\ntwo\nthree\nfour\n' > "$(v plain)/TEST-code.ts"
+printf 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' | base64 -d > "$(v plain)/TEST-dot.png"
+printf 'PK\003\004\000\001\002' > "$(v plain)/TEST-bundle.zip"
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-kinds\n\n- [TEST doc](TEST-doc.md)\n- [TEST grid](TEST-grid.csv)\n- [TEST code](TEST-code.ts:3)\n- [TEST dot](TEST-dot.png)\n- [TEST bundle](TEST-bundle.zip)"}' --wait '{"op":"created"}' --save kinds_sid=sessionId
+yv drive 'session:{{kinds_sid}}' --steps '[
+  {"expect":"css:.workspace-tabs .file-tab","visible":false},
+  {"click":{"css":".prose button.file-link","hasText":"TEST doc"}},
+  {"expect":{"css":".file-doc h3[data-level=\"1\"]","hasText":"TEST doc"}},
+  {"expect":{"css":".file-doc h3[data-level=\"2\"]","hasText":"TEST part"}},
+  {"expect":{"css":".file-doc blockquote","hasText":"TEST quoted note"}},
+  {"expect":{"css":".file-view .file-meta","hasText":"Markdown"}},
+  {"shot":"markdown"},
+  {"click":{"css":".file-doc button.file-link","hasText":"TEST nested"}},
+  {"expect":{"css":".file-doc h3","hasText":"TEST nested doc"}},
+  {"expect":{"css":".file-view .file-path","hasText":"notes/TEST-nested.md"}},
+  {"click":"role:button:Close TEST-nested.md"},
+  {"expect":"css:.workspace-tabs .file-tab","visible":false}
+]'
+yv drive 'session:{{kinds_sid}}' --steps '[
+  {"click":{"css":".prose button.file-link","hasText":"TEST grid"}},
+  {"expect":{"css":".file-view .file-meta","hasText":"CSV · 2 rows · 3 columns"}},
+  {"eval":"[...document.querySelectorAll(\".file-table thead th\")].map((th) => th.textContent)","equals":["","name","users, total","growth"]},
+  {"eval":"[...document.querySelectorAll(\".file-table tbody tr:nth-child(2) td\")].map((td) => [td.textContent, td.className])","equals":[["2","row-num"],["Ember, Co.",""],["386","num"],["-2%","num"]]},
+  {"shot":"csv"}
+]'
+yv drive 'session:{{kinds_sid}}' --steps '[{"click":{"css":".prose button.file-link","hasText":"TEST code"}},{"expect":{"css":".file-view .file-meta","hasText":"4 lines"}},{"expect":{"css":".file-line-hit","hasText":"three"}},{"expect":"css:.file-line","count":4},{"shot":"code"}]'
+yv drive 'session:{{kinds_sid}}' --steps '[{"click":{"css":".prose button.file-link","hasText":"TEST dot"}},{"expect":"css:.file-image img"},{"eval":"new Promise((done) => { const img = document.querySelector(\".file-image img\"); const check = () => img.complete ? done([img.naturalWidth, img.src.startsWith(\"blob:\")]) : setTimeout(check, 50); check(); })","equals":[1,true]}]'
+yv drive 'session:{{kinds_sid}}' --steps '[{"click":{"css":".prose button.file-link","hasText":"TEST bundle"}},{"expect":{"css":".file-view .file-empty","hasText":"No preview for this file"}},{"expect":{"css":".file-view button.file-download"},"enabled":true},{"shot":"no-preview"}]'
 ```
 
 ### numbered-steps-across-code-blocks
