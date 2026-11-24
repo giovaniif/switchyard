@@ -1,0 +1,32 @@
+$ cd ui && bun test && cd .. && verify/yv map run agents --recipe a-name-problem-shows-by-the-name
+# exit 0 after 5535 ms at 2dac2aa94e1d460c533164889f33db027f67d4e6
+
+bun test v1.4.4 (38afee6c8)
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "agents",
+      "at": "2026-11-24T01:07:42.988Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "a-name-problem-shows-by-the-name",
+          "status": "pass",
+          "ms": 4228
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
+
+ 421 pass
+ 0 fail
+ 1071 expect() calls
+Ran 421 tests across 29 files. [166.00ms]

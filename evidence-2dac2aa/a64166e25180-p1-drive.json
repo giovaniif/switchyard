@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "88db28467c84c037627ded2541810b3ea0d9d129",
+    "short": "88db284",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T01:06:44.428Z"
+  },
+  "dir": ".verify/evidence/agent-name-reason-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2610,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agent-name-reason-base/taken-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agent-name-reason-base/twowords-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "(() => { const a = document.querySelector('[role=alert]'); const r = a.getBoundingClientRect(); return a.textContent + ' | alert top ' + Math.round(r.top) + 'px of ' + innerHeight + 'px | in view: ' + (r.top >= 0 && r.bottom <= innerHeight) + ' | hint: ' + document.querySelector('.agent-form-name').textContent; })()",
+          "value": "Another agent is already called Scout. | alert top 1408px of 844px | in view: false | hint: NameOne word, so it can be @mentioned."
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 2457,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agent-name-reason-base/taken-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agent-name-reason-base/twowords-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "(() => { const a = document.querySelector('[role=alert]'); const r = a.getBoundingClientRect(); return a.textContent + ' | alert top ' + Math.round(r.top) + 'px of ' + innerHeight + 'px | in view: ' + (r.top >= 0 && r.bottom <= innerHeight) + ' | hint: ' + document.querySelector('.agent-form-name').textContent; })()",
+          "value": "Another agent is already called Scout. | alert top 1321px of 900px | in view: false | hint: NameOne word, so it can be @mentioned."
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,45 @@
+$ verify/yv map run agents --recipe a-name-problem-shows-by-the-name
+# exit 1 after 25236 ms at 88db28467c84c037627ded2541810b3ea0d9d129
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "agents",
+      "at": "2026-11-24T01:07:19.389Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "a-name-problem-shows-by-the-name",
+          "status": "fail",
+          "ms": 24155,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 3 {\"expect\":\"css:.agent-form-name [role=alert]\",\"text\":\"Another agent is already called Scout.\",\"inViewport\":true}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-23-3113/.verify/drives/2026-11-24T01-06-55-425Z/fail-mobile-step3.png and the aria snapshot"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 3 {\"expect\":\"css:.agent-form-name [role=alert]\",\"text\":\"Another agent is already called Scout.\",\"inViewport\":true}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-23-3113/.verify/drives/2026-11-24T01-06-55-425Z/fail-desktop-step3.png and the aria snapshot"
+            }
+          ],
+          "tail": "\\\"'\\n    - 'button \\\"Face: wink\\\"'\\n    - 'button \\\"Face: calm\\\"'\\n    - 'button \\\"Face: glasses\\\"'\\n    - 'button \\\"Face: bot\\\"'\\n    - 'button \\\"Face: happy\\\"'\\n    - 'button \\\"Face: curious\\\" [pressed]'\\n  - text: Colour\\n  - group \\\"Colour\\\":\\n    - 'button \\\"Colour: blue\\\"'\\n    - 'button \\\"Colour: green\\\"'\\n    - 'button \\\"Colour: amber\\\" [pressed]'\\n    - 'button \\\"Colour: rose\\\"'\\n    - 'button \\\"Colour: violet\\\"'\\n    - 'button \\\"Colour: teal\\\"'\\n    - 'button \\\"Colour: orange\\\"'\\n    - 'button \\\"Colour: slate\\\"'\\n- region \\\"Role\\\":\\n  - heading \\\"Role\\\" [level=2]\\n  - paragraph: What it does and what it knows. A change reaches it with its next message.\\n  - text: What it is for\\n  - textbox \\\"What it is for\\\":\\n    - /placeholder: Reviews my pull requests\\n  - text: Instructions\\n  - textbox \\\"Instructions\\\":\\n    - /placeholder: \\\"Who it is and how it works: tone, what to check, what never to do\\\"\\n  - text: Given at the start of its conversation. Memory\\n  - textbox \\\"Memory\\\":\\n    - /placeholder: \\\"Facts to keep in mind: names, conventions, where things live\\\"\\n  - text: Facts it keeps in mind.\\n- region \\\"Where and how\\\":\\n  - heading \\\"Where and how\\\" [level=2]\\n  - paragraph: It works in a folder of its own on iso-host.\\n  - button \\\"Its own folder\\\"\\n  - button \\\"Model Opus 5.5\\\": Opus 5.5\\n  - button \\\"Effort High\\\": High\\n  - button \\\"Ask first\\\"\\n- alert: Another agent is already called Scout.\\n- button \\\"Cancel\\\"\\n- button \\\"Create agent\\\" [disabled]\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 3 {\\\"expect\\\":\\\"css:.agent-form-name [role=alert]\\\",\\\"text\\\":\\\"Another agent is already called Scout.\\\",\\\"inViewport\\\":true}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-23-3113/.verify/drives/2026-11-24T01-06-55-425Z/fail-mobile-step3.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 3 {\\\"expect\\\":\\\"css:.agent-form-name [role=alert]\\\",\\\"text\\\":\\\"Another agent is already called Scout.\\\",\\\"inViewport\\\":true}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-23-3113/.verify/drives/2026-11-24T01-06-55-425Z/fail-desktop-step3.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "agents/a-name-problem-shows-by-the-name",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

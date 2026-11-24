@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "2dac2aa94e1d460c533164889f33db027f67d4e6",
+    "short": "2dac2aa",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-24T01:07:28.875Z"
+  },
+  "dir": ".verify/evidence/agent-name-reason-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2654,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agent-name-reason-head/taken-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agent-name-reason-head/twowords-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "(() => { const a = document.querySelector('.agent-form-name [role=alert]'); const r = a.getBoundingClientRect(); return a.textContent + ' | alert top ' + Math.round(r.top) + 'px of ' + innerHeight + 'px | in view: ' + (r.top >= 0 && r.bottom <= innerHeight) + ' | hint: ' + document.querySelector('.agent-form-name').textContent; })()",
+          "value": "Another agent is already called Scout. | alert top 228px of 844px | in view: true | hint: NameAnother agent is already called Scout."
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 2442,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agent-name-reason-head/taken-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agent-name-reason-head/twowords-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "(() => { const a = document.querySelector('.agent-form-name [role=alert]'); const r = a.getBoundingClientRect(); return a.textContent + ' | alert top ' + Math.round(r.top) + 'px of ' + innerHeight + 'px | in view: ' + (r.top >= 0 && r.bottom <= innerHeight) + ' | hint: ' + document.querySelector('.agent-form-name').textContent; })()",
+          "value": "Another agent is already called Scout. | alert top 236px of 900px | in view: true | hint: NameAnother agent is already called Scout."
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

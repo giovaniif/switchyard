@@ -1,0 +1,176 @@
+{
+  "v": 1,
+  "claim": "Agent form: a taken or not-one-word name greys out Create agent, but the reason renders only at the end of the form, below the fold at both viewports, while the hint by the name still says 'One word, so it can be @mentioned.'",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-23-3113",
+  "base": "fb0a938af3cf2ca5ac1ff6bd7b50a556c413dd1a",
+  "head": "2dac2aa94e1d460c533164889f33db027f67d4e6",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/AgentsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/agents.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-24T01:06:40.330Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "88db28467c84c037627ded2541810b3ea0d9d129",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "a64166e25180596958628a99f087daa0852ac4aff307f1014cc971fe56e817d5"
+        },
+        {
+          "path": "p1-taken-mobile.png",
+          "sha256": "fc7d74f361a902cef9cf4b71703534809a3d0b98a0b9efbd4b0ff1432015eb30"
+        },
+        {
+          "path": "p1-twowords-mobile.png",
+          "sha256": "d745b4cef24e3692a10ac21d10ebb48ca99355b412999785a964ab404da06ad5"
+        },
+        {
+          "path": "p1-taken-desktop.png",
+          "sha256": "8aaeb3ffbdf79de8ab55557ac85686115ee5173084308ee19d21a66e315c7bfb"
+        },
+        {
+          "path": "p1-twowords-desktop.png",
+          "sha256": "c3590dcee9b5d04f66c4bcadbbb5cddffc8072f9e814c08071af308d76cc9cb4"
+        }
+      ],
+      "addedAt": "2026-11-24T01:06:54.105Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "88db28467c84c037627ded2541810b3ea0d9d129",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "0846cb7cd6f919abfa88419649a45b8510c0b1bde7a826e0cf0b2630c955f93c"
+        }
+      ],
+      "addedAt": "2026-11-24T01:06:54.157Z",
+      "cmd": "verify/yv map run agents --recipe a-name-problem-shows-by-the-name",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "2dac2aa94e1d460c533164889f33db027f67d4e6",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "d0fbaa2d1dd8bd342c4094a1f8eb034521753d7e32c2581763c3425946f4ccef"
+        },
+        {
+          "path": "p3-taken-mobile.png",
+          "sha256": "1ce47f6c219b28707ee3af970a620a476df5ec199caa577c752d5141516bd16e"
+        },
+        {
+          "path": "p3-twowords-mobile.png",
+          "sha256": "c810aac4231d4939c3147438af3ec934f053910dc05b830d4a24a2b0fec50ddf"
+        },
+        {
+          "path": "p3-taken-desktop.png",
+          "sha256": "9197b947697f6b20db884ba31fa6a37e0d6a889d6a10883cfb492cbc35ac4cd8"
+        },
+        {
+          "path": "p3-twowords-desktop.png",
+          "sha256": "d317dc01f591237f35093b4b0c397bc750659391350d30282dfa90a7055c29ed"
+        }
+      ],
+      "addedAt": "2026-11-24T01:07:34.662Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "2dac2aa94e1d460c533164889f33db027f67d4e6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "94a44b2dae661d26b30b9484e1e523fdbd83666a23556fa1b62fc194e108e110"
+        }
+      ],
+      "addedAt": "2026-11-24T01:07:37.457Z",
+      "cmd": "cd ui && bun test && cd .. && verify/yv map run agents --recipe a-name-problem-shows-by-the-name",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "2dac2aa94e1d460c533164889f33db027f67d4e6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "0bc52b5a0a9ede390e7d27bb0e687c58dec1c720ac8c8edeae3e21195989fcbb"
+        }
+      ],
+      "addedAt": "2026-11-24T01:07:43.044Z",
+      "cmd": "verify/yv design-check --base fb0a938af3cf",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "2dac2aa94e1d460c533164889f33db027f67d4e6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-agents.json",
+          "sha256": "cc8a51e2e649d1c6e549cc78cba3b5f9b0f09f31e3f1e9bf75f1337bf5ebe110"
+        }
+      ],
+      "addedAt": "2026-11-24T01:07:47.938Z",
+      "cmd": "verify/yv map run agents",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "agents/cards-show-scout-and-the-users-agents",
+        "agents/cards-in-a-row-line-up",
+        "agents/scout-answers-in-its-one-conversation",
+        "agents/agent-views-on-a-phone",
+        "agents/create-an-agent-from-the-form",
+        "agents/a-name-problem-shows-by-the-name",
+        "agents/at-mention-from-new-session-goes-to-the-agents-conversation",
+        "agents/at-mention-in-a-session-goes-to-the-agents-conversation",
+        "agents/one-conversation-and-the-agents-mark",
+        "agents/agents-message-each-other-with-badges",
+        "agents/an-agent-that-needs-you",
+        "agents/an-agents-own-memory-shows-in-the-form",
+        "agents/switchys-address-lands-on-the-agents",
+        "agents/deleting-an-agent-deletes-its-conversation"
+      ]
+    }
+  ]
+}

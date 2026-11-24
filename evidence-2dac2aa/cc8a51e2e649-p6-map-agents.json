@@ -1,0 +1,87 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "agents",
+      "at": "2026-11-24T01:09:06.144Z",
+      "counts": {
+        "pass": 14
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "cards-show-scout-and-the-users-agents",
+          "status": "pass",
+          "ms": 5067
+        },
+        {
+          "label": "cards-in-a-row-line-up",
+          "status": "pass",
+          "ms": 2279
+        },
+        {
+          "label": "scout-answers-in-its-one-conversation",
+          "status": "pass",
+          "ms": 3670
+        },
+        {
+          "label": "agent-views-on-a-phone",
+          "status": "pass",
+          "ms": 7453
+        },
+        {
+          "label": "create-an-agent-from-the-form",
+          "status": "pass",
+          "ms": 7736
+        },
+        {
+          "label": "a-name-problem-shows-by-the-name",
+          "status": "pass",
+          "ms": 4838
+        },
+        {
+          "label": "at-mention-from-new-session-goes-to-the-agents-conversation",
+          "status": "pass",
+          "ms": 4332
+        },
+        {
+          "label": "at-mention-in-a-session-goes-to-the-agents-conversation",
+          "status": "pass",
+          "ms": 4141
+        },
+        {
+          "label": "one-conversation-and-the-agents-mark",
+          "status": "pass",
+          "ms": 7614
+        },
+        {
+          "label": "agents-message-each-other-with-badges",
+          "status": "pass",
+          "ms": 8442
+        },
+        {
+          "label": "an-agent-that-needs-you",
+          "status": "pass",
+          "ms": 9145
+        },
+        {
+          "label": "an-agents-own-memory-shows-in-the-form",
+          "status": "pass",
+          "ms": 6247
+        },
+        {
+          "label": "switchys-address-lands-on-the-agents",
+          "status": "pass",
+          "ms": 2850
+        },
+        {
+          "label": "deleting-an-agent-deletes-its-conversation",
+          "status": "pass",
+          "ms": 3315
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
