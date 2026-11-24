@@ -148,9 +148,9 @@ yv api '{"op":"session.open","sessionId":"{{sid_claude}}"}' --wait '{"op":"histo
 Viewports: mobile, desktop
 The first terminal of a session shows one shell prompt, sized to its pane: the
 phone Workspace sheet and the desktop right pane (about 50 columns) are both
-narrower than 80. Fails today (#376): the terminal is opened at 80 columns
-before anything measured the pane, so readline redraws after the resize and a
-stale, cut-off copy of the prompt sits above the real one (the count reads 2).
+narrower than 80. Found 2026-11-21 (#376): the terminal was opened at 80
+columns before anything measured the pane, so readline redrew after the resize
+and a stale, cut-off copy of the prompt sat above the real one (the count read 2).
 Each viewport uses its own new session: a seeded one may already have a
 terminal from an earlier recipe, and then nothing opens at the default size.
 
@@ -169,6 +169,6 @@ selection. Selecting through xterm's renderer is not scripted yet.
 
 ## Gotchas
 - Fixed 2026-11-15: the scrollback replayed after a reload used to be written at xterm's default 80 columns before the first fit and then reflowed, garbling wrapped lines and overwriting output. scrollback-after-reload and scrollback-keeps-wrapped-lines guard it.
-- Open 2026-11-22 (#376): the first terminal of a session shows the shell prompt twice, a stale copy cut off at the right edge above the real one, whenever its pane is narrower than 80 columns and the prompt wraps: the phone Workspace sheet and the desktop right pane alike. `TerminalPane` sends `term.open` with the default 80x24 before any view has fitted. first-terminal-opens-at-the-pane-size fails at both viewports until it is fixed.
+- Fixed 2026-11-24 (#376): the first terminal of a session showed the shell prompt twice, a stale copy cut off at the right edge above the real one, whenever its pane was narrower than 80 columns and the prompt wrapped (the phone Workspace sheet and the desktop right pane alike): `TerminalPane` sent `term.open` at 80x24 before any view had fitted. A placeholder view now fits the pane and opens the terminal at that size; a shell is started only once its pane is shown. first-terminal-opens-at-the-pane-size guards it.
 - Wait for the prompt (`expect` text `$`) before typing: keys sent before the shell is ready are echoed out of order.
 - xterm ignores `fill`; use the `type` step with `target: "label:Terminal input"`.
