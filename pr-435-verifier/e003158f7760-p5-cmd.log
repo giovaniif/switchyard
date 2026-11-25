@@ -1,0 +1,13 @@
+$ verify/yv design-check
+# exit 0 after 40 ms at ba96d4b49cec805624568d1f369016acace60870
+
+{
+  "command": "design-check",
+  "ok": true,
+  "base": "12c7cf98a3edca1a85206fd48036d3bfa9be450c",
+  "ui": false,
+  "touched": [],
+  "findings": [],
+  "problems": []
+}
+

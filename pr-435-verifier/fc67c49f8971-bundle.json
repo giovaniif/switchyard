@@ -1,0 +1,146 @@
+{
+  "v": 1,
+  "claim": "Feature map only: thread gains file-reload-reads-it-again, covering the file view's Reload file and Try again at both viewports.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-verify-435-2026-11-c830",
+  "base": "12c7cf98a3edca1a85206fd48036d3bfa9be450c",
+  "head": "ba96d4b49cec805624568d1f369016acace60870",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/features/thread.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-25T06:54:51.505Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "head",
+      "kind": "fix",
+      "at": "ba96d4b49cec805624568d1f369016acace60870",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-file-reloaded-desktop.png",
+          "sha256": "afe48e45c3dd4c7899271c3349c3040ee9ea507fdbe75ca9d9476f0029473dde"
+        },
+        {
+          "path": "p1-file-found-on-try-again-desktop.png",
+          "sha256": "5f1257bdd2e04c4e95b0f6c965c60c367d6a2c3606dce3ef541de20cd899af53"
+        },
+        {
+          "path": "p1-cmd.log",
+          "sha256": "2b2b0f2c70a4e0a56662ae30c0042fe67e985b288c16cbffdd92c945a572d9ab"
+        }
+      ],
+      "addedAt": "2026-11-25T06:54:51.552Z",
+      "text": "Recipe at head, desktop: Reload shows 2 lines and fn added() {}; Try again opens the file written after the 'was not found' error.",
+      "cmd": "verify/yv map run thread --recipe file-reload-reads-it-again",
+      "exit": 0
+    },
+    {
+      "id": 2,
+      "ref": "head",
+      "kind": "fix",
+      "at": "ba96d4b49cec805624568d1f369016acace60870",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-file-reloaded-mobile.png",
+          "sha256": "c47a1f0f48be5dedf205adf753786a832d0c82caa172c7ac8198d1a110930357"
+        },
+        {
+          "path": "p2-file-found-on-try-again-mobile.png",
+          "sha256": "f92a15509a74370cfa4d8a41403f4714c21d02574714e28384441385f5dfad6d"
+        },
+        {
+          "path": "p2-cmd.log",
+          "sha256": "b0f44a444bb6127ffbbf2a51e2bea434dda4afa96766dd43069af94054e46f18"
+        }
+      ],
+      "addedAt": "2026-11-25T06:55:17.090Z",
+      "text": "Same recipe, mobile viewport.",
+      "cmd": "verify/yv map run thread --recipe file-reload-reads-it-again",
+      "exit": 0
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "test",
+      "at": "ba96d4b49cec805624568d1f369016acace60870",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "fdd7e742292306cfb990397e36cc5826022a918c6769b5b6002713715da55a27"
+        }
+      ],
+      "addedAt": "2026-11-25T06:55:42.663Z",
+      "text": "map run thread: 35/35 pass. ui bun test: 479 pass, 0 fail.",
+      "cmd": "verify/yv map run thread && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "note",
+      "at": "ba96d4b49cec805624568d1f369016acace60870",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-25T07:01:48.403Z",
+      "text": "Negative control: with FileView's reload made a no-op (ui rebuilt), the recipe fails; restored, it passes. Map-only change: no base repro or failing test applies."
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "ba96d4b49cec805624568d1f369016acace60870",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-yv435-design.json",
+          "sha256": "deb5f1bb686b13e0d6e670a68fbb75600a5c24ea44b104681f12a0584bce0796"
+        },
+        {
+          "path": "p5-cmd.log",
+          "sha256": "e003158f7760e24942c519baeeec2b908d46b980b84b5835fad68df35fcd940b"
+        }
+      ],
+      "addedAt": "2026-11-25T07:01:48.474Z",
+      "failedApi": [],
+      "cmd": "verify/yv design-check",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "note",
+      "at": "ba96d4b49cec805624568d1f369016acace60870",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-25T07:01:53.708Z",
+      "text": "no-repro: feature map change only (a new recipe in verify/features/thread.md); there is no user-visible bug to reproduce at base."
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "note",
+      "at": "ba96d4b49cec805624568d1f369016acace60870",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-25T07:01:53.757Z",
+      "text": "no-failing-test: the change is itself a test recipe; in its place, a negative control at head with FileView's reload made a no-op failed the recipe, and restoring the source made it pass."
+    }
+  ]
+}

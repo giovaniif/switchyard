@@ -1,0 +1,26 @@
+$ verify/yv map run thread --recipe file-reload-reads-it-again
+# exit 0 after 25489 ms at ba96d4b49cec805624568d1f369016acace60870
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "thread",
+      "at": "2026-11-25T06:55:17.041Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "file-reload-reads-it-again",
+          "status": "pass",
+          "ms": 24634
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+

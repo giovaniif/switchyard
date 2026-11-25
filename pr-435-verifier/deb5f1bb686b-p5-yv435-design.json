@@ -1,0 +1,9 @@
+{
+  "command": "design-check",
+  "ok": true,
+  "base": "12c7cf98a3edca1a85206fd48036d3bfa9be450c",
+  "ui": false,
+  "touched": [],
+  "findings": [],
+  "problems": []
+}
