@@ -165,10 +165,16 @@ export const runSummary = (s: SessionMeta, now: number, name = ""): string =>
 export const stripRuns = (runs: SessionMeta[], max: number): SessionMeta[] => runs.slice(0, max).reverse();
 
 export function scheduleLine(a: Automation, now: number): string {
+  return scheduleParts(a, now).join(" · ");
+}
+
+/** The line's two halves: the schedule, and when it runs next. A card cuts the
+ *  first when the line is too long, never the second: the next run is what changes. */
+export function scheduleParts(a: Automation, now: number): [string, string] {
   // A manual automation has no next run: it runs when someone (or a script) starts it.
-  if (a.schedule.kind === "manual") return `Manual · ${a.enabled ? "runs when started" : "off"}`;
+  if (a.schedule.kind === "manual") return ["Manual", a.enabled ? "runs when started" : "off"];
   const next = a.enabled && a.nextRun != null ? `next ${describeNext(a.nextRun, true, now)}` : "off";
-  return `${describeSchedule(a.schedule, a.window)} · ${next}`;
+  return [describeSchedule(a.schedule, a.window), next];
 }
 
 /** yardd's skip reasons, cut to what fits a card's line; the tooltip keeps the whole one. */
