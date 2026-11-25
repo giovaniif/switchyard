@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "df03bd6f2903ef149e75dd759377c716ce3c7236",
+    "short": "df03bd6",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T01:41:20.439Z"
+  },
+  "dir": ".verify/faces/head-busy",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 5352,
+      "steps": 15,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/faces/head-busy/busy-and-hop-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "document.querySelector(\".agent-bar .face-mouth\").getAnimations().map((a) => a.animationName).join()",
+          "value": "face-talk"
+        },
+        {
+          "step": 5,
+          "eval": "document.querySelector(\".agent-bar .face-bob\").getAnimations().map((a) => a.animationName).join()",
+          "value": "face-busy"
+        },
+        {
+          "step": 10,
+          "eval": "document.querySelector(\".agent-card[aria-label=\\\"TEST-happy\\\"] .face-body\").getAnimations().map((a) => a.animationName).join()",
+          "value": "face-hop"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

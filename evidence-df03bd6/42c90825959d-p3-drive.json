@@ -1,0 +1,123 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "df03bd6f2903ef149e75dd759377c716ce3c7236",
+    "short": "df03bd6",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T01:41:20.439Z"
+  },
+  "dir": ".verify/faces/head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4179,
+      "steps": 14,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/faces/head/cards-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/faces/head/form-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/faces/head/follows-pointer-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 1,
+          "eval": "document.querySelector(\".agent-card .face-lids\").getAnimations().map((a) => a.animationName).join()",
+          "value": "face-blink"
+        },
+        {
+          "step": 2,
+          "eval": "(() => { const s = new XMLSerializer().serializeToString(document.querySelector(\".agent-card .agent-avatar svg\")); const ids = [...s.matchAll(/ id=\"([^\"]+)\"/g)].map((m) => m[1]); const refs = [...s.matchAll(/url\\(#([^)]+)\\)/g)].map((m) => m[1]); return refs.length > 0 && refs.every((r) => ids.includes(r)) && !/var\\(|currentColor/.test(s); })()",
+          "value": true
+        },
+        {
+          "step": 11,
+          "eval": "(() => { const a = document.querySelector(\".agent-form-hero .agent-avatar\"); return a.classList.contains(\"is-following\") && Number(a.style.getPropertyValue(\"--look-y\")) > 0.5; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 4350,
+      "steps": 14,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/faces/head/cards-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/faces/head/form-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/faces/head/follows-pointer-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 1,
+          "eval": "document.querySelector(\".agent-card .face-lids\").getAnimations().map((a) => a.animationName).join()",
+          "value": "face-blink"
+        },
+        {
+          "step": 2,
+          "eval": "(() => { const s = new XMLSerializer().serializeToString(document.querySelector(\".agent-card .agent-avatar svg\")); const ids = [...s.matchAll(/ id=\"([^\"]+)\"/g)].map((m) => m[1]); const refs = [...s.matchAll(/url\\(#([^)]+)\\)/g)].map((m) => m[1]); return refs.length > 0 && refs.every((r) => ids.includes(r)) && !/var\\(|currentColor/.test(s); })()",
+          "value": true
+        },
+        {
+          "step": 11,
+          "eval": "(() => { const a = document.querySelector(\".agent-form-hero .agent-avatar\"); return a.classList.contains(\"is-following\") && Number(a.style.getPropertyValue(\"--look-y\")) > 0.5; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
