@@ -1,0 +1,32 @@
+$ verify/yv map run sidebar --recipe group-count-clear-of-the-menu-button && (cd ui && bun test)
+# exit 0 after 7339 ms at b0b48530d6e1edc3fc9e0898ed8f1602530c63e6
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "sidebar",
+      "at": "2026-11-25T10:04:41.690Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "group-count-clear-of-the-menu-button",
+          "status": "pass",
+          "ms": 6133
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+bun test v1.4.4 (38afee6c8)
+
+
+ 479 pass
+ 0 fail
+ 4927 expect() calls
+Ran 479 tests across 35 files. [338.00ms]

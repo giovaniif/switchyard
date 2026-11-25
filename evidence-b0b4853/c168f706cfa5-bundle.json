@@ -1,0 +1,217 @@
+{
+  "v": 1,
+  "claim": "Sidebar: when a group's name is long enough to be cut off, the header's ··· button (always on a phone, on hover on desktop) covers the group's session count, so you can't read how many sessions it holds",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-a642",
+  "base": "e1e417a9f0a3a29f9c8478f903e20fbaa860aeaa",
+  "head": "b0b48530d6e1edc3fc9e0898ed8f1602530c63e6",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/sidebar.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-25T10:02:57.083Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "0bdf0d77afe30a15b5d0db802d9bd5c5ffa5eed6",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "b2e4fe24eb7c15ae7da2b06a2ea7c9fc893bbfbb295764f4fabf364f518d0b6e"
+        },
+        {
+          "path": "p1-group-mobile.png",
+          "sha256": "e50fc51e8a4c85aa6c77f57f4ac2adff9453102f9362b960b53ae1eb1c1a6215"
+        },
+        {
+          "path": "p1-fail-mobile-step3.png",
+          "sha256": "e50fc51e8a4c85aa6c77f57f4ac2adff9453102f9362b960b53ae1eb1c1a6215"
+        }
+      ],
+      "addedAt": "2026-11-25T10:03:34.461Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "0bdf0d77afe30a15b5d0db802d9bd5c5ffa5eed6",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "1c82dd556e0112b2aa4c8adb0f5bd1c29b2490b8ed6d4d517be9b180d3f2199e"
+        },
+        {
+          "path": "p2-group-desktop.png",
+          "sha256": "27bf918d4397d7d13e35a076477ea03a893191488693732f6ed5ae3c3b92595a"
+        },
+        {
+          "path": "p2-fail-desktop-step3.png",
+          "sha256": "27bf918d4397d7d13e35a076477ea03a893191488693732f6ed5ae3c3b92595a"
+        }
+      ],
+      "addedAt": "2026-11-25T10:03:34.513Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "0bdf0d77afe30a15b5d0db802d9bd5c5ffa5eed6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "e9364f9d880704c4d76b5723ea8e8753e1ac73624c50e334d4e052686d9ed10b"
+        }
+      ],
+      "addedAt": "2026-11-25T10:03:34.563Z",
+      "cmd": "verify/yv map run sidebar --recipe group-count-clear-of-the-menu-button",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "b0b48530d6e1edc3fc9e0898ed8f1602530c63e6",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "34848d58d07139b85e8566e79a3cf3fa9bc6a0fe3fc318f5cc44b199911f87a4"
+        },
+        {
+          "path": "p4-group-mobile.png",
+          "sha256": "097a3aad6c690c77a3b3de996d84fd546e29c308b46391fd36f2a3ebc031ee67"
+        }
+      ],
+      "addedAt": "2026-11-25T10:04:34.607Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "b0b48530d6e1edc3fc9e0898ed8f1602530c63e6",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "99fa448890f9abc2bb23cc99f332ae8b4c8b1b2ef0b30692dc2a3568ae2cc261"
+        },
+        {
+          "path": "p5-group-desktop.png",
+          "sha256": "69d9e538181fe964e9d18fb5a10049af8271d0cb27d0091d9b6c17d4993b4b48"
+        },
+        {
+          "path": "p5-group-menu-open-desktop.png",
+          "sha256": "2c917858ebdada196b430135450040da3e4dcbaa3d85d2b833261945e08195d9"
+        }
+      ],
+      "addedAt": "2026-11-25T10:04:34.653Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "b0b48530d6e1edc3fc9e0898ed8f1602530c63e6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "498f238cbc841150b456c06c763a16c21140a93b82d3cdce8a176bf1877a9369"
+        }
+      ],
+      "addedAt": "2026-11-25T10:04:34.701Z",
+      "cmd": "verify/yv map run sidebar --recipe group-count-clear-of-the-menu-button && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "b0b48530d6e1edc3fc9e0898ed8f1602530c63e6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "ee8113799abcdfd384f1d985b57bbb1cb1be20efb10126f3b5d0c94fe83f3fb5"
+        }
+      ],
+      "addedAt": "2026-11-25T10:04:42.089Z",
+      "cmd": "verify/yv design-check --base e1e417a9f0a3",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "b0b48530d6e1edc3fc9e0898ed8f1602530c63e6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-sidebar.json",
+          "sha256": "9d7939ea210297aeef809785514294951408a8819165c8c98ac0478c2c1b0d52"
+        }
+      ],
+      "addedAt": "2026-11-25T10:04:44.871Z",
+      "cmd": "verify/yv map run sidebar",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "sidebar/rows-show-status",
+        "sidebar/compact-rows-with-engine-marks",
+        "sidebar/hover-shows-archive",
+        "sidebar/rows-mark-what-needs-you",
+        "sidebar/mark-chat-unread",
+        "sidebar/rename-session",
+        "sidebar/pin-and-unpin",
+        "sidebar/archive-and-restore",
+        "sidebar/archiving-the-open-session-keeps-the-list-closed",
+        "sidebar/delete-keeps-worktree",
+        "sidebar/group-new",
+        "sidebar/group-move-to-existing",
+        "sidebar/group-drag-out-to-ungrouped",
+        "sidebar/group-drag-into-group",
+        "sidebar/group-drag-noop",
+        "sidebar/group-collapse-persists",
+        "sidebar/group-rename",
+        "sidebar/group-remove-from-group",
+        "sidebar/group-ungroup",
+        "sidebar/group-count-clear-of-the-menu-button",
+        "sidebar/archived-header-stays-at-bottom",
+        "sidebar/hand-off-keeps-the-group",
+        "sidebar/hand-off-from-a-pinned-session-stays-in-its-group",
+        "sidebar/menu-on-a-row-below-the-fold",
+        "sidebar/session-named-from-the-conversation"
+      ]
+    }
+  ]
+}

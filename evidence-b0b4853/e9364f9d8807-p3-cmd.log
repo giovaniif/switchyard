@@ -1,0 +1,40 @@
+$ verify/yv map run sidebar --recipe group-count-clear-of-the-menu-button
+# exit 1 after 3361 ms at 0bdf0d77afe30a15b5d0db802d9bd5c5ffa5eed6
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "sidebar",
+      "at": "2026-11-25T10:03:37.919Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "group-count-clear-of-the-menu-button",
+          "status": "fail",
+          "ms": 2510,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 2 {\"eval\":\"(() => { const h = document.querySelector(\\\".group-head\\\"); const c = h.querySelector(\\\".group-toggle > .muted\\\").getBoundingClientRect(); const m = h.querySelector(\\\".row-more\\\"); return getComputedStyle(m).opacity === \\\"1\\\" && c.width > 0 && c.right <= m.getBoundingClientRect().left; })()\",\"equals\":true}: eval returned false, expected true",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-a642/.verify/drives/2026-11-25T10-03-35-712Z/fail-desktop-step2.png and the aria snapshot"
+            }
+          ],
+          "tail": "ing\\\"\\n  - button \\\"Actions for [edit] TEST-fix the greeting\\\"\\n  - button \\\"[think] TEST-plan the refactor · Fake Fast · Idle\\\"\\n  - button \\\"Archive [think] TEST-plan the refactor\\\"\\n  - button \\\"Actions for [think] TEST-plan the refactor\\\"\\n  - button \\\"[fail] TEST-failing turn · Fake Fast · Idle\\\"\\n  - button \\\"Archive [fail] TEST-failing turn\\\"\\n  - button \\\"Actions for [fail] TEST-failing turn\\\"\\n  - button \\\"TEST-a group name long enough to be cut off 1\\\" [expanded]\\n  - button \\\"Actions for group TEST-a group name long enough to be cut off\\\"\\n  - button \\\"TEST-say hello · Fake Fast · Idle\\\"\\n  - button \\\"Archive TEST-say hello\\\"\\n  - button \\\"Actions for TEST-say hello\\\"\\n  - button \\\"Subscription usage\\\": Usage 47% used\\n  - button \\\"iso-host Healthy\\\"\\n- separator \\\"Resize the sessions sidebar\\\"\\n- banner:\\n  - button \\\"Set up iPhone app\\\"\\n- heading \\\"What should we work on?\\\" [level=1]\\n- textbox \\\"Message\\\":\\n  - /placeholder: Describe the task\\n- button \\\"Attach files\\\"\\n- button \\\"Dictate\\\"\\n- button \\\"Voice mode\\\"\\n- button \\\"Model Opus 5.5\\\": Opus 5.5\\n- 'button \\\"Account: Claude, Default\\\"'\\n- button \\\"Effort High\\\": High\\n- button \\\"Ask first\\\"\\n- button \\\"Send\\\" [disabled]\\n- button \\\"iso-host\\\"\\n- button \\\"work\\\"\\n- text: Works in the folder itself\"\n      },\n      \"captures\": [],\n      \"notes\": [\n        {\n          \"step\": 2,\n          \"eval\": \"(() => { const h = document.querySelector(\\\".group-head\\\"); const c = h.querySelector(\\\".group-toggle > .muted\\\").getBoundingClientRect(); const m = h.querySelector(\\\".row-more\\\"); return getComputedStyle(m).opacity === \\\"1\\\" && c.width > 0 && c.right <= m.getBoundingClientRect().left; })()\",\n          \"value\": false\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 2 {\\\"eval\\\":\\\"(() => { const h = document.querySelector(\\\\\\\".group-head\\\\\\\"); const c = h.querySelector(\\\\\\\".group-toggle > .muted\\\\\\\").getBoundingClientRect(); const m = h.querySelector(\\\\\\\".row-more\\\\\\\"); return getComputedStyle(m).opacity === \\\\\\\"1\\\\\\\" && c.width > 0 && c.right <= m.getBoundingClientRect().left; })()\\\",\\\"equals\\\":true}: eval returned false, expected true\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-a642/.verify/drives/2026-11-25T10-03-35-712Z/fail-desktop-step2.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "sidebar/group-count-clear-of-the-menu-button",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

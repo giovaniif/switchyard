@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "b0b48530d6e1edc3fc9e0898ed8f1602530c63e6",
+    "short": "b0b4853",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T10:03:45.435Z"
+  },
+  "dir": ".verify/evidence/group-count-head-m",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2268,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/group-count-head-m/group-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "(() => { const h = document.querySelector(\".group-head\"); const c = h.querySelector(\".group-toggle > .muted\").getBoundingClientRect(); const m = h.querySelector(\".row-more\"); return getComputedStyle(m).opacity === \"1\" && c.width > 0 && c.right <= m.getBoundingClientRect().left; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
