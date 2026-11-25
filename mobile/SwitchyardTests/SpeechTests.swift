@@ -11,12 +11,24 @@ final class SpeechTests: XCTestCase {
         let synth = AVSpeechSynthesizer()
         let utterance = AVSpeechUtterance(string: "Voice mode on.")
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        let done = expectation(description: "the last, empty buffer")
+        let done = expectation(description: "the synthesizer went quiet")
         var frames: AVAudioFrameCount = 0
         var formats = Set<String>()
+        var sequence: [AVAudioFrameCount] = []
+        var finished = false
+        let lock = NSLock()
         synth.write(utterance) { buffer in
             guard let pcm = buffer as? AVAudioPCMBuffer else { return }
-            if pcm.frameLength == 0 { done.fulfill(); return }
+            lock.lock(); defer { lock.unlock() }
+            sequence.append(pcm.frameLength)
+            guard pcm.frameLength > 0 else {
+                if !finished, frames > 0 {
+                    finished = true
+                    // Wait a little: SpeechIO treats an empty buffer as the end only if nothing follows.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { done.fulfill() }
+                }
+                return
+            }
             formats.insert("\(pcm.format.sampleRate)")
             if let out = convert.run(pcm) {
                 XCTAssertEqual(out.format, target)
@@ -26,6 +38,8 @@ final class SpeechTests: XCTestCase {
         if XCTWaiter().wait(for: [done], timeout: 20) != .completed {
             throw XCTSkip("This simulator has no voice that writes audio.")
         }
+        lock.lock(); defer { lock.unlock() }
+        print("speech buffers:", sequence)
         XCTAssertGreaterThan(frames, 4_800, "about a second of speech at 24 kHz; voice rate(s): \(formats)")
     }
 }

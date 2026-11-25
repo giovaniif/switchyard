@@ -244,7 +244,17 @@ final class SpeechIO: NSObject, AVSpeechSynthesizerDelegate {
 
     private func wrote(gen: Int, _ buffer: AVAudioPCMBuffer?, done: Bool) {
         guard gen == speechGen, speaking else { return }
-        if done { written = true; finishIfPlayed(gen); return }
+        // The synthesizer can send more than one empty buffer, so one is only
+        // the end if no audio follows it shortly.
+        if done {
+            written = true
+            Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(400))
+                self?.finishIfPlayed(gen)
+            }
+            return
+        }
+        written = false
         guard let buffer, engineOn else { return }
         scheduled += 1
         player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
