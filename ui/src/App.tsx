@@ -5087,7 +5087,7 @@ function AddHost(props: { actions: Actions; hosts: HostEntry[]; errorCount: numb
           </label>
         </div>
       )}
-      <div className="row">
+      <div className="row add-host-actions">
         <button className="btn-primary" disabled={!ready || !!sent} onClick={submit}>
           Add {finalName || "host"}
         </button>
