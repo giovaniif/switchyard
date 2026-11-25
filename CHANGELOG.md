@@ -2,6 +2,13 @@
 
 Each version is a [GitHub release](https://github.com/giovaniif/better-than-claude-code/releases) with the signed Mac app and the Linux packages. The section for a version becomes its release notes.
 
+## 0.22.0 (2026-11-25)
+
+- **A native iPhone app, with Liquid Glass.** Switchyard for iPhone and iPad is rebuilt in SwiftUI for iOS 26 and talks to your host directly. Sessions are grouped into Needs you, Working, Pinned and Recent, with search, swipe to pin or archive, and your host's CPU and memory. Replies stream in with formatting, thinking and tool steps (a subagent's steps nested under it). Approvals are cards with Allow once, Always and Deny, and the reply box is a floating glass bar with attachments, dictation, Stop and voice mode. Start sessions from the phone: pick the engine, model, folder, worktree and permission. Terminals, changes and pull requests open the host's page from a session's menu. It needs iOS 26 or later; install it from TestFlight.
+- **Voice mode works on the iPhone, in Safari and in the Mac app.** It used to ignore everything you said after it read its own greeting or an answer, so it never sent anything there. On the iPhone, dictation and voice mode now run natively (speech is recognized on the phone when it can be), and you can talk over an answer to interrupt it.
+- **Set up the iPhone app with a QR code.** On Hosts, the iPhone card shows a QR code for your host's address. Point the iPhone's Camera at it and Switchyard opens with the address filled in. The card says which phone is connected now, or when one was last seen. The phone icon in the header goes away once a phone has connected to any of your hosts. Before, the Mac app showed an empty address box and a link that did nothing on a Mac.
+- **Fixed:** a subagent working in the background keeps its session marked as working.
+
 ## 0.21.0 (2026-11-25)
 
 - **Agents in the sidebar, like direct messages.** A new Agents section at the bottom of the sidebar lists every agent with its face and name. Its badge shows when it is working, needs you or has an answer you have not read. Click one to open its conversation.
