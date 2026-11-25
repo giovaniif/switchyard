@@ -284,7 +284,13 @@ export function Subscriptions({ sources, onManage }: { sources: SubscriptionSour
               ))}
             </div>
           </div>
-          {r.meters.length ? (
+          {/* The last report outlives a lost sign-in; the popover hides it too. */}
+          {r.loggedIn === false ? (
+            <p className="muted small">
+              Sign in to see usage.{" "}
+              <button className="btn-text usage-link" aria-label={`Sign in — ${r.name}`} onClick={onManage}>Sign in</button>
+            </p>
+          ) : r.meters.length ? (
             <div className="subscription-meters">
               {r.meters.map((m) => (
                 <div key={m.key} className={`subscription-meter level-${m.level}`}>
