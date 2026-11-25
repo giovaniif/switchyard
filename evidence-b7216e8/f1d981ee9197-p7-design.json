@@ -1,0 +1,35 @@
+{
+  "command": "design-check",
+  "ok": true,
+  "base": "e3534c5f7837da4c88ee419e925b808005ebd0f0",
+  "ui": true,
+  "touched": [
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/AutomationsPage.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/automations.test.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/automations.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/styles.css"
+      ]
+    }
+  ],
+  "findings": [],
+  "problems": [],
+  "hint": "screenshot the reference screen next to your after-shots, and cover empty, loading, error and long-text states at both viewports"
+}

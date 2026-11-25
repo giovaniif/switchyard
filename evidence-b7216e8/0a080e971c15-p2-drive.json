@@ -1,0 +1,58 @@
+{
+  "ok": false,
+  "route": "new",
+  "build": {
+    "sha": "d9d048e3c2fb03038175a1ab347c10600e9d2b55",
+    "short": "d9d048e",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T05:03:11.150Z"
+  },
+  "dir": ".verify/evidence/automation-next-run-base-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2374,
+      "steps": 5,
+      "failed": {
+        "step": 4,
+        "action": {
+          "eval": "(() => { const el = document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\"); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { const i = n.data.indexOf(\"next \"); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, n.data.length); return r.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 ? \"next run in view\" : \"next run cut off\"; } } return \"no next run\"; })()",
+          "equals": "next run in view"
+        },
+        "reason": "eval returned \"next run cut off\", expected \"next run in view\"",
+        "screenshot": ".verify/evidence/automation-next-run-base-mobile/fail-mobile-step4.png",
+        "aria": "- banner:\n  - button \"Open sessions\"\n  - heading \"Automations\" [level=1]\n  - button \"New automation\"\n- region \"TEST-Night shift\":\n  - strong: TEST-Night shift\n  - 'switch \"Enabled: TEST-Night shift\" [checked]'\n  - text: Every 5 minutes · 21:00–09:00, Mon, Wed, Fri · next today 21:00 No runs yet\n  - group \"Recent runs of TEST-Night shift, newest last\"\n  - 'button \"Run now: TEST-Night shift\"'\n  - 'button \"Edit: TEST-Night shift\"'"
+      },
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/automation-next-run-base-mobile/card-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "(() => { const el = document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\"); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { const i = n.data.indexOf(\"next \"); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, n.data.length); return r.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 ? \"next run in view\" : \"next run cut off\"; } } return \"no next run\"; })()",
+          "value": "next run cut off"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 4 {\"eval\":\"(() => { const el = document.querySelector(\\\".automation[aria-label=\\\\\\\"TEST-Night shift\\\\\\\"] .automation-when\\\"); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { const i = n.data.indexOf(\\\"next \\\"); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, n.data.length); return r.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 ? \\\"next run in view\\\" : \\\"next run cut off\\\"; } } return \\\"no next run\\\"; })()\",\"equals\":\"next run in view\"}: eval returned \"next run cut off\", expected \"next run in view\"",
+      "hint": "see .verify/evidence/automation-next-run-base-mobile/fail-mobile-step4.png and the aria snapshot"
+    }
+  ]
+}

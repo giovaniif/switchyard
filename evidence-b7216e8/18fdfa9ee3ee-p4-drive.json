@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "b7216e8f5464679ffb46fd1de4c6408cd952a192",
+    "short": "b7216e8",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T05:03:45.473Z"
+  },
+  "dir": ".verify/evidence/automation-next-run-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 1483,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/automation-next-run-head-desktop/card-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "(() => { const el = document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\"); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { const i = n.data.indexOf(\"next \"); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, n.data.length); return r.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 ? \"next run in view\" : \"next run cut off\"; } } return \"no next run\"; })()",
+          "value": "next run in view"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

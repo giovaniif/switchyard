@@ -1,0 +1,219 @@
+{
+  "v": 1,
+  "claim": "An automation card whose schedule has a window and start days cut its next run off with an ellipsis (\"next today …\"), at 1440 and 390 px: the one part of the line that changes could only be read by opening Edit",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-8026",
+  "base": "e3534c5f7837da4c88ee419e925b808005ebd0f0",
+  "head": "b7216e8f5464679ffb46fd1de4c6408cd952a192",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/AutomationsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/automations.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/automations.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/automations.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-25T05:03:06.198Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "d9d048e3c2fb03038175a1ab347c10600e9d2b55",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "9037f10151fe901681e09129f9384b3f44dc3f5a0d74cc4705b7785016a5a20a"
+        },
+        {
+          "path": "p1-card-desktop.png",
+          "sha256": "a89199fec6a643eb6930d4e6328d5bd7dedfa52d043dd3105731c3f44a85b521"
+        },
+        {
+          "path": "p1-fail-desktop-step3.png",
+          "sha256": "aae27527e8e5b448a591c8cf3f237910989b0adf5de1216fe3455e8a450ab825"
+        }
+      ],
+      "addedAt": "2026-11-25T05:03:14.483Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "d9d048e3c2fb03038175a1ab347c10600e9d2b55",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "0a080e971c15b6f28f1fc926d26ae9816b6a718fbd7fd16b83b8dd2128e39458"
+        },
+        {
+          "path": "p2-card-mobile.png",
+          "sha256": "85452cb8fc6fbfe1900ba71d5d9297168a2ed11f988a99f2d7d6a28c6cda94c3"
+        },
+        {
+          "path": "p2-fail-mobile-step4.png",
+          "sha256": "b5b73f89df18bcef4cfaa52dd50459dcfb38b5c80859d801411f2036d845fd03"
+        }
+      ],
+      "addedAt": "2026-11-25T05:03:17.459Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "d9d048e3c2fb03038175a1ab347c10600e9d2b55",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "7a2866bc6b6b53840f068ddaf917dfff73ff0e9c6c53e3ed29098d0307423524"
+        }
+      ],
+      "addedAt": "2026-11-25T05:03:17.502Z",
+      "cmd": "verify/yv map run automations --recipe next-run-stays-in-view-with-a-window",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "b7216e8f5464679ffb46fd1de4c6408cd952a192",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "18fdfa9ee3eed49e7dc41ba2bf29878a0809724691b112b04fc397c32196c4d9"
+        },
+        {
+          "path": "p4-card-desktop.png",
+          "sha256": "e2f801ab4792d150705dc411df3529f72a7ae296faf8c27bb9a01154d950914c"
+        }
+      ],
+      "addedAt": "2026-11-25T05:03:47.609Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "b7216e8f5464679ffb46fd1de4c6408cd952a192",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "54a3e8793a7705951f366fd8256a72b64d031e03a8b10037dd10932f96e68ef2"
+        },
+        {
+          "path": "p5-card-mobile.png",
+          "sha256": "c2f57acb22fab2871bf359dfdf31753f4df60eb20fa5d28e446e0bffd3ac435c"
+        }
+      ],
+      "addedAt": "2026-11-25T05:03:51.243Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "b7216e8f5464679ffb46fd1de4c6408cd952a192",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "d452ed3327973c73cb08cc69cb03d8b421d3af23784e2375d6728b37783af10f"
+        }
+      ],
+      "addedAt": "2026-11-25T05:03:51.288Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "b7216e8f5464679ffb46fd1de4c6408cd952a192",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "f1d981ee9197f6355c19b9c9556d94f7e5399aae56fe8e0bb575d2e1ab6ef664"
+        }
+      ],
+      "addedAt": "2026-11-25T05:03:51.686Z",
+      "cmd": "verify/yv design-check --base e3534c5f7837",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "b7216e8f5464679ffb46fd1de4c6408cd952a192",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-automations.json",
+          "sha256": "8f350e1688fb858d0d1c8bb01beb5f6f524efbf75fdba440477b5ad9859c5cfb"
+        }
+      ],
+      "addedAt": "2026-11-25T05:03:51.774Z",
+      "cmd": "verify/yv map run automations",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "automations/list-shows-schedule-next-and-last",
+        "automations/create-from-the-form",
+        "automations/run-now-archives-and-lists-the-run",
+        "automations/pinning-a-run-brings-it-back",
+        "automations/run-time-is-how-long-it-ran",
+        "automations/grid-of-cards-and-the-run-strip",
+        "automations/edit-changes-the-schedule",
+        "automations/edit-keeps-an-unlisted-model",
+        "automations/disable-stops-the-schedule",
+        "automations/reload-and-back-keep-the-page",
+        "automations/delete-removes-the-automation-and-frees-its-runs",
+        "automations/claude-usage-limit-skips",
+        "automations/run-now-failure-says-why-once",
+        "automations/interval-and-weekly-schedules-from-the-form",
+        "automations/a-working-run-dots-the-automations-button",
+        "automations/manual-run-with-its-own-prompt",
+        "automations/interval-active-window",
+        "automations/a-run-waiting-for-approval-marks-the-button-amber",
+        "automations/next-run-stays-in-view-with-a-window"
+      ]
+    }
+  ]
+}
