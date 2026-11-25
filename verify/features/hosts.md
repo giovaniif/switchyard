@@ -68,7 +68,7 @@ Compact host rows share one full width. Selecting another host replaces the sing
 
 ```sh
 yv api '{"op":"host.add","name":"TEST-grid","kind":"direct","url":"ws://127.0.0.1:{{remote_port}}/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-grid","status":"connected"}]}' --save grid_id='hosts[name=TEST-grid].id'
-yv drive 'hosts' --steps '[{"expect":"role:button:Select TEST-grid"},{"eval":"(() => { const rows=[...document.querySelectorAll(\".host-summary\")]; const a=rows[0].getBoundingClientRect(), b=rows.at(-1).getBoundingClientRect(); return b.top>=a.bottom && Math.round(a.width)===Math.round(b.width); })()","equals":true},{"click":"role:button:Select TEST-grid"},{"expect":"css:.host-inspector","count":1},{"expect":"css:.host-inspector-heading","text":"TEST-grid"},{"shot":"selected-remote"},{"click":"role:tab:Engine logins"},{"expect":"css:.engine-row","text":"Claude Code"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true}]'
+yv drive 'hosts' --steps '[{"expect":"role:button:Select TEST-grid"},{"eval":"(() => { const rows=[...document.querySelectorAll(\".host-summary\")]; const a=rows[0].getBoundingClientRect(), b=rows.at(-1).getBoundingClientRect(); return b.top>=a.bottom && Math.round(a.width)===Math.round(b.width); })()","equals":true},{"click":"role:button:Select TEST-grid"},{"expect":"css:.host-inspector","count":1},{"expect":"css:.host-inspector-heading","text":"TEST-grid"},{"shot":"selected-remote"},{"click":"role:tab:Engine logins"},{"expect":"css:.engine-row","text":"Claude Code"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true}]'
 yv api '{"op":"host.remove","hostId":"{{grid_id}}"}' --wait '{"op":"hosts"}'
 ```
 
@@ -158,7 +158,7 @@ Viewports: both
 Long login details cannot change summary row height or create horizontal overflow.
 
 ```sh
-yv drive 'hosts' --steps '[{"click":"role:tab:Engine logins"},{"eval":"window.__summaryHeight=document.querySelector(\".host-summary\").getBoundingClientRect().height; document.querySelector(\".engine-row .muted\").textContent=\"logged in as TEST-a-very-long-account-name@a-very-long-domain.example · not logged in\"; true","equals":true},{"eval":"document.querySelector(\".host-summary\").getBoundingClientRect().height === window.__summaryHeight && document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"long-login"}]'
+yv drive 'hosts' --steps '[{"click":"role:tab:Engine logins"},{"eval":"window.__summaryHeight=document.querySelector(\".host-summary\").getBoundingClientRect().height; document.querySelector(\".engine-row .muted\").textContent=\"logged in as TEST-a-very-long-account-name@a-very-long-domain.example · not logged in\"; true","equals":true},{"eval":"document.querySelector(\".host-summary\").getBoundingClientRect().height === window.__summaryHeight && document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"long-login"}]'
 ```
 
 ### processes-say-the-host-is-offline

@@ -29,6 +29,15 @@ some output is absent (`"count":0`) must use words the prompt itself does not
 contain, or the user's own message matches it (`"Late"` matched a `[late] …`
 prompt).
 
+A page-level no-horizontal-overflow check compares against
+`document.documentElement.clientWidth`, never `innerWidth`. The mobile
+viewport emulates a phone, so content wider than 390 px stretches the layout
+viewport and `innerWidth` with it: on a page whose error banner pushed
+Dismiss off screen (#425), `scrollWidth` and `innerWidth` both read 397, so
+`scrollWidth <= innerWidth` passed. `clientWidth` stays 390. An element check like
+`r.right <= innerWidth` has the same blind spot: move it to `clientWidth`
+when you touch it.
+
 | Area | What it covers |
 |---|---|
 | [mobile](mobile.md) | iOS setup discovery, successful connection status and phone workspace navigation |
