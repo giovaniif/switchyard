@@ -40,6 +40,7 @@ import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinne
 import { voiceCue, type Cue } from "./voice";
 import { useVoice } from "./useVoice";
 import { MobileSetup, MobileSetupButton } from "./MobileSetup";
+import { phoneTargets } from "./mobile";
 import { isAgentHome, loadChoice, loadFolder, loadHost, readRecent, rememberSession, validChoice, type Choice } from "./sessionDefaults";
 export { isAgentHome, loadChoice, readRecent } from "./sessionDefaults";
 export type { Choice } from "./sessionDefaults";
@@ -407,7 +408,7 @@ export function App() {
                 <span className="spacer" />
                 <UsageStrip {...usage} compact />
                 <button className="btn-icon new-connectors-shortcut" aria-label="Connectors" onClick={() => actions.go({ page: "connectors" })}><Icon d={PLUG} size={17} /></button>
-                <MobileSetupButton mobile={state.mobile} open={() => actions.go({ page: "hosts" })} />
+                <MobileSetupButton mobile={state.mobile} hostMobile={state.hostMobile} open={() => actions.go({ page: "hosts" })} />
               </header>
               <NewSession state={state} actions={actions} onUsageAccount={setDraftUsageAccount} />
             </>
@@ -3216,7 +3217,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
             </span>
           )}
           <span className="spacer" />
-          <MobileSetupButton mobile={state.mobile} open={() => actions.go({ page: "hosts" })} />
+          <MobileSetupButton mobile={state.mobile} hostMobile={state.hostMobile} open={() => actions.go({ page: "hosts" })} />
           {wide ? (
             <button className="btn-icon workspace-toggle-desktop" aria-label={workspaceLabel} title={workspaceLabel} aria-controls="session-workspace" aria-expanded={workspaceShown} onClick={() => setWorkspaceCollapsed(!workspaceCollapsed)}>
               <Icon d={RIGHT_PANEL} size={18} />
@@ -5213,7 +5214,13 @@ function Hosts({ state, actions }: { state: State; actions: Actions }) {
       <div className="scroll">
         <div className="focused-page" ref={page}>
           {/* The session headers' phone shortcut leads here: keep setup first. */}
-          <MobileSetup mobile={state.mobile} />
+          <MobileSetup
+            mobile={state.mobile}
+            targets={phoneTargets(
+              [{ id: "local", name: hostName(state, "local"), mobile: state.mobile }, ...state.hosts.map((h) => ({ id: h.id, name: h.name, mobile: state.hostMobile[h.id] }))],
+              location.origin,
+            )}
+          />
           {adding && (
             <AddHost actions={actions} hosts={state.hosts} errorCount={state.errorCount} connected={state.connected} onDone={() => setAdding(false)} />
           )}

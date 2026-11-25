@@ -2,8 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 sdk_version=$(xcrun --sdk iphoneos --show-sdk-version)
-if [ "${sdk_version%%.*}" -lt 26 ]; then
-  echo "App Store Connect requires the iOS 26 SDK or newer; select Xcode 26+ with xcode-select." >&2
+if [ "${sdk_version%%.*}" -lt 27 ]; then
+  echo "App Store Connect requires the iOS 27 SDK or newer from April 2027 (ITMS-90725); select Xcode 27+ with xcode-select." >&2
   exit 1
 fi
 : "${IOS_CERTIFICATE:?Set IOS_CERTIFICATE to a base64 Apple Distribution p12}"
