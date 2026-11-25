@@ -1,0 +1,93 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "4295c6d7149616ba2568ac19d3c9dcf095e45969",
+    "short": "4295c6d",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T01:25:35.091Z"
+  },
+  "dir": ".verify/evidence/account-remove-names-sessions-3-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3749,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/account-remove-names-sessions-3-base/refusal-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "document.querySelector(\".banner-error\").textContent + \" | button: \" + document.querySelector(\"[aria-label=\\\"Remove TEST-Work\\\"]\").textContent",
+          "value": "1 session still use this account. Delete it first.Dismiss | button: Click again to remove"
+        },
+        {
+          "step": 5,
+          "eval": "document.querySelector(\".account-row\").scrollIntoView({block:\"center\"}); 1",
+          "value": 1
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "account.remove",
+          "message": "1 session still use this account. Delete it first."
+        }
+      ],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 2817,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/account-remove-names-sessions-3-base/refusal-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "document.querySelector(\".banner-error\").textContent + \" | button: \" + document.querySelector(\"[aria-label=\\\"Remove TEST-Work\\\"]\").textContent",
+          "value": "1 session still use this account. Delete it first.Dismiss | button: Click again to remove"
+        },
+        {
+          "step": 5,
+          "eval": "document.querySelector(\".account-row\").scrollIntoView({block:\"center\"}); 1",
+          "value": 1
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "account.remove",
+          "message": "1 session still use this account. Delete it first."
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

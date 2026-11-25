@@ -1,0 +1,29 @@
+$ CARGO_BUILD_JOBS=4 cargo test -p yardd --test daemon removing_an_account_in_use_names_its_sessions
+# exit 101 after 1199 ms at 4295c6d7149616ba2568ac19d3c9dcf095e45969
+
+
+running 1 test
+test removing_an_account_in_use_names_its_sessions ... FAILED
+
+failures:
+
+---- removing_an_account_in_use_names_its_sessions stdout ----
+
+thread 'removing_an_account_in_use_names_its_sessions' (1185981) panicked at crates/yardd/tests/daemon.rs:2908:5:
+assertion `left == right` failed
+  left: "1 session still use this account. Delete it first."
+ right: "The session \"fix the login page\" (archived) still uses this account. Delete it first."
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1185980-accounts-rm-in-use-0 for inspection
+
+
+failures:
+    removing_an_account_in_use_names_its_sessions
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 86 filtered out; finished in 0.14s
+
+
+   Compiling yardd v0.19.0 (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-8341/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 1.01s
+     Running tests/daemon.rs (target/debug/build/yardd/fc53105366447350/out/daemon-fc53105366447350)
+error: test failed, to rerun pass `-p yardd --test daemon`
