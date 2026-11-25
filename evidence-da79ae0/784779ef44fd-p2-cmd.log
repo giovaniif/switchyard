@@ -1,0 +1,40 @@
+$ verify/yv map run accounts --recipe refusal-with-a-long-word-keeps-dismiss-on-screen
+# exit 1 after 8696 ms at 47df1078d522482c6f06c07b835ef520d1a8ee44
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "accounts",
+      "at": "2026-11-25T08:03:12.515Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "refusal-with-a-long-word-keeps-dismiss-on-screen",
+          "status": "fail",
+          "ms": 7837,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 5 {\"eval\":\"(() => { const w = document.documentElement.clientWidth, b = document.querySelector(\\\".banner-error\\\").getBoundingClientRect(), d = [...document.querySelectorAll(\\\".banner-error button\\\")].find((x) => x.textContent.trim() === \\\"Dismiss\\\").getBoundingClientRect(); return document.documentElement.scrollWidth <= w && b.right <= w + 0.5 && d.left >= b.left && d.right <= b.right + 0.5; })()\",\"equals\":true}: eval returned false, expected true",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-533a/.verify/drives/2026-11-25T08-03-05-049Z/fail-mobile-step5.png and the aria snapshot"
+            }
+          ],
+          "tail": "mentElement.scrollWidth <= w && b.right <= w + 0.5 && d.left >= b.left && d.right <= b.right + 0.5; })()\",\n          \"value\": false\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [\n        {\n          \"op\": \"error\",\n          \"for\": \"account.remove\",\n          \"message\": \"The session \\\"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithout…\\\" still uses this account. Delete it first.\"\n        }\n      ],\n      \"httpFailures\": []\n    },\n    {\n      \"viewport\": \"desktop\",\n      \"ms\": 3173,\n      \"steps\": 8,\n      \"failed\": null,\n      \"captures\": [\n        {\n          \"viewport\": \"desktop\",\n          \"file\": \"/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-533a/.verify/drives/2026-11-25T08-03-05-049Z/long-word-refusal-desktop.png\",\n          \"size\": {\n            \"width\": 2880,\n            \"height\": 1800\n          }\n        }\n      ],\n      \"notes\": [\n        {\n          \"step\": 5,\n          \"eval\": \"(() => { const w = document.documentElement.clientWidth, b = document.querySelector(\\\".banner-error\\\").getBoundingClientRect(), d = [...document.querySelectorAll(\\\".banner-error button\\\")].find((x) => x.textContent.trim() === \\\"Dismiss\\\").getBoundingClientRect(); return document.documentElement.scrollWidth <= w && b.right <= w + 0.5 && d.left >= b.left && d.right <= b.right + 0.5; })()\",\n          \"value\": true\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [\n        {\n          \"op\": \"error\",\n          \"for\": \"account.remove\",\n          \"message\": \"The session \\\"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithout…\\\" still uses this account. Delete it first.\"\n        }\n      ],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 5 {\\\"eval\\\":\\\"(() => { const w = document.documentElement.clientWidth, b = document.querySelector(\\\\\\\".banner-error\\\\\\\").getBoundingClientRect(), d = [...document.querySelectorAll(\\\\\\\".banner-error button\\\\\\\")].find((x) => x.textContent.trim() === \\\\\\\"Dismiss\\\\\\\").getBoundingClientRect(); return document.documentElement.scrollWidth <= w && b.right <= w + 0.5 && d.left >= b.left && d.right <= b.right + 0.5; })()\\\",\\\"equals\\\":true}: eval returned false, expected true\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-533a/.verify/drives/2026-11-25T08-03-05-049Z/fail-mobile-step5.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "accounts/refusal-with-a-long-word-keeps-dismiss-on-screen",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

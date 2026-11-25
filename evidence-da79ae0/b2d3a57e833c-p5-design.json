@@ -1,0 +1,17 @@
+{
+  "command": "design-check",
+  "ok": true,
+  "base": "45d2900ca037b6e8917c7efd87f301ed0ca724d1",
+  "ui": true,
+  "touched": [
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/styles.css"
+      ]
+    }
+  ],
+  "findings": [],
+  "problems": [],
+  "hint": "screenshot the reference screen next to your after-shots, and cover empty, loading, error and long-text states at both viewports"
+}

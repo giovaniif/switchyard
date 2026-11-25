@@ -1,0 +1,181 @@
+{
+  "v": 1,
+  "claim": "At 390 px an error banner quoting a session title with no spaces (e.g. Remove account refused) grows the page sideways and pushes Dismiss past the screen edge",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-533a",
+  "base": "45d2900ca037b6e8917c7efd87f301ed0ca724d1",
+  "head": "da79ae0f5c53d8764032869549d1f3e1e520b22b",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/accounts.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-25T08:02:51.318Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "47df1078d522482c6f06c07b835ef520d1a8ee44",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "c0f7d2406dea2b895b15520c450ed19388bdfe08c4061726c2dd2f19b496811b"
+        },
+        {
+          "path": "p1-before-mobile.png",
+          "sha256": "edc33f57d5ab7457b26a4d380fcdc0f39d1afdfc6ca7aa5c707ee26b725724e2"
+        },
+        {
+          "path": "p1-before-desktop.png",
+          "sha256": "7e084917ea98d9cdf27aef5786adb91ff92d8ea740c1b74aeaa6ae0df64dc76e"
+        }
+      ],
+      "addedAt": "2026-11-25T08:03:03.778Z",
+      "failedApi": [
+        "account.remove: The session \"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithout…\" still uses this account. Delete it first.",
+        "account.remove: The session \"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithout…\" still uses this account. Delete it first."
+      ]
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "47df1078d522482c6f06c07b835ef520d1a8ee44",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "784779ef44fdfdb405b99d63b0a9a6c938ed050eb1e864bc24bbb2c37a44c452"
+        }
+      ],
+      "addedAt": "2026-11-25T08:03:03.823Z",
+      "cmd": "verify/yv map run accounts --recipe refusal-with-a-long-word-keeps-dismiss-on-screen",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "da79ae0f5c53d8764032869549d1f3e1e520b22b",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "50a3e00df2c2e8bdfd8c3167fcb11364e2d12e6397a7dc5cbba8667d3d76c36b"
+        },
+        {
+          "path": "p3-after-mobile.png",
+          "sha256": "dbc348c163da0333f0d710cfea43c62dbfde6f5eafe37e6526b8d9fd461d4eda"
+        },
+        {
+          "path": "p3-after-desktop.png",
+          "sha256": "76d051c1ef2531edf20c73c87871c856a8478390e6f1a65e08cafafc9bc86202"
+        }
+      ],
+      "addedAt": "2026-11-25T08:03:34.020Z",
+      "failedApi": [
+        "account.remove: The session \"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithout…\" still uses this account. Delete it first.",
+        "account.remove: The session \"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithout…\" still uses this account. Delete it first."
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "note",
+      "at": "da79ae0f5c53d8764032869549d1f3e1e520b22b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-25T08:03:34.064Z",
+      "text": "expected-api: account.remove: the refusal itself is the banner under test (the account still has a session); it fails the same way on base"
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "da79ae0f5c53d8764032869549d1f3e1e520b22b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "b2d3a57e833c59f3c58047a2cee0ac3f1c41cdd9d9ae982bad3708ec06321395"
+        }
+      ],
+      "addedAt": "2026-11-25T08:03:34.101Z",
+      "cmd": "verify/yv design-check --base 45d2900ca037",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "da79ae0f5c53d8764032869549d1f3e1e520b22b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "34e7a10bee09a8f751489f56420391df52de354fb24f2cc7d8985e8e94899e32"
+        }
+      ],
+      "addedAt": "2026-11-25T08:03:40.146Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run accounts --recipe refusal-with-a-long-word-keeps-dismiss-on-screen",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "da79ae0f5c53d8764032869549d1f3e1e520b22b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-accounts.json",
+          "sha256": "65004a9da62bd2cac9b0a6c50d921ac20123b0d0ae51e2fcdee498754dcbdaf5"
+        }
+      ],
+      "addedAt": "2026-11-25T08:03:49.155Z",
+      "cmd": "verify/yv map run accounts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "accounts/add-account",
+        "accounts/empty-name-add-looks-disabled",
+        "accounts/refused-add-account-keeps-the-form",
+        "accounts/log-in-account",
+        "accounts/pick-account-desktop",
+        "accounts/pick-account-mobile",
+        "accounts/default-has-no-account-row-without-a-choice",
+        "accounts/pick-other-engine-account-switches-engine",
+        "accounts/remove-refused-while-in-use",
+        "accounts/refusal-names-the-sessions-archived-too",
+        "accounts/remove-account",
+        "accounts/add-account-stays-at-the-right",
+        "accounts/install-command-stays-at-the-right",
+        "accounts/account-chip-shows-the-whole-name",
+        "accounts/account-chip-chevron-keeps-its-size",
+        "accounts/long-account-name-fits-the-setup-sheet",
+        "accounts/long-account-name-wraps-in-the-login-banner",
+        "accounts/refusal-with-a-long-word-keeps-dismiss-on-screen"
+      ]
+    }
+  ]
+}

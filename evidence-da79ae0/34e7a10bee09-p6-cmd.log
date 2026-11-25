@@ -1,0 +1,32 @@
+$ (cd ui && bun test) && verify/yv map run accounts --recipe refusal-with-a-long-word-keeps-dismiss-on-screen
+# exit 0 after 8964 ms at da79ae0f5c53d8764032869549d1f3e1e520b22b
+
+bun test v1.4.4 (38afee6c8)
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "accounts",
+      "at": "2026-11-25T08:03:49.106Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "refusal-with-a-long-word-keeps-dismiss-on-screen",
+          "status": "pass",
+          "ms": 7759
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
+
+ 479 pass
+ 0 fail
+ 4927 expect() calls
+Ran 479 tests across 35 files. [322.00ms]

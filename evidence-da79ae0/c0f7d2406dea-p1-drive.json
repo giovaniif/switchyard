@@ -1,0 +1,93 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "47df1078d522482c6f06c07b835ef520d1a8ee44",
+    "short": "47df107",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T08:02:56.327Z"
+  },
+  "dir": ".verify/evidence/banner-long-word-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4102,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/banner-long-word-base/before-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "(() => { const w = document.documentElement.clientWidth, d = [...document.querySelectorAll(\".banner-error button\")].find((x) => x.textContent.trim() === \"Dismiss\").getBoundingClientRect(); return {clientWidth: w, scrollWidth: document.documentElement.scrollWidth, innerWidth, dismissRight: d.right}; })()",
+          "value": {
+            "clientWidth": 390,
+            "scrollWidth": 397,
+            "innerWidth": 397,
+            "dismissRight": 397
+          }
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "account.remove",
+          "message": "The session \"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithout…\" still uses this account. Delete it first."
+        }
+      ],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 2466,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/banner-long-word-base/before-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "(() => { const w = document.documentElement.clientWidth, d = [...document.querySelectorAll(\".banner-error button\")].find((x) => x.textContent.trim() === \"Dismiss\").getBoundingClientRect(); return {clientWidth: w, scrollWidth: document.documentElement.scrollWidth, innerWidth, dismissRight: d.right}; })()",
+          "value": {
+            "clientWidth": 1440,
+            "scrollWidth": 1440,
+            "innerWidth": 1440,
+            "dismissRight": 1416
+          }
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "account.remove",
+          "message": "The session \"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithout…\" still uses this account. Delete it first."
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
