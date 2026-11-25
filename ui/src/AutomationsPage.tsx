@@ -25,6 +25,7 @@ import {
   PLUS,
   effortFor,
   loadChoice,
+  isAgentHome,
   readRecent,
 } from "./App";
 
@@ -286,7 +287,8 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
 
   const recent = useMemo(() => {
     const fromSessions = Object.values(state.sessions)
-      .filter((s) => hostOf(s) === target)
+      // Agents' conversations run in the agents' own folders, not projects.
+      .filter((s) => hostOf(s) === target && !s.agent && !isAgentHome(s.cwd))
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .map((s) => s.repo || s.cwd);
     return [...new Set([...readRecent(target), ...fromSessions])].slice(0, 12);

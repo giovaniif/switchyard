@@ -10,8 +10,11 @@ export type Row =
   | { type: "item"; key: string; item: Item }
   /** Consecutive tool calls and thinking. `live` while the turn is still adding to it. */
   | { type: "work"; key: string; entries: WorkItem[]; live: boolean }
-  /** Everything a finished turn did before its answer. */
-  | { type: "fold"; key: string; rows: Row[]; ms: number | null; status: string; summary: string }
+  /** Everything a finished turn did before its answer. `inline`: the turn
+   *  wrote messages between its steps, which stay in view after this line,
+   *  each run of steps folded to one line; this one only says how long and
+   *  what it did, and folds nothing. */
+  | { type: "fold"; key: string; rows: Row[]; ms: number | null; status: string; summary: string; inline?: boolean }
   /** A tool call's widget (MCP Apps: a chart, a table). It stays in view
    *  when its turn folds, between the fold and the answer. */
   | { type: "widget"; key: string; tool: ToolItem }
@@ -116,6 +119,13 @@ export function layout(items: Item[], running: boolean): Row[] {
     const work = folded.filter(isWork);
     if (!work.length) {
       rows.push(...group(body, false), ...stoppedMark());
+      return;
+    }
+    // Messages written between the steps are part of the answer to the
+    // reader (owner: folded away, only the last summary was left to read).
+    if (folded.some((it) => it.kind === "assistant")) {
+      rows.push({ type: "fold", key: `fold-${folded[0]?.key ?? body[0].key}`, rows: [], ms, status: marker?.status ?? "completed", summary: summarize(work), inline: true });
+      rows.push(...group(body, false));
       return;
     }
     rows.push({
