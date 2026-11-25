@@ -5203,7 +5203,7 @@ function SubscriptionsPage({ state, actions }: { state: State; actions: Actions 
               accounts: accountsOn(state, host),
               engines: state.engines[host],
             }))}
-            onManage={() => actions.go({ page: "hosts", tab: "engines" })}
+            onManage={(host) => actions.go({ page: "hosts", ...(host ? { host } : {}), tab: "engines" })}
           />
         </div>
       </div>
