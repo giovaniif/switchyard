@@ -437,6 +437,48 @@ yv drive 'session:{{kinds_sid}}' --steps '[{"click":{"css":".prose button.file-l
 yv drive 'session:{{kinds_sid}}' --steps '[{"click":{"css":".prose button.file-link","hasText":"TEST bundle"}},{"expect":{"css":".file-view .file-empty","hasText":"No preview for this file"}},{"expect":{"css":".file-view button.file-download"},"enabled":true},{"shot":"no-preview"}]'
 ```
 
+### file-reload-reads-it-again
+Viewports: both
+An open file does not follow the disk by itself: after the agent edits it, the
+file's Reload button reads it again and shows the new content and line count.
+A link to a file that is not there yet says so with Try again, and Try again
+opens it once the agent has written it.
+
+```sh
+for vp in desktop mobile; do
+  # On a phone the workspace covers the conversation: go back to send, then reopen it.
+  back=''; again=''
+  if [ $vp = mobile ]; then back='{"click":"role:button:Back to conversation"},'; again='{"click":"role:button:Workspace"},'; fi
+  d="$(v plain)/TEST-reload-$vp"; mkdir -p "$d/src"; printf 'fn kept() {}\n' > "$d/src/lib.rs"
+  yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"'"$d"'","text":"TEST-reload\n\n- [TEST lib](src/lib.rs)"}' --wait '{"op":"created"}' --save reload_sid=sessionId
+  yv drive 'session:{{reload_sid}}' --viewport $vp --steps '[
+    {"click":{"css":".prose button.file-link","hasText":"TEST lib"}},
+    {"expect":{"css":".file-view .file-meta","hasText":"1 line"}},
+    {"expect":"css:.file-line","count":1},
+    '"$back"'{"fill":"label:Message","value":"[edit] TEST-reload change it"},{"click":"role:button:Send"},
+    {"expect":"css:.thread","text":"Edited src/lib.rs.","timeout":20000}, '"$again"'
+    {"expect":"css:.file-line","count":1},
+    {"click":"role:button:Reload file"},
+    {"expect":{"css":".file-view .file-meta","hasText":"2 lines"}},
+    {"expect":{"css":".file-line","hasText":"fn added() {}"}},
+    {"shot":"file-reloaded"}
+  ]'
+  m="$(v plain)/TEST-later-$vp"; mkdir -p "$m"
+  yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"'"$m"'","text":"TEST-later\n\n- [TEST later lib](src/lib.rs)"}' --wait '{"op":"created"}' --save later_sid=sessionId
+  # The first read is refused (no such file yet); that refusal is part of the flow.
+  yv drive 'session:{{later_sid}}' --viewport $vp --allow-errors --steps '[
+    {"click":{"css":".prose button.file-link","hasText":"TEST later lib"}},
+    {"expect":{"css":".file-view .file-empty[role=alert]","hasText":"was not found"}},
+    '"$back"'{"fill":"label:Message","value":"[edit] TEST-later write it"},{"click":"role:button:Send"},
+    {"expect":"css:.thread","text":"Edited src/lib.rs.","timeout":20000}, '"$again"'
+    {"click":{"role":"button","name":"Try again","exact":true}},
+    {"expect":{"css":".file-line","hasText":"fn added() {}"}},
+    {"expect":"css:.file-view .file-empty","visible":false},
+    {"shot":"file-found-on-try-again"}
+  ]'
+done
+```
+
 ### numbered-steps-across-code-blocks
 Viewports: both
 Numbered steps with a code block under each keep their numbers in the answer:
