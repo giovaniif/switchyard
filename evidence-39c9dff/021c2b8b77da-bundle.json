@@ -1,0 +1,155 @@
+{
+  "v": 1,
+  "claim": "Feature-map overflow checks (document.documentElement.scrollWidth <= innerWidth, 48 of them in 10 areas) can never fail at the mobile viewport: overflowing content stretches innerWidth with it (397/397 on #425's banner)",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-9832",
+  "base": "70b25828c89a5a0c098555e9ab74fa9f7319bbfd",
+  "head": "39c9dff5004441944682ca5a77007df150955c4c",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/features/README.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/accounts.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/agents.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/approved-design.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/connectors.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/focused-pages.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/hosts.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/mermaid.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/processes.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/thread.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-25T07:27:10.966Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "70b25828c89a5a0c098555e9ab74fa9f7319bbfd",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "d0cfd3be2899bcd9981ecfab353c2dabf51fa7a7720bf2b9016612d530eebb25"
+        },
+        {
+          "path": "p1-overflowing-banner-mobile.png",
+          "sha256": "3eb6eebbb7e58749674bf460a7bb973e06a8b880ebe6f0e350815c0ed3a01062"
+        }
+      ],
+      "addedAt": "2026-11-25T07:27:16.194Z",
+      "failedApi": [
+        "account.remove: The session \"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithout…\" still uses this account. Delete it first."
+      ]
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "70b25828c89a5a0c098555e9ab74fa9f7319bbfd",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-25T07:27:16.237Z",
+      "text": "no-failing-test: map-only; the recipes are the test. The base repro drive shows the old check (scrollWidth <= innerWidth) passing on a page that overflows 390 px, and the new one (clientWidth) failing there."
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "note",
+      "at": "70b25828c89a5a0c098555e9ab74fa9f7319bbfd",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-25T07:27:16.276Z",
+      "text": "expected-api: account.remove: the refusal (the account still has a session) is what puts the long title in the banner; base and head both show it"
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "39c9dff5004441944682ca5a77007df150955c4c",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "ff9445e1dae8103497341d1477170e19469f58bcdadeeb502f137142f748edaf"
+        },
+        {
+          "path": "p4-overflowing-banner-mobile.png",
+          "sha256": "3eb6eebbb7e58749674bf460a7bb973e06a8b880ebe6f0e350815c0ed3a01062"
+        }
+      ],
+      "addedAt": "2026-11-25T07:27:28.007Z",
+      "failedApi": [
+        "account.remove: The session \"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithout…\" still uses this account. Delete it first."
+      ]
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "note",
+      "at": "39c9dff5004441944682ca5a77007df150955c4c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-25T07:27:28.047Z",
+      "text": "expected-api: account.remove: the same refusal as on base; it puts the long title in the banner"
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "39c9dff5004441944682ca5a77007df150955c4c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "f457be3502b905571acc97c0fe478a97633bfd0ef69924eeadb91a74de029a87"
+        }
+      ],
+      "addedAt": "2026-11-25T07:27:28.087Z",
+      "cmd": "verify/yv map run mermaid && verify/yv map run processes && verify/yv map run connectors && verify/yv map run focused-pages",
+      "exit": 0
+    }
+  ]
+}

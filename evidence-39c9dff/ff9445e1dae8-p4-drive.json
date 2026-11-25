@@ -1,0 +1,64 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "39c9dff5004441944682ca5a77007df150955c4c",
+    "short": "39c9dff",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T07:27:23.022Z"
+  },
+  "dir": ".verify/evidence/overflow-clientwidth-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4314,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/overflow-clientwidth-head/overflowing-banner-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "document.documentElement.scrollWidth <= innerWidth",
+          "value": true
+        },
+        {
+          "step": 5,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": false
+        },
+        {
+          "step": 6,
+          "eval": "JSON.stringify({inner: innerWidth, client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth})",
+          "value": "{\"inner\":397,\"client\":390,\"scroll\":397}"
+        },
+        {
+          "step": 7,
+          "eval": "document.querySelector(\".banner-error\").scrollIntoView(); 1",
+          "value": 1
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "account.remove",
+          "message": "The session \"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithout…\" still uses this account. Delete it first."
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
