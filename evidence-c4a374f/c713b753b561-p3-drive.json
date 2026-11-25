@@ -1,0 +1,93 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "c4a374f87686c3682a1bf8231c4f8e4dd9b90575",
+    "short": "c4a374f",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T01:15:35.458Z"
+  },
+  "dir": ".verify/evidence/account-remove-names-sessions-2-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3719,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/account-remove-names-sessions-2-head/refusal-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "document.querySelector(\".banner-error\").textContent + \" | button: \" + document.querySelector(\"[aria-label=\\\"Remove TEST-Work\\\"]\").textContent",
+          "value": "The session \"TEST-old work session\" (archived) still uses this account. Delete it first.Dismiss | button: Remove"
+        },
+        {
+          "step": 5,
+          "eval": "document.querySelector(\".account-row\").scrollIntoView({block:\"center\"}); 1",
+          "value": 1
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "account.remove",
+          "message": "The session \"TEST-old work session\" (archived) still uses this account. Delete it first."
+        }
+      ],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 2828,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/account-remove-names-sessions-2-head/refusal-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "document.querySelector(\".banner-error\").textContent + \" | button: \" + document.querySelector(\"[aria-label=\\\"Remove TEST-Work\\\"]\").textContent",
+          "value": "The session \"TEST-old work session\" (archived) still uses this account. Delete it first.Dismiss | button: Remove"
+        },
+        {
+          "step": 5,
+          "eval": "document.querySelector(\".account-row\").scrollIntoView({block:\"center\"}); 1",
+          "value": 1
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "account.remove",
+          "message": "The session \"TEST-old work session\" (archived) still uses this account. Delete it first."
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,212 @@
+{
+  "v": 1,
+  "claim": "Removing an account that a session still uses said '1 session still use this account. Delete it first.': bad grammar, and it never named the session; an archived one is not in the sidebar, so the user had nothing to find. The row also kept saying 'Click again to remove' beside the refusal.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-8341",
+  "base": "b6835aeef7d42caccfc276e577623d0ffa12ea30",
+  "head": "c4a374f87686c3682a1bf8231c4f8e4dd9b90575",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/accounts.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/accounts.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-25T01:14:59.764Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "0ab3020a8ae089868c7ff3ea5857bed427421866",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "131d6e5bc35ea8e8afec3d510a607eae1bf8ba31c92a5056865e38bbd7a306b8"
+        },
+        {
+          "path": "p1-refusal-mobile.png",
+          "sha256": "ca736ca5b4292db2ee20dd56533c34d69967a85c1ba5eb8568f2ecf6a519497e"
+        },
+        {
+          "path": "p1-refusal-desktop.png",
+          "sha256": "fa7a972fbfd38072f87af3cc5ed34bc22a8f39cba934044aa8c928925537e55a"
+        },
+        {
+          "path": "p1-2-refusal-desktop.png",
+          "sha256": "fa7a972fbfd38072f87af3cc5ed34bc22a8f39cba934044aa8c928925537e55a"
+        },
+        {
+          "path": "p1-2-refusal-mobile.png",
+          "sha256": "ca736ca5b4292db2ee20dd56533c34d69967a85c1ba5eb8568f2ecf6a519497e"
+        }
+      ],
+      "addedAt": "2026-11-25T01:15:26.087Z",
+      "failedApi": [
+        "account.remove: 1 session still use this account. Delete it first.",
+        "account.remove: 1 session still use this account. Delete it first."
+      ]
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "0ab3020a8ae089868c7ff3ea5857bed427421866",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "ccb34f1b84f55248941bcf706f4fd712fa8d2bcf21b51c6ef9b71df0ef61ede1"
+        }
+      ],
+      "addedAt": "2026-11-25T01:15:26.140Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd --test daemon removing_an_account_in_use_names_its_sessions",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "c4a374f87686c3682a1bf8231c4f8e4dd9b90575",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "c713b753b56149671b373f548755417e0cc42d78803fefbd7e0e36366546829c"
+        },
+        {
+          "path": "p3-refusal-mobile.png",
+          "sha256": "e9db75269cad28635ac2415ea0a7557e83bf6e4a9ba5f27b0129fb7a639f775a"
+        },
+        {
+          "path": "p3-refusal-desktop.png",
+          "sha256": "a29e41c2fc67c91ef07e7b9570944a6562ed90c5d5c41a6899d782ab81f8db14"
+        },
+        {
+          "path": "p3-2-refusal-desktop.png",
+          "sha256": "a29e41c2fc67c91ef07e7b9570944a6562ed90c5d5c41a6899d782ab81f8db14"
+        },
+        {
+          "path": "p3-2-refusal-mobile.png",
+          "sha256": "e9db75269cad28635ac2415ea0a7557e83bf6e4a9ba5f27b0129fb7a639f775a"
+        }
+      ],
+      "addedAt": "2026-11-25T01:15:53.511Z",
+      "failedApi": [
+        "account.remove: The session \"TEST-old work session\" (archived) still uses this account. Delete it first.",
+        "account.remove: The session \"TEST-old work session\" (archived) still uses this account. Delete it first."
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "note",
+      "at": "c4a374f87686c3682a1bf8231c4f8e4dd9b90575",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-25T01:15:53.565Z",
+      "text": "expected-api: account.remove: the refusal is the thing being fixed; on base it is refused too, with the old text ('1 session still use this account'), so it shows as head-only only because the message changed."
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "c4a374f87686c3682a1bf8231c4f8e4dd9b90575",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "fe6e87eb41831b08f80eaaa67478ce01049f8deb04521bebde6bedd69421e110"
+        }
+      ],
+      "addedAt": "2026-11-25T01:15:53.610Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "c4a374f87686c3682a1bf8231c4f8e4dd9b90575",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "66d7ae05c32d57d2a64996ec91162dd31ab933e56e4f2f8fbbc080f8915d33fc"
+        }
+      ],
+      "addedAt": "2026-11-25T01:17:01.617Z",
+      "cmd": "verify/yv design-check --base b6835aeef7d4",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "c4a374f87686c3682a1bf8231c4f8e4dd9b90575",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-accounts.json",
+          "sha256": "cc7d00822f0987d892fb03de2789f112a620b74357e9d0dc0a8ba6a28235aa6b"
+        }
+      ],
+      "addedAt": "2026-11-25T01:17:01.704Z",
+      "cmd": "verify/yv map run accounts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "accounts/add-account",
+        "accounts/empty-name-add-looks-disabled",
+        "accounts/refused-add-account-keeps-the-form",
+        "accounts/log-in-account",
+        "accounts/pick-account-desktop",
+        "accounts/pick-account-mobile",
+        "accounts/default-has-no-account-row-without-a-choice",
+        "accounts/pick-other-engine-account-switches-engine",
+        "accounts/remove-refused-while-in-use",
+        "accounts/refusal-names-the-sessions-archived-too",
+        "accounts/remove-account",
+        "accounts/add-account-stays-at-the-right",
+        "accounts/install-command-stays-at-the-right",
+        "accounts/account-chip-shows-the-whole-name",
+        "accounts/account-chip-chevron-keeps-its-size",
+        "accounts/long-account-name-fits-the-setup-sheet",
+        "accounts/long-account-name-wraps-in-the-login-banner"
+      ]
+    }
+  ]
+}
