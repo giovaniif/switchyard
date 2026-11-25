@@ -332,6 +332,23 @@ h1, h2, h3, p { margin: 0; }
 .quote-card .btn-icon { width: 24px; }
 /* Terminal rows: a header line (where from, how many lines, More, ×) over
    monospace text that keeps its columns. */
+/* A quote of an answer has its own comment under it, numbered when there are
+   several, like its mark in the answer. */
+.quote-card.commented { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: start; column-gap: 4px; }
+.quote-card.commented > .quote-card-text { grid-column: 2; }
+.quote-card.commented > .quote-card-note { grid-column: 1 / -1; }
+.quote-card-number { flex: none; display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin: 3px 4px 0 0; padding: 0 4px; border: 0; border-radius: 9px; background: var(--info-soft); color: var(--info); font-size: 11px; font-weight: 600; line-height: 18px; }
+button.quote-card-number { cursor: pointer; }
+button.quote-card-number:hover { background: var(--info); color: var(--bg); }
+.quote-card-note { display: block; width: 100%; min-height: 28px; margin: 4px 0 2px; padding: 4px 8px; resize: none; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font: inherit; font-size: 13px; line-height: 1.45; }
+.quote-card-note:focus { outline: none; border-color: var(--line-strong); }
+/* The parts quoted in the reply box, marked where they are in the answers. */
+::highlight(yard-quoted) { background-color: var(--info-soft); }
+/* A sent reply with comments: each part, then its comment. */
+.bubble-comments { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.bubble-comment { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 2px; }
+.bubble-comment > .bubble-quote, .bubble-comment > .bubble-comment-note { grid-column: 2; }
+.bubble-comment-note { margin-top: 2px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .quote-card.snippet { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
 .quote-card-label { grid-row: 1; grid-column: 1; font-size: 12px; font-weight: 500; color: var(--muted); }
 .quote-card.snippet .btn-text { grid-row: 1; grid-column: 2; }
@@ -728,6 +745,8 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .work .tool { margin: 0; }
 .work-toggle, .fold-row, .work-more { display: flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 0; border: 0; background: transparent; color: var(--muted); text-align: left; font-size: inherit; }
 .work-toggle:hover, .fold-row:hover, .work-more:hover, .tool-row:not(:disabled):hover { color: var(--ink); }
+/* The line over a turn whose messages stay in view: it says how long, it opens nothing. */
+.fold-row.fold-row-static:hover { color: var(--muted); }
 .work-more { font-size: 12px; padding: 0; }
 .work-list { display: flex; flex-direction: column; gap: 2px; padding-left: 12px; border-left: 1px solid var(--line); margin-left: 5px; }
 .stopped-mark { margin-top: -8px; }

@@ -113,6 +113,22 @@ An account with sessions cannot be removed: yardd says so and the row stays.
 yv drive hosts --viewport desktop --allow-errors --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Remove TEST-Work"},{"click":"role:button:Remove TEST-Work"},{"expect":"css:.banner-error","text":"session"},{"expect":{"css":".account-row","hasText":"TEST-Work"}}]'
 ```
 
+### refusal-names-the-sessions-archived-too
+Viewports: both
+The refusal names the sessions still on the account and marks an archived
+one, which is not in the sidebar and so comes first, so the user knows what
+to delete. The
+confirming click disarms Remove, so the row does not keep saying "Click again
+to remove" beside the refusal. (Before #397: "1 session still use this
+account. Delete it first.", nothing named.)
+
+```sh
+sid="$(yv state | jq -r '.sessions[] | select(.title == "TEST-account pick mobile") | .id')"
+yv api "{\"op\":\"session.update\",\"sessionId\":\"$sid\",\"archived\":true}"
+yv drive hosts --allow-errors --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Remove TEST-Work"},{"click":"role:button:Remove TEST-Work"},{"expect":"css:.banner-error","text":"2 sessions still use this account: \"TEST-account pick mobile\" (archived) and \"TEST-account pick desktop\". Delete them first."},{"eval":"document.querySelector(\"[aria-label=\\\"Remove TEST-Work\\\"]\").textContent","equals":"Remove"},{"eval":"document.querySelector(\".banner-error\").scrollIntoView(); 1"},{"shot":"refusal-names-sessions"}]'
+yv api "{\"op\":\"session.update\",\"sessionId\":\"$sid\",\"archived\":false}"
+```
+
 ### remove-account
 Viewports: desktop
 Once its sessions are deleted the account can be removed: the row goes, and

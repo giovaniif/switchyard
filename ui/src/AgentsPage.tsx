@@ -27,6 +27,7 @@ import {
   PLUS,
   effortFor,
   loadChoice,
+  isAgentHome,
   readRecent,
   tilde,
 } from "./App";
@@ -559,7 +560,8 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
   const engines = pickerEngines(models, choice.engine);
   const recent = useMemo(() => {
     const fromSessions = Object.values(state.sessions)
-      .filter((s) => hostOf(s) === host)
+      // Agents' conversations run in the agents' own folders, not projects.
+      .filter((s) => hostOf(s) === host && !s.agent && !isAgentHome(s.cwd))
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .map((s) => s.repo || s.cwd);
     return [...new Set([...readRecent(host), ...fromSessions])].slice(0, 12);

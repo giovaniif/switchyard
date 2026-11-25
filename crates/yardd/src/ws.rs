@@ -408,9 +408,9 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
         }
         "account.remove" => {
             let id = str_field(msg, "id")?;
-            let used = app.sessions.lock().unwrap().values().filter(|s| s.meta.account == id).count();
-            if used > 0 {
-                bail!("{used} session{} still use this account. Delete {} first.", if used == 1 { "" } else { "s" }, if used == 1 { "it" } else { "them" });
+            let used: Vec<(String, bool)> = app.sessions.lock().unwrap().values().filter(|s| s.meta.account == id).map(|s| (s.meta.title.clone(), s.meta.archived)).collect();
+            if !used.is_empty() {
+                bail!(crate::accounts::in_use(&used));
             }
             let found = app.accounts.all().into_iter().find(|a| a.id == id).context("no such account")?;
             // A login still waiting on the account would write into a deleted folder.
