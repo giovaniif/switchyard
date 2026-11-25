@@ -29,6 +29,9 @@
   --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.12);
   --scrim: rgba(0, 0, 0, 0.28);
   --off: #b8b8b8;
+  /* A QR code stays dark on light, whatever the theme, for cameras to read. */
+  --qr-ink: #111111;
+  --qr-paper: #ffffff;
   --mono: "JetBrains Mono", ui-monospace, monospace;
   --usage-track: #e4e4e7;
   --usage-warning: #c2410c;
@@ -956,7 +959,9 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .phone-state-live .dot { border: 0; background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
 .phone-state-seen .dot { border: 0; background: var(--ok); }
 .phone-qr { flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0; }
-.phone-qr-code { display: block; width: 168px; height: 168px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.phone-qr-code { display: block; width: 168px; height: 168px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--qr-paper); }
+.phone-qr-code rect { fill: var(--qr-paper); }
+.phone-qr-code path { fill: var(--qr-ink); }
 .phone-address { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 6px 6px 6px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--side); }
 .phone-address code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 13px; }
 .phone-address .btn-text, .phone-address-edit .btn-text { display: inline-flex; align-items: center; gap: 5px; height: 28px; font-size: 12px; white-space: nowrap; }

@@ -41,10 +41,16 @@ host's web page in a sheet. `project.yml` generates the Xcode project;
 on a simulator, and its explicit TestFlight dispatch archives and uploads with
 iOS distribution credentials. See [mobile/README.md](../mobile/README.md).
 
-The host page always offers phone setup; new-session and session headers show
-a small phone icon until a phone has received a hub snapshot and reported
-`mobile.connected`. yardd saves `mobile.json`, includes `mobile` in snapshots,
-and broadcasts `mobile.status`; remotes' setup state does not replace the hub's.
+The Hosts page always offers phone setup: a QR code (the `uqr` package) for
+the address a phone can open, which is a host's HTTPS `YARD_ALLOW_ORIGIN`
+entries (`mobile.origins`), since the desktop app's page is on loopback.
+New-session and session headers show a small phone icon until a phone has
+connected to any host. The app sends `mobile.connected { device }` on every
+connection; yardd keeps the phone in `mobile.live` until that socket closes,
+saves the last five in `mobile.json` with when each was last seen, includes
+`mobile` in snapshots and broadcasts `mobile.status`. Remotes relay theirs to
+the hub (`host.snapshot.mobile`, `mobile.status` with `hostId`): a phone
+connects to the host it can reach, usually not the desktop.
 `YARD_TESTFLIGHT_URL` supplies the real beta invitation once available.
 The app sends the host's origin as `Origin`, so `YARD_ALLOW_ORIGIN` needs no
 new entry. Backgrounding stops speech; foregrounding reconnects the socket.

@@ -26,8 +26,8 @@ function QrCode({ text, label }: { text: string; label: string }) {
   }, [text]);
   return (
     <svg className="phone-qr-code" viewBox={`0 0 ${size} ${size}`} role="img" aria-label={label} shapeRendering="crispEdges">
-      <rect width={size} height={size} fill="#fff" />
-      <path d={path} fill="#111" />
+      <rect width={size} height={size} />
+      <path d={path} />
     </svg>
   );
 }

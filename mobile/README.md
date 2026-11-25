@@ -61,14 +61,23 @@ keep running on the host.
 
 1. Install the beta using the host page's TestFlight invitation.
 2. Join the same private network as the host (for example, Tailscale).
-3. Enter the **HTTPS origin** of the existing web host, such as
-   `https://yard.example.ts.net`. A `switchyard://connect?host=<encoded-origin>`
-   link fills the address; you still choose Connect on the phone.
+3. On the desktop, open **Hosts**: the iPhone card shows a QR code. Point the
+   iPhone Camera at it; Switchyard opens with the address filled in
+   (`switchyard://connect?host=<encoded-origin>`), and you tap Connect. Or type
+   the host's **HTTPS origin**, such as `https://yard.example.ts.net`.
+
+The card's address is each host's `YARD_ALLOW_ORIGIN` entries a phone can open
+(HTTPS, not loopback), reported in the host's `mobile` state; the desktop
+app's own page is on loopback, so remote hosts relay theirs to the hub. With
+none, the card asks for the address. It also says which phone is connected
+now, or when one was last seen: the app sends `mobile.connected` with its
+device name on every connection, and yardd counts it live until the socket
+closes (`mobile.json` keeps the last five phones).
 
 The app checks `/health`, then opens `wss://<host>/ws` with the host's own
 origin as `Origin`, which `YARD_ALLOW_ORIGIN` already lists for its web page.
-The host is saved once the first snapshot arrives. A hub that tracks phone
-setup gets `mobile.connected`, and the web page's phone shortcut goes away.
+The host is saved once the first snapshot arrives. A host that tracks phones
+gets `mobile.connected`, and the desktop's phone shortcut goes away.
 
 `localhost` on the phone is the phone, and a desktop SSH forward is not
 reachable from it. Use the existing privately reachable HTTPS deployment. Do
