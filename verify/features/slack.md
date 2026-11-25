@@ -128,7 +128,7 @@ do?") is not in the bot's "Which agent?" list, and its placeholder name in
 Slack reaches nobody: it still waits for the owner's first words.
 
 ```sh
-yv api '{"op":"slack.tokens","appToken":"xapp-1-A0TEST-TESTsecretapptoken","botToken":"xoxb-TEST-TESTsecretbottoken"}' --wait '{"op":"slack","slack":{"state":"connected"}}'
+yv api '{"op":"slack.tokens","appToken":"xapp-1-A0TEST-TESTsecretapptoken","botToken":"xoxb-TEST-recipe-bot"}' --wait '{"op":"slack","slack":{"state":"connected"}}'
 yv api '{"op":"slack.allow","user":"UOWNER"}' --wait '{"op":"slack"}'
 yv api '{"op":"slack.route","agent":""}' --wait '{"op":"slack"}'
 yv api '{"op":"agent.new","engine":"codex","model":"fake-fast","effort":"low"}' --wait '{"op":"agent.saved"}' --save blank_name=agent.name
@@ -161,6 +161,11 @@ yv drive agents --viewport mobile --steps '[{"expect":{"css":".agent-card[aria-l
 
 ## Gotchas
 
+- The land gate's secret check (`verify/src/land.ts`, `SECRET_TEXT`) blocks
+  a PR whose added lines hold `xoxb-`/`xoxp-` plus 20 or more characters,
+  fake or not. A new recipe that sets tokens uses a short bot token
+  (`xoxb-TEST-recipe-bot`); yardd and the fake only need `xoxb-` and 12
+  characters.
 - Not covered here (no real Slack can be reached from tests): a real
   workspace's events, rate limits and Slack's own manifest import, and an
   agent app's install redirect (it needs an https page; `tests/slack.rs`
