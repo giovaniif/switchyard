@@ -1568,10 +1568,6 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .slack-connection.is-live { color: var(--ok-ink); }
 .slack-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .slack-connection.is-live .slack-dot { background: var(--ok); }
-.slack-public { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
-.slack-public > summary { cursor: pointer; color: var(--muted); font-size: 13px; }
-.slack-public[open] > summary { color: var(--ink); }
-.slack-public code { overflow-wrap: anywhere; }
 /* Agents' avatars drawn out of sight, for their Slack apps' icons (SlackIcon.tsx). */
 .slack-icon-source { position: fixed; left: -10000px; top: 0; width: 1px; height: 1px; overflow: hidden; pointer-events: none; }
 /* On a phone the header keeps Slack's mark only; its name stays for screen readers. */

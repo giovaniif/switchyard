@@ -985,14 +985,17 @@ its engine framing and one arm in `origins::reply`.
     it goes on the allowlist (for a pasted token: who made the configuration
     token).
   - **Connection, Socket Mode** (no public address). It needs an app-level
-    token (`xapp-`, `connections:write`) that Slack only makes by hand: the
-    dialog links the app's settings and says what to click
+    token (`xapp-`, `connections:write`) that Slack only makes by hand: one
+    screen with Open Basic Information (the app's own page) and three short
+    lines of what to click
     (`slack.app.appToken`, checked with `apps.connections.open`). Then it
     keeps its own Socket Mode connection (`run_app`, redialled like the
     shared bot's, from start after a restart).
-  - **Connection, HTTP** (Orca's way, opt-in): with a public https address
-    for Slack (`YARD_SLACK_PUBLIC_URL`, which wins, or `slack.publicUrl {
-    url }` from the dialog's "Fewer tokens"), a new app's manifest has
+  - **Connection, HTTP** (Orca's way; strictly opt-in and off by default:
+    the owner would rather not expose anything, so the dialog does not offer
+    it and no tunnel is set up): with a public https address for Slack
+    (`YARD_SLACK_PUBLIC_URL`, which wins, or the `slack.publicUrl { url }`
+    op, which has no UI), a new app's manifest has
     `socket_mode_enabled: false` and `request_url` `<public>/slack/events`,
     and there is no app-level token: the configuration token is the only
     paste (with an https redirect). `POST /slack/events` reads at most 1 MB,
