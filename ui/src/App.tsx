@@ -135,6 +135,7 @@ const STOP = "M7 7h10v10H7Z";
 const WAVES = "M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3";
 /** What the dot on the Automations row says. */
 const RUNS_MARK = { approval: "A run needs approval", working: "A run is working" } as const;
+const GROUP_MARK = { approval: "A session needs approval", working: "A session is working" } as const;
 /** What the dot on the Agents row says. */
 const AGENTS_MARK = { approval: "An agent needs approval", needsYou: "An agent needs you", working: "An agent is working", failed: "An agent's turn failed", answered: "An agent answered" } as const;
 
@@ -837,8 +838,10 @@ function useCollapsedGroups(): [Set<string>, (name: string) => void] {
 }
 
 /** A group's header: the name, how many sessions, a chevron; its menu renames
- *  or ungroups every session in it, archived ones included. */
-function GroupHead({ name, count, open, onToggle, members, actions }: { name: string; count: number; open: boolean; onToggle(): void; members: SessionMeta[]; actions: Actions }) {
+ *  or ungroups every session in it, archived ones included. Collapsed, it
+ *  hides its rows' marks, so it carries the Automations row's dot instead:
+ *  a group folded days ago must not hide an approval. */
+function GroupHead({ name, count, open, onToggle, members, mark, actions }: { name: string; count: number; open: boolean; onToggle(): void; members: SessionMeta[]; mark: "approval" | "working" | null; actions: Actions }) {
   const [menu, setMenu] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -911,6 +914,7 @@ function GroupHead({ name, count, open, onToggle, members, actions }: { name: st
           </span>
           <span className="group-name">{name}</span>
           <span className="muted">{count}</span>
+          {!open && mark && <span className={`dot ${mark === "approval" ? "dot-needs_approval" : "dot-running"}`} role="img" aria-label={GROUP_MARK[mark]} title={GROUP_MARK[mark]} />}
         </button>
       )}
       {!renaming && (
@@ -1160,6 +1164,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
                 open={!collapsed.has(g.name)}
                 onToggle={() => toggleGroup(g.name)}
                 members={all.filter((s) => s.group === g.name)}
+                mark={runsAttention(g.sessions)}
                 actions={actions}
               />
               {!collapsed.has(g.name) && roots(g.sessions).map(tree)}
