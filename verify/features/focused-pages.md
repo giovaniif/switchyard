@@ -209,6 +209,16 @@ keeps its session list and Usage entry.
 yv drive new --viewport desktop --steps '[{"expect":{"css":".sidebar-top button","hasText":"Sessions","exact":true},"count":0},{"expect":{"css":".sidebar-top button","hasText":"Subscriptions","exact":true},"count":0},{"click":"role:button:Go to session or page"},{"fill":"role:combobox","value":"subscriptions"},{"press":"Enter"},{"expect":"role:heading:Subscriptions"}]'
 ```
 
+### subscriptions-page-signed-out-account
+Viewports: both
+An account that needs sign-in shows Sign in, not its last usage, as the
+sidebar usage popover does (#396). Sign in opens the Engine logins tab.
+
+```sh
+yv api '{"op":"account.add","engine":"claude","name":"TEST-Away"}' --wait '{"op":"accounts"}'
+yv drive 'subscriptions' --steps '[{"expect":"role:heading:Subscriptions"},{"expect":"role:region:Claude · TEST-Work","text":"91% used"},{"expect":"role:region:Claude · TEST-Away","text":"Needs sign-in"},{"expect":"role:region:Claude · TEST-Away","text":"Sign in to see usage"},{"wait":1500},{"eval":"[...document.querySelectorAll(\".subscription-row\")].find((r) => r.getAttribute(\"aria-label\") === \"Claude · TEST-Away\").querySelectorAll(\".usage-percent, [role=progressbar]\").length","equals":0},{"eval":"document.documentElement.scrollWidth === innerWidth","equals":true},{"shot":"signed-out-account"},{"click":"role:button:Sign in — Claude · TEST-Away"},{"expect":"css:[role=tab][aria-selected=true]","text":"Engine logins"},{"expect":{"css":".account-row","hasText":"TEST-Away"},"text":"not logged in"}]'
+```
+
 ## Gotchas
 - On New session the popover follows the draft's account by design
   (`compact-usage-popover` expects Default there); elsewhere, with no account
