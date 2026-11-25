@@ -172,6 +172,8 @@ const PLURAL: Record<string, [string, string, string]> = {
   search: ["Searched", "time", "times"],
   // The host agent reading its evidence (yardd agents.rs).
   context: ["Read", "host snapshot", "host snapshots"],
+  // An Agent call: engines give it no kind of its own, its `agent` marks it.
+  subagent: ["Ran", "subagent", "subagents"],
 };
 
 /** A call whose approval was denied or never answered: it did not run. */
@@ -204,7 +206,7 @@ export function summarize(entries: WorkItem[]): string {
   const ran = entries.filter((e) => !didNotRun(e));
   const counts = new Map<string, number>();
   for (const e of ran) {
-    const kind = e.kind === "reasoning" ? "think" : PLURAL[e.toolKind] ? e.toolKind : "other";
+    const kind = e.kind === "reasoning" ? "think" : e.agent ? "subagent" : PLURAL[e.toolKind] ? e.toolKind : "other";
     counts.set(kind, (counts.get(kind) ?? 0) + 1);
   }
   const parts = [...counts.entries()]

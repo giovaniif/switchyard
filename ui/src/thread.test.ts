@@ -187,6 +187,13 @@ describe("labels", () => {
     expect(summarize([{ kind: "reasoning", key: "r", itemId: "r", text: "", streaming: false }])).toBe("Thought");
   });
 
+  test("a subagent counts as a subagent, not as an other step", () => {
+    const agent = (n: number): WorkItem => ({ kind: "tool", key: `a${n}`, itemId: `a${n}`, toolKind: "other", title: "Agent", detail: "survey", agent: "general-purpose", state: "ok" });
+    const other: WorkItem = { kind: "tool", key: "o", itemId: "o", toolKind: "other", title: "TodoWrite", detail: "", state: "ok" };
+    expect(summarize([agent(1)])).toBe("Ran 1 subagent");
+    expect(summarize([agent(1), agent(2), other])).toBe("Ran 2 subagents, 1 other step");
+  });
+
   test("durations", () => {
     expect(duration(45_000)).toBe("45s");
     expect(duration(72_000)).toBe("1m 12s");
@@ -244,7 +251,7 @@ describe("subagents", () => {
   test("steps do not count as work in the summary", () => {
     const rows = layout(fold([...agentTurn, { type: "tool_completed", itemId: AGENT, ok: true, output: "done", ms: 2_000 }, { type: "turn_completed", status: "completed", at: 5_000 }]), false);
     const row = rows.find((r) => r.type === "fold");
-    expect(row?.type === "fold" && row.summary).toBe("1 other step");
+    expect(row?.type === "fold" && row.summary).toBe("Ran 1 subagent");
   });
 
   test("an agent still running when the turn ends stays out of the fold, running", () => {
