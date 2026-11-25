@@ -66,6 +66,7 @@ final class AppModel {
         voice.turnOff()
         selected = nil
         let yard = Yard(host: url, transport: WebSocketTransport(host: url))
+        yard.deviceName = UIDevice.current.name
         yard.onConnected = { [weak self, weak yard] in
             guard let self, let yard, self.yard === yard else { return }
             self.firstConnect?.cancel()

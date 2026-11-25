@@ -46,7 +46,9 @@ final class YardTests: XCTestCase {
         XCTAssertFalse(yard.modelsOn("local")[.codex]?.isEmpty ?? true)
         XCTAssertTrue(yard.engines(on: "local").contains(.claude))
         // A hub with setup state learns that a phone connected; once.
-        XCTAssertEqual(t.sent.filter { $0["op"].string == "mobile.connected" }.count, 1)
+        let hello = t.sent.filter { $0["op"].string == "mobile.connected" }
+        XCTAssertEqual(hello.count, 1)
+        XCTAssertEqual(hello.first?["device"].string, "iPhone")
     }
 
     func testHistoryBuildsTheThread() throws {

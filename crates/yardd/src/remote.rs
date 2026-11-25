@@ -781,6 +781,8 @@ fn rewrite(host: &str, name: &str, text: &str) -> Option<Value> {
                 "home": msg["home"].take(),
                 "workspace": msg["workspace"].take(),
                 "automations": msg["automations"].take(),
+                // A phone connects to the host it can reach: the hub shows each one's.
+                "mobile": msg["mobile"].take(),
             });
         }
         // A remote's own remotes are not ours to show.
@@ -791,7 +793,7 @@ fn rewrite(host: &str, name: &str, text: &str) -> Option<Value> {
             rewrite_stats(host, name, &mut msg["host"]);
             msg["hostId"] = json!(host);
         }
-        "models" | "usage" | "accounts" | "error" | "git.branches" | "fs.dirs" | "attach.stored" | "engines" | "login" | "claude.sessions" | "automations" | "mcp" | "mcp.auth" | "mcp.change" => {
+        "models" | "usage" | "accounts" | "mobile.status" | "error" | "git.branches" | "fs.dirs" | "attach.stored" | "engines" | "login" | "claude.sessions" | "automations" | "mcp" | "mcp.auth" | "mcp.change" => {
             msg["hostId"] = json!(host);
             if op == "error" {
                 prefix(host, &mut msg, "sessionId");
@@ -888,9 +890,13 @@ mod tests {
 
     #[test]
     fn a_snapshot_becomes_a_host_snapshot() {
-        let text = r#"{"op":"snapshot","sessions":[{"id":"s1","parent":"s0","host":"local"}],"models":{},"usage":{},"host":{"id":"local","name":"This Mac","sessions":[{"id":"s1"}]},"home":"/home/me"}"#;
+        let text = r#"{"op":"snapshot","sessions":[{"id":"s1","parent":"s0","host":"local"}],"models":{},"usage":{},"host":{"id":"local","name":"This Mac","sessions":[{"id":"s1"}]},"home":"/home/me","mobile":{"configured":true,"origins":["https://box.ts.net"]}}"#;
         let v: Value = serde_json::from_str(&rewrite_incoming("h1", "box", text).unwrap()).unwrap();
         assert_eq!(v["op"], "host.snapshot");
+        // The phone connects to the box; the hub shows where to point it and whether one has.
+        assert_eq!(v["mobile"]["origins"][0], "https://box.ts.net");
+        let status: Value = serde_json::from_str(&rewrite_incoming("h1", "box", r#"{"op":"mobile.status","mobile":{"configured":true}}"#).unwrap()).unwrap();
+        assert_eq!(status["hostId"], "h1");
         assert_eq!(v["sessions"][0]["id"], "h1~s1");
         assert_eq!(v["sessions"][0]["parent"], "h1~s0");
         assert_eq!(v["sessions"][0]["host"], "h1");

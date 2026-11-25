@@ -139,6 +139,8 @@ interface Thread {
 
 export interface State {
   mobile: MobileStatus;
+  /** Remote hosts' phones: a phone connects to the host it can reach. */
+  hostMobile: Record<string, MobileStatus>;
   /** The hub's agents (agents live on this yardd only). */
   agents: Agent[];
   connected: boolean;
@@ -211,6 +213,7 @@ const emptyThread = (): Thread => ({ next: -1, items: [], early: [] });
 
 export const initial: State = {
   mobile: { configured: false },
+  hostMobile: {},
   agents: [],
   connected: false,
   route: { page: "new" },
@@ -378,7 +381,7 @@ function replaceHostSessions(state: State, host: string, list: SessionMeta[]): S
 function reduceServer(state: State, msg: any): State {
   switch (msg.op) {
     case "mobile.status":
-      return msg.hostId ? state : { ...state, mobile: msg.mobile };
+      return msg.hostId ? { ...state, hostMobile: { ...state.hostMobile, [msg.hostId]: msg.mobile } } : { ...state, mobile: msg.mobile };
     case "agents":
       return msg.hostId ? state : { ...state, agents: (msg.agents as Agent[] | undefined) ?? [] };
     case "snapshot": {
@@ -417,6 +420,7 @@ function reduceServer(state: State, msg: any): State {
       return {
         ...next,
         linkDown: { ...state.linkDown, [id]: false },
+        hostMobile: msg.mobile ? { ...next.hostMobile, [id]: msg.mobile } : next.hostMobile,
         models: { ...state.models, [id]: msg.models ?? EMPTY_MODELS },
         usage: { ...state.usage, [id]: msg.usage ?? {} },
         accounts: { ...state.accounts, [id]: msg.accounts ?? [] },
@@ -448,6 +452,7 @@ function reduceServer(state: State, msg: any): State {
         models: without(state.models, (h) => !known.has(h)),
         accounts: without(state.accounts, (h) => !known.has(h)),
         automations: without(state.automations, (h) => !known.has(h)),
+        hostMobile: without(state.hostMobile, (h) => !known.has(h)),
       };
     }
     case "session":

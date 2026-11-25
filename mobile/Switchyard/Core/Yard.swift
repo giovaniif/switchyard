@@ -34,6 +34,8 @@ final class Yard {
     var problem: String?
     /// Reply-box drafts by session id ("" is the new-session page).
     var drafts: [String: String] = [:]
+    /// How the host's setup card names this phone.
+    @ObservationIgnored var deviceName = "iPhone"
 
     @ObservationIgnored private let transport: YardTransport
     @ObservationIgnored private var opened = Set<String>()
@@ -156,8 +158,8 @@ final class Yard {
             for id in threads.keys { threads[id]?.next = nil }
             opened.removeAll()
             for id in viewing.keys { open(id) }
-            // An older host has no setup state to record.
-            if msg["mobile"].object != nil, msg["mobile"]["configured"].bool != true { send(["op": "mobile.connected"]) }
+            // The hub shows which phone is connected now; an older host has no phone state.
+            if msg["mobile"].object != nil { send(["op": "mobile.connected", "device": .string(deviceName)]) }
             onConnected?()
         case "host.snapshot":
             guard let hostId = msg["hostId"].string else { return }

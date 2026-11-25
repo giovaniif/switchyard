@@ -97,6 +97,10 @@ async fn client(socket: WebSocket, app: Arc<App>) {
         });
     }
 
+    // Set once this client says it is a phone's app: it shows as connected
+    // until the socket closes.
+    let mut phone: Option<String> = None;
+
     loop {
         tokio::select! {
             msg = rx.recv() => match msg {
@@ -130,6 +134,17 @@ async fn client(socket: WebSocket, app: Arc<App>) {
                         }
                         continue;
                     }
+                    if msg["op"] == "mobile.connected" {
+                        // A phone resyncing on the same socket is still the one phone.
+                        if phone.is_none() {
+                            match app.mobile.connected(msg["device"].as_str()) {
+                                Ok(name) => phone = Some(name),
+                                Err(e) => { let _ = direct.send(error_reply(&msg, &e)); }
+                            }
+                            app.broadcast(json!({ "op": "mobile.status", "mobile": app.mobile.status() }));
+                        }
+                        continue;
+                    }
                     if matches!(msg["op"].as_str(), Some("term.input" | "term.resize")) {
                         let _ = keys.send(msg);
                         continue;
@@ -146,6 +161,10 @@ async fn client(socket: WebSocket, app: Arc<App>) {
                 _ => {}
             }
         }
+    }
+    if let Some(name) = phone {
+        app.mobile.disconnected(&name);
+        app.broadcast(json!({ "op": "mobile.status", "mobile": app.mobile.status() }));
     }
 }
 
@@ -337,10 +356,6 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
         return crate::import::handle(app, direct, msg).await;
     }
     match msg["op"].as_str().unwrap_or("") {
-        "mobile.connected" => {
-            app.mobile.connected()?;
-            app.broadcast(json!({ "op": "mobile.status", "mobile": app.mobile.status() }));
-        }
         "session.create" => {
             create_session(app, Some(direct), msg, None, None, None).await?;
         }
