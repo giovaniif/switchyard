@@ -872,7 +872,9 @@ its engine framing and one arm in `origins::reply`.
   saved as `team/channel/thread_ts`, the newest 1,000); else the agent whose
   name starts the text (`Reviewer …`, `@Reviewer …`, `Reviewer: …`, any case;
   the name is dropped); else the channel's default agent, then the default
-  agent; else the bot answers in the thread with the agents' names. In a
+  agent; else the bot answers in the thread with the agents' names. An agent
+  still setting up (New agent's placeholder) is neither named nor reached by
+  name: its first message sets it up, and that is the owner's. In a
   channel, a message without a mention counts only inside a routed thread
   (events `message.channels`/`message.groups`); a mention arrives as both
   `app_mention` and a channel message and is handled once. Slack markup reads

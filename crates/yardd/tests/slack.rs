@@ -283,6 +283,37 @@ async fn messages_from_slack_reach_the_named_or_default_agent_and_answers_go_bac
 }
 
 #[tokio::test]
+async fn an_agent_still_setting_up_is_not_offered_or_reached_by_name_from_slack() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-setup");
+    let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api())]);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    reviewer(&mut c).await;
+    connect(&mut c).await;
+    op(&mut c, json!({ "op": "slack.allow", "user": "UOWNER" })).await.unwrap();
+    // New agent: a placeholder that sets itself up from the owner's first words.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.new", "engine": "codex", "model": MODEL, "effort": EFFORT })).await;
+    let blank = c.wait_after(from, "the new agent", |m| m["op"] == "agent.saved").await["agent"].clone();
+    let (blank_id, blank_name) = (blank["id"].as_str().unwrap().to_string(), blank["name"].as_str().unwrap().to_string());
+
+    // No name: the bot lists only agents that are set up.
+    let lost = fake.say(json!({ "user": "UOWNER", "text": "TEST-anyone there?" }));
+    let st = fake.wait("the list of agents", |s| !FakeSlack::posts(s, &lost).is_empty()).await;
+    let note = &FakeSlack::posts(&st, &lost)[0];
+    assert!(note.contains("Reviewer"), "{note}");
+    assert!(!note.contains(&blank_name), "a placeholder is offered: {note}");
+
+    // Its placeholder name reaches nobody: a teammate's words would set it up.
+    let named = fake.say(json!({ "user": "UOWNER", "text": format!("{blank_name} TEST-set yourself up") }));
+    let st = fake.wait("an answer to the placeholder's name", |s| !FakeSlack::posts(s, &named).is_empty()).await;
+    assert!(FakeSlack::posts(&st, &named)[0].starts_with("Which agent?"), "{st:#}");
+    c.drain_for(Duration::from_millis(500)).await;
+    assert!(!c.log.iter().any(|m| m["op"] == "agents" && m["agents"].as_array().unwrap().iter().any(|a| a["id"] == blank_id.as_str() && a["chat"].is_string())), "the placeholder got a conversation");
+}
+
+#[tokio::test]
 async fn the_connection_shows_refused_tokens_and_comes_back_after_a_disconnect_or_a_drop() {
     let fake = FakeSlack::start();
     let sb = Sandbox::new("slack-connection");
