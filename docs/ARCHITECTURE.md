@@ -632,6 +632,7 @@ the composer and session view in `App.tsx`.
   (the mention dropped), and the
   box says so above the text ("Goes to Reviewer", "… not this session"). In
   the agent's own conversation a leading mention is just text.
+- **In the sidebar as direct messages.** The session list's last section, "Agents", lists every agent in the session rows' style: its face where a session shows its harness, the same status badge (an agent asking for something reads as an approval), its name; a row opens its conversation and is highlighted there (owner request, after Slack's DMs). Their conversations themselves stay out of the session sections.
 - **Not in the sidebar.** Agent conversations are left out of the sidebar's
   list, its groups, Pinned and Archived, and of Cmd-K's session rows
   (`isAgentConversation`). Their attention shows on the **Agents** nav row

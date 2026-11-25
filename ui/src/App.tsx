@@ -10,7 +10,7 @@ import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
 import { AgentAvatar, AgentBar, AgentForm, AgentRequests, AgentRunPickers, AgentsPage, AgentStart, EarlierConversations, NewAgentRedirect, agentSettings, useAgentMove, useAgentSave } from "./AgentsPage";
 import { SlackIcons } from "./SlackIcon";
-import { agentOf, agentsAttention, conversationOf, handleOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
+import { agentHost, agentOf, agentsAttention, agentStatus, conversationOf, handleOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
 import { accountChoices, accountLabel, accountName, accountOf, choiceOnEngine, DEFAULT_ACCOUNT } from "./accounts";
@@ -572,6 +572,41 @@ interface RowDrag {
   dragging: boolean;
   start(id: string): void;
   end(): void;
+}
+
+/** An agent in the sidebar, like a direct message: its face where a
+ *  session shows its harness, the same status badge, and its name. Opens
+ *  its one conversation. */
+function AgentRow({ state, actions, agent, active, seenAt }: { state: State; actions: Actions; agent: Agent; active: boolean; seenAt(id: string): number }) {
+  const host = agentHost(agent);
+  const online = host === "local" || hostOnline(state, host);
+  const chat = conversationOf(agent, state.sessions);
+  const status = agentStatus(agent, state.sessions, Date.now(), chat ? seenAt(chat.id) : Infinity, online ? undefined : hostName(state, host));
+  // What it waits on from the owner reads as an approval does on a session row.
+  const asks = !!(agent.request?.cwd || agent.request?.permission || agent.request?.slack) || !!chat?.needsYou;
+  const mark: RowState = !chat ? (online ? "idle" : "offline") : asks && online ? "approval" : rowState(chat, seenAt(chat.id), online);
+  const detail = [agent.about, asks ? "Asks you for something" : status.text].filter(Boolean).join(" · ");
+  return (
+    <div className="session-item agent-item">
+      <button
+        className={`session-row agent-row ${active ? "active" : ""} ${online ? "" : "offline"} ${mark === "answered" || mark === "unread" ? "unread" : ""}`}
+        title={detail}
+        onClick={() => actions.go({ page: "agent", id: agent.id })}
+      >
+        <span className="row-engine row-agent-face">
+          <AgentAvatar agent={agent} size="sm" busy={mark === "working"} />
+          <RowMark state={mark} />
+        </span>
+        <span className="session-text">
+          <span className="session-title">{agent.name}</span>
+          <span className="sr-only">
+            {" · "}
+            <span className={`row-status row-status-${mark}`}>{asks ? "Asks you for something" : ROW_LABEL[mark]}</span>
+          </span>
+        </span>
+      </button>
+    </div>
+  );
 }
 
 function SessionRow({ state, actions, session: s, active, groups, seenAt, unread, onUnread, onRead, drag }: { state: State; actions: Actions; session: SessionMeta; active: boolean; groups: string[]; seenAt: number; unread: boolean; onUnread(): void; onRead(): void; drag?: RowDrag }) {
@@ -1171,6 +1206,22 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
             </div>
           );
         })}
+        {/* Agents, like direct messages: the list's last section. */}
+        {state.agents.length > 0 && (
+          <div className="agent-dms" role="group" aria-label="Agents">
+            <div className="list-head">Agents</div>
+            {state.agents.map((a) => (
+              <AgentRow
+                key={a.id}
+                state={state}
+                actions={actions}
+                agent={a}
+                active={(route.page === "agent" && route.id === a.id) || (route.page === "session" && (route.id === a.chat || !!a.previous?.includes(route.id)))}
+                seenAt={seen.seenAt}
+              />
+            ))}
+          </div>
+        )}
       </div>
       {archived.length > 0 && (
         <div className="archived-dock">
