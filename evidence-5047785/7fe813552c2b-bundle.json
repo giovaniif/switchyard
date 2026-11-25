@@ -1,0 +1,229 @@
+{
+  "v": 1,
+  "claim": "A New agent nobody has set up yet (placeholder \"New-agent\") is offered in Slack's \"Which agent?\" reply, and \"New-agent …\" from a Slack teammate lands in it: its start page and Discard are gone and its first-run rules act on a teammate's words",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-4b2c",
+  "base": "64cd5a824533ea74ad52344b0d69e8e7eab8502c",
+  "head": "50477853d0f9de0a025c4e2957742297ceea5559",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-25T00:13:54.750Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "af6a13237de8e7cd957ecb21c3d6e5499b5e54ba",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "bd84265426332165674f52e8087613c0063077134b0794fb70cf40e4db5004af"
+        },
+        {
+          "path": "p1-placeholder-mobile.png",
+          "sha256": "68e5535bbb5d38e6e0735ad6edccb338c0a975fa9900cfe243cb01a019b25cfd"
+        },
+        {
+          "path": "p1-placeholder-desktop.png",
+          "sha256": "b0c290af9695a693a75afeeb3c054f3a4bd0641c67458c6f1f93276dc4ab88cc"
+        },
+        {
+          "path": "p1-slack-posts.json",
+          "sha256": "5a48c1f9e8fc6ea7b63b79dc8a7d1a3b1da5dc3ae1f4a0a1a987dbb07b5f6573"
+        }
+      ],
+      "addedAt": "2026-11-25T00:13:54.797Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "af6a13237de8e7cd957ecb21c3d6e5499b5e54ba",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "d7ace316e08474f319eaf399aaed4f8288fc06226aee58f40c53619b79de6b27"
+        }
+      ],
+      "addedAt": "2026-11-25T00:13:54.847Z",
+      "cmd": "verify/yv map run slack --recipe an-agent-setting-up-is-not-reached-from-slack",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "af6a13237de8e7cd957ecb21c3d6e5499b5e54ba",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "1c686145d9951fa484c7fb8086a4f6a35873ec357fb6fd4fbfb256856958ae56"
+        }
+      ],
+      "addedAt": "2026-11-25T00:13:56.130Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd --test slack an_agent_still_setting_up",
+      "exit": 101
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "50477853d0f9de0a025c4e2957742297ceea5559",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "297407596683f3fe727dd940bb1eb89a6c298a95a82021d6da2c7cb94c09f3c1"
+        },
+        {
+          "path": "p4-still-blank-mobile.png",
+          "sha256": "e3cec026ed7c1a3398115042c3f1344c2ddbc2484240b28fabde4e97a6247d76"
+        },
+        {
+          "path": "p4-still-blank-desktop.png",
+          "sha256": "ba342aa2aeb65f2d20c089839136573e53cb3ecce6cb16c50bace0198d510580"
+        },
+        {
+          "path": "p4-slack-posts.json",
+          "sha256": "4e4f22fb61b895b63fe5d1d1ecfcb1c792910687207a7abd30fc36b85f1322d6"
+        }
+      ],
+      "addedAt": "2026-11-25T00:14:41.028Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "50477853d0f9de0a025c4e2957742297ceea5559",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "08e4ee3aae9476e7c5b1654325388815c743b57a537156bf394baac82abc36c2"
+        }
+      ],
+      "addedAt": "2026-11-25T00:14:44.629Z",
+      "cmd": "verify/yv map run slack --recipe an-agent-setting-up-is-not-reached-from-slack",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "50477853d0f9de0a025c4e2957742297ceea5559",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "813e9d35e693227e48a34e6c401f8f5c4ebe46d064790b2f58cabb1eee5042a7"
+        }
+      ],
+      "addedAt": "2026-11-25T00:14:50.700Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "50477853d0f9de0a025c4e2957742297ceea5559",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-slack.json",
+          "sha256": "a4d4598ec46826e15f27c51a4e252af85c9db49644981691cefd4d44bfecc881"
+        }
+      ],
+      "addedAt": "2026-11-25T00:16:14.937Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/setup-guide",
+        "slack/refused-token-then-connected",
+        "slack/allow-from-a-direct-message",
+        "slack/answer-in-the-slack-thread",
+        "slack/tokens-stay-in-yardd",
+        "slack/an-agent-setting-up-is-not-reached-from-slack",
+        "slack/an-agents-own-slack-app"
+      ]
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "50477853d0f9de0a025c4e2957742297ceea5559",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-agents.json",
+          "sha256": "55d503ce37e8294532e27c9a6d7b68fe4c72e614cc8c59923b5589b4e81d9fd4"
+        }
+      ],
+      "addedAt": "2026-11-25T00:17:08.825Z",
+      "cmd": "verify/yv map run agents",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "agents/cards-show-the-users-agents",
+        "agents/cards-in-a-row-line-up",
+        "agents/agent-views-on-a-phone",
+        "agents/colours-line-up-under-the-faces",
+        "agents/at-mention-from-new-session-goes-to-the-agents-conversation",
+        "agents/at-mention-in-a-session-goes-to-the-agents-conversation",
+        "agents/one-conversation-and-the-agents-mark",
+        "agents/agents-message-each-other-with-badges",
+        "agents/an-agent-that-needs-you",
+        "agents/an-agents-own-memory-shows-in-the-form",
+        "agents/new-agent-sets-itself-up-in-its-conversation",
+        "agents/new-agent-on-a-phone",
+        "agents/a-working-agent-looks-busy",
+        "agents/edit-an-agent-in-the-form",
+        "agents/add-to-slack-walks-through-the-tokens",
+        "agents/switchys-address-lands-on-the-agents",
+        "agents/deleting-an-agent-deletes-its-conversation",
+        "agents/form-host-and-account-pickers",
+        "agents/a-mention-reaches-an-agent-on-a-remote-host",
+        "agents/a-remote-agents-conversation-on-a-phone",
+        "agents/a-remote-agents-tools-act-on-the-hub",
+        "agents/moving-an-agent-says-what-happens-to-its-conversation",
+        "agents/a-remote-agents-host-offline"
+      ]
+    }
+  ]
+}

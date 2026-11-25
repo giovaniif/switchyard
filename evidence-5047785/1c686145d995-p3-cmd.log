@@ -1,0 +1,27 @@
+$ CARGO_BUILD_JOBS=4 cargo test -p yardd --test slack an_agent_still_setting_up
+# exit 101 after 1017 ms at af6a13237de8e7cd957ecb21c3d6e5499b5e54ba
+
+
+running 1 test
+test an_agent_still_setting_up_is_not_offered_or_reached_by_name_from_slack ... FAILED
+
+failures:
+
+---- an_agent_still_setting_up_is_not_offered_or_reached_by_name_from_slack stdout ----
+
+thread 'an_agent_still_setting_up_is_not_offered_or_reached_by_name_from_slack' (549575) panicked at crates/yardd/tests/slack.rs:306:5:
+a placeholder is offered: Which agent? Start your message with its name: Reviewer, New-agent. Or pick a default agent in Switchyard, under Connectors, Slack.
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-549574-slack-setup-0 for inspection
+
+
+failures:
+    an_agent_still_setting_up_is_not_offered_or_reached_by_name_from_slack
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.32s
+
+
+   Compiling yardd v0.19.0 (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-4b2c/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 0.63s
+     Running tests/slack.rs (target/debug/build/yardd/47ff1ec3f4248429/out/slack-47ff1ec3f4248429)
+error: test failed, to rerun pass `-p yardd --test slack`
