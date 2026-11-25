@@ -222,6 +222,19 @@ yv drive new --viewport desktop --steps '[{"expect":{"css":".nav-row","hasText":
 yv state --expect '{"sessions":[{"id":"{{ask_sid}}","status":"idle"}]}'
 ```
 
+### next-run-stays-in-view-with-a-window
+A card's schedule line ends with when it runs next, the part that changes. An
+interval with a window and start days makes the line longer than a card, so
+the schedule words are what gets cut: "next …" stays whole inside the card at
+1440 px (cards about 355 px wide) and at 390 px, and the line's tooltip holds
+all of it. Viewports: both.
+
+```sh
+yv api '{"op":"automation.save","automation":{"name":"TEST-Night shift","prompt":"TEST-night shift","cwd":"{{repo}}","engine":"codex","model":"fake-fast","effort":"low","enabled":true,"schedule":{"kind":"interval","every":5,"unit":"minutes"},"window":{"start":"21:00","end":"09:00","days":[1,3,5]}}}' --wait '{"op":"automation.saved"}' --expect '{"automation":{"enabled":true,"window":{"start":"21:00","end":"09:00","days":[1,3,5]}}}'
+yv drive new --viewport desktop --steps '[{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Night shift\"] .automation-when","hasText":"Every 5 minutes · 21:00–09:00, Mon, Wed, Fri · next "}},{"eval":"(() => { const el = document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\"); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { const i = n.data.indexOf(\"next \"); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, n.data.length); return r.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 ? \"next run in view\" : \"next run cut off\"; } } return \"no next run\"; })()","equals":"next run in view"},{"eval":"/^Every 5 minutes · 21:00–09:00, Mon, Wed, Fri · next .+/.test(document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\").title)","equals":true},{"shot":"night-shift-card"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Night shift\"] .automation-when","hasText":"Every 5 minutes · 21:00–09:00, Mon, Wed, Fri · next "}},{"eval":"(() => { const el = document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\"); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { const i = n.data.indexOf(\"next \"); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, n.data.length); return r.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 ? \"next run in view\" : \"next run cut off\"; } } return \"no next run\"; })()","equals":"next run in view"},{"shot":"night-shift-card"}]'
+```
+
 ## Gotchas
 - Recipes share one isolated yardd and run in order: later recipes use the automation and run the earlier ones made.
 - A drive at both viewports runs on the same data, so the create recipe uses one drive per viewport.

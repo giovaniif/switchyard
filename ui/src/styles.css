@@ -864,6 +864,10 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .automation-head { display: flex; align-items: center; gap: 6px; min-height: 22px; padding-right: 4px; }
 .automation-name { font-size: 14px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .automation-when { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A card's schedule line gives way before its next run: the schedule words are cut, the next run stays whole. */
+.automation-when-split { display: flex; min-width: 0; }
+.automation-when-schedule { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.automation-when-next { flex: none; white-space: pre; }
 .automation-reason { color: var(--warn-ink); overflow-wrap: anywhere; }
 /* One line: what is going on now, or how the last run went. */
 .automation-status, .btn-quiet.automation-status { display: flex; align-items: center; gap: 6px; min-width: 0; height: 26px; margin: 2px 0 0 -4px; padding: 0 4px; border-radius: 6px; font-size: 12px; color: var(--muted); text-align: left; }
