@@ -1,0 +1,26 @@
+$ cd ui && bun test src/Subscriptions.test.tsx
+# exit 1 after 147 ms at adff819c7a49bbe75a8ff73cb74a2caf61933067
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/Subscriptions.test.tsx:
+18 | 
+19 |   test("an account that needs sign-in offers Sign in, not its last usage, as the popover does", () => {
+20 |     // The last report outlives a lost sign-in (#358); the popover and the trigger hide it.
+21 |     const html = renderToStaticMarkup(<Subscriptions sources={[source(false)]} onManage={() => {}} />);
+22 |     expect(html).toContain("Needs sign-in");
+23 |     expect(html).not.toContain("% used");
+                          ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "% used"
+Received: "<div class=\"subscriptions\"><div class=\"subscription-columns muted small\" aria-hidden=\"true\"><span>Account</span><span>Reported limits</span></div><section class=\"subscription-row\" aria-label=\"Claude · Default\"><div class=\"subscription-identity\"><strong>Claude · Default</strong><p class=\"muted small\">Needs sign-in</p><div class=\"subscription-hosts\"><span class=\"account-host-badge\">local</span></div></div><div class=\"subscription-meters\"><div class=\"subscription-meter level-high\"><span class=\"muted small\">5-hour</span><strong class=\"usage-percent\">91% used</strong><div class=\"bar-track\" role=\"progressbar\" aria-label=\"5-hour used\" aria-valuenow=\"91\" aria-valuemin=\"0\" aria-valuemax=\"100\"><div class=\"bar-fill level-high\" style=\"width:91%\"></div></div><span class=\"muted small\">resets in 59 min</span></div></div></section><p class=\"muted small subscription-note\">One limit per account, shared across its hosts. OpenCode, Grok and Gemini don&#x27;t report subscription limits.</p><button class=\"btn-text\">Manage engine logins →</button></div>"
+
+      at <anonymous> (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-b215/ui/src/Subscriptions.test.tsx:23:22)
+(fail) Subscriptions page > an account that needs sign-in offers Sign in, not its last usage, as the popover does [2.51ms]
+
+ 1 pass
+ 1 fail
+ 3 expect() calls
+Ran 2 tests across 1 file. [140.00ms]

@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "route": "subscriptions",
+  "build": {
+    "sha": "adff819c7a49bbe75a8ff73cb74a2caf61933067",
+    "short": "adff819",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T02:05:07.901Z"
+  },
+  "dir": ".verify/evidence/subscriptions-signed-out-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4106,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/subscriptions-signed-out-base/subscriptions-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3285,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/subscriptions-signed-out-base/subscriptions-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

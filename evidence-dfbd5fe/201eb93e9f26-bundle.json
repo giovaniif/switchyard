@@ -1,0 +1,203 @@
+{
+  "v": 1,
+  "claim": "Subscriptions page: an account that needs sign-in reads \"Needs sign-in\" over its last usage (\"91% used\"), while the sidebar popover and trigger hide that number",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-b215",
+  "base": "78d53289499b8feffeeeb31bf1f7fe6c3b52aabc",
+  "head": "dfbd5fe4616e5f4786d44b77b920d616b2f185df",
+  "changed": [
+    {
+      "status": "A",
+      "path": "ui/src/Subscriptions.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/UsageMeters.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/focused-pages.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-25T02:05:03.175Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "adff819c7a49bbe75a8ff73cb74a2caf61933067",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "96ac1d1c01bfcb516cffc8159333cc463629157e25b3a3ca7f9ad92ae79d65d7"
+        },
+        {
+          "path": "p1-subscriptions-mobile.png",
+          "sha256": "5a978c73b2ef8b29586391df3d68557fc8d07ba4f59515bed072c03a600ca546"
+        },
+        {
+          "path": "p1-subscriptions-desktop.png",
+          "sha256": "c6a7d76102271618509373add98e4a62b5a0542450de3211aee723051212fb89"
+        }
+      ],
+      "addedAt": "2026-11-25T02:05:16.938Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "adff819c7a49bbe75a8ff73cb74a2caf61933067",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "a8d338cfefe5313ddeffea068e1945e7833d79d991db590214d70c0bcb49fcd5"
+        }
+      ],
+      "addedAt": "2026-11-25T02:05:16.986Z",
+      "cmd": "cd ui && bun test src/Subscriptions.test.tsx",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "adff819c7a49bbe75a8ff73cb74a2caf61933067",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "3d9b3dadb1a8f8c81ce424d52eea8c47315f4495584f8586a106d60800365a0b"
+        }
+      ],
+      "addedAt": "2026-11-25T02:05:17.185Z",
+      "cmd": "verify/yv map run focused-pages --recipe subscriptions-page-signed-out-account",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "dfbd5fe4616e5f4786d44b77b920d616b2f185df",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "2c062b5dad70c20f65d4f1bf171614949b835583d4157ab543905179049237ee"
+        },
+        {
+          "path": "p4-signed-out-account-mobile.png",
+          "sha256": "50468f9d12e3f5f34c2e57acb470516e25fe2fc9b865d365fa92b8c7f6ea586b"
+        },
+        {
+          "path": "p4-signed-out-account-desktop.png",
+          "sha256": "d23cba686fa5858af17d96322fd55462545871feecb33c75ed3162ba478f7b92"
+        }
+      ],
+      "addedAt": "2026-11-25T02:05:58.170Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "dfbd5fe4616e5f4786d44b77b920d616b2f185df",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "518cb5825259da5cddd9f87aad4cded9d48303b71613c02e7c421b97fc32dea0"
+        }
+      ],
+      "addedAt": "2026-11-25T02:05:58.214Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "dfbd5fe4616e5f4786d44b77b920d616b2f185df",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "6aa03f10c221739bb5d0fdfbdbbcfa87ccd2b65cdb2d2c9404f0798cac1c71f0"
+        }
+      ],
+      "addedAt": "2026-11-25T02:05:58.615Z",
+      "cmd": "verify/yv map run focused-pages --recipe subscriptions-page-signed-out-account",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "dfbd5fe4616e5f4786d44b77b920d616b2f185df",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "56252481bf6034044f1251da119e2beca18785791b182d1fc27dbb8a07fac2ad"
+        }
+      ],
+      "addedAt": "2026-11-25T02:06:08.097Z",
+      "cmd": "verify/yv design-check --base 78d53289499b",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "dfbd5fe4616e5f4786d44b77b920d616b2f185df",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-focused-pages.json",
+          "sha256": "2fc8155a3b2e9fed1c8ec3ad0ad422841dba1885936da3b7839110f7fe40d614"
+        }
+      ],
+      "addedAt": "2026-11-25T02:06:08.178Z",
+      "cmd": "verify/yv map run focused-pages",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "focused-pages/selected-host-tabs",
+        "focused-pages/compact-usage-popover",
+        "focused-pages/usage-popover-leads-with-trigger-account",
+        "focused-pages/usage-row-lines-up-with-host-rows",
+        "focused-pages/subscriptions-page",
+        "focused-pages/account-picker-separate-from-model",
+        "focused-pages/other-engine-account-and-fixed-session",
+        "focused-pages/sessions-search-and-archive",
+        "focused-pages/sessions-visibility-tabs",
+        "focused-pages/sessions-search-no-match-says-so",
+        "focused-pages/sessions-search-finds-the-account",
+        "focused-pages/host-rows-line-up-with-the-page",
+        "focused-pages/session-rows-line-up-with-the-page",
+        "focused-pages/session-rows-have-straight-dividers",
+        "focused-pages/offline-host-and-selection-fallback",
+        "focused-pages/workspace-widths-and-views",
+        "focused-pages/manage-accounts-opens-logins",
+        "focused-pages/sidebar-skips-duplicate-page-links",
+        "focused-pages/subscriptions-page-signed-out-account"
+      ]
+    }
+  ]
+}

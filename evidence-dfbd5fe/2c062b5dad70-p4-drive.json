@@ -1,0 +1,81 @@
+{
+  "ok": true,
+  "route": "subscriptions",
+  "build": {
+    "sha": "dfbd5fe4616e5f4786d44b77b920d616b2f185df",
+    "short": "dfbd5fe",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T02:05:49.213Z"
+  },
+  "dir": ".verify/evidence/subscriptions-signed-out-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4416,
+      "steps": 11,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/subscriptions-signed-out-head/signed-out-account-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "[...document.querySelectorAll(\".subscription-row\")].find((r) => r.getAttribute(\"aria-label\") === \"Claude · TEST-Away\").querySelectorAll(\".usage-percent, [role=progressbar]\").length",
+          "value": 0
+        },
+        {
+          "step": 6,
+          "eval": "document.documentElement.scrollWidth === innerWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3813,
+      "steps": 11,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/subscriptions-signed-out-head/signed-out-account-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "[...document.querySelectorAll(\".subscription-row\")].find((r) => r.getAttribute(\"aria-label\") === \"Claude · TEST-Away\").querySelectorAll(\".usage-percent, [role=progressbar]\").length",
+          "value": 0
+        },
+        {
+          "step": 6,
+          "eval": "document.documentElement.scrollWidth === innerWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

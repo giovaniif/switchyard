@@ -1,0 +1,45 @@
+$ verify/yv map run focused-pages --recipe subscriptions-page-signed-out-account
+# exit 1 after 26987 ms at adff819c7a49bbe75a8ff73cb74a2caf61933067
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "focused-pages",
+      "at": "2026-11-25T02:05:44.167Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "subscriptions-page-signed-out-account",
+          "status": "fail",
+          "ms": 25733,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 3 {\"expect\":\"role:region:Claude · TEST-Away\",\"text\":\"Sign in to see usage\"}: expected \"role:region:Claude · TEST-Away\" to contain \"Sign in to see usage\", got \"Claude · TEST-Away",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-b215/.verify/drives/2026-11-25T02-05-18-721Z/fail-mobile-step3.png and the aria snapshot"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 3 {\"expect\":\"role:region:Claude · TEST-Away\",\"text\":\"Sign in to see usage\"}: expected \"role:region:Claude · TEST-Away\" to contain \"Sign in to see usage\", got \"Claude · TEST-Away",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-b215/.verify/drives/2026-11-25T02-05-18-721Z/fail-desktop-step3.png and the aria snapshot"
+            }
+          ],
+          "tail": "t: resets in 1 h 35 min Week\\n  - strong: 17% used\\n  - progressbar \\\"Week used\\\"\\n  - text: resets in 4 d 2 h Week · Sonnet\\n  - strong: 8% used\\n  - progressbar \\\"Week · Sonnet used\\\"\\n  - text: resets in 4 d 2 h\\n- region \\\"Claude · TEST-Work\\\":\\n  - strong: Claude · TEST-Work\\n  - paragraph: a1a210733f04d@example.com\\n  - text: iso-host 5-hour\\n  - strong: 91% used\\n  - progressbar \\\"5-hour used\\\"\\n  - text: resets in 1 h 59 min Week\\n  - strong: 40% used\\n  - progressbar \\\"Week used\\\"\\n  - text: resets in 2 d 23 h\\n- region \\\"Claude · TEST-Away\\\":\\n  - strong: Claude · TEST-Away\\n  - paragraph: Needs sign-in\\n  - text: iso-host 5-hour\\n  - strong: 91% used\\n  - progressbar \\\"5-hour used\\\"\\n  - text: resets in 1 h 59 min Week\\n  - strong: 40% used\\n  - progressbar \\\"Week used\\\"\\n  - text: resets in 2 d 23 h\\n- region \\\"Codex · Default\\\":\\n  - strong: Codex · Default\\n  - paragraph: me@example.com\\n  - text: iso-host 5-hour\\n  - strong: 12% used\\n  - progressbar \\\"5-hour used\\\"\\n  - text: resets in 2 h 10 min Week\\n  - strong: 34% used\\n  - progressbar \\\"Week used\\\"\\n  - text: resets in 3 d 4 h\\n- region \\\"Codex · TEST-Codex\\\":\\n  - strong: Codex · TEST-Codex\\n  - paragraph: Needs sign-in\\n  - text: iso-host\\n  - paragraph: No limits reported yet\\n- paragraph: One limit per account, shared across its hosts. OpenCode, Grok and Gemini don't report subscription limits.\\n- button \\\"Manage engine logins →\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 3 {\\\"expect\\\":\\\"role:region:Claude · TEST-Away\\\",\\\"text\\\":\\\"Sign in to see usage\\\"}: expected \\\"role:region:Claude · TEST-Away\\\" to contain \\\"Sign in to see usage\\\", got \\\"Claude · TEST-Away\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-b215/.verify/drives/2026-11-25T02-05-18-721Z/fail-mobile-step3.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 3 {\\\"expect\\\":\\\"role:region:Claude · TEST-Away\\\",\\\"text\\\":\\\"Sign in to see usage\\\"}: expected \\\"role:region:Claude · TEST-Away\\\" to contain \\\"Sign in to see usage\\\", got \\\"Claude · TEST-Away\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-24-b215/.verify/drives/2026-11-25T02-05-18-721Z/fail-desktop-step3.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "focused-pages/subscriptions-page-signed-out-account",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+
