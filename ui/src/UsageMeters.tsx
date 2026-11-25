@@ -262,7 +262,7 @@ export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRe
   );
 }
 
-export function Subscriptions({ sources, onManage }: { sources: SubscriptionSource[]; onManage(): void }) {
+export function Subscriptions({ sources, onManage }: { sources: SubscriptionSource[]; onManage(host?: string): void }) {
   const now = useNow();
   const rows = subscriptionRows(sources, now);
   return (
@@ -288,7 +288,8 @@ export function Subscriptions({ sources, onManage }: { sources: SubscriptionSour
           {r.loggedIn === false ? (
             <p className="muted small">
               Sign in to see usage.{" "}
-              <button className="btn-text usage-link" aria-label={`Sign in — ${r.name}`} onClick={onManage}>Sign in</button>
+              {/* The sign-in state comes from r.host, so that host's logins hold the account. */}
+              <button className="btn-text usage-link" aria-label={`Sign in — ${r.name}`} onClick={() => onManage(r.host)}>Sign in</button>
             </p>
           ) : r.meters.length ? (
             <div className="subscription-meters">
@@ -313,7 +314,7 @@ export function Subscriptions({ sources, onManage }: { sources: SubscriptionSour
         </div>
       )}
       <p className="muted small subscription-note">One limit per account, shared across its hosts. {noLimitsNote()}</p>
-      <button className="btn-text" onClick={onManage}>
+      <button className="btn-text" onClick={() => onManage()}>
         Manage engine logins →
       </button>
     </div>
