@@ -180,6 +180,8 @@ h1, h2, h3, p { margin: 0; }
 /* A refusal can quote a title or path with no spaces; without wrapping it set the row's width and pushed Dismiss off a phone screen. */
 .banner > span { min-width: 0; overflow-wrap: anywhere; }
 .banner > button { flex-shrink: 0; }
+.app-update { flex-wrap: wrap; row-gap: 4px; }
+.banner > .app-update-actions { display: flex; flex-shrink: 0; gap: 2px; margin-right: -10px; }
 
 /* buttons */
 .btn-primary, .btn, .btn-text, .btn-quiet, .btn-icon { height: 32px; border-radius: 8px; }

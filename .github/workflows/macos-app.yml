@@ -1,6 +1,6 @@
 # Builds a Developer ID signed, notarized Switchyard.dmg on a macOS runner, so
 # the app runs on a Mac with no checkout, Rust or Bun. Every push to main
-# leaves one in the run's artifacts; release.yml calls this for a version tag
+# leaves one in the run's artifacts; release.yml calls this for a new version
 # and publishes it. Signing secrets: see .github/scripts/macos-sign.sh.
 name: macOS app
 
@@ -15,7 +15,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: macos-app-${{ github.ref }}
+  # Called from release.yml, github.workflow is "Release": the release's
+  # build must not cancel, or be cancelled by, the one started by the same push.
+  group: macos-app-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
