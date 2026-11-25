@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "route": "subscriptions",
+  "build": {
+    "sha": "e49b5823f5d30f569f9cd0e16f3aa85a9f78b5f9",
+    "short": "e49b582",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T07:05:51.346Z"
+  },
+  "dir": ".verify/evidence/subscriptions-sign-in-host-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3587,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/subscriptions-sign-in-host-base/signed-out-row-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/subscriptions-sign-in-host-base/wrong-host-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "location.hash",
+          "value": "#/hosts?tab=engines"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 2979,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/subscriptions-sign-in-host-base/signed-out-row-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/subscriptions-sign-in-host-base/wrong-host-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "location.hash",
+          "value": "#/hosts?tab=engines"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

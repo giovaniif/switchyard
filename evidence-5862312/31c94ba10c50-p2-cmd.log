@@ -1,0 +1,45 @@
+$ verify/yv map run hosts --recipe subscriptions-sign-in-opens-the-accounts-host
+# exit 1 after 28189 ms at e49b5823f5d30f569f9cd0e16f3aa85a9f78b5f9
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "hosts",
+      "at": "2026-11-25T07:06:27.415Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "subscriptions-sign-in-opens-the-accounts-host",
+          "status": "fail",
+          "ms": 26798,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 2 {\"expect\":\"css:.host-inspector-heading\",\"text\":\"TEST-signin\"}: expected \"css:.host-inspector-heading\" to contain \"TEST-signin\", got \"iso-host",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-9832/.verify/drives/2026-11-25T07-06-00-891Z/fail-mobile-step2.png and the aria snapshot"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 2 {\"expect\":\"css:.host-inspector-heading\",\"text\":\"TEST-signin\"}: expected \"css:.host-inspector-heading\" to contain \"TEST-signin\", got \"iso-host",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-9832/.verify/drives/2026-11-25T07-06-00-891Z/fail-desktop-step2.png and the aria snapshot"
+            }
+          ],
+          "tail": " address in the iPhone app.\\\":\\n        - /placeholder: https://your-host.ts.net\\n  - paragraph: The phone icon stays in new sessions until the app connects successfully.\\n  - paragraph: Use your existing private HTTPS host. Desktop SSH tunnels are local to the desktop; the phone needs an address it can reach.\\n- button \\\"Select iso-host\\\" [pressed]:\\n  - strong: iso-host\\n  - text: This machine Healthy CPU\\n  - strong: 9%\\n  - text: Memory\\n  - strong: 12.5 GB\\n  - text: Disk\\n  - strong: 130 GB\\n- button \\\"Select TEST-signin\\\":\\n  - strong: TEST-signin\\n  - text: ws://127.0.0.1:41621/ws Healthy CPU\\n  - strong: 7%\\n  - text: Memory\\n  - strong: 12.5 GB\\n  - text: Disk\\n  - strong: 130 GB\\n- region \\\"iso-host details\\\":\\n  - heading \\\"iso-host\\\" [level=2]\\n  - text: Healthy\\n  - tablist \\\"Host details\\\":\\n    - tab \\\"Sessions · 2\\\"\\n    - tab \\\"Engine logins\\\" [selected]\\n    - tab \\\"System\\\"\\n  - tabpanel \\\"Engine logins\\\":\\n    - text: Claude Code logged in as me@example.com\\n    - button \\\"Add Claude Code account\\\": Add account\\n    - text: Codex logged in as me@example.com\\n    - button \\\"Add Codex account\\\": Add account\\n    - text: \\\"OpenCode providers: opencode\\\"\\n    - button \\\"Add provider\\\"\\n    - button \\\"Add OpenCode account\\\": Add account\\n    - text: Grok logged in as default@grok.example\\n    - button \\\"Add Grok account\\\": Add account\\n    - text: Gemini logged in\\n    - button \\\"Add Gemini account\\\": Add account\\n    - button \\\"View subscription usage →\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 2 {\\\"expect\\\":\\\"css:.host-inspector-heading\\\",\\\"text\\\":\\\"TEST-signin\\\"}: expected \\\"css:.host-inspector-heading\\\" to contain \\\"TEST-signin\\\", got \\\"iso-host\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-9832/.verify/drives/2026-11-25T07-06-00-891Z/fail-mobile-step2.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 2 {\\\"expect\\\":\\\"css:.host-inspector-heading\\\",\\\"text\\\":\\\"TEST-signin\\\"}: expected \\\"css:.host-inspector-heading\\\" to contain \\\"TEST-signin\\\", got \\\"iso-host\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-9832/.verify/drives/2026-11-25T07-06-00-891Z/fail-desktop-step2.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "hosts/subscriptions-sign-in-opens-the-accounts-host",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

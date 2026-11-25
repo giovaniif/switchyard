@@ -1,0 +1,184 @@
+{
+  "v": 1,
+  "claim": "Subscriptions: Sign in on a signed-out account that lives on a remote host opens Engine logins for this machine, where that account is not, instead of the account's own host (#430)",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-9832",
+  "base": "9be397d8988d81c23529eb5bd01049c434c954a3",
+  "head": "5862312edb6bb442e6447017dc188933a0b9905a",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/UsageMeters.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/hosts.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-25T07:05:46.345Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "e49b5823f5d30f569f9cd0e16f3aa85a9f78b5f9",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "3e09d826729aa93f1dbc0e84ed22792a26166f88c8a7e5d0c37b8abc236eaa37"
+        },
+        {
+          "path": "p1-signed-out-row-mobile.png",
+          "sha256": "f4e510d53adea0caae797cc0cbe479331288127fc264c0da4aec8a687676e405"
+        },
+        {
+          "path": "p1-wrong-host-mobile.png",
+          "sha256": "74d9c299d6b9af3e0403873d78ff29d508b4e725674714394ad0e88ca3639300"
+        },
+        {
+          "path": "p1-signed-out-row-desktop.png",
+          "sha256": "fbea78d2e68ec37005f3cae4bb3cfe2015b85bd7d742e735a9ef3765192450e3"
+        },
+        {
+          "path": "p1-wrong-host-desktop.png",
+          "sha256": "14f42340c56f598ab03ddd31dda365f0c98c524d8a61a27210eeadbce301a9ee"
+        }
+      ],
+      "addedAt": "2026-11-25T07:05:58.959Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "e49b5823f5d30f569f9cd0e16f3aa85a9f78b5f9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "31c94ba10c506c73f130e02485dacde1aaabc66876e9157e68ec3802b37bafda"
+        }
+      ],
+      "addedAt": "2026-11-25T07:05:59.230Z",
+      "cmd": "verify/yv map run hosts --recipe subscriptions-sign-in-opens-the-accounts-host",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "5862312edb6bb442e6447017dc188933a0b9905a",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "bca617b1cbf43ddaf94baadfcff4f8b3f4a27091164f530ea30744edf90c6089"
+        },
+        {
+          "path": "p3-signed-out-row-mobile.png",
+          "sha256": "28ab4033f855fce01b85b54bcfaed6da48fa17bd1c5079e424de14cedeb02868"
+        },
+        {
+          "path": "p3-right-host-mobile.png",
+          "sha256": "81021e1812521eb9dfeff7f2247bfe480383cdacd072512f4fe52d257fa85423"
+        },
+        {
+          "path": "p3-signed-out-row-desktop.png",
+          "sha256": "d8e13053ce047e4f8762c4134f1e2ec0661fa73d2429050440e0a49dccb3238e"
+        },
+        {
+          "path": "p3-right-host-desktop.png",
+          "sha256": "ee8c1579861cc5f616e1d5c7da0887a4a93a4c8369976bbaa703d4b73133b743"
+        }
+      ],
+      "addedAt": "2026-11-25T07:06:45.449Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "5862312edb6bb442e6447017dc188933a0b9905a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "4692f9bf7eeb992c1cb71841e7e7c6a376e032af828f294edcbb085784548964"
+        }
+      ],
+      "addedAt": "2026-11-25T07:06:45.719Z",
+      "cmd": "verify/yv map run hosts --recipe subscriptions-sign-in-opens-the-accounts-host && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "5862312edb6bb442e6447017dc188933a0b9905a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "caacb183e9c5b4ae5ca9c4986260feae79eb6f8861f22d8b60a4d211371b6f2a"
+        }
+      ],
+      "addedAt": "2026-11-25T07:06:54.967Z",
+      "cmd": "verify/yv design-check --base 9be397d8988d",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "5862312edb6bb442e6447017dc188933a0b9905a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-hosts.json",
+          "sha256": "7014530ec465de2eaa3f730d90c05ea7d43c1bcce642e8af67ecaa5e738ae7a3"
+        }
+      ],
+      "addedAt": "2026-11-25T07:06:57.044Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/processes-say-the-host-is-offline",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    }
+  ]
+}

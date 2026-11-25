@@ -1,0 +1,32 @@
+$ verify/yv map run hosts --recipe subscriptions-sign-in-opens-the-accounts-host && (cd ui && bun test)
+# exit 0 after 9207 ms at 5862312edb6bb442e6447017dc188933a0b9905a
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "hosts",
+      "at": "2026-11-25T07:06:54.531Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "subscriptions-sign-in-opens-the-accounts-host",
+          "status": "pass",
+          "ms": 7542
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+bun test v1.4.4 (38afee6c8)
+
+
+ 479 pass
+ 0 fail
+ 4927 expect() calls
+Ran 479 tests across 35 files. [382.00ms]
