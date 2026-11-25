@@ -45,6 +45,7 @@ export { isAgentHome, loadChoice, readRecent } from "./sessionDefaults";
 export type { Choice } from "./sessionDefaults";
 import { NavigationPalette } from "./NavigationPalette";
 import { navigationShortcut, type NavigationEntry } from "./navigation";
+import { sendUpdateAction, useAppUpdate } from "./appUpdate";
 
 /** Permission modes, as Claude Code names them, and what each means per engine. */
 export const PERMISSIONS: ({ id: Permission; label: string } & Record<Engine, string>)[] = [
@@ -223,6 +224,7 @@ export function App() {
   }, [navigating]);
   // Older shells and browsers still need the sidebar's entry points.
   const nativeMenu = (window as any).__SWITCHYARD_APP_MENU__ === true;
+  const appUpdate = useAppUpdate();
   const [sidebarW, setSidebarW] = useWidth("yard.sidebarWidth", SIDEBAR_W);
   const [sidebarCollapsed, setSidebarCollapsed] = usePanelCollapsed("yard.sidebarCollapsed");
   const narrow = useMedia(NARROW);
@@ -381,6 +383,19 @@ export function App() {
               <button className="btn-text" onClick={actions.dismissError}>
                 Dismiss
               </button>
+            </div>
+          )}
+          {/* The Mac app's own update, found in the background: a quiet line, never a dialog. */}
+          {appUpdate.update && (
+            <div className="banner banner-notice app-update" role="status">
+              <span>Switchyard {appUpdate.update.version} is {appUpdate.update.ready ? "ready" : "available"}.</span>
+              <span className="app-update-actions">
+                <button className="btn-text" onClick={() => sendUpdateAction("notes")}>What's new</button>
+                <button className="btn-text" onClick={() => sendUpdateAction(appUpdate.update!.ready ? "restart" : "notes")}>
+                  {appUpdate.update.ready ? "Restart" : "Update"}
+                </button>
+                <button className="btn-text" onClick={appUpdate.dismiss}>Later</button>
+              </span>
             </div>
           )}
           {route.page === "new" && (
