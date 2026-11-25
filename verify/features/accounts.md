@@ -214,6 +214,19 @@ yv drive hosts --viewport desktop --steps '[{"click":"role:tab:Engine logins"},{
 yv drive new --viewport mobile --steps '[{"click":"role:button:Session setup"},{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · TEST-ACME_WORLDWIDE_ENGINEERING_PLATFORM"}},{"press":"Escape"},{"expect":"role:dialog:Session setup","count":0},{"expect":{"css":".new-inner .engine-notice","hasText":"TEST-ACME_WORLDWIDE_ENGINEERING_PLATFORM"},"text":"logged in on iso-host"},{"shot":"long-account-banner"},{"eval":"(() => { const n = document.querySelector(\".new-inner .engine-notice\").getBoundingClientRect(), b = document.querySelector(\".new-inner .engine-notice .btn-primary\").getBoundingClientRect(); return n.right <= innerWidth + 0.5 && b.left >= n.left && b.right <= n.right + 0.5; })()","equals":true}]'
 ```
 
+### refusal-with-a-long-word-keeps-dismiss-on-screen
+Viewports: both
+A refusal that quotes a session title with no spaces wraps inside the error
+banner: the page does not scroll sideways and Dismiss stays on screen, at
+390 px too. (#425: the banner's text did not wrap an unbroken word, so at
+390 px the layout grew to 397 px and Dismiss ended past the screen edge.)
+
+```sh
+yv api '{"op":"account.add","engine":"codex","name":"TEST-Unbroken"}' --wait '{"op":"accounts"}' --save uacct='accounts[name=TEST-Unbroken].id'
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{work}}","account":"{{uacct}}","text":"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithoutAnySpacesAtAllForSeventyChars"}' --wait '{"op":"created"}'
+yv drive hosts --allow-errors --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Remove TEST-Unbroken"},{"click":"role:button:Remove TEST-Unbroken"},{"expect":"css:.banner-error","text":"still use"},{"shot":"long-word-refusal"},{"eval":"(() => { const w = document.documentElement.clientWidth, b = document.querySelector(\".banner-error\").getBoundingClientRect(), d = [...document.querySelectorAll(\".banner-error button\")].find((x) => x.textContent.trim() === \"Dismiss\").getBoundingClientRect(); return document.documentElement.scrollWidth <= w && b.right <= w + 0.5 && d.left >= b.left && d.right <= b.right + 0.5; })()","equals":true},{"click":"role:button:Dismiss"},{"expect":"css:.banner-error","count":0}]'
+```
+
 ## Gotchas
 - An account's folder is deleted with it, login included. There is no "log out" separate from Remove.
 - The account of a session cannot be changed after it starts.

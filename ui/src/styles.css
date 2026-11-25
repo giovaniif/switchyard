@@ -175,6 +175,9 @@ h1, h2, h3, p { margin: 0; }
 .banner { display: flex; align-items: center; gap: 12px; padding: 8px 24px; background: var(--fill); font-size: 12px; color: var(--muted); }
 .banner-error { color: var(--bad-ink); justify-content: space-between; }
 .banner-notice { color: var(--ink); justify-content: space-between; }
+/* A refusal can quote a title or path with no spaces; without wrapping it set the row's width and pushed Dismiss off a phone screen. */
+.banner > span { min-width: 0; overflow-wrap: anywhere; }
+.banner > button { flex-shrink: 0; }
 
 /* buttons */
 .btn-primary, .btn, .btn-text, .btn-quiet, .btn-icon { height: 32px; border-radius: 8px; }
