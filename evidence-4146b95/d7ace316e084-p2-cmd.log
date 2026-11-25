@@ -1,0 +1,33 @@
+$ verify/yv map run slack --recipe an-agent-setting-up-is-not-reached-from-slack
+# exit 1 after 1228 ms at af6a13237de8e7cd957ecb21c3d6e5499b5e54ba
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "slack",
+      "at": "2026-11-25T00:13:56.071Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "an-agent-setting-up-is-not-reached-from-slack",
+          "status": "fail",
+          "ms": 590,
+          "tail": "ptoken\",\n    \"botToken\": \"xoxb-TEST-TESTsecretbottoken\"\n  },\n  \"reply\": {\n    \"op\": \"slack\",\n    \"slack\": {\n      \"agentApps\": {},\n      \"allowed\": [],\n      \"appToken\": \"xapp-…oken\",\n      \"bot\": \"switchyard\",\n      \"botToken\": \"xoxb-…oken\",\n      \"channels\": [],\n      \"configured\": true,\n      \"defaultAgent\": null,\n      \"error\": null,\n      \"requests\": [],\n      \"state\": \"connected\",\n      \"team\": \"TEST-workspace\",\n      \"workspaces\": []\n    }\n  },\n  \"saved\": {},\n  \"received\": 5,\n  \"problems\": []\n}\n{\n  \"command\": \"api\",\n  \"ok\": true,\n  \"sent\": {\n    \"op\": \"slack.allow\",\n    \"user\": \"UOWNER\"\n  },\n  \"reply\": {\n    \"op\": \"slack\",\n    \"slack\": {\n      \"agentApps\": {},\n      \"allowed\": [\n        {\n          \"id\": \"UOWNER\",\n          \"name\": \"UOWNER\"\n        }\n      ],\n      \"appToken\": \"xapp-…oken\",\n      \"bot\": \"switchyard\",\n      \"botToken\": \"xoxb-…oken\",\n      \"channels\": [],\n      \"configured\": true,\n      \"defaultAgent\": null,\n      \"error\": null,\n      \"requests\": [],\n      \"state\": \"connected\",\n      \"team\": \"TEST-workspace\",\n      \"workspaces\": []\n    }\n  },\n  \"saved\": {},\n  \"received\": 1,\n  \"problems\": []\n}\n{\n  \"command\": \"api\",\n  \"ok\": true,\n  \"sent\": {\n    \"op\": \"slack.route\",\n    \"agent\": \"\"\n  },\n  \"reply\": {\n    \"op\": \"slack\",\n    \"slack\": {\n      \"agentApps\": {},\n      \"allowed\": [\n        {\n          \"id\": \"UOWNER\",\n          \"name\": \"UOWNER\"\n        }\n      ],\n      \"appToken\": \"xapp-…oken\",\n      \"bot\": \"switchyard\",\n      \"botToken\": \"xoxb-…oken\",\n      \"channels\": [],\n      \"configured\": true,\n      \"defaultAgent\": null,\n      \"error\": null,\n      \"requests\": [],\n      \"state\": \"connected\",\n      \"team\": \"TEST-workspace\",\n      \"workspaces\": []\n    }\n  },\n  \"saved\": {},\n  \"received\": 1,\n  \"problems\": []\n}\n{\n  \"command\": \"api\",\n  \"ok\": true,\n  \"sent\": {\n    \"op\": \"agent.new\",\n    \"engine\": \"codex\",\n    \"model\": \"fake-fast\",\n    \"effort\": \"low\"\n  },\n  \"reply\": {\n    \"agent\": {\n      \"about\": \"\",\n      \"account\": \"default\",\n      \"chat\": null,\n      \"color\": \"green\",\n      \"createdAt\": 1795565635689,\n      \"cwd\": \"\",\n      \"effort\": \"low\",\n      \"engine\": \"codex\",\n      \"face\": \"glasses\",\n      \"host\": \"local\",\n      \"id\": \"g1a2100d48692\",\n      \"instructions\": \"\",\n      \"memory\": \"\",\n      \"model\": \"fake-fast\",\n      \"name\": \"New-agent\",\n      \"permission\": \"ask\",\n      \"setup\": true,\n      \"updatedAt\": 1795565635689\n    },\n    \"op\": \"agent.saved\"\n  },\n  \"saved\": {\n    \"blank_name\": \"New-agent\"\n  },\n  \"received\": 2,\n  \"problems\": []\n}\nfalse\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "slack/an-agent-setting-up-is-not-reached-from-slack",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

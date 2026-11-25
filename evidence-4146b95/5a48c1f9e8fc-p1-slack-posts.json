@@ -1,0 +1,8 @@
+{
+  "anyoneThere": [
+    "Which agent? Start your message with its name: TEST-Reviewer, New-agent. Or pick a default agent in Switchyard, under Connectors, Slack."
+  ],
+  "namedPlaceholder": [
+    "Echo: &lt;slack from=\"TEST-Owner\" in=\"a direct message\"&gt;\nTEST-set yourself up\n&lt;/slack&gt;\n(From TEST-Owner on Slack, in a direct message, not typed in Switchyard. Your final answer to this message is posted back to that Slack thread.)"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "anyoneThere": [
+    "Which agent? Start your message with its name: TEST-Reviewer. Or pick a default agent in Switchyard, under Connectors, Slack."
+  ],
+  "namedPlaceholder": [
+    "Which agent? Start your message with its name: TEST-Reviewer. Or pick a default agent in Switchyard, under Connectors, Slack."
+  ]
+}

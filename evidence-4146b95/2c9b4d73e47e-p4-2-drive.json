@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "4146b954544c8c288a2085766c49635f83ea1813",
+    "short": "4146b95",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T00:29:19.163Z"
+  },
+  "dir": "/tmp/patrol-ev-head4",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3250,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": "/tmp/patrol-ev-head4/still-blank-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 2078,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": "/tmp/patrol-ev-head4/still-blank-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

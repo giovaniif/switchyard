@@ -1,0 +1,26 @@
+$ verify/yv map run slack --recipe an-agent-setting-up-is-not-reached-from-slack
+# exit 0 after 6118 ms at 4146b954544c8c288a2085766c49635f83ea1813
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "slack",
+      "at": "2026-11-25T00:29:50.373Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "an-agent-setting-up-is-not-reached-from-slack",
+          "status": "pass",
+          "ms": 5474
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
