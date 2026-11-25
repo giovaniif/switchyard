@@ -1,0 +1,45 @@
+$ verify/yv map run thread --recipe fold-names-the-subagent
+# exit 1 after 28250 ms at 8c5a3e5452bf81c87b5ac45d697b1e5485206074
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "thread",
+      "at": "2026-11-25T06:03:38.881Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "fold-names-the-subagent",
+          "status": "fail",
+          "ms": 27387,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 1 {\"expect\":\"role:button:Worked for\",\"text\":\"Ran 1 subagent\"}: expected \"role:button:Worked for\" to contain \"Ran 1 subagent\", got \"Worked for 2s",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-052a/.verify/drives/2026-11-25T06-03-11-812Z/fail-mobile-step1.png and the aria snapshot"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 1 {\"expect\":\"role:button:Worked for\",\"text\":\"Ran 1 subagent\"}: expected \"role:button:Worked for\" to contain \"Ran 1 subagent\", got \"Worked for 2s",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-052a/.verify/drives/2026-11-25T06-03-11-812Z/fail-desktop-step1.png and the aria snapshot"
+            }
+          ],
+          "tail": "y hello\\\"\\n  - button \\\"[think] TEST-plan the refactor · Fake Fast · Idle\\\"\\n  - button \\\"Archive [think] TEST-plan the refactor\\\"\\n  - button \\\"Actions for [think] TEST-plan the refactor\\\"\\n  - button \\\"[fail] TEST-failing turn · Fake Fast · Idle\\\"\\n  - button \\\"Archive [fail] TEST-failing turn\\\"\\n  - button \\\"Actions for [fail] TEST-failing turn\\\"\\n  - button \\\"Subscription usage\\\": Usage 47% used\\n  - button \\\"iso-host 5% · 47%\\\"\\n- separator \\\"Resize the sessions sidebar\\\"\\n- main:\\n  - heading \\\"[subagent] TEST-fold names it\\\" [level=1]\\n  - code: yard/subagent-test-fold-names-it-abcd\\n  - button \\\"Set up iPhone app\\\"\\n  - button \\\"Collapse workspace\\\" [expanded]\\n  - button \\\"Delete\\\"\\n  - text: \\\"[subagent] TEST-fold names it\\\"\\n  - button \\\"Worked for 2s · 1 other step\\\"\\n  - paragraph: \\\"Echo: [subagent] TEST-fold names it\\\"\\n  - textbox \\\"Message\\\":\\n    - /placeholder: Reply\\n  - button \\\"Attach files\\\"\\n  - button \\\"Dictate\\\"\\n  - button \\\"Voice mode\\\"\\n  - button \\\"Model Haiku 5.5\\\": Haiku 5.5\\n  - 'button \\\"Account: Claude, Default\\\"'\\n  - button \\\"Effort Medium\\\": Medium\\n  - button \\\"Ask first\\\"\\n  - button \\\"Send\\\" [disabled]\\n- region \\\"Workspace\\\":\\n  - separator \\\"Resize the workspace pane\\\"\\n  - button \\\"Terminal\\\" [pressed]\\n  - button \\\"Subagents\\\"\\n  - button \\\"Processes\\\"\\n  - tablist \\\"Terminals\\\":\\n    - tab \\\"1\\\" [selected]\\n    - button \\\"Close terminal\\\"\\n    - button \\\"New terminal\\\"\\n    - button \\\"Attach\\\"\\n  - textbox \\\"Terminal input\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 1 {\\\"expect\\\":\\\"role:button:Worked for\\\",\\\"text\\\":\\\"Ran 1 subagent\\\"}: expected \\\"role:button:Worked for\\\" to contain \\\"Ran 1 subagent\\\", got \\\"Worked for 2s\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-052a/.verify/drives/2026-11-25T06-03-11-812Z/fail-mobile-step1.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 1 {\\\"expect\\\":\\\"role:button:Worked for\\\",\\\"text\\\":\\\"Ran 1 subagent\\\"}: expected \\\"role:button:Worked for\\\" to contain \\\"Ran 1 subagent\\\", got \\\"Worked for 2s\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-052a/.verify/drives/2026-11-25T06-03-11-812Z/fail-desktop-step1.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "thread/fold-names-the-subagent",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

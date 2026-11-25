@@ -1,0 +1,226 @@
+{
+  "v": 1,
+  "claim": "A finished turn that ran a subagent folds to 'Worked for 2s · 1 other step': the fold hides that a subagent ran, though the Subagents tab names it",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-052a",
+  "base": "d4a31dc88d21a20bd6e13595b8db754e7dae4c02",
+  "head": "45884898c8399ef00df6d11bfaeda1d81bee1c3d",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/thread.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/thread.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/thread.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-25T06:02:52.141Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "8c5a3e5452bf81c87b5ac45d697b1e5485206074",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "8938d606369df270c22e5017a5126cec7efae9373c807cef8851571596577dd1"
+        },
+        {
+          "path": "p1-fold-base-mobile.png",
+          "sha256": "75e06c267f4ad4ad528bafcb78d8bdaa58074991ac7014806dcb309aa07e99b2"
+        },
+        {
+          "path": "p1-fold-base-desktop.png",
+          "sha256": "db2b370a975f68d9f53883f41aed6b52db94880922d42458f37587500830c9c0"
+        }
+      ],
+      "addedAt": "2026-11-25T06:03:08.535Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "8c5a3e5452bf81c87b5ac45d697b1e5485206074",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "58b2d8b581483d278fbc4a95e8ba32cbfbc73c238d211d21db718565de4298f3"
+        }
+      ],
+      "addedAt": "2026-11-25T06:03:08.579Z",
+      "cmd": "cd ui && bun test src/thread.test.ts",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "8c5a3e5452bf81c87b5ac45d697b1e5485206074",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "648a1a9ea5b3d9084d7f45cc648b4f92ee88fcf2f88d167fe1426b277d645435"
+        }
+      ],
+      "addedAt": "2026-11-25T06:03:10.635Z",
+      "cmd": "verify/yv map run thread --recipe fold-names-the-subagent",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "45884898c8399ef00df6d11bfaeda1d81bee1c3d",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "2bc4d2ae93b70786e7e63e698622dc9139ab22682e9b147f3862e15c6c17120e"
+        },
+        {
+          "path": "p4-fold-head-mobile.png",
+          "sha256": "21f42d813e7e67e11c29503c411a723217d4946a9300cfb02ee6e0f90aef63f8"
+        },
+        {
+          "path": "p4-fold-head-open-mobile.png",
+          "sha256": "9b794dd4bf5dc0070cd564f9ff5b19012f573869c05b9dd29a5e4b6f72e5795c"
+        },
+        {
+          "path": "p4-fold-head-desktop.png",
+          "sha256": "444de3de531d50be9620897a10543488d96295c5bfe3579c416efc2a37e4eaee"
+        },
+        {
+          "path": "p4-fold-head-open-desktop.png",
+          "sha256": "e6af49e4ff7248bec5754dcdc9ace81fb137fd4dfd8aa1ef309e3f296f69bad6"
+        }
+      ],
+      "addedAt": "2026-11-25T06:04:09.216Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "45884898c8399ef00df6d11bfaeda1d81bee1c3d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "6d0ed0f390a23ec39924778a9558e896b87a41ea61ce744bdb7207fd43922bd3"
+        }
+      ],
+      "addedAt": "2026-11-25T06:04:09.260Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "45884898c8399ef00df6d11bfaeda1d81bee1c3d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "e438dc423e884bf79e469b39715c5eac8531ad9c0e8c763d0ddbd00791c52b06"
+        }
+      ],
+      "addedAt": "2026-11-25T06:04:09.662Z",
+      "cmd": "verify/yv map run thread --recipe fold-names-the-subagent",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "45884898c8399ef00df6d11bfaeda1d81bee1c3d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "1f6f04fe8f0f453d40d197fc1aae8133a7bf52b02b4a20963a160725d98a22c6"
+        }
+      ],
+      "addedAt": "2026-11-25T06:04:17.328Z",
+      "cmd": "verify/yv design-check --base d4a31dc88d21",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "45884898c8399ef00df6d11bfaeda1d81bee1c3d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-thread.json",
+          "sha256": "125c943e00eb41f366aa1d503eb60f9dae2abd794080eb7e0d71912094ddca4c"
+        }
+      ],
+      "addedAt": "2026-11-25T06:04:19.253Z",
+      "cmd": "verify/yv map run thread",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "thread/reply-renders",
+        "thread/markdown-table-renders",
+        "thread/markdown-blocks-without-blank-lines",
+        "thread/web-links-open-outside-the-thread",
+        "thread/thinking-folds",
+        "thread/edit-shows-diff",
+        "thread/failed-turn-shows-error",
+        "thread/follow-up-turn",
+        "thread/claude-session-renders",
+        "thread/reply-to-part-of-answer",
+        "thread/comments-go-with-their-parts",
+        "thread/no-reply-on-own-message",
+        "thread/queue-a-message-while-working",
+        "thread/remove-a-queued-message",
+        "thread/steer-a-running-turn",
+        "thread/steer-a-selected-queued-message",
+        "thread/stop-returns-the-queue",
+        "thread/edit-a-queued-message",
+        "thread/edit-a-queued-reply-keeps-its-quotes",
+        "thread/draft-survives-switching-sessions",
+        "thread/workspace-subagents",
+        "thread/workspace-subagents-line-up",
+        "thread/subagent-nests-and-expands",
+        "thread/fold-names-the-subagent",
+        "thread/working-line-stays-in-view",
+        "thread/pr-link-hover-card",
+        "thread/pr-link-card-states",
+        "thread/pr-link-card-error",
+        "thread/pr-link-keyboard-and-touch",
+        "thread/links-inside-bold-text",
+        "thread/file-links-download",
+        "thread/file-viewer-kinds",
+        "thread/numbered-steps-across-code-blocks",
+        "thread/history-reloads-after-resync"
+      ]
+    }
+  ]
+}

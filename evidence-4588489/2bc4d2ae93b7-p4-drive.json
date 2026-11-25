@@ -1,0 +1,75 @@
+{
+  "ok": true,
+  "route": "session:s1a2114db7072",
+  "build": {
+    "sha": "45884898c8399ef00df6d11bfaeda1d81bee1c3d",
+    "short": "4588489",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T06:03:55.320Z"
+  },
+  "dir": ".verify/evidence/subagent-fold-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3507,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/subagent-fold-head/fold-head-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/subagent-fold-head/fold-head-open-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3352,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/subagent-fold-head/fold-head-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/subagent-fold-head/fold-head-open-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

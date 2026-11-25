@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "route": "session:s1a2114ce3002",
+  "build": {
+    "sha": "8c5a3e5452bf81c87b5ac45d697b1e5485206074",
+    "short": "8c5a3e5",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T06:02:57.154Z"
+  },
+  "dir": ".verify/evidence/subagent-fold-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3651,
+      "steps": 3,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/subagent-fold-base/fold-base-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3003,
+      "steps": 3,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/subagent-fold-base/fold-base-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,40 @@
+$ cd ui && bun test src/thread.test.ts
+# exit 1 after 21 ms at 8c5a3e5452bf81c87b5ac45d697b1e5485206074
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/thread.test.ts:
+188 |   });
+189 | 
+190 |   test("a subagent counts as a subagent, not as an other step", () => {
+191 |     const agent = (n: number): WorkItem => ({ kind: "tool", key: `a${n}`, itemId: `a${n}`, toolKind: "other", title: "Agent", detail: "survey", agent: "general-purpose", state: "ok" });
+192 |     const other: WorkItem = { kind: "tool", key: "o", itemId: "o", toolKind: "other", title: "TodoWrite", detail: "", state: "ok" };
+193 |     expect(summarize([agent(1)])).toBe("Ran 1 subagent");
+                                        ^
+error: expect(received).toBe(expected)
+
+Expected: "Ran 1 subagent"
+Received: "1 other step"
+
+      at <anonymous> (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-052a/ui/src/thread.test.ts:193:35)
+(fail) labels > a subagent counts as a subagent, not as an other step [0.44ms]
+249 |   });
+250 | 
+251 |   test("steps do not count as work in the summary", () => {
+252 |     const rows = layout(fold([...agentTurn, { type: "tool_completed", itemId: AGENT, ok: true, output: "done", ms: 2_000 }, { type: "turn_completed", status: "completed", at: 5_000 }]), false);
+253 |     const row = rows.find((r) => r.type === "fold");
+254 |     expect(row?.type === "fold" && row.summary).toBe("Ran 1 subagent");
+                                                      ^
+error: expect(received).toBe(expected)
+
+Expected: "Ran 1 subagent"
+Received: "1 other step"
+
+      at <anonymous> (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-052a/ui/src/thread.test.ts:254:49)
+(fail) subagents > steps do not count as work in the summary [0.41ms]
+
+ 33 pass
+ 2 fail
+ 66 expect() calls
+Ran 35 tests across 1 file. [16.00ms]

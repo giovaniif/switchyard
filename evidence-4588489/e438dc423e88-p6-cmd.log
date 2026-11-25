@@ -1,0 +1,26 @@
+$ verify/yv map run thread --recipe fold-names-the-subagent
+# exit 0 after 7621 ms at 45884898c8399ef00df6d11bfaeda1d81bee1c3d
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "thread",
+      "at": "2026-11-25T06:04:17.279Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "fold-names-the-subagent",
+          "status": "pass",
+          "ms": 6767
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
