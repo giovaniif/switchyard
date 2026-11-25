@@ -1135,13 +1135,17 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
     broadcast(app);
     let text = from_slack(&strip_mention(raw, &me.bot_user));
     // A hub's agents kept here to run are the hub's to reach.
-    let agents: Vec<(String, String)> = app.agents.all().into_iter().filter(|a| !a.hosted).map(|a| (a.id, a.name)).collect();
+    let all: Vec<crate::agents::Agent> = app.agents.all().into_iter().filter(|a| !a.hosted).collect();
+    let agents: Vec<(String, String)> = all.iter().map(|a| (a.id.clone(), a.name.clone())).collect();
+    // One still setting up has only a placeholder name and sets itself up
+    // from its first message: that is the owner's to write, not a teammate's.
+    let named: Vec<(String, String)> = all.iter().filter(|a| !a.setup).map(|a| (a.id.clone(), a.name.clone())).collect();
     let name_of = |id: &str| agents.iter().find(|(a, _)| a == id).map(|(_, n)| n.clone());
     // An agent's own app is only ever that agent. Else a thread keeps its
     // agent; a deleted one lets the message route anew.
     let (agent, text) = match me.agent.clone().or(known).filter(|id| name_of(id).is_some()) {
         Some(id) => (Some(id), text),
-        None => match route(&text, &agents) {
+        None => match route(&text, &named) {
             Some((id, rest)) => (Some(id), rest),
             None => {
                 let (channel_default, default) = {
@@ -1153,8 +1157,12 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
         },
     };
     let Some(agent) = agent else {
-        let names = agents.iter().map(|(_, n)| n.as_str()).collect::<Vec<_>>().join(", ");
-        let note = format!("Which agent? Start your message with its name: {names}. Or pick a default agent in Switchyard, under Connectors, Slack.");
+        let names = named.iter().map(|(_, n)| n.as_str()).collect::<Vec<_>>().join(", ");
+        let note = if named.is_empty() {
+            "No agent is set up yet. Make one in Switchyard, under Agents, then start your message with its name.".to_string()
+        } else {
+            format!("Which agent? Start your message with its name: {names}. Or pick a default agent in Switchyard, under Connectors, Slack.")
+        };
         slack.post(&token, channel, &thread, &note).await?;
         return Ok(());
     };
