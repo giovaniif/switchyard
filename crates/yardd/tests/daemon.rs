@@ -2684,6 +2684,25 @@ async fn procs_with(c: &mut Client, sid: &str, needle: &str) -> Vec<Value> {
     panic!("no process with `{needle}` in the list of {sid}");
 }
 
+/// A subagent Claude runs in the background outlives its turn: the session
+/// says it is still at work (`background`) until the subagent reports.
+#[tokio::test]
+async fn a_background_subagent_keeps_its_session_marked_working() {
+    let sb = Sandbox::new("background-agent");
+    let sidecar = claude_sidecar();
+    let d = sb.start_with(&[("YARD_SIDECAR", &sidecar)]);
+    let mut c = d.client().await;
+    let extra = json!({ "engine": "claude", "model": "claude-haiku-5-5" });
+    let sid = c.create(&sb.folder("proj"), "[background-agent] TEST-go", extra).await;
+    assert_eq!(c.wait_turn_done(&sid, 0).await["status"], "completed");
+    let meta = c.wait_for("idle with a subagent at work", |m| m["op"] == "session" && m["session"]["id"] == sid.as_str() && m["session"]["status"] == "idle" && m["session"]["background"].as_array().is_some_and(|b| b.len() == 1)).await;
+    let item = meta["session"]["background"][0].as_str().unwrap().to_string();
+    // It reports after the turn: the mark goes.
+    let from = c.mark();
+    c.wait_after(from, "the subagent done", |m| m["op"] == "session" && m["session"]["id"] == sid.as_str() && m["session"].get("background").is_none()).await;
+    assert!(c.history(&sid).await.iter().any(|e| e["type"] == "tool_completed" && e["itemId"] == item.as_str()));
+}
+
 #[tokio::test]
 async fn session_procs_lists_what_a_session_is_running() {
     let sb = Sandbox::new("procs");
