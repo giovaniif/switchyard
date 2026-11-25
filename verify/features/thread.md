@@ -255,6 +255,15 @@ yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","eff
 yv drive 'session:{{sub_sid}}' --steps '[{"expect":"css:.thread","text":"Echo: [subagent] TEST-survey","timeout":20000},{"click":"role:button:Worked for"},{"expect":"css:.thread","text":"TEST-survey the repo"},{"expect":"css:.thread","text":"general-purpose"},{"expect":"css:.thread","text":"2 steps"},{"expect":{"css":".thread","hasText":"README.md"},"visible":false},{"shot":"subagent-collapsed"},{"click":"role:button:TEST-survey the repo"},{"expect":"css:.thread","text":"README.md"},{"expect":"css:.thread","text":"ls src"},{"expect":"css:.thread","text":"TEST-subagent report: two files read"},{"shot":"subagent-open"},{"click":"role:button:TEST-survey the repo"},{"expect":{"css":".thread","hasText":"README.md"},"visible":false}]'
 ```
 
+### fold-names-the-subagent
+A finished turn that ran a subagent says so on its folded line: "Ran 1
+subagent", not the catch-all "1 other step" (#410). At both viewports.
+
+```sh
+yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","effort":"medium","cwd":"{{repo}}","worktree":true,"text":"[subagent] TEST-fold names it"}' --wait '{"op":"created"}' --save fold_sub_sid=sessionId
+yv drive 'session:{{fold_sub_sid}}' --steps '[{"expect":"css:.thread","text":"Echo: [subagent] TEST-fold names it","timeout":20000},{"expect":"role:button:Worked for","text":"Ran 1 subagent"},{"expect":{"css":".thread","hasText":"other step"},"visible":false},{"shot":"fold-subagent"}]'
+```
+
 ### working-line-stays-in-view
 A long thread scrolled to the bottom: after Send, the "Working" line is inside
 the visible thread from its first frame. It appears with the session's status,
