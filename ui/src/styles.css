@@ -746,6 +746,8 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .work .tool { margin: 0; }
 .work-toggle, .fold-row, .work-more { display: flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 0; border: 0; background: transparent; color: var(--muted); text-align: left; font-size: inherit; }
 .work-toggle:hover, .fold-row:hover, .work-more:hover, .tool-row:not(:disabled):hover { color: var(--ink); }
+/* The line over a turn whose messages stay in view: it says how long, it opens nothing. */
+.fold-row.fold-row-static:hover { color: var(--muted); }
 .work-more { font-size: 12px; padding: 0; }
 .work-list { display: flex; flex-direction: column; gap: 2px; padding-left: 12px; border-left: 1px solid var(--line); margin-left: 5px; }
 .stopped-mark { margin-top: -8px; }

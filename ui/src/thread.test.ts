@@ -90,13 +90,22 @@ describe("layout", () => {
     expect(shape(layout(items, true))).toEqual(["user", "work(2)", "assistant", "work(2,live)"]);
   });
 
-  test("a finished turn folds its work above the answer, with its duration", () => {
+  test("a finished turn with messages between its steps keeps them in view, under a line that says how long", () => {
     const items = fold([...turn, { type: "turn_completed", status: "completed", at: 73_000 }]);
     const rows = layout(items, false);
-    expect(shape(rows)).toEqual(["user", "fold(Read 2 files, ran 1 command · 1 failed)", "assistant"]);
+    expect(shape(rows)).toEqual(["user", "fold(Read 2 files, ran 1 command · 1 failed)", "work(2)", "assistant", "work(2)", "assistant"]);
     const f = rows[1];
     expect(f.type === "fold" && f.ms).toBe(72_000);
-    expect(f.type === "fold" && shape(f.rows)).toEqual(["work(2)", "assistant", "work(2)"]);
+    expect(f.type === "fold" && f.inline).toBe(true);
+    expect(f.type === "fold" && f.rows).toEqual([]);
+  });
+
+  test("a finished turn whose only message is its answer folds its work above it", () => {
+    const steps = turn.filter((ev) => ev.type !== "assistant_message" || ev === turn.filter((e) => e.type === "assistant_message").pop());
+    const rows = layout(fold([...steps, { type: "turn_completed", status: "completed", at: 73_000 }]), false);
+    expect(shape(rows)).toEqual(["user", "fold(Read 2 files, ran 1 command · 1 failed)", "assistant"]);
+    const f = rows[1];
+    expect(f.type === "fold" && !f.inline && shape(f.rows)).toEqual(["work(4)"]);
   });
 
   test("a widget shows under its call while live, and stays in view when the turn folds", () => {
