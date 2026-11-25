@@ -2,6 +2,12 @@
 
 Each version is a [GitHub release](https://github.com/giovaniif/better-than-claude-code/releases) with the signed Mac app and the Linux packages. The section for a version becomes its release notes.
 
+## 0.21.0 (2026-11-25)
+
+- **Agents in the sidebar, like direct messages.** A new Agents section at the bottom of the sidebar lists every agent with its face and name. Its badge shows when it is working, needs you or has an answer you have not read. Click one to open its conversation.
+- **Updates no longer interrupt you.** The app installs a new version in the background without a dialog. Then the menu item reads "Restart to Update to X.Y.Z…" and Switchyard shows a small "ready" notice with What's new. Open it to see the release notes and Install and Restart, or Later. "Check for Updates…" now gives one clear answer.
+- **Releases are one step** for whoever makes them: write the changelog, run `scripts/release.sh X.Y.Z`, and the release publishes itself once its checks pass.
+
 ## 0.20.0 (2026-11-25)
 
 - **Comment on parts of an answer.** Select text in an agent's answer and choose Comment. Each part gets its own card with its own comment, numbered when there are several, and is highlighted in the answer until you send. The agent receives each part with your comment under it, so comments no longer get mixed up.
