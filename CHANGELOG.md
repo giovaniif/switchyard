@@ -2,6 +2,24 @@
 
 Each version is a [GitHub release](https://github.com/giovaniif/better-than-claude-code/releases) with the signed Mac app and the Linux packages. The section for a version becomes its release notes.
 
+## 0.20.0 (2026-11-25)
+
+- **Comment on parts of an answer.** Select text in an agent's answer and choose Comment. Each part gets its own card with its own comment, numbered when there are several, and is highlighted in the answer until you send. The agent receives each part with your comment under it, so comments no longer get mixed up.
+- **You see what the agent wrote while it worked.** Messages an agent writes between its steps stay in the conversation after the turn ends; only the tool steps fold into a line.
+- **Sending scrolls to your message.**
+- **Agents look alive.** Faces are friendly 3D characters that breathe, blink, look around, follow your pointer and hop, and look busy while the agent works.
+- **Agent names can have spaces**, like "Custom Domains Triage". You mention it as `@Custom-Domains-Triage`; mentions you already wrote keep working.
+- **Set up an agent from its own page.** The chat box has the server, model, account, effort and permission pickers. Click the face to change face and colour, or click the name or description to edit them in place.
+- **Simpler Slack setup for an agent's own app.** Paste the configuration token, approve in Slack (it comes back to Switchyard on its own, also from the Mac app), then paste the connection token. Renaming an agent renames its Slack bot, and its face becomes the Slack app's icon.
+- **Fixed:**
+  - Agents' folders no longer show up as recent folders or the default folder in New session.
+  - A turn that ran a subagent says "Ran 1 subagent", not "1 other step".
+  - Removing an account in use names the sessions that use it, archived ones too.
+  - Subscriptions offers Sign in for an account that needs it, and Sign in opens that account's host.
+  - Sidebar: a collapsed group shows when one of its sessions waits for approval, and its session count stays readable.
+  - Automation cards keep the next run in view when the schedule has a window.
+  - On a phone, error banners and the Add host button no longer push their buttons off screen.
+
 ## 0.19.0 (2026-11-24)
 
 - **New agents set themselves up.** New agent opens a conversation instead of a form: tell the agent what it's for, and it picks its own name, writes its description and instructions, and chooses a face, colour and model. It can't give itself your project folder, more access or a place in Slack: it asks, and you answer with a button above the reply box. Edit is still there for changes by hand, or just tell the agent what to change.
