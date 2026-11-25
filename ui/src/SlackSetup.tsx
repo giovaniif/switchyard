@@ -1,14 +1,17 @@
 // Putting an agent in Slack as an app of its own, so people @mention it by
 // name, step by step as Orca's bots do: a configuration token once per
 // workspace, the agent's app made from it, the install approved in Slack,
-// then (Switchyard has no cloud for Slack to reach) one app-level token for
-// its Socket Mode connection. yardd's slack.rs does the work; this dialog
-// only shows the step it reports. The shared Switchyard bot on the
-// Connectors page is separate.
+// and, only when Slack's events come over Socket Mode, one app-level token
+// for its connection. With an https address for Switchyard the install comes
+// back on its own, and with a public address for Slack its events come over
+// HTTP: then the configuration token is the only paste. yardd's slack.rs does
+// the work; this dialog only shows the steps it still needs. The shared
+// Switchyard bot on the Connectors page is separate.
 import { useState } from "react";
-import type { Agent, SlackAgentApp } from "./protocol";
+import type { Agent, SlackAgentApp, SlackView } from "./protocol";
 import type { Actions, SlackAppOp, State } from "./store";
 import { Icon } from "./App";
+import { setupSteps, tokensNeeded } from "./slack";
 
 /** Slack, drawn as the hash of its logo. */
 export const SLACK_MARK = "M9.5 4.5v15M14.5 4.5v15M4.5 9.5h15M4.5 14.5h15";
@@ -20,6 +23,7 @@ export function slackConnection(s: SlackAgentApp | undefined): string | null {
   if (!s || s.step !== "ready") return null;
   if (s.state === "connected") return "Connected";
   if (s.state === "error") return `Not connected: ${s.error ?? "Slack refused the connection"}`;
+  if (s.state === "events") return `Slack sends its messages to ${s.eventsUrl}`;
   return "Connecting…";
 }
 
@@ -45,9 +49,64 @@ function TokenField({ label, placeholder, busy, button, onSubmit }: { label: str
   );
 }
 
+/** The public address for Slack: shown, set or cleared, and whether it
+ *  reaches this Switchyard. */
+function PublicAddress({ view, actions }: { view: SlackView | null; actions: Actions }) {
+  const current = view?.publicUrl ?? "";
+  const [url, setUrl] = useState(current);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const save = async (value: string) => {
+    setBusy(true);
+    setError(null);
+    const r = await actions.slackApp("slack.publicUrl", { url: value });
+    setBusy(false);
+    if (r.error) setError(r.error);
+  };
+  const check = view?.publicCheck;
+  return (
+    <details className="slack-public">
+      <summary>{current ? `Slack's events come to ${current}` : "Fewer tokens: a public address for Slack"}</summary>
+      <p className="muted small">
+        Give Switchyard an https address Slack can reach from the internet, such as a Cloudflare Tunnel that passes on only /slack/events and /slack/oauth. Slack then sends new agents'
+        messages there, and the configuration token is the only one to paste.
+      </p>
+      {view?.publicUrlFixed ? (
+        <p className="small">
+          Set where Switchyard runs (YARD_SLACK_PUBLIC_URL): <code>{current}</code>
+        </p>
+      ) : (
+        <form
+          className="slack-token"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save(url.trim());
+          }}
+        >
+          <label htmlFor="slack-public-url">Public address</label>
+          <div className="login-code">
+            <input id="slack-public-url" type="url" inputMode="url" autoComplete="off" spellCheck={false} value={url} placeholder="https://slack.example.com" onChange={(e) => setUrl(e.target.value)} />
+            <button className="btn" type="submit" disabled={busy || url.trim() === current}>
+              {busy ? "Saving…" : url.trim() ? "Save" : "Clear"}
+            </button>
+          </div>
+        </form>
+      )}
+      {current && check === "" && <p className="small slack-connection is-live"><span className="slack-dot" aria-hidden="true" />It reaches this Switchyard.</p>}
+      {current && check && <p className="small automation-reason">{check}</p>}
+      {error && (
+        <p className="small automation-reason" role="alert">
+          {error}
+        </p>
+      )}
+    </details>
+  );
+}
+
 export function SlackSetup({ state, actions, agent, onClose }: { state: State; actions: Actions; agent: Agent; onClose(): void }) {
-  const s = state.slack?.agentApps?.[agent.id];
-  const workspaces = state.slack?.workspaces ?? [];
+  const view = state.slack;
+  const s = view?.agentApps?.[agent.id];
+  const workspaces = view?.workspaces ?? [];
   const [addWorkspace, setAddWorkspace] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,12 +120,15 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
     if (r.error) setError(r.error);
     return r;
   };
-  // The install comes back to this page's address, when Slack can be sent there.
+  // The install comes back to this page's address when Slack may be sent
+  // there, else to another https address Switchyard has.
   const origin = window.location.origin;
   const create = (teamId: string) => run("slack.app.create", { teamId, origin });
   // A new workspace's token, and the agent's app there, in one step.
   const grant = (token: string) => run("slack.grant", { token, origin });
   const handle = s?.handle || agent.name.toLowerCase();
+  const http = s ? !!s.eventsUrl : !!view?.publicUrl;
+  const onlyOne = tokensNeeded(view) === 1;
 
   let title = `Add ${agent.name} to Slack`;
   let body: React.ReactNode;
@@ -74,7 +136,8 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
     body = (
       <>
         <p>
-          {agent.name} gets its own Slack app, named after it, so people can @mention it in a channel or message it directly. Slack makes the app from a configuration token:
+          {agent.name} gets its own Slack app, named after it, so people can @mention it in a channel or message it directly. Slack makes the app from a configuration token
+          {onlyOne ? ", the only token it takes:" : ":"}
         </p>
         <a className="btn login-open" href={APPS} target="_blank" rel="noopener noreferrer">
           Get config token
@@ -86,6 +149,7 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
         </ol>
         <TokenField label="Configuration refresh token" placeholder="xoxe-…" busy={busy} button="Create Slack app" onSubmit={(t) => void grant(t)} />
         <p className="muted small">Switchyard keeps this token on this machine and renews it, so your next agents in this workspace need one click.</p>
+        <PublicAddress view={view} actions={actions} />
       </>
     );
   } else if (!s) {
@@ -103,6 +167,7 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
         <button className="btn-text" onClick={() => setAddWorkspace(true)}>
           Add another workspace
         </button>
+        <PublicAddress view={view} actions={actions} />
       </>
     );
   } else if (s.step === "install") {
@@ -125,7 +190,7 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
     body =
       s.authorizeUrl && !paste ? (
         <>
-          <p>Your Slack app is ready. Approve it in Slack to finish.</p>
+          <p>Your Slack app is ready. Approve it in Slack to finish{http ? `: then ${agent.name} is in Slack.` : "."}</p>
           <a className="btn-primary login-open" href={s.authorizeUrl} target="_blank" rel="noopener noreferrer">
             Approve in Slack
           </a>
@@ -143,15 +208,15 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
         <>
           <p>Your Slack app is ready. Install it in your workspace:</p>
           {pasted}
-          {!s.canRedirect && <p className="muted small">Slack can send you back here on its own only when Switchyard is open over https.</p>}
+          {!s.canRedirect && <p className="muted small">Slack sends you back to Switchyard on its own once Switchyard has an https address.</p>}
         </>
       );
   } else if (s.step === "appToken") {
     body = (
       <>
         <p>
-          One more token. Slack cannot reach this machine, so {agent.name} keeps its own connection open to Slack, and that takes an app-level token, which Slack only makes by
-          hand:
+          One more token. Slack does not call this machine, so {agent.name} keeps its own connection open to Slack, and that takes an app-level token, which Slack only makes
+          by hand:
         </p>
         <ol className="login-steps">
           <li>
@@ -180,6 +245,14 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
           <span className="slack-dot" aria-hidden="true" />
           {connection}
         </p>
+        {s.syncError && (
+          <>
+            <p className="small automation-reason" role="status">
+              Slack still shows {agent.name}'s old name or picture: {s.syncError}
+            </p>
+            <TokenField label="New configuration refresh token" placeholder="xoxe-…" busy={busy} button="Update Slack" onSubmit={(t) => void grant(t)} />
+          </>
+        )}
         <p className="muted small">
           Who can ask: the people allowed under{" "}
           <button className="btn-text note-link" onClick={() => actions.go({ page: "connectors" })}>
@@ -211,8 +284,8 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
       </>
     );
   }
-  const steps = ["Token", "Approve", "Connect"];
-  const at = !s ? 0 : s.step === "install" ? 1 : s.step === "appToken" ? 2 : 3;
+  const steps = setupSteps(view, s);
+  const at = !s ? 0 : s.step === "install" ? 1 : s.step === "appToken" ? 2 : steps.length;
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal slack-modal" role="dialog" aria-modal="true" aria-label={title}>
@@ -224,7 +297,7 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
             <Icon d={CLOSE} size={14} />
           </button>
         </header>
-        {at < 3 && (
+        {at < steps.length && (
           <ol className="slack-progress" aria-label="Steps">
             {steps.map((label, i) => (
               <li key={label} className={i < at ? "done" : i === at ? "now" : ""} aria-current={i === at ? "step" : undefined}>

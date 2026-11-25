@@ -25,7 +25,10 @@
 // and installs it for UOWNER: its bot token `xoxb-agent-TEST` is @agent
 // (UAGENT), and an app-level token with "agent" in it opens a socket of its
 // own. A message's `app` ("agent" or "shared") picks the socket it goes down;
-// without one, every socket gets it.
+// without one, every socket gets it. apps.manifest.update is recorded under
+// `updates`; apps.icon.set (multipart, like Slack's) under `icons` with the
+// PNG's size, never its bytes. The app's signing secret is
+// TEST-signing-secret: /_fake/event signs with it.
 //
 // Control, for tests:
 //   POST /_fake/message {user, text, channel?, thread_ts?, bot_id?, subtype?, mention?}
@@ -34,7 +37,15 @@
 //        <@UBOT> (as Slack sends both). Answers {ts, envelopes}.
 //   POST /_fake/disconnect {reason?}   a `disconnect` envelope, then a close
 //   POST /_fake/drop                   closes every socket at once
-//   GET  /_fake/state                  {connections, opens, acks, calls, posts, ephemerals, reactions}
+//   POST /_fake/event {url, user, text, channel?, thread_ts?, sign?, retry?, event_id?}
+//        Slack's Events API instead of Socket Mode: the same events for a
+//        message to the agent's app, POSTed to `url` (yardd's /slack/events)
+//        and signed (`sign`: good, the default; bad; stale, 10 minutes old;
+//        none). `retry` sends X-Slack-Retry-Num and reuses `event_id`.
+//        Answers {ts, results: [{status, body}]}.
+//   POST /_fake/challenge {url, sign?}  Slack's url_verification of `url`
+//   POST /_fake/lapse                  the configuration tokens given so far stop working
+//   GET  /_fake/state                  {connections, opens, acks, calls, posts, ephemerals, reactions, manifests, updates, icons, deleted}
 
 const args = process.argv.slice(2);
 const arg = (name) => {
@@ -51,7 +62,18 @@ let clock = 1_700_000_000;
 const nextTs = () => `${++clock}.000100`;
 let envelopeN = 0;
 
-const state = { opens: 0, acks: [], calls: [], posts: [], ephemerals: [], reactions: {}, manifests: [], deleted: [] };
+import { createHmac } from "node:crypto";
+
+const SIGNING_SECRET = "TEST-signing-secret";
+const state = { opens: 0, acks: [], calls: [], posts: [], ephemerals: [], reactions: {}, manifests: [], updates: [], icons: [], deleted: [] };
+// Configuration tokens: each rotation hands out the next; /_fake/lapse
+// refuses every one handed out before it, as when a token goes unused.
+let issued = 0;
+let lapsedUpTo = 0;
+const lapsed = (token) => {
+  const n = Number((token ?? "").match(/-(\d+)$/)?.[1] ?? 0);
+  return n > 0 && n <= lapsedUpTo;
+};
 const sockets = new Set();
 
 const tokenKind = (auth) => {
@@ -66,6 +88,19 @@ async function params(req) {
   const type = req.headers.get("content-type") || "";
   const out = Object.fromEntries(new URL(req.url).searchParams);
   if (req.method !== "POST") return out;
+  if (type.includes("multipart/form-data")) {
+    const form = await req.formData();
+    for (const [k, v] of form.entries()) {
+      if (typeof v === "string") out[k] = v;
+      else {
+        const bytes = new Uint8Array(await v.arrayBuffer());
+        const png = bytes.length >= 24 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+        const side = (at) => new DataView(bytes.buffer, bytes.byteOffset).getUint32(at);
+        out[k] = { file: v.name ?? "", type: v.type, size: bytes.length, png, width: png ? side(16) : 0, height: png ? side(20) : 0 };
+      }
+    }
+    return out;
+  }
   const body = await req.text();
   if (type.includes("json")) return { ...out, ...JSON.parse(body || "{}") };
   return { ...out, ...Object.fromEntries(new URLSearchParams(body)) };
@@ -84,14 +119,32 @@ function api(method, p, auth, port) {
       if (kind !== "app" || token.includes("bad")) return refused;
       state.opens++;
       return { ok: true, url: `ws://127.0.0.1:${port}/socket?ticket=TEST-ticket-${state.opens}&app=${token.includes("agent") ? "agent" : "shared"}` };
-    case "tooling.tokens.rotate":
-      if (!(p.refresh_token ?? "").startsWith("xoxe-") || p.refresh_token.includes("bad")) return { ok: false, error: "invalid_refresh_token" };
-      return { ok: true, token: "xoxe.xoxp-1-TEST", refresh_token: "xoxe-1-TEST-next", team_id: "T0TEST", user_id: "UOWNER", iat: clock, exp: clock + 43200 };
+    case "tooling.tokens.rotate": {
+      if (!(p.refresh_token ?? "").startsWith("xoxe-") || p.refresh_token.includes("bad") || lapsed(p.refresh_token)) return { ok: false, error: "invalid_refresh_token" };
+      // Already expired (clock is in 2023): yardd rotates before each use.
+      const n = ++issued;
+      return { ok: true, token: `xoxe.xoxp-1-TEST-${n}`, refresh_token: `xoxe-1-TEST-next-${n}`, team_id: "T0TEST", user_id: "UOWNER", iat: clock, exp: clock + 43200 };
+    }
     case "apps.manifest.create": {
-      if (kind !== "config") return refused;
+      if (kind !== "config" || lapsed(token)) return refused;
       const manifest = JSON.parse(p.manifest ?? "{}");
       state.manifests.push(manifest);
-      return { ok: true, app_id: "A0AGENT", credentials: { client_id: "C0AGENT", client_secret: "TEST-secret", verification_token: "v", signing_secret: "s" }, oauth_authorize_url: "https://slack.test/oauth/v2/authorize?client_id=C0AGENT&scope=app_mentions:read,chat:write" };
+      return { ok: true, app_id: "A0AGENT", credentials: { client_id: "C0AGENT", client_secret: "TEST-secret", verification_token: "v", signing_secret: SIGNING_SECRET }, oauth_authorize_url: "https://slack.test/oauth/v2/authorize?client_id=C0AGENT&scope=app_mentions:read,chat:write" };
+    }
+    case "apps.manifest.update": {
+      if (kind !== "config" || lapsed(token)) return { ok: false, error: kind === "config" ? "token_expired" : refused.error };
+      if (!p.app_id) return { ok: false, error: "invalid_app_id" };
+      state.updates.push({ app_id: p.app_id, manifest: JSON.parse(p.manifest ?? "{}") });
+      return { ok: true, app_id: p.app_id, permissions_updated: false };
+    }
+    case "apps.icon.set": {
+      if (kind !== "config" || lapsed(token)) return { ok: false, error: kind === "config" ? "token_expired" : refused.error };
+      if (!p.app_id) return { ok: false, error: "invalid_app_id" };
+      if (!p.file || typeof p.file !== "object") return { ok: false, error: "missing_arguments" };
+      if (!p.file.png) return { ok: false, error: "error_bad_format" };
+      if (p.file.width < 512 || p.file.height < 512 || p.file.width > 2000 || p.file.height > 2000) return { ok: false, error: "invalid_icon_size" };
+      state.icons.push({ app_id: p.app_id, ...p.file });
+      return { ok: true };
     }
     case "apps.manifest.delete":
       if (kind !== "config") return refused;
@@ -146,7 +199,7 @@ function send(envelope, app) {
   for (const ws of sockets) if (!app || ws.data?.app === app) ws.send(text);
 }
 
-function events(p) {
+function eventsFor(p) {
   const channel = p.channel ?? "D0OWNER";
   const ts = p.ts ?? nextTs();
   const im = channel.startsWith("D");
@@ -156,12 +209,47 @@ function events(p) {
   if (p.subtype) base.subtype = p.subtype;
   const list = [{ ...base, type: "message", channel_type: im ? "im" : channel.startsWith("G") ? "group" : "channel" }];
   if (!im && (base.text.includes(`<@${BOT}>`) || base.text.includes(`<@${AGENT_BOT}>`))) list.unshift({ ...base, type: "app_mention" });
+  return { ts, list };
+}
+
+function events(p) {
+  const { ts, list } = eventsFor(p);
   const envelopes = list.map((event) => {
     const id = `TEST-env-${++envelopeN}`;
     send({ envelope_id: id, type: "events_api", accepts_response_payload: false, retry_attempt: 0, retry_reason: "", payload: { type: "event_callback", team_id: "T0TEST", api_app_id: "A0TEST", event, event_id: `Ev${envelopeN}`, event_time: clock } }, p.app);
     return id;
   });
   return { ts, envelopes };
+}
+
+/** One request as Slack's Events API sends it, signed as asked. */
+async function deliver(url, body, sign = "good", retry) {
+  const now = Math.floor(Date.now() / 1000);
+  const ts = String(sign === "stale" ? now - 600 : now);
+  const secret = sign === "bad" ? "TEST-wrong-secret" : SIGNING_SECRET;
+  const headers = { "content-type": "application/json", "x-slack-request-timestamp": ts };
+  if (sign !== "none") headers["x-slack-signature"] = "v0=" + createHmac("sha256", secret).update(`v0:${ts}:${body}`).digest("hex");
+  if (retry) {
+    headers["x-slack-retry-num"] = String(retry);
+    headers["x-slack-retry-reason"] = "http_timeout";
+  }
+  try {
+    const res = await fetch(url, { method: "POST", headers, body });
+    return { status: res.status, body: await res.text() };
+  } catch (e) {
+    return { status: 0, body: String(e) };
+  }
+}
+
+async function httpEvents(p) {
+  const { ts, list } = eventsFor(p);
+  const results = [];
+  for (const event of list) {
+    const id = p.event_id ? `${p.event_id}${list.length > 1 ? `-${event.type}` : ""}` : `EvHTTP${++envelopeN}`;
+    const body = JSON.stringify({ token: "v", team_id: "T0TEST", api_app_id: "A0AGENT", event, type: "event_callback", event_id: id, event_time: clock, authorizations: [{ team_id: "T0TEST", user_id: AGENT_BOT, is_bot: true }] });
+    results.push({ event_id: id, ...(await deliver(p.url, body, p.sign, p.retry)) });
+  }
+  return { ts, results };
 }
 
 const json = (v, status = 200) => new Response(JSON.stringify(v), { status, headers: { "content-type": "application/json" } });
@@ -183,6 +271,15 @@ const server = Bun.serve({
       return json(api(method, p, auth, server.port));
     }
     if (url.pathname === "/_fake/message" && req.method === "POST") return json(events(await req.json()));
+    if (url.pathname === "/_fake/event" && req.method === "POST") return json(await httpEvents(await req.json()));
+    if (url.pathname === "/_fake/challenge" && req.method === "POST") {
+      const p = await req.json();
+      return json(await deliver(p.url, JSON.stringify({ token: "v", challenge: "TEST-challenge-3eZbrw1aBm2rZgRNFdxV2595E9CY3gmdALWMmHkvFXO7tYXAYM8P", type: "url_verification" }), p.sign));
+    }
+    if (url.pathname === "/_fake/lapse" && req.method === "POST") {
+      lapsedUpTo = issued;
+      return json({ ok: true, lapsed: issued });
+    }
     if (url.pathname === "/_fake/disconnect" && req.method === "POST") {
       const body = await req.json().catch(() => ({}));
       send({ type: "disconnect", reason: body.reason ?? "refresh_requested", debug_info: { host: "TEST" } });

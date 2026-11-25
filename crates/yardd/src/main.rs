@@ -170,6 +170,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(health))
         .route("/agent-tools", post(agent_tools::http))
         .route("/slack/oauth", get(slack::oauth))
+        .route("/slack/events", get(slack::events_probe).post(slack::events))
         .fallback_service(ServeDir::new(root.join("ui/dist")))
         .layer(middleware::from_fn(cache_headers))
         .with_state(app);

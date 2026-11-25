@@ -13,6 +13,9 @@ portable-pty = "0.8"
 # updater already builds it: no OpenSSL and no aws-lc build.
 reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "form"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+# Slack signs the events it sends over HTTP (HMAC-SHA256); ring is already
+# in the build through rustls.
+ring = "0.17"
 rusqlite = { version = "0.32", features = ["bundled"] }
 futures-util = "0.3"
 serde = { version = "1", features = ["derive"] }

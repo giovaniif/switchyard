@@ -24,6 +24,13 @@ name: Add to Slack in its header walks through a configuration refresh token
 (here the page is http, so the bot token is pasted) and its app-level token,
 then says "<Name> is in Slack" with its connection. A mention of its bot goes
 to that agent without naming it, and the answer comes back through its app.
+With a public address for Slack (set under "Fewer tokens" in that dialog, or
+`YARD_SLACK_PUBLIC_URL`) the configuration token is the only one: the dialog
+numbers two steps, the install comes back to Switchyard on its own, and
+Slack's events come over HTTP to `/slack/events`, signed. Its app wears the
+agent's face as its icon (a 1024-pixel PNG drawn from the page's avatar),
+and a new name or purpose reaches Slack (`apps.manifest.update`), its handle
+made from the name (`test-archivist`).
 
 The fake: `verify/fakes/fake-slack` (Web API and Socket Mode on loopback),
 started by Setup; `curl "$(v slack)/_fake/message"` makes Slack send a
@@ -159,6 +166,39 @@ curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '(.posts | map(select(.
 yv drive agents --viewport mobile --steps '[{"expect":{"css":".agent-card[aria-label=\"TEST-Reviewer\"]","hasText":"In Slack"}},{"click":"css:.agent-card[aria-label=\"TEST-Reviewer\"] .agent-message"},{"expect":{"css":".origin-badge.origin-slack","hasText":"From TEST-Owner on Slack · #general"}},{"click":"role:button:In Slack"},{"expect":"role:dialog:TEST-Reviewer is in Slack"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"in-slack"}]'
 ```
 
+### one-token-with-a-public-address
+Viewports: both
+With a public address for Slack, set in the dialog, a new agent's app takes
+the configuration token only: two steps (Token, Approve), the Approve link
+comes back to `https://slack.yard.test/slack/oauth` though the page is http,
+and once approved the dialog says it is in Slack with Slack sending to
+`/slack/events`, no connection token asked. A signed event over HTTP reaches
+it and is answered in the thread; an unsigned one is refused. Its app gets the
+agent's face as a 1024-pixel PNG icon, and renaming the agent renames its app
+and handle in Slack.
+
+```sh
+yv api '{"op":"slack.allow","user":"UOWNER"}' --wait '{"op":"slack"}'
+yv api '{"op":"agent.save","agent":{"name":"TEST-Scribe","engine":"codex","model":"fake-fast","effort":"low","color":"teal","face":"glasses"},"ref":"scribe"}' --wait '{"op":"agent.saved"}' --save scribe=agent.id
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","ref":"grant"}' --wait '{"op":"slack"}'
+yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Scribe\"] .agent-message"},{"click":"role:button:Add to Slack"},{"expect":"role:dialog:Add TEST-Scribe to Slack"},{"expect":"css:.slack-progress li","count":3},{"click":"text:Fewer tokens: a public address for Slack"},{"fill":"label:Public address","value":"https://slack.yard.test"},{"click":{"css":".slack-public button","hasText":"Save"}},{"expect":"css:.slack-public summary","text":"Slack'"'"'s events come to https://slack.yard.test"},{"expect":"css:.slack-progress li","count":2},{"shot":"public-address"},{"click":{"css":".slack-workspaces button","nth":0}},{"expect":{"css":".slack-progress li[aria-current=\"step\"]","hasText":"Approve"}},{"expect":"css:.slack-modal","text":"then TEST-Scribe is in Slack"},{"eval":"new URL(document.querySelector(\".slack-modal a.btn-primary\").href).searchParams.get(\"redirect_uri\")","equals":"https://slack.yard.test/slack/oauth"},{"shot":"approve"},{"eval":"fetch(\"/slack/oauth?code=TEST-code&state=\" + new URL(document.querySelector(\".slack-modal a.btn-primary\").href).searchParams.get(\"state\")).then((r) => r.text()).then((t) => t.includes(\"It is ready\"))","equals":true},{"expect":"role:dialog:TEST-Scribe is in Slack"},{"expect":"css:.slack-connection","text":"Slack sends its messages to https://slack.yard.test/slack/events"},{"expect":"label:App-level token","count":0},{"shot":"in-slack"}]'
+P=$(v port)
+R=$(curl -sf -XPOST "$(v slack)/_fake/event" -d "{\"url\":\"http://127.0.0.1:$P/slack/events\",\"user\":\"UOWNER\",\"channel\":\"C0GENERAL\",\"text\":\"<@UAGENT> TEST-over http\"}")
+echo "$R" | jq -e '.results | length == 2 and all(.status == 200)'
+TS=$(echo "$R" | jq -r .ts)
+for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '.reactions[$ts] == ["white_check_mark"]' > /dev/null && break; sleep 0.2; done
+curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '.posts | map(select(.thread_ts == $ts)) | length == 1 and (.[0].text | contains("TEST-over http"))'
+curl -sf -XPOST "$(v slack)/_fake/event" -d "{\"url\":\"http://127.0.0.1:$P/slack/events\",\"user\":\"UOWNER\",\"text\":\"TEST-forged\",\"sign\":\"bad\"}" | jq -e '.results | all(.status == 401)'
+for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e '.icons | any(.width == 1024 and .height == 1024 and .png)' > /dev/null && break; sleep 0.2; done
+curl -sf "$(v slack)/_fake/state" | jq -e '.icons | any(.width == 1024 and .height == 1024 and .png and .type == "image/png")'
+yv api '{"op":"agent.save","agent":{"id":"{{scribe}}","name":"TEST-Archivist"},"ref":"rename"}' --wait '{"op":"agent.saved"}'
+for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e '.updates | any(.manifest.display_information.name == "TEST-Archivist")' > /dev/null && break; sleep 0.2; done
+curl -sf "$(v slack)/_fake/state" | jq -e '.updates | map(select(.manifest.display_information.name == "TEST-Archivist")) | length >= 1 and (.[0].manifest.features.bot_user.display_name == "test-archivist") and (.[0].manifest.settings.socket_mode_enabled == false)'
+yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Archivist\"] .agent-message"},{"click":"role:button:In Slack"},{"expect":"role:dialog:TEST-Archivist is in Slack"},{"expect":"css:.slack-modal","text":"Mention @test-archivist"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"renamed"}]'
+yv api '{"op":"slack.app.remove","agentId":"{{scribe}}","ref":"rm"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.publicUrl","url":"","ref":"pub"}' --wait '{"op":"slack","slack":{"publicUrl":""}}'
+```
+
 ## Gotchas
 
 - The land gate's secret check (`verify/src/land.ts`, `SECRET_TEXT`) blocks
@@ -167,6 +207,7 @@ yv drive agents --viewport mobile --steps '[{"expect":{"css":".agent-card[aria-l
   (`xoxb-TEST-recipe-bot`); yardd and the fake only need `xoxb-` and 12
   characters.
 - Not covered here (no real Slack can be reached from tests): a real
-  workspace's events, rate limits and Slack's own manifest import, and an
-  agent app's install redirect (it needs an https page; `tests/slack.rs`
-  covers it against the fake).
+  workspace's events, rate limits and Slack's own manifest import, update
+  and icon upload. The install redirect to an https address from an http
+  window is covered by `tests/slack.rs` (YARD_ALLOW_ORIGIN) and here through
+  the public address; the browser is never sent to Slack.
