@@ -293,6 +293,14 @@ Every new session in a git repository with at least one commit gets its own bran
 - Uncommitted changes in the original checkout are not carried over.
 - Files a setup script creates count as untracked unless gitignored, so they block removal.
 
+## Comments on parts of an answer
+
+Selecting text inside one agent answer (`data-quotable`) shows **Comment** over the selection (`QuoteReply` in App.tsx). It adds a quote card above the reply box with its own comment field, which takes the caret (Enter or Escape goes back to the reply box, Cmd/Ctrl-Enter sends). Several cards are numbered; the number scrolls its part into view, and while cards wait their parts are marked in the answers with the CSS Custom Highlight API (`::highlight(yard-quoted)`, from the selection's range kept in memory; no mark where the browser lacks it or after a reload). Before this, several quotes and one message went out as quotes then text, and the agent could not tell which remark was about which part (owner report).
+
+What is sent (`withQuotes` in `compose.ts`): quotes with no comment go as before, each a Markdown blockquote, then the text. Once any card has a comment, the message starts with `Comments on parts of your answers:`, then one numbered list item per part, the blockquote and its comment indented under it (`(no comment on this part)` for one left empty; a comment starting with `>` is escaped), then the text. Plain Markdown, so every engine reads it. `splitComments` reads it back: Edit and Stop return each part to its card with its comment, the queued row counts comments, and the bubble shows each part with its comment under it.
+
+Sending from a session or agent conversation scrolls the thread to the bottom and keeps it there, so the message just sent is in view.
+
 ## Terminal output as context
 
 The Terminal tab's **Attach** menu puts terminal output in a card above the reply box: the selection, the rows on screen, or the last 100 or 500 lines (`ui/src/termRows.ts` reads xterm's buffer: wrapped rows join their line, the blank screen under the prompt is dropped). A card names the terminal and its line count, shows three monospace lines with More, and has ×; several stack next to quote cards. Sending puts each after any quotes and before the typed text as `Terminal 1, 8 lines:` and a fenced `text` block whose fence is longer than any backtick run inside (`snippetBlock` in `compose.ts`), so engines and older yardds read plain Markdown. A sent bubble shows closed fenced blocks as code (`fenceSegments`). Cut to the selection cap (20,000 characters).

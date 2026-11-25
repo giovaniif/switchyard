@@ -9,13 +9,23 @@ export interface Snippet {
   text: string;
 }
 
+/** Part of an answer replied to, and the user's comment on that part, if any. */
+export interface Quote {
+  text: string;
+  note?: string;
+  /** Where it was selected, to mark it in the answer while it waits (not sent). */
+  range?: Range;
+}
+
 /** Text goes into the box; quotes and snippets become cards above it. */
 export interface Addition {
   text?: string;
   /** Files already on the session's host, back as chips. */
   attachments?: Attachment[];
-  quotes?: string[];
+  quotes?: Quote[];
   snippets?: Snippet[];
+  /** The new quote card takes the focus, for its comment. */
+  focusQuote?: boolean;
 }
 
 type Listener = (added: Addition) => void;
@@ -47,10 +57,11 @@ export function snippetInComposer(sessionId: string, label: string, text: string
   if (body.trim()) add(sessionId, { snippets: [{ label, text: body }] });
 }
 
-/** Part of an agent's answer, as a quote card for a reply. */
-export function quoteInComposer(sessionId: string, selection: string) {
+/** Part of an agent's answer, as a quote card for a reply, its comment
+ *  field focused. `range` is the selection, marked in the answer meanwhile. */
+export function quoteInComposer(sessionId: string, selection: string, range?: Range) {
   const quote = cleanQuote(selection);
-  if (quote) add(sessionId, { quotes: [quote] });
+  if (quote) add(sessionId, { quotes: [{ text: quote, range }], focusQuote: true });
 }
 
 /** A message yardd gave back (Edit, Stop): its leading quotes go back to
@@ -81,11 +92,73 @@ function blockquote(quote: string): string {
     .join("\n");
 }
 
-/** What a reply sends: each quote as a Markdown blockquote, then the text,
- *  a blank line apart. Plain Markdown, so engines and older yardds read it
- *  as they always have. */
-export function withQuotes(quotes: string[], text: string, snippets: Snippet[] = []): string {
-  return [...quotes.map(blockquote), ...snippets.map(snippetBlock), ...(text ? [text] : [])].join("\n\n");
+/** Heads a reply whose quotes carry comments: each passage and its comment
+ *  are one numbered item, so the agent can tell which comment is about
+ *  which part (several quotes and one message ran together before). */
+export const COMMENTS_HEADER = "Comments on parts of your answers:";
+const INDENT = "   ";
+
+/** One numbered comment: `1. > passage`, the passage's other lines and the
+ *  comment indented under it (a Markdown list item holding a blockquote). */
+function commentItem(q: Quote, n: number): string {
+  const quote = blockquote(q.text).split("\n");
+  // A comment that starts with `>` would read as more of the quote: escaped.
+  const note = (q.note ?? "").trim().replace(/^>/, "\\>");
+  const lines = [`${n}. ${quote[0]}`, ...quote.slice(1).map((l) => INDENT + l), ...(note ? note.split("\n").map((l) => (l ? INDENT + l : "")) : [`${INDENT}(no comment on this part)`])];
+  return lines.join("\n");
+}
+
+/** What a reply sends. Quotes without comments: each as a blockquote, then
+ *  the text, as before. Once any quote has a comment: the header, then one
+ *  numbered item per quote with its comment under it, then the text. Plain
+ *  Markdown either way, so every engine reads it. */
+export function withQuotes(quotes: (string | Quote)[], text: string, snippets: Snippet[] = []): string {
+  const list = quotes.map((q) => (typeof q === "string" ? { text: q } : q));
+  const commented = list.some((q) => q.note?.trim());
+  const head = commented ? [`${COMMENTS_HEADER}\n\n${list.map((q, i) => commentItem(q, i + 1)).join("\n\n")}`] : list.map((q) => blockquote(q.text));
+  return [...head, ...snippets.map(snippetBlock), ...(text ? [text] : [])].join("\n\n");
+}
+
+/** The inverse of the commented form: its items and the rest, or null when
+ *  the message does not start with the header. */
+export function splitComments(message: string): { quotes: Quote[]; text: string } | null {
+  const lines = message.split("\n");
+  if (lines[0] !== COMMENTS_HEADER) return null;
+  const quotes: Quote[] = [];
+  let i = 1;
+  const skipBlank = () => {
+    while (i < lines.length && lines[i] === "") i++;
+  };
+  skipBlank();
+  for (;;) {
+    const m = /^\d+\. >(?: (.*))?$/.exec(lines[i] ?? "");
+    if (!m) break;
+    const quote = [m[1] ?? ""];
+    const note: string[] = [];
+    i++;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (line === "") {
+        // A blank line stays inside the item when more of it follows.
+        let j = i;
+        while (j < lines.length && lines[j] === "") j++;
+        if (j >= lines.length || !lines[j].startsWith(INDENT)) break;
+        (note.length ? note : quote).push(...lines.slice(i, j).map(() => ""));
+        i = j;
+        continue;
+      }
+      if (!line.startsWith(INDENT)) break;
+      const body = line.slice(INDENT.length);
+      if (!note.length && QUOTE_LINE.test(body)) quote.push(unquote(body));
+      else note.push(body);
+      i++;
+    }
+    const comment = note.join("\n").trim().replace(/^\\>/, ">");
+    quotes.push({ text: quote.join("\n"), ...(comment && comment !== "(no comment on this part)" ? { note: comment } : {}) });
+    skipBlank();
+  }
+  if (!quotes.length) return null;
+  return { quotes, text: lines.slice(i).join("\n") };
 }
 
 export const lineCount = (text: string) => text.split("\n").length;
@@ -102,19 +175,21 @@ export function snippetBlock(s: Snippet): string {
 const QUOTE_LINE = /^>/;
 const unquote = (line: string) => line.replace(/^> ?/, "");
 
-/** The inverse of `withQuotes`: the blockquotes a message starts with, and
- *  the rest. A quote must end at a blank line; one that runs straight into
- *  text is left as text. */
-export function splitQuotes(message: string): { quotes: string[]; text: string } {
+/** The inverse of `withQuotes`: the quotes a message starts with (with
+ *  their comments, in the commented form), and the rest. A plain quote must
+ *  end at a blank line; one that runs straight into text is left as text. */
+export function splitQuotes(message: string): { quotes: Quote[]; text: string } {
+  const commented = splitComments(message);
+  if (commented) return commented;
   const lines = message.split("\n");
-  const quotes: string[] = [];
+  const quotes: Quote[] = [];
   let i = 0;
   while (i < lines.length && QUOTE_LINE.test(lines[i])) {
     let j = i;
     while (j < lines.length && QUOTE_LINE.test(lines[j])) j++;
     if (j < lines.length && lines[j] !== "") break;
     const quote = lines.slice(i, j).map(unquote).join("\n");
-    if (quote.trim()) quotes.push(quote);
+    if (quote.trim()) quotes.push({ text: quote });
     i = j + 1;
   }
   if (quotes.length === 0) return { quotes: [], text: message };
