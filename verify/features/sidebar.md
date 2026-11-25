@@ -268,6 +268,22 @@ yv api '{"op":"session.update","sessionId":"{{sid_echo}}","group":null}'
 yv state --expect '{"sessions":[{"id":"{{sid_echo}}","group":null}]}'
 ```
 
+### collapsed-group-shows-a-waiting-approval
+Viewports: both
+A collapsed group hides its rows, so a session in it that waits for approval
+would leave no sign in the sidebar. The group's header carries the amber dot
+the Automations row uses for hidden runs ("A session needs approval"), only
+while the group is collapsed: open, the row's own mark says it.
+
+```sh
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","group":"TEST-waiting"}' --wait '{"op":"session","session":{"id":"{{sid_cmd}}","group":"TEST-waiting"}}'
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","status":"needs_approval","group":"TEST-waiting"}]}'
+yv drive new --viewport desktop --steps '[{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"}},{"expect":"role:img:A session needs approval","visible":false},{"click":{"css":".group-toggle","hasText":"TEST-waiting"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"},"visible":false},{"expect":{"css":".group-head","hasText":"TEST-waiting"},"text":"1"},{"expect":"role:img:A session needs approval"},{"shot":"collapsed-group-approval"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":{"css":".group-toggle","hasText":"TEST-waiting"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"},"visible":false},{"expect":"role:img:A session needs approval"},{"shot":"collapsed-group-approval"}]'
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","group":null}'
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","group":null}]}'
+```
+
 ### archived-header-stays-at-bottom
 With many sessions the list scrolls, but the Archived header stays at the bottom of the session list, just above the sidebar's footer (usage meters, host rows), and opening it expands upward with its own scroll.
 
