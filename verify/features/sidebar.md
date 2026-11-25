@@ -254,6 +254,20 @@ yv drive new --viewport desktop --steps '[{"click":"role:button:Actions for grou
 yv state --expect '{"sessions":[{"id":"{{sid_echo}}","group":null}]}'
 ```
 
+### group-count-clear-of-the-menu-button
+Viewports: both
+A group whose name is cut off still shows its session count. The header's ···
+button (always shown on touch, on hover or focus on desktop) sits after the
+count, not on top of it, the way session rows make room for theirs.
+
+```sh
+yv api '{"op":"session.update","sessionId":"{{sid_echo}}","group":"TEST-a group name long enough to be cut off"}' --wait '{"op":"session","session":{"id":"{{sid_echo}}","group":"TEST-a group name long enough to be cut off"}}'
+yv drive new --viewport desktop --steps '[{"hover":"css:.group-head"},{"wait":300},{"eval":"(() => { const h = document.querySelector(\".group-head\"); const c = h.querySelector(\".group-toggle > .muted\").getBoundingClientRect(); const m = h.querySelector(\".row-more\"); return getComputedStyle(m).opacity === \"1\" && c.width > 0 && c.right <= m.getBoundingClientRect().left; })()","equals":true},{"shot":"group-count-hover"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"wait":300},{"eval":"(() => { const h = document.querySelector(\".group-head\"); const c = h.querySelector(\".group-toggle > .muted\").getBoundingClientRect(); const m = h.querySelector(\".row-more\"); return getComputedStyle(m).opacity === \"1\" && c.width > 0 && c.right <= m.getBoundingClientRect().left; })()","equals":true},{"shot":"group-count-touch"}]'
+yv api '{"op":"session.update","sessionId":"{{sid_echo}}","group":null}'
+yv state --expect '{"sessions":[{"id":"{{sid_echo}}","group":null}]}'
+```
+
 ### archived-header-stays-at-bottom
 With many sessions the list scrolls, but the Archived header stays at the bottom of the session list, just above the sidebar's footer (usage meters, host rows), and opening it expands upward with its own scroll.
 
