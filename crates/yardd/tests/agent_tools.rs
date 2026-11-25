@@ -154,14 +154,14 @@ async fn a_message_to_another_agent_comes_back_as_its_answer() {
     let bea_chat = chat_of(&mut c, &bea).await;
     let got = from_kind(&mut c, &bea_chat, "agent").await;
     assert_eq!(got["text"], "what is 2+2?");
-    assert_eq!(got["origin"], json!({ "kind": "agent", "agentId": ada, "name": "Ada", "hops": 1 }));
+    assert_eq!(got["origin"], json!({ "kind": "agent", "agentId": ada, "name": "Ada", "handle": "Ada", "hops": 1 }));
     c.wait_turn_done(&bea_chat, 0).await;
     let inputs: Vec<String> = sb.turn_inputs().iter().map(|i| i[0]["text"].as_str().unwrap_or("").to_string()).collect();
     assert!(inputs.iter().any(|t| t.contains("<message from=\"@Ada\">\nwhat is 2+2?\n</message>")), "{inputs:?}");
 
     // Her answer comes back into Ada's conversation as a new message, which starts Ada's turn.
     let back = from_kind(&mut c, &ada_chat, "agentReply").await;
-    assert_eq!(back["origin"], json!({ "kind": "agentReply", "agentId": bea, "name": "Bea", "hops": 1 }));
+    assert_eq!(back["origin"], json!({ "kind": "agentReply", "agentId": bea, "name": "Bea", "handle": "Bea", "hops": 1 }));
     assert!(back["text"].as_str().unwrap().starts_with("Echo: <message from=\"@Ada\">"), "{back}");
     c.wait_turn_done(&ada_chat, back["seq"].as_u64().unwrap()).await;
     let inputs: Vec<String> = sb.turn_inputs().iter().map(|i| i[0]["text"].as_str().unwrap_or("").to_string()).collect();
@@ -179,6 +179,45 @@ async fn a_message_to_another_agent_comes_back_as_its_answer() {
     assert_eq!(history[0]["origin"]["kind"], "agent");
     let history = c.history(&ada_chat).await;
     assert!(history.iter().any(|e| e["origin"]["kind"] == "agentReply" && e["origin"]["name"] == "Bea"));
+}
+
+#[tokio::test]
+async fn an_agent_with_a_spaced_name_is_messaged_by_its_handle_or_its_name() {
+    let sb = Sandbox::new("tools-handles");
+    let daemon = sb.start();
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    let ada = codex_agent(&mut c, "Ada").await;
+    let triage = codex_agent(&mut c, "Custom Domains Triage").await;
+    let text = [
+        marker("list_agents", json!({})),
+        marker("message_agent", json!({ "to": "@custom-domains-triage", "text": "TEST-by handle" })),
+        marker("message_agent", json!({ "to": "Custom Domains Triage", "text": "TEST-by name" })),
+        marker("message_agent", json!({ "to": "Custom", "text": "TEST-nobody" })),
+    ]
+    .join(" ");
+    let ada_chat = ask(&mut c, &ada, &text).await;
+    c.wait_turn_done(&ada_chat, 0).await;
+    let listed = &results(&sb, "list_agents")[0];
+    assert_eq!(listed["text"], "@Custom-Domains-Triage (Custom Domains Triage)", "{listed}");
+    let sent = results(&sb, "message_agent");
+    assert!(sent[0]["text"].as_str().unwrap().starts_with("Sent to @Custom-Domains-Triage (hop 1 of 3)."), "{}", sent[0]);
+    assert!(sent[1]["text"].as_str().unwrap().starts_with("Sent to @Custom-Domains-Triage"), "{}", sent[1]);
+    assert_eq!(sent[2]["isError"], true);
+    assert!(sent[2]["text"].as_str().unwrap().contains("Agents: @Custom-Domains-Triage (Custom Domains Triage)."), "{}", sent[2]);
+    let described = calls(&sb).into_iter().find(|r| r["listed"].is_array()).unwrap();
+    assert!(described["messageAgent"].as_str().unwrap().contains("Agents: @Custom-Domains-Triage (Custom Domains Triage)."), "{described}");
+
+    // Both land in its one conversation; its engine reads the sender by handle and its own name as it reads.
+    let chat = chat_of(&mut c, &triage).await;
+    let got = from_kind(&mut c, &chat, "agent").await;
+    assert_eq!(got["origin"]["handle"], "Ada");
+    c.wait_turn_done(&chat, 0).await;
+    let inputs: Vec<String> = sb.turn_inputs().iter().map(|i| i[0]["text"].as_str().unwrap_or("").to_string()).collect();
+    assert!(inputs.iter().any(|t| t.starts_with("You are Custom Domains Triage (@Custom-Domains-Triage),")), "{inputs:?}");
+    // Its answer goes back to Ada badged with its handle and name.
+    let back = from_kind(&mut c, &ada_chat, "agentReply").await;
+    assert_eq!((back["origin"]["name"].as_str(), back["origin"]["handle"].as_str()), (Some("Custom Domains Triage"), Some("Custom-Domains-Triage")));
 }
 
 #[tokio::test]
@@ -443,9 +482,9 @@ async fn a_remote_agents_tools_act_on_the_hub() {
     assert!(!bea_chat.contains('~'));
     let got = from_kind(&mut c, &bea_chat, "agent").await;
     assert_eq!(got["text"], "TEST-what is 2+2?");
-    assert_eq!(got["origin"], json!({ "kind": "agent", "agentId": far, "name": "Far", "hops": 1 }));
+    assert_eq!(got["origin"], json!({ "kind": "agent", "agentId": far, "name": "Far", "handle": "Far", "hops": 1 }));
     let back = from_kind(&mut c, &far_chat, "agentReply").await;
-    assert_eq!(back["origin"], json!({ "kind": "agentReply", "agentId": bea, "name": "Bea", "hops": 1 }));
+    assert_eq!(back["origin"], json!({ "kind": "agentReply", "agentId": bea, "name": "Bea", "handle": "Bea", "hops": 1 }));
     assert!(back["text"].as_str().unwrap().starts_with("Echo: <message from=\"@Far\">"), "{back}");
     c.wait_turn_done(&far_chat, back["seq"].as_u64().unwrap()).await;
     assert!(remote_sb.turn_inputs().iter().any(|i| i[0]["text"].as_str().unwrap_or("").starts_with("<reply from=\"@Bea\">")));
@@ -465,7 +504,7 @@ async fn a_remote_agents_tools_act_on_the_hub() {
     ask(&mut c, &bea, &marker("message_agent", json!({ "to": "far", "text": "TEST-ping far" }))).await;
     c.wait_turn_done(&bea_chat, seq).await;
     let got = c.wait_for("Bea's message at Far", |m| is_event(m, &far_chat) && m["event"]["origin"]["kind"] == "agent").await;
-    assert_eq!(got["event"]["origin"], json!({ "kind": "agent", "agentId": bea, "name": "Bea", "hops": 1 }));
+    assert_eq!(got["event"]["origin"], json!({ "kind": "agent", "agentId": bea, "name": "Bea", "handle": "Bea", "hops": 1 }));
     let answer = c
         .wait_for("Far's answer at Bea", |m| is_event(m, &bea_chat) && m["event"]["origin"]["kind"] == "agentReply" && m["event"]["origin"]["agentId"] == far.as_str())
         .await;
@@ -611,13 +650,22 @@ async fn a_new_agent_sets_itself_up_with_its_tool() {
     assert_eq!(thread_starts(&sb).last().unwrap()["model"], "fake-deep");
     let notes: Vec<String> = c.history(&sid).await.into_iter().filter(|e| e["type"] == "note").map(|e| e["text"].as_str().unwrap().to_string()).collect();
     assert!(notes.iter().any(|n| n.starts_with("Started a fresh context: its model changed.")), "{notes:?}");
+    // A name of a few words is a name like any other; its handle is made from it.
+    let seq = c.next_seq(&sid);
+    ask(&mut c, &id, &format!("TEST-rename {}", marker("update_setup", json!({ "name": "Deploy  Watcher" })))).await;
+    c.wait_turn_done(&sid, seq).await;
+    let renamed = results(&sb, "update_setup").pop().unwrap();
+    assert_eq!(renamed["isError"], false, "{renamed}");
+    assert!(renamed["text"].as_str().unwrap().starts_with("Saved. Deploy Watcher changed its name."), "{renamed}");
+    let m = c.wait_for("the new name", |m| m["op"] == "agents" && agent_in(m, &id)["name"] == "Deploy Watcher").await;
+    assert_eq!(agent_in(&m, &id)["handle"], "Deploy-Watcher");
     // A bad name is refused with the reason, in the tool's answer.
     let seq = c.next_seq(&sid);
-    ask(&mut c, &id, &format!("TEST-rename {}", marker("update_setup", json!({ "name": "two words" })))).await;
+    ask(&mut c, &id, &format!("TEST-rename {}", marker("update_setup", json!({ "name": "x".repeat(41) })))).await;
     c.wait_turn_done(&sid, seq).await;
     let refused = results(&sb, "update_setup").pop().unwrap();
     assert_eq!(refused["isError"], true);
-    assert!(refused["text"].as_str().unwrap().contains("A name is one word"), "{refused}");
+    assert!(refused["text"].as_str().unwrap().contains("A name is at most 40 characters"), "{refused}");
     // A new agent after this one is a new one again.
     let other = new_agent(&mut c).await;
     assert_ne!(other["id"], id.as_str());
