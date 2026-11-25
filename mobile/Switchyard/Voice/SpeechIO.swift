@@ -75,7 +75,7 @@ final class SpeechIO: NSObject, AVSpeechSynthesizerDelegate {
     private func startEngine() throws {
         guard !engineOn else { return }
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
         try session.setActive(true)
         // Echo cancellation; the simulator and some routes refuse it, and then
         // the echo check on the transcript is what is left.

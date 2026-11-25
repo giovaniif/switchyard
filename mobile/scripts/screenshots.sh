@@ -10,9 +10,12 @@ xcrun simctl status_bar "$udid" override --time 9:41 --batteryState charged --ba
 shoot() {
   local name=$1 screen=$2
   xcrun simctl launch --terminate-running-process "$udid" "$bundle" -demo -screen "$screen" >/dev/null
-  sleep "${3:-4}"
+  sleep "${3:-7}"
   xcrun simctl io "$udid" screenshot --type=png "$out/$name.png" >/dev/null
 }
+# A first launch is slow (dyld, Speech, the simulator warming up): not one to keep.
+xcrun simctl launch --terminate-running-process "$udid" "$bundle" -demo -screen sessions >/dev/null
+sleep 10
 for appearance in light dark; do
   xcrun simctl ui "$udid" appearance "$appearance"
   shoot "$appearance-sessions" sessions

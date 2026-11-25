@@ -110,9 +110,10 @@ final class WebSocketTransport: NSObject, YardTransport, URLSessionWebSocketDele
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(20))
                     guard let self, self.generation == gen, let task = self.task else { return }
-                    task.sendPing { error in
+                    task.sendPing { [weak self] error in
                         guard let error else { return }
-                        Task { @MainActor [weak self] in self?.closed(Self.describe(error), gen) }
+                        let reason = WebSocketTransport.describe(error)
+                        Task { @MainActor in self?.closed(reason, gen) }
                     }
                 }
             }

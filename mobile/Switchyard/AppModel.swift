@@ -115,7 +115,9 @@ final class AppModel {
         yard.start()
         guard let screen else { return }
         if screen.hasPrefix("session:") || screen.hasPrefix("voice:") {
-            selected = String(screen.split(separator: ":", maxSplits: 1)[1])
+            // Open it once the list knows it: a session picked before then is not shown.
+            let id = String(screen.split(separator: ":", maxSplits: 1)[1])
+            yard.onConnected = { [weak self] in self?.selected = id }
         }
         if screen == "new" { showNew = true }
         if screen == "settings" { showSettings = true }
