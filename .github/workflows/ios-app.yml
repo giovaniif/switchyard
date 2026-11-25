@@ -31,8 +31,21 @@ jobs:
       - name: Build and test on iPhone simulator
         working-directory: mobile
         run: |
-          device=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for values in d["devices"].values() for v in values if v["name"].startswith("iPhone")))')
+          # The newest iPhone with a Dynamic Island: screenshots look like a current phone.
+          device=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); phones=[v for k,values in d["devices"].items() if "iOS" in k for v in values if v["name"].startswith("iPhone")]; pro=[v for v in phones if "Pro" in v["name"] and "Max" not in v["name"]]; print((pro or phones)[-1]["udid"])')
+          echo "SIM_DEVICE=$device" >> "$GITHUB_ENV"
           xcodebuild test -project Switchyard.xcodeproj -scheme Switchyard -destination "platform=iOS Simulator,id=$device" -derivedDataPath build -resultBundlePath build/Tests.xcresult -jobs 2 CODE_SIGNING_ALLOWED=NO
+      - name: Screenshots of the demo
+        if: success()
+        working-directory: mobile
+        run: bash scripts/screenshots.sh "$SIM_DEVICE" build/Build/Products/Debug-iphonesimulator/Switchyard.app build/screenshots
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: Switchyard-iOS-screenshots
+          path: mobile/build/screenshots
+          if-no-files-found: ignore
+          retention-days: 14
       - uses: actions/upload-artifact@v6
         if: always()
         with:
