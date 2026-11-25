@@ -195,7 +195,15 @@ struct Channel {
 struct Link {
     key: String,
     agent: String,
+    /// The thread's latest routed message.
     at: u64,
+    /// It came through the agent's own app, not the shared bot (unknown,
+    /// and so false, for threads routed before this was kept).
+    #[serde(default)]
+    app: bool,
+    /// Where it is, as people read it: `#ops` or `Direct message`.
+    #[serde(default)]
+    place: String,
 }
 
 /// The connection as the Connectors page shows it.
@@ -1728,7 +1736,7 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
     }
     slack.change(|c| {
         c.threads.retain(|l| l.key != key);
-        c.threads.push(Link { key: key.clone(), agent: agent.clone(), at: now_ms() });
+        c.threads.push(Link { key: key.clone(), agent: agent.clone(), at: now_ms(), app: me.agent.is_some(), place: place.clone() });
         if c.threads.len() > MAX_THREADS {
             c.threads.remove(0);
         }
@@ -1839,6 +1847,89 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
             slack.react(&token, channel, ts, mark, true).await;
         }
     }
+}
+
+/// A Slack thread an agent may post in on its own (`slack_reply`), with the
+/// bot token of the agent's app.
+pub struct Thread {
+    channel: String,
+    ts: String,
+    place: String,
+    handle: String,
+    token: String,
+}
+
+/// The thread an agent's `slack_reply` posts in, as its own app. Only a
+/// thread routed to that agent, in its app's workspace, and not a direct
+/// message with the shared bot (another bot's DM, where its app cannot
+/// post): the agent writes only where someone asked it something, never in
+/// a channel or thread it picks. `channel` (an id or `#name`) and `thread`
+/// (a `thread_ts`) narrow the choice; with neither, the thread it heard from
+/// last.
+pub fn thread_for(slack: &Slack, agent: &str, channel: &str, thread: &str) -> Result<Thread> {
+    let Some(rec) = slack.app_of(agent) else {
+        bail!("Not posted: you have no Slack app of your own. The user can give you one (update_setup with connect: slack), then you post as it.");
+    };
+    if rec.bot_token.is_empty() {
+        bail!("Not posted: your Slack app is not installed in Slack yet. The user finishes that from your Slack setup in Switchyard.");
+    }
+    let cfg = slack.cfg.lock().unwrap();
+    let mut mine: Vec<(&Link, &str, &str)> = cfg
+        .threads
+        .iter()
+        .filter(|l| l.agent == agent)
+        .filter_map(|l| {
+            let mut parts = l.key.splitn(3, '/');
+            let (team, channel, ts) = (parts.next()?, parts.next()?, parts.next()?);
+            let reachable = (rec.team_id.is_empty() || team == rec.team_id) && (l.app || !channel.starts_with('D'));
+            reachable.then_some((l, channel, ts))
+        })
+        .collect();
+    mine.sort_by_key(|(l, ..)| std::cmp::Reverse(l.at));
+    let want_channel = channel.trim().trim_start_matches('#');
+    let want_thread = thread.trim();
+    let fits = |(l, c, ts): &&(&Link, &str, &str)| {
+        (want_channel.is_empty() || c.eq_ignore_ascii_case(want_channel) || l.place.trim_start_matches('#').eq_ignore_ascii_case(want_channel))
+            && (want_thread.is_empty() || *ts == want_thread)
+    };
+    let Some((l, c, ts)) = mine.iter().find(fits) else {
+        if mine.is_empty() {
+            bail!("Not posted: nobody has asked you anything in Slack through your app yet, so there is no thread you may post in. You can post only in a Slack thread that was routed to you.");
+        }
+        let yours = mine
+            .iter()
+            .take(5)
+            .map(|(l, c, ts)| format!("{} (channel {c}, thread_ts {ts}, last message {})", if l.place.is_empty() { *c } else { l.place.as_str() }, crate::agent_tools::at_clock(l.at)))
+            .collect::<Vec<_>>()
+            .join("; ");
+        bail!("Not posted: that is not a Slack thread you were asked in, and you can post only in those. Yours, newest first: {yours}.");
+    };
+    Ok(Thread {
+        channel: c.to_string(),
+        ts: ts.to_string(),
+        place: if l.place.is_empty() { c.to_string() } else { l.place.clone() },
+        handle: rec.handle.clone(),
+        token: rec.bot_token.clone(),
+    })
+}
+
+/// Posts an agent's own message in a thread from `thread_for`, as an answer
+/// is: mrkdwn, split, after any answer being posted.
+pub async fn post_in(app: &Arc<App>, t: &Thread, text: &str) -> Result<String> {
+    let slack = &app.slack;
+    let _order = slack.posting.lock().await;
+    let parts = split(&to_mrkdwn(text), PART);
+    for (i, part) in parts.iter().enumerate() {
+        if let Err(e) = slack.post(&t.token, &t.channel, &t.ts, part).await {
+            let why = format!("{e:#}");
+            let done = if i == 0 { "Not posted".to_string() } else { format!("Posted {i} of {} parts, then stopped", parts.len()) };
+            if why.contains("not_in_channel") || why.contains("channel_not_found") {
+                bail!("{done}: your Slack app (@{}) is not in {} ({why}). Someone there can add it to the channel.", t.handle, t.place);
+            }
+            bail!("{done}: Slack refused it ({why}).");
+        }
+    }
+    Ok(format!("Posted in the Slack thread in {} as @{}.", t.place, t.handle))
 }
 
 fn clip_line(text: &str, max: usize) -> String {

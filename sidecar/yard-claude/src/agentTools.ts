@@ -32,6 +32,8 @@ export function ownToolLabel(name: string, input: any): { title: string; detail:
       return { title: "Updated memory", detail: s(input?.text) };
     case "update_setup":
       return { title: "Updated its setup", detail: Object.keys(input ?? {}).join(", ") };
+    case "slack_reply":
+      return { title: "Posted in Slack", detail: s(input?.text) };
     default:
       return null;
   }

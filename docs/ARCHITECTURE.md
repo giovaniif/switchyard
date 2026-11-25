@@ -773,13 +773,14 @@ the composer and session view in `App.tsx`.
   `approval` status at the turn's first `approval_request`
   (`origins::wants_approval_note`); an `agent` origin ignores it and waits
   for the answer.
-- **Agents' own tools** (`agent_tools.rs`). Every user-made agent gets five
+- **Agents' own tools** (`agent_tools.rs`). Every user-made agent gets seven
   tools in its conversation on every engine: `notify_owner { message }`,
   `message_agent { to, text }`, `list_agents`, `remember { text }` (adds a
   line), `set_memory { text }` (replaces it) and `update_setup { name?,
   about?, instructions?, memory?, face?, color?, engine?, model?, effort?,
   cwd?, permission?, connect? }` (see Set up by talking to it; "Updated its
-  setup"; `name` is a display name too). `message_agent`'s `to` is the
+  setup"; `name` is a display name too) and `slack_reply { text, channel?,
+  thread_ts? }` (see Post in Slack on its own). `message_agent`'s `to` is the
   other's handle, or its name as it reads; `list_agents` and the tool's
   description list `@handle (Name): what it is for`. Private threads and the
   owner's own sessions never get them.
@@ -806,7 +807,7 @@ the composer and session view in `App.tsx`.
     on the agent's own conversation and are capped. Each engine shows a call
     as a normal step, labelled by `agent_tools::label` (and its twin in the
     sidecar's `agentTools.ts`): "Asked for you", "Messaged @Reviewer",
-    "Remembered", "Updated memory", "Listed agents".
+    "Remembered", "Updated memory", "Listed agents", "Posted in Slack".
   - **Needs you.** `notify_owner` broadcasts the `notify` op (as `yv notify`
     does) titled "<Name> needs you", with the message and the conversation's
     id, so a click opens the conversation; and sets `Meta.needsYou { message,
@@ -823,6 +824,29 @@ the composer and session view in `App.tsx`.
     more than the longest chain among the messages the sender's turn answers;
     a 4th hop, a message to oneself or an unknown name is refused in the tool
     result. At most 30 messages per agent per hour.
+  - **Post in Slack on its own.** An answer reaches Slack only as the final
+    answer to a Slack message, so an agent told "tell us here when it's
+    deployed" had no way to post later. `slack_reply` posts `text` (Markdown,
+    turned into mrkdwn and split like an answer, at most 20,000 bytes) in a
+    Slack thread with the bot token of the agent's own app
+    (`slack::thread_for`, `slack::post_in`), at any time: from a turn the
+    owner started in Switchyard, or long after the Slack message. Safety:
+    only threads routed to that agent (the `team/channel/thread_ts` links
+    Slack routing keeps, the newest 1,000), in its app's workspace, and not a
+    direct message with the shared bot (another bot's DM, where its app
+    cannot post). Any other channel or thread is refused, and the refusal
+    lists the agent's threads (place, channel id, `thread_ts`, last message)
+    so the model can pick one. With no `channel` (an id or `#name`) and no
+    `thread_ts`, the thread it last heard from; `channel` alone picks its
+    newest thread there. An agent without an app, or with one not installed
+    yet, is refused and told how to get one. A thread routed through the
+    shared bot in a channel is allowed, and if the agent's app is not in
+    that channel Slack's `not_in_channel` is said plainly. Links keep `app`
+    (it came through the agent's own app) and `place` (`#ops`) for this;
+    links from before they were kept count as the shared bot's. Posts wait
+    for an answer being posted (`posting`), so a thread reads in order. At
+    most 20 per agent per hour. On a remote host it runs on the hub, where
+    Slack is.
   - **Memory.** `remember` and `set_memory` change `memory` (the 20,000
     character cap, refused past it) and broadcast `agents`. The engine knows
     already, so it is not a notes change. An open form follows the new memory
@@ -919,7 +943,7 @@ the composer and session view in `App.tsx`.
   the answers back, `notify_owner` on the hub's windows and its mark
   cleared by `agent.seen`), and a hosted copy without a hub (no tools) or
   with its hub away (the call says so), then answered only on the hub's
-  own connection. The `agents` map drives the badges, the Needs-you card and row, and
+  own connection, and `slack_reply` (in `tests/slack.rs`). The `agents` map drives the badges, the Needs-you card and row, and
   memory in the form at both viewports, and a remote agent's tools. Checked against the real CLIs
   without a turn: Codex 0.171 takes the `mcp_servers.switchyard` override,
   starts the server and runs `mcpServer/tool/call` through it; the real
@@ -1104,7 +1128,8 @@ its engine framing and one arm in `origins::reply`.
   - **Messages.** Everything it hears goes to its agent, never routed by
     name or default; the allowlist, origins (with `app`: its agent),
     reactions and answers are the shared bot's, and the answer is posted
-    with its own bot token.
+    with its own bot token. Its agent can also post on its own, at any time,
+    in a thread routed to it (`slack_reply`, see Agents' own tools).
   - **Remove** (`slack.app.remove`, or deleting the agent) closes the
     connection and deletes the app (`apps.manifest.delete`, best effort) and
     its icon.
@@ -1130,7 +1155,12 @@ its engine framing and one arm in `origins::reply`.
   following its agent (`apps.manifest.update` on a rename with the new
   handle, the icon sent once per key and refused when not a 512-2000 px PNG,
   a lapsed configuration token shown and caught up by a new one, an old app
-  updated at start, the public address set from the page). The fake knows
+  updated at start, the public address set from the page), and `slack_reply`
+  (refused without an app and with no thread yet; the newest thread by
+  default and one named by `#name` and `thread_ts`, posted by the agent's
+  own bot; another agent's thread, a channel it was not asked in and a
+  made-up `thread_ts` refused with its threads listed; an agent without an
+  app refused in its own thread). The fake knows
   `tooling.tokens.rotate`, `apps.manifest.create`/`update`/`delete`,
   `apps.icon.set` (multipart), `oauth.v2.access`, a second bot @agent, signed
   HTTP events (`/_fake/event`, `/_fake/challenge`) and a lapsed token

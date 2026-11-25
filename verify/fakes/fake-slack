@@ -14,6 +14,7 @@
 // apps.connections.open, chat.postMessage, chat.postEphemeral, reactions.add,
 // reactions.remove, users.info, conversations.info. Every call is recorded
 // with its token's kind (bot, app), never the token.
+// Each post also records which bot made it (`app`: agent or shared).
 //
 // Socket Mode (/socket): sends hello on connect, records every ack.
 //
@@ -158,7 +159,8 @@ function api(method, p, auth, port) {
       if (!p.channel) return { ok: false, error: "channel_not_found" };
       if (!p.text) return { ok: false, error: "no_text" };
       const ts = nextTs();
-      state.posts.push({ channel: p.channel, thread_ts: p.thread_ts ?? null, text: p.text, ts });
+      // Which bot posted: an agent's own (@agent) or the shared one.
+      state.posts.push({ channel: p.channel, thread_ts: p.thread_ts ?? null, text: p.text, ts, app: token.includes("agent") ? "agent" : "shared" });
       return { ok: true, channel: p.channel, ts, message: { text: p.text, ts } };
     }
     case "chat.postEphemeral":
