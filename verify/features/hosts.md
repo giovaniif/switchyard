@@ -149,6 +149,21 @@ yv drive hosts --viewport mobile --steps '[{"click":"role:button:Add host"},{"fi
 yv drive hosts --viewport desktop --steps '[{"click":"role:button:Add host"},{"fill":"label:SSH destination","value":"test@100.64.0.7"},{"click":"role:button:Add 100.64.0.7"},{"expect":"role:button:Select 100.64.0.7"},{"click":"role:button:Add host"},{"fill":"label:SSH destination","value":"test@100.64.0.8"},{"click":"role:button:Add 100.64.0.8"},{"expect":"role:button:Select 100.64.0.8"},{"expect":{"css":".host-row","hasText":"100.64.0.8"}},{"expect":"css:.banner-error","count":0},{"shot":"two-ip-hosts"}]'
 ```
 
+### long-name-fits-the-add-button
+Viewports: both
+A long host name keeps the Add button on one line inside the card, with
+Cancel beside it: on a phone the label ends in an ellipsis, and the button's
+accessible name stays whole. A Tailscale IPv6 destination names the host by
+the whole 39-character address; at 390 px that label wrapped inside the 32 px
+button, its second line cut off, and Cancel and Options dropped to their own
+line. A custom name at the 40-character limit (Options → Name) with no spaces
+ran past the card. On desktop the label still shows the whole name.
+
+```sh
+yv drive hosts --viewport mobile --steps '[{"click":"role:button:Add host"},{"fill":"label:SSH destination","value":"test@fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"},{"expect":"role:button:Add fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"},{"eval":"(() => { const card = document.querySelector(\".add-host\").getBoundingClientRect(); const b = document.querySelector(\".add-host .btn-primary\"); const r = b.getBoundingClientRect(); const cancel = [...document.querySelectorAll(\".add-host button\")].find(x => x.textContent.trim() === \"Cancel\").getBoundingClientRect(); return b.scrollHeight <= b.clientHeight + 1 && r.right <= card.right && cancel.right <= card.right && Math.abs(cancel.top - r.top) < 1 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()","equals":true},{"shot":"ipv6-label"},{"click":"role:button:Options"},{"fill":"css:#host-name","value":"TEST-a-long-host-name-without-any-spaces"},{"eval":"(() => { const card = document.querySelector(\".add-host\").getBoundingClientRect(); const b = document.querySelector(\".add-host .btn-primary\"); const r = b.getBoundingClientRect(); const cancel = [...document.querySelectorAll(\".add-host button\")].find(x => x.textContent.trim() === \"Cancel\").getBoundingClientRect(); return b.scrollHeight <= b.clientHeight + 1 && r.right <= card.right && cancel.right <= card.right && Math.abs(cancel.top - r.top) < 1 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()","equals":true},{"shot":"long-name-label"},{"click":"role:button:Add TEST-a-long-host-name-without-any-spaces"},{"expect":"role:button:Select TEST-a-long-host-name-without-any-spaces"}]'
+yv drive hosts --viewport desktop --steps '[{"click":"role:button:Add host"},{"fill":"label:SSH destination","value":"test@fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"},{"eval":"(() => { const b = document.querySelector(\".add-host .btn-primary\"); return b.scrollWidth <= b.clientWidth && b.scrollHeight <= b.clientHeight + 1; })()","equals":true},{"shot":"ipv6-label-whole"},{"click":"role:button:Add fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"},{"expect":"role:button:Select fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"}]'
+```
+
 ### install-on-host (manual: needs a real SSH server)
 "Install Switchyard" runs scripts/remote-install.sh over ssh; the daemon suite
 covers it with a fake ssh and a file:// release.
