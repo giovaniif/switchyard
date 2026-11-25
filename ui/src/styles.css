@@ -777,11 +777,13 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .row-archive { right: 34px; }
 .session-item:hover :is(.row-archive, .row-more), .session-item:focus-within :is(.row-archive, .row-more), .session-item.menu-open .row-more { opacity: 1; }
 .session-item:hover .session-row, .session-item:focus-within .session-row, .session-item.menu-open .session-row { padding-right: 64px; }
+/* A group header has only ⋯, so it needs room for one button, and its count stays readable. */
+.group-head:is(:hover, :focus-within, .menu-open) .group-toggle { padding-right: 36px; }
 .row-archive:hover, .row-more:hover, .session-item.menu-open .row-more { background: var(--fill-strong); color: var(--ink); }
 .row-archive:disabled { opacity: 0; pointer-events: none; }
 /* Touch has no hover: ⋯ stays at the end; Archive is in its menu. */
 @media (hover: none) {
-  .session-item .session-row { padding-right: 36px; }
+  .session-item .session-row, .group-head .group-toggle { padding-right: 36px; }
   .row-more { opacity: 1; }
   .row-archive { display: none; }
 }
