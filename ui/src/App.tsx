@@ -22,7 +22,7 @@ import { SessionHandover } from "./SessionHandover";
 import { PeekScope, PrLink } from "./PrHoverCard";
 import { PR_URL_SOURCE, prLink, shortLabel } from "./prPeek";
 import { ProcPane } from "./ProcPane";
-import { draftOf, fenceSegments, keepDraft, lineCount, onAppend, quoteInComposer, quoteSegments, type Snippet, splitQuotes, withQuotes } from "./compose";
+import { draftOf, fenceSegments, keepDraft, lineCount, onAppend, quoteInComposer, quoteSegments, type Quote, type Snippet, splitComments, splitQuotes, withQuotes } from "./compose";
 import { blockSegments, fencedBlocks, type MdTable } from "./markdown";
 import { fileTarget } from "./fileLinks";
 import { saveFile } from "./filePreview";
@@ -1663,7 +1663,7 @@ type Upload = { target: string; promise: Promise<Attachment> };
 /** What a session's reply box keeps while another session is open (compose.ts). */
 type ComposerDraft = {
   text: string;
-  quotes: { key: string; text: string }[];
+  quotes: (Quote & { key: string })[];
   snippets: (Snippet & { key: string })[];
   files: PendingFile[];
   uploads: Map<string, Upload>;
@@ -1722,9 +1722,13 @@ export function Composer(props: {
   const draftKey = props.draft ?? props.appendFor;
   const [kept] = useState(() => draftOf<ComposerDraft>(draftKey));
   const [text, setText] = useState(kept?.text ?? "");
-  // Parts of answers being replied to: cards above the text, sent as
-  // blockquotes before it (compose.ts).
-  const [quotes, setQuotes] = useState<{ key: string; text: string }[]>(kept?.quotes ?? []);
+  // Parts of answers being replied to: cards above the text, each with its
+  // own comment, sent before the text (compose.ts).
+  const [quotes, setQuotes] = useState<(Quote & { key: string })[]>(kept?.quotes ?? []);
+  // The card whose comment field takes the focus once it is on screen.
+  const [focusQuote, setFocusQuote] = useState<string | null>(null);
+  // While they wait, the quoted parts are marked in the answers.
+  useQuoteMarks(quotes);
   // Terminal rows attached as context: cards too, sent as fenced blocks.
   const [snippets, setSnippets] = useState<(Snippet & { key: string })[]>(kept?.snippets ?? []);
   const [files, setFiles] = useState<PendingFile[]>(kept?.files ?? []);
@@ -1741,7 +1745,15 @@ export function Composer(props: {
     return onAppend(props.appendFor, (added) => {
       const more = added.quotes ?? [];
       const newKey = () => `q${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-      if (more.length) setQuotes((q) => [...q, ...more.map((text) => ({ key: newKey(), text }))]);
+      if (more.length) {
+        const cards = more.map((q) => ({ ...q, key: newKey() }));
+        setQuotes((q) => [...q, ...cards]);
+        // A new quote waits for its comment: its field, not the box, gets the caret.
+        if (added.focusQuote) {
+          setFocusQuote(cards[cards.length - 1].key);
+          return;
+        }
+      }
       const rows = added.snippets ?? [];
       if (rows.length) setSnippets((list) => [...list, ...rows.map((r) => ({ ...r, key: newKey() }))]);
       const typed = added.text;
@@ -1850,7 +1862,7 @@ export function Composer(props: {
   const canSend = (text.trim() !== "" || quotes.length > 0 || snippets.length > 0 || files.length > 0) && !failed && !crowded && !props.busy && !sending;
   const submit = async () => {
     const value = withQuotes(
-      quotes.map((q) => q.text),
+      quotes.map((q) => ({ text: q.text, note: q.note })),
       text.trim(),
       snippets.map(({ label, text }) => ({ label, text })),
     );
@@ -1988,10 +2000,18 @@ export function Composer(props: {
       )}
       {quotes.length > 0 && (
         <div className="composer-quotes" aria-label="Quoted">
-          {quotes.map((q) => (
+          {quotes.map((q, i) => (
             <QuoteCard
               key={q.key}
               text={q.text}
+              number={quotes.length > 1 ? i + 1 : undefined}
+              note={q.note ?? ""}
+              focus={focusQuote === q.key}
+              onFocused={() => setFocusQuote(null)}
+              onNote={(note) => setQuotes((list) => list.map((x) => (x.key === q.key ? { ...x, note } : x)))}
+              onShow={q.range ? () => showQuoted(q.range!) : undefined}
+              onDone={() => area.current?.focus()}
+              onSend={() => void submit()}
               onRemove={() => {
                 setQuotes((list) => list.filter((x) => x.key !== q.key));
                 area.current?.focus();
@@ -2190,18 +2210,61 @@ function VoiceBar({ state, phase, canSpeak, onStop, onEnd }: { state: string; ph
   );
 }
 
-/** A quote waiting in the reply box: two lines, More shows the rest. */
-function QuoteCard({ text, label, removeLabel = "Remove quote", onRemove }: { text: string; label?: string; removeLabel?: string; onRemove(): void }) {
+/** A quote waiting in the reply box: two lines, More shows the rest. A
+ *  quote of an answer (not terminal output) has its own comment field, so
+ *  each comment goes with its part; numbered when there are several, as the
+ *  marks in the answers are. */
+function QuoteCard(props: {
+  text: string;
+  label?: string;
+  removeLabel?: string;
+  number?: number;
+  note?: string;
+  focus?: boolean;
+  onFocused?(): void;
+  onNote?(note: string): void;
+  /** Scroll the quoted part of the answer into view. */
+  onShow?(): void;
+  /** Enter in the comment: back to the reply box. */
+  onDone?(): void;
+  onSend?(): void;
+  onRemove(): void;
+}) {
+  const { text, label, removeLabel = "Remove quote", number, onRemove } = props;
   const [open, setOpen] = useState(false);
   const [cut, setCut] = useState(false);
   const body = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const el = body.current;
     if (el && !open) setCut(el.scrollHeight > el.clientHeight + 1);
   }, [text, open]);
+  useEffect(() => {
+    if (!props.focus) return;
+    field.current?.focus();
+    props.onFocused?.();
+  }, [props.focus]);
+  // The comment grows with its text, up to a few lines.
+  useLayoutEffect(() => {
+    const el = field.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [props.note]);
+  const commented = props.onNote !== undefined;
   return (
-    <div className={`quote-card${open ? " open" : ""}${label ? " snippet" : ""}`}>
+    <div className={`quote-card${open ? " open" : ""}${label ? " snippet" : ""}${commented ? " commented" : ""}`}>
       {label && <div className="quote-card-label">{label}</div>}
+      {number !== undefined &&
+        (props.onShow ? (
+          <button className="quote-card-number" title="Show this part in the answer" aria-label={`Show part ${number} in the answer`} onClick={props.onShow}>
+            {number}
+          </button>
+        ) : (
+          <span className="quote-card-number" aria-hidden="true">
+            {number}
+          </span>
+        ))}
       <div ref={body} className="quote-card-text">
         {text}
       </div>
@@ -2213,8 +2276,50 @@ function QuoteCard({ text, label, removeLabel = "Remove quote", onRemove }: { te
       <button className="btn-icon" aria-label={removeLabel} title={removeLabel} onClick={onRemove}>
         <Icon d={CLOSE} size={12} />
       </button>
+      {commented && (
+        <textarea
+          ref={field}
+          className="quote-card-note"
+          rows={1}
+          value={props.note}
+          placeholder="Comment on this part (optional)"
+          aria-label={number !== undefined ? `Comment on part ${number}` : "Comment on this part"}
+          onChange={(e) => props.onNote!(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              props.onSend?.();
+            } else if ((e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) || e.key === "Escape") {
+              e.preventDefault();
+              props.onDone?.();
+            }
+          }}
+        />
+      )}
     </div>
   );
+}
+
+/** The quoted parts waiting in a reply box, marked in the answers they came
+ *  from (CSS Custom Highlight API, where the browser has it). One box shows
+ *  at a time, so one name serves. */
+function useQuoteMarks(quotes: { range?: Range }[]) {
+  useEffect(() => {
+    const css = (globalThis as any).CSS;
+    const Highlight = (globalThis as any).Highlight;
+    if (!css?.highlights || !Highlight) return;
+    const ranges = quotes.map((q) => q.range).filter((r): r is Range => !!r && r.startContainer.isConnected);
+    if (ranges.length) css.highlights.set("yard-quoted", new Highlight(...ranges));
+    else css.highlights.delete("yard-quoted");
+    return () => css.highlights.delete("yard-quoted");
+  }, [quotes]);
+}
+
+/** Bring a quoted part of an answer into view. */
+function showQuoted(range: Range) {
+  if (!range.startContainer.isConnected) return;
+  const el = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
+  el?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
 function PendingChip({ file, onRemove }: { file: PendingFile; onRemove(): void }) {
@@ -2935,6 +3040,10 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
       const r = await actions.askAgent(routed.agent.id, routed.rest, attachments.map((a) => a.id));
       return r.error ? false : undefined;
     }
+    // What you just sent is what you want to see: back to the bottom.
+    pinned.current = true;
+    const el = scroller.current;
+    if (el) el.scrollTop = el.scrollHeight;
     actions.send(meta.id, text, attachments.map((a) => a.id));
   };
   const toAgent = (other: Agent) => (other.id === agent?.id ? null : `Goes to ${other.name}, not this ${agent ? "conversation" : "session"}`);
@@ -3171,11 +3280,12 @@ function DeleteButton({ worktree, onConfirm }: { worktree: boolean; onConfirm(re
 }
 
 /**
- * Reply to part of an answer: selecting text inside one agent answer shows a
- * Reply button over the selection, which adds it to the reply box as a quote card.
+ * Comment on part of an answer: selecting text inside one agent answer shows
+ * a Comment button over the selection, which adds it to the reply box as a
+ * quote card with its own comment field, and marks it in the answer.
  */
 function QuoteReply({ sessionId }: { sessionId: string }) {
-  const [at, setAt] = useState<{ left: number; top: number; below: boolean; text: string } | null>(null);
+  const [at, setAt] = useState<{ left: number; top: number; below: boolean; text: string; range: Range } | null>(null);
   useEffect(() => {
     const answerOf = (n: Node | null) => (n instanceof Element ? n : n?.parentElement)?.closest("[data-quotable]") ?? null;
     const update = () => {
@@ -3187,7 +3297,7 @@ function QuoteReply({ sessionId }: { sessionId: string }) {
       const r = sel!.getRangeAt(0).getBoundingClientRect();
       // Touch screens put their own copy menu above a selection; go below it.
       const below = r.top < 48 || window.matchMedia("(hover: none)").matches;
-      setAt({ left: Math.min(Math.max(r.left + r.width / 2, 48), window.innerWidth - 48), top: below ? r.bottom : r.top, below, text });
+      setAt({ left: Math.min(Math.max(r.left + r.width / 2, 48), window.innerWidth - 48), top: below ? r.bottom : r.top, below, text, range: sel!.getRangeAt(0).cloneRange() });
     };
     document.addEventListener("selectionchange", update);
     // The button is fixed to the window; the thread scrolls under it.
@@ -3207,13 +3317,13 @@ function QuoteReply({ sessionId }: { sessionId: string }) {
       // Keep the selection: a mousedown on a button would clear it before the click.
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => {
-        quoteInComposer(sessionId, at.text);
+        quoteInComposer(sessionId, at.text, at.range);
         document.getSelection()?.removeAllRanges();
         setAt(null);
       }}
     >
       <Icon d={REPLY} />
-      Reply
+      Comment
     </button>,
     document.body,
   );
@@ -3240,8 +3350,8 @@ function PendingList({ pending, busy, hint, onSteer, onEdit, onRemove }: {
         const { quotes, text } = splitQuotes(p.text);
         return (
           <div className="pending-row" key={p.id}>
-            <span className="pending-text">{text || quotes.join(" ") || p.attachments?.map((a) => a.name).join(", ")}</span>
-            {quotes.length > 0 && <span className="muted small">{quotes.length === 1 ? "1 quote" : `${quotes.length} quotes`}</span>}
+            <span className="pending-text">{text || quotes.map((q) => q.note || q.text).join(" ") || p.attachments?.map((a) => a.name).join(", ")}</span>
+            {quotes.length > 0 && <span className="muted small">{quotes.some((q) => q.note) ? (quotes.length === 1 ? "1 comment" : `${quotes.length} comments`) : quotes.length === 1 ? "1 quote" : `${quotes.length} quotes`}</span>}
             {!!p.attachments?.length && <span className="muted small">{p.attachments.length === 1 ? "1 file" : `${p.attachments.length} files`}</span>}
             {onSteer && <button className="btn-text pending-action pending-steer" title="Send to the current turn" onClick={() => onSteer(p.id)}>Steer</button>}
             <button className="btn-text pending-action" aria-label="Edit" title="Back to the reply box (↑)" onClick={() => onEdit(p.id)}>
@@ -3260,6 +3370,29 @@ function PendingList({ pending, busy, hint, onSteer, onEdit, onRemove }: {
 /** `> ` lines in your own message show as quotes, not as `>` characters.
  *  Your text stays text: only the quote lines are picked out. */
 function BubbleText({ text }: { text: string }) {
+  // Comments on parts of answers: each part with its comment under it.
+  const commented = splitComments(text);
+  if (commented) {
+    const rest = commented.text.replace(/^\n+/, "");
+    return (
+      <div className="bubble-parts">
+        <ol className="bubble-comments" aria-label="Comments on parts of the answers">
+          {commented.quotes.map((q, i) => (
+            <li key={i} className="bubble-comment">
+              {commented.quotes.length > 1 && (
+                <span className="quote-card-number" aria-hidden="true">
+                  {i + 1}
+                </span>
+              )}
+              <blockquote className="bubble-quote">{q.text}</blockquote>
+              {q.note && <div className="bubble-comment-note">{q.note}</div>}
+            </li>
+          ))}
+        </ol>
+        {rest && <BubbleText text={rest} />}
+      </div>
+    );
+  }
   // Attached terminal output arrives as fenced blocks: shown as code, the
   // text around them as before.
   const blocks = fenceSegments(text);
