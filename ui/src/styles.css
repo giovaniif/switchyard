@@ -666,6 +666,10 @@ button.quote-card-number:hover { background: var(--info); color: var(--bg); }
 .field { width: 100%; height: 36px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--bg); font-family: var(--mono); font-size: 13px; outline: 0; }
 .field:focus { border-color: var(--ink); }
 .add-host .form-grid .check { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+/* The name can be a whole IPv6 address or a long custom name: wrapped, it was cut off inside the 32 px button and pushed Cancel to its own line. One line, ellipsis; the field above shows it whole. */
+.add-host-actions { flex-wrap: nowrap; }
+.add-host-actions > button { flex: none; }
+.add-host-actions > .btn-primary { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .host-empty { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px; border: 1px dashed var(--line-strong); border-radius: 14px; background: transparent; text-align: left; color: var(--muted); }
 .host-empty:hover { background: var(--fill); }
 .host-empty > span { display: flex; flex-direction: column; gap: 3px; }
