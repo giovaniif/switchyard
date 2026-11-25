@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import type { AgentEvent, SlackOrigin, SlackView } from "./protocol";
+import type { AgentEvent, SlackAgentApp, SlackOrigin, SlackView } from "./protocol";
 import { applyEvent } from "./protocol";
-import { allowedSummary, createAppUrl, manifestText, SLACK_MANIFEST, slackStatus, tokenProblem } from "./slack";
+import { allowedSummary, avatarIconSvg, createAppUrl, iconKey, manifestText, setupSteps, SLACK_MANIFEST, slackStatus, tokenProblem, tokensNeeded } from "./slack";
 import { originLabel } from "./agents";
 import { initial, reduce } from "./store";
 
@@ -72,5 +72,45 @@ describe("a message from Slack in the thread", () => {
     expect(originLabel({ kind: "slack" })?.text).toBe("From someone on Slack");
     const [mine] = applyEvent([], { type: "user_message", text: "hi", origin: { kind: "user" } }, 0);
     expect(mine.kind === "user" && mine.origin).toBeUndefined();
+  });
+});
+
+describe("an agent's own Slack app", () => {
+  const app = (extra: Partial<SlackAgentApp> = {}): SlackAgentApp => ({ step: "install", appId: "A1", teamId: "T1", teamName: "Acme", handle: "reviewer", ownerName: "", canRedirect: true, ...extra });
+
+  test("takes only the configuration token with a public address and an https page", () => {
+    expect(tokensNeeded(view({ publicUrl: "https://slack.example.com", canRedirect: true }))).toBe(1);
+    expect(tokensNeeded(view({ publicUrl: "", canRedirect: true }))).toBe(2);
+    expect(tokensNeeded(view({ canRedirect: false }))).toBe(3);
+    // An older yardd says neither.
+    expect(tokensNeeded(view())).toBe(3);
+  });
+
+  test("numbers only the steps it still takes", () => {
+    expect(setupSteps(view({ publicUrl: "https://slack.example.com" }), undefined)).toEqual(["Token", "Approve"]);
+    expect(setupSteps(view(), undefined)).toEqual(["Token", "Approve", "Connect"]);
+    // A made app keeps the way it was made, whatever the address is now.
+    expect(setupSteps(view(), app({ eventsUrl: "https://slack.example.com/slack/events" }))).toEqual(["Token", "Approve"]);
+    expect(setupSteps(view({ publicUrl: "https://slack.example.com" }), app({ eventsUrl: "" }))).toEqual(["Token", "Approve", "Connect"]);
+  });
+
+  test("wears the agent's face, drawn from the page's avatar, on its colour", () => {
+    const face = '<svg viewBox="0 0 24 24" x="0" y="0" width="24" height="24" stroke="white"><path d="M8 10h.01"/></svg>';
+    const svg = avatarIconSvg(face, { background: "teal", light: "white", clear: "transparent" }) ?? "";
+    expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 24 24">')).toBe(true);
+    expect(svg).toContain('<rect width="24" height="24" fill="teal"/>');
+    expect(svg).toContain('<stop offset="0" stop-color="white"/><stop offset="0.7" stop-color="transparent"/>');
+    expect(svg).toContain(face);
+    // A colour that is not one cannot break out of its attribute: no icon.
+    expect(avatarIconSvg(face, { background: '"/><script>', light: "", clear: "" })).toBeNull();
+    expect(avatarIconSvg(face, { background: "teal", light: '"><x', clear: "" })).toContain('stop-color="transparent"');
+  });
+
+  test("is sent again only when its picture changed", () => {
+    const a = avatarIconSvg("<svg/>", { background: "teal", light: "", clear: "" }) ?? "";
+    const b = avatarIconSvg("<svg/>", { background: "navy", light: "", clear: "" }) ?? "";
+    expect(iconKey(a)).toBe(iconKey(a));
+    expect(iconKey(a)).not.toBe(iconKey(b));
+    expect(iconKey(a)).toMatch(/^v1-[0-9a-f]{16}$/);
   });
 });

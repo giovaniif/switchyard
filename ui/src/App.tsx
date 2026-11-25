@@ -9,6 +9,7 @@ import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
 import { AgentAvatar, AgentBar, AgentForm, AgentRequests, AgentsPage, AgentStart, EarlierConversations, NewAgentRedirect } from "./AgentsPage";
+import { SlackIcons } from "./SlackIcon";
 import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
@@ -430,6 +431,7 @@ export function App() {
       </div>
       {navigating && <NavigationPalette state={state} onPick={pickNavigation} onClose={() => setNavigating(false)} />}
       {importing && <ImportDialog state={state} actions={actions} onClose={() => setImporting(false)} />}
+      <SlackIcons state={state} actions={actions} />
     </DrawerContext.Provider>
   );
 }

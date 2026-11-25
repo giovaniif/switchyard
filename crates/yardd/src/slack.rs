@@ -29,14 +29,18 @@
 //! An agent can also have a Slack app of its own, as Orca's bots do, so people
 //! @mention it by its name. The owner pastes a Slack App Configuration Refresh
 //! Token once per workspace (`slack.grant`); yardd keeps it rotated and makes
-//! the agent's app from a manifest (`apps.manifest.create`). The install is
-//! approved in Slack, which sends the browser back to `/slack/oauth` on the
-//! page's own address (only an https one yardd serves; else the owner pastes
-//! the bot token). Slack cannot reach this host, so the app's events come over
-//! Socket Mode too, which takes an app-level token Slack only makes by hand.
-//! Each such app has its own connection; its messages always go to its agent,
-//! through the same allowlist, origins and answers as the shared bot's, and
-//! whoever installed it is allowed.
+//! the agent's app from a manifest (`apps.manifest.create`), and keeps its
+//! name, description and icon in step with the agent (`apps.manifest.update`,
+//! `apps.icon.set`). The install is approved in Slack, which sends the browser
+//! back to `/slack/oauth` on an https address yardd serves its page on,
+//! whichever window asked (only the owner's browser has to reach it; with
+//! none, the owner pastes the bot token). Its events come one of two ways:
+//! over Socket Mode, which takes an app-level token Slack only makes by hand,
+//! or, when the owner gave yardd a public https address for Slack
+//! (`YARD_SLACK_PUBLIC_URL`), as signed HTTP requests to `/slack/events`, so
+//! the configuration token is the only thing pasted. Its messages always go
+//! to its agent, through the same allowlist, origins and answers as the
+//! shared bot's, and whoever installed it is allowed.
 //!
 //! `YARD_SLACK_API` points the Web API (and so Socket Mode) elsewhere: tests
 //! and `verify/yv` use the fake in `verify/fakes/fake-slack`.
@@ -88,6 +92,9 @@ struct Config {
     workspaces: Vec<Workspace>,
     /// Agents' own Slack apps.
     apps: Vec<AgentApp>,
+    /// The public https address Slack sends agents' apps' events to (set in
+    /// the UI; `YARD_SLACK_PUBLIC_URL` wins). Empty: Socket Mode.
+    public_url: String,
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -111,9 +118,11 @@ struct AgentApp {
     app_id: String,
     client_id: String,
     client_secret: String,
-    /// Where Slack sends the browser after the install; empty: the owner
-    /// pastes the bot token instead.
+    /// Where Slack sends the browser after the install this time (one of
+    /// `redirects`); empty: the owner pastes the bot token instead.
     redirect: String,
+    /// Every install redirect its manifest lists.
+    redirects: Vec<String>,
     authorize_url: String,
     bot_token: String,
     bot_user: String,
@@ -123,13 +132,27 @@ struct AgentApp {
     owner: String,
     owner_name: String,
     app_token: String,
+    /// Where Slack sends its events over HTTP (`<public>/slack/events`);
+    /// empty: Socket Mode, with `app_token`.
+    events_url: String,
+    /// Signs those requests (from `apps.manifest.create`).
+    signing_secret: String,
+    /// The manifest Slack has: a different one is due when the agent's name
+    /// or what it is for changed (empty for apps made before it was kept).
+    manifest: String,
+    /// The UI's key of the icon kept for it (`slack-icons/<agent>.png`), and
+    /// whether Slack has that icon.
+    icon_key: String,
+    icon_set: bool,
+    /// Why the last update did not reach Slack.
+    sync_error: String,
 }
 
 impl AgentApp {
     fn step(&self) -> &'static str {
         if self.bot_token.is_empty() {
             "install"
-        } else if self.app_token.is_empty() {
+        } else if self.events_url.is_empty() && self.app_token.is_empty() {
             "appToken"
         } else {
             "ready"
@@ -211,10 +234,23 @@ pub struct Slack {
     app_status: Mutex<HashMap<String, Status>>,
     /// Each ready agent app's Socket Mode connection.
     app_tasks: Mutex<HashMap<String, tokio::task::AbortHandle>>,
-    /// Install links in flight: OAuth `state` → (agent, until).
-    installs: Mutex<HashMap<String, (String, u64)>>,
+    /// Install links in flight: OAuth `state` → (agent, redirect, until).
+    installs: Mutex<HashMap<String, (String, String, u64)>>,
     /// The connections' event queue, made when `run` starts.
     events: OnceLock<mpsc::UnboundedSender<(Me, Value)>>,
+    /// Apps being made: Slack may check their events address before
+    /// `apps.manifest.create` has answered with the secret that signs it.
+    creating: std::sync::atomic::AtomicUsize,
+    /// Recent `app/event_id` of events over HTTP, so a retry is handled once.
+    event_ids: Mutex<VecDeque<String>>,
+    /// Answers `GET /slack/events`, so a probe through the public address
+    /// can tell it reached this yardd.
+    probe: String,
+    /// Whether the public address reached this yardd: none untried, "" yes,
+    /// else why not.
+    public_check: Mutex<Option<String>>,
+    /// Updates to agents' apps go to Slack one at a time.
+    syncing: tokio::sync::Mutex<()>,
 }
 
 impl Slack {
@@ -228,6 +264,13 @@ impl Slack {
             }),
             Err(_) => Config::default(),
         };
+        let mut cfg = cfg;
+        // Apps made before redirects were listed had one at most.
+        for a in &mut cfg.apps {
+            if a.redirects.is_empty() && !a.redirect.is_empty() {
+                a.redirects = vec![a.redirect.clone()];
+            }
+        }
         let state = if cfg.app_token.is_empty() || cfg.bot_token.is_empty() { "off" } else { "connecting" };
         Slack {
             file,
@@ -242,13 +285,27 @@ impl Slack {
             app_tasks: Mutex::default(),
             installs: Mutex::default(),
             events: OnceLock::new(),
+            creating: Default::default(),
+            event_ids: Mutex::default(),
+            probe: random_hex(),
+            public_check: Mutex::default(),
+            syncing: tokio::sync::Mutex::new(()),
         }
+    }
+
+    /// The public https address for Slack's events, normalized; empty: none.
+    pub fn public_url(&self) -> String {
+        let env = std::env::var("YARD_SLACK_PUBLIC_URL").unwrap_or_default();
+        let raw = if env.trim().is_empty() { self.cfg.lock().unwrap().public_url.clone() } else { env };
+        public_address(&raw).unwrap_or_default()
     }
 
     /// What the UI sees: never a token, only its kind and last four characters.
     pub fn view(&self) -> Value {
         let cfg = self.cfg.lock().unwrap();
         let status = self.status.lock().unwrap().clone();
+        let fixed = std::env::var("YARD_SLACK_PUBLIC_URL").ok().filter(|v| !v.trim().is_empty());
+        let public = public_address(fixed.as_deref().unwrap_or(&cfg.public_url)).unwrap_or_default();
         json!({
             "configured": !cfg.app_token.is_empty() && !cfg.bot_token.is_empty(),
             "appToken": hint(&cfg.app_token),
@@ -263,6 +320,12 @@ impl Slack {
             "channels": cfg.channels,
             "workspaces": cfg.workspaces.iter().map(|w| json!({ "teamId": w.team_id, "teamName": if w.team_name.is_empty() { &w.team_id } else { &w.team_name } })).collect::<Vec<_>>(),
             "agentApps": self.apps_view(&cfg),
+            // Slack's events to agents' new apps come here, over HTTP.
+            "publicUrl": public,
+            "publicUrlFixed": fixed.is_some(),
+            "publicCheck": *self.public_check.lock().unwrap(),
+            // A new app's install can come back to yardd on its own.
+            "canRedirect": !redirect_urls_with(&public).is_empty(),
         })
     }
 
@@ -280,13 +343,18 @@ impl Slack {
                     "teamName": a.team_name,
                     "handle": a.handle,
                     "ownerName": a.owner_name,
-                    "canRedirect": !a.redirect.is_empty(),
+                    "canRedirect": !a.redirects.is_empty(),
+                    "eventsUrl": a.events_url,
+                    "syncError": Some(&a.sync_error).filter(|e| !e.is_empty()),
+                    "iconKey": a.icon_key,
                 });
                 if a.step() == "install" && !a.redirect.is_empty() {
                     v["authorizeUrl"] = json!(a.authorize_url);
                 }
                 if a.step() == "ready" {
-                    let st = status.get(&a.agent).cloned().unwrap_or_else(|| Status { state: "connecting".into(), ..Default::default() });
+                    // Over HTTP there is no connection to show: Slack calls in.
+                    let idle = if a.events_url.is_empty() { "connecting" } else { "events" };
+                    let st = status.get(&a.agent).cloned().unwrap_or_else(|| Status { state: idle.into(), ..Default::default() });
                     v["state"] = json!(st.state);
                     v["error"] = json!(st.error);
                 }
@@ -298,6 +366,16 @@ impl Slack {
 
     fn app_of(&self, agent: &str) -> Option<AgentApp> {
         self.cfg.lock().unwrap().apps.iter().find(|a| a.agent == agent).cloned()
+    }
+
+    /// Changes some of an app's fields in place, so a change made meanwhile
+    /// (its bot token, say) is kept.
+    fn update_app(&self, agent: &str, f: impl FnOnce(&mut AgentApp)) {
+        self.change(|c| {
+            if let Some(a) = c.apps.iter_mut().find(|a| a.agent == agent) {
+                f(a);
+            }
+        });
     }
 
     fn put_app(&self, rec: AgentApp) {
@@ -507,15 +585,58 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
             let v = slack.api_open("tooling.tokens.rotate", &[("refresh_token", &t)]).await.map_err(|e| refused("Slack refused the configuration token", " Generate a new one and paste it.", e))?;
             let team = keep_grant(slack, &v);
             // With an agent: its app is made in that workspace at once.
-            if msg["agentId"].is_string() {
+            if msg["agentId"].is_string() && !slack.has_app(&agent()?.id) {
                 create_app(app, &agent()?, &team, msg["origin"].as_str().unwrap_or("")).await?;
+            }
+            // Updates that waited for a token that works go out now.
+            let waiting: Vec<String> = slack.cfg.lock().unwrap().apps.iter().filter(|a| a.team_id == team).map(|a| a.agent.clone()).collect();
+            for agent in waiting {
+                let _ = sync_app(app, &agent).await;
             }
         }
         "slack.app.create" => {
             let team = msg["teamId"].as_str().context("missing `teamId`")?.to_string();
             create_app(app, &agent()?, &team, msg["origin"].as_str().unwrap_or("")).await?;
         }
-        "slack.app.authorize" => authorize(app, &agent()?.id),
+        "slack.app.authorize" => authorize(app, &agent()?.id, msg["origin"].as_str().unwrap_or("")),
+        "slack.app.icon" => {
+            let a = agent()?;
+            let key = msg["key"].as_str().unwrap_or("").trim().to_string();
+            if key.is_empty() || key.len() > 64 {
+                bail!("missing `key`");
+            }
+            use base64::Engine;
+            let png = base64::engine::general_purpose::STANDARD.decode(msg["png"].as_str().unwrap_or("")).map_err(|_| anyhow!("The icon is not base64."))?;
+            icon_ok(&png)?;
+            let rec = slack.app_of(&a.id).context("Make its Slack app first.")?;
+            if rec.icon_key != key || !rec.icon_set {
+                let path = icon_path(slack, &a.id);
+                if let Some(dir) = path.parent() {
+                    std::fs::create_dir_all(dir)?;
+                }
+                std::fs::write(&path, &png)?;
+                slack.update_app(&a.id, |r| {
+                    r.icon_key = key;
+                    r.icon_set = false;
+                });
+                // A lapsed configuration token is shown in its dialog, not here.
+                let _ = sync_app(app, &a.id).await;
+            }
+        }
+        "slack.publicUrl" => {
+            if std::env::var("YARD_SLACK_PUBLIC_URL").is_ok_and(|v| !v.trim().is_empty()) {
+                bail!("This address is set by YARD_SLACK_PUBLIC_URL where Switchyard runs.");
+            }
+            let url = public_address(msg["url"].as_str().unwrap_or(""))?;
+            slack.change(|c| c.public_url = url);
+            *slack.public_check.lock().unwrap() = None;
+            tokio::spawn(check_public(app.clone()));
+            // Apps list it as an install address; those on HTTP get their events there.
+            let all: Vec<String> = slack.cfg.lock().unwrap().apps.iter().map(|a| a.agent.clone()).collect();
+            for agent in all {
+                let _ = sync_app(app, &agent).await;
+            }
+        }
         "slack.app.botToken" => {
             let a = agent()?;
             let t = token();
@@ -664,39 +785,172 @@ async fn config_token(slack: &Slack, team: &str) -> Result<String> {
     Ok(v["token"].as_str().unwrap_or_default().to_string())
 }
 
-/// The manifest of an agent's own app: a bot named after it, Socket Mode,
-/// and the shared bot's scopes and events, so it reads the same messages.
-fn agent_manifest(name: &str, about: &str, redirect: &str) -> Value {
+/// The manifest of an agent's own app: a bot named after it, its events over
+/// Socket Mode or (with `events_url`) HTTP, and the shared bot's scopes and
+/// events, so it reads the same messages.
+fn agent_manifest(name: &str, about: &str, redirects: &[String], events_url: &str) -> Value {
     let mut oauth = json!({ "scopes": { "bot": ["app_mentions:read", "chat:write", "im:history", "im:read", "im:write", "channels:history", "channels:read", "groups:history", "groups:read", "users:read", "reactions:write"] } });
-    if !redirect.is_empty() {
-        oauth["redirect_urls"] = json!([redirect]);
+    if !redirects.is_empty() {
+        oauth["redirect_urls"] = json!(redirects);
     }
-    let about: String = if about.trim().is_empty() { format!("{name}, an agent in Switchyard.") } else { about.chars().take(139).collect() };
+    let title = app_name(name);
+    let about: String = if about.trim().is_empty() { format!("{title}, an agent in Switchyard.") } else { about.to_string() };
+    let mut events = json!({ "bot_events": ["app_mention", "message.im", "message.channels", "message.groups"] });
+    if !events_url.is_empty() {
+        events["request_url"] = json!(events_url);
+    }
     json!({
-        "display_information": { "name": name.chars().take(35).collect::<String>(), "description": about },
+        "display_information": { "name": title, "description": about.chars().take(139).collect::<String>() },
         "features": {
-            "bot_user": { "display_name": name.to_lowercase(), "always_online": true },
+            "bot_user": { "display_name": bot_handle(name), "always_online": true },
             "app_home": { "home_tab_enabled": false, "messages_tab_enabled": true, "messages_tab_read_only_enabled": false },
         },
         "oauth_config": oauth,
         "settings": {
-            "event_subscriptions": { "bot_events": ["app_mention", "message.im", "message.channels", "message.groups"] },
+            "event_subscriptions": events,
             "interactivity": { "is_enabled": false },
             "org_deploy_enabled": false,
-            "socket_mode_enabled": true,
+            "socket_mode_enabled": events_url.is_empty(),
             "token_rotation_enabled": false,
         },
     })
 }
 
-/// The page's address as the install's redirect: https only, and only one
-/// yardd serves its page to, so a window cannot name another site.
-fn redirect_for(origin: &str) -> String {
-    let origin = origin.trim_end_matches('/');
-    if origin.starts_with("https://") && crate::ws::allowed_origins().iter().any(|o| o == origin) {
-        format!("{origin}/slack/oauth")
+/// The app's name in Slack: the agent's, as written, cut to Slack's 35
+/// characters.
+pub fn app_name(name: &str) -> String {
+    let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
+    let cut: String = name.chars().take(35).collect();
+    match cut.trim() {
+        "" => "Agent".into(),
+        t => t.to_string(),
+    }
+}
+
+/// The bot's display name, which is also how people @mention it. Slack makes
+/// the bot's handle from it by keeping a-z, 0-9, `-`, `_` and `.` and cutting
+/// it to 21 characters, so it is made that way here and the two agree: lower
+/// case, accents dropped from their letters, spaces and every other separator
+/// a dash, runs of dashes one, no separator at either end.
+pub fn bot_handle(name: &str) -> String {
+    let mut out = String::new();
+    for c in name.chars().flat_map(char::to_lowercase) {
+        let piece: &str = match c {
+            'a'..='z' | '0'..='9' | '_' | '.' => {
+                out.push(c);
+                continue;
+            }
+            'à' | 'á' | 'â' | 'ã' | 'ä' | 'å' | 'ā' | 'ă' | 'ą' => "a",
+            'æ' => "ae",
+            'ç' | 'ć' | 'č' => "c",
+            'ď' | 'đ' | 'ð' => "d",
+            'è' | 'é' | 'ê' | 'ë' | 'ē' | 'ė' | 'ę' | 'ě' => "e",
+            'ğ' => "g",
+            'ì' | 'í' | 'î' | 'ï' | 'ī' | 'į' | 'ı' => "i",
+            'ł' | 'ľ' => "l",
+            'ñ' | 'ń' | 'ň' => "n",
+            'ò' | 'ó' | 'ô' | 'õ' | 'ö' | 'ø' | 'ō' | 'ő' => "o",
+            'œ' => "oe",
+            'ř' => "r",
+            'ś' | 'š' | 'ş' => "s",
+            'ß' => "ss",
+            'ť' | 'ţ' => "t",
+            'þ' => "th",
+            'ù' | 'ú' | 'û' | 'ü' | 'ū' | 'ů' | 'ű' | 'ų' => "u",
+            'ý' | 'ÿ' => "y",
+            'ź' | 'ż' | 'ž' => "z",
+            // Other scripts and emoji: nothing Slack keeps.
+            c if !c.is_ascii() && !c.is_whitespace() && !is_dash(c) => "",
+            // Spaces, dashes, slashes, punctuation: a word break.
+            _ => "-",
+        };
+        if piece == "-" {
+            if !out.is_empty() && !out.ends_with('-') {
+                out.push('-');
+            }
+        } else {
+            out.push_str(piece);
+        }
+    }
+    let cut: String = out.chars().take(21).collect();
+    match cut.trim_matches(['-', '_', '.']) {
+        "" => "agent".into(),
+        t => t.to_string(),
+    }
+}
+
+/// Dashes and spaces from beyond ASCII (en and em dashes, no-break space…).
+fn is_dash(c: char) -> bool {
+    matches!(c, '\u{2010}'..='\u{2015}' | '\u{2212}' | '\u{00a0}' | '\u{2000}'..='\u{200a}' | '\u{3000}' | '·' | '•' | '…')
+}
+
+/// An https address as the public one for Slack: no end slash, no query.
+fn public_address(raw: &str) -> Result<String> {
+    let url = raw.trim().trim_end_matches('/');
+    if url.is_empty() {
+        return Ok(String::new());
+    }
+    let host = url.strip_prefix("https://").context("The public address starts with https://.")?;
+    if host.is_empty() || host.starts_with('/') || url.len() > 200 || url.chars().any(|c| c.is_whitespace() || c.is_control() || matches!(c, '?' | '#' | '@' | '\\' | '"' | '<' | '>')) {
+        bail!("That is not a web address, such as https://slack.example.com.");
+    }
+    Ok(url.to_string())
+}
+
+/// Every address the install may send the browser back to: the https ones
+/// yardd serves its page on (only the owner's browser has to reach them),
+/// then the public one.
+fn redirect_urls_with(public: &str) -> Vec<String> {
+    let mut list: Vec<String> = crate::ws::allowed_origins().into_iter().filter(|o| o.starts_with("https://")).map(|o| format!("{o}/slack/oauth")).collect();
+    if !public.is_empty() {
+        list.push(format!("{public}/slack/oauth"));
+    }
+    let mut seen = Vec::new();
+    list.retain(|u| {
+        let new = !seen.contains(u);
+        seen.push(u.clone());
+        new
+    });
+    list
+}
+
+/// The install's redirect for a window at `origin`: its own address when the
+/// app lists it, else the first one the app lists. A window cannot name
+/// another site: only listed addresses are used.
+fn redirect_for(origin: &str, listed: &[String]) -> String {
+    let own = format!("{}/slack/oauth", origin.trim().trim_end_matches('/'));
+    if listed.contains(&own) {
+        own
     } else {
-        String::new()
+        listed.first().cloned().unwrap_or_default()
+    }
+}
+
+/// The manifest the agent's app should have now (with its install addresses
+/// and events address): its name and what it is for, the addresses yardd
+/// has, and its events where they go.
+fn wanted_manifest(slack: &Slack, rec: &AgentApp, a: &crate::agents::Agent) -> (String, Vec<String>, String) {
+    let public = slack.public_url();
+    // An app on HTTP follows the public address; one on Socket Mode stays
+    // there (its connection token is pasted already).
+    let events_url = if rec.events_url.is_empty() || public.is_empty() { rec.events_url.clone() } else { format!("{public}/slack/events") };
+    let redirects = redirect_urls_with(&public);
+    (agent_manifest(&a.name, &a.about, &redirects, &events_url).to_string(), redirects, events_url)
+}
+
+/// Counts an app being made while it lives (see `Slack::creating`).
+struct Creating<'a>(&'a Slack);
+
+impl<'a> Creating<'a> {
+    fn new(slack: &'a Slack) -> Self {
+        slack.creating.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Creating(slack)
+    }
+}
+
+impl Drop for Creating<'_> {
+    fn drop(&mut self) {
+        self.0.creating.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
     }
 }
 
@@ -706,9 +960,14 @@ async fn create_app(app: &Arc<App>, a: &crate::agents::Agent, team: &str, origin
         bail!("{} already has a Slack app ({}). Remove it first.", a.name, old.app_id);
     }
     let config = config_token(slack, team).await?;
-    let redirect = redirect_for(origin);
-    let manifest = agent_manifest(&a.name, &a.about, &redirect).to_string();
-    let made = slack.api(&config, "apps.manifest.create", &[("manifest", &manifest)]).await.map_err(|e| refused("Slack did not make the app", "", e))?;
+    let public = slack.public_url();
+    let events_url = if public.is_empty() { String::new() } else { format!("{public}/slack/events") };
+    let redirects = redirect_urls_with(&public);
+    let manifest = agent_manifest(&a.name, &a.about, &redirects, &events_url).to_string();
+    let made = {
+        let _making = Creating::new(slack);
+        slack.api(&config, "apps.manifest.create", &[("manifest", &manifest)]).await.map_err(|e| refused("Slack did not make the app", "", e))?
+    };
     let team_name = slack.cfg.lock().unwrap().workspaces.iter().find(|w| w.team_id == team).map(|w| w.team_name.clone()).unwrap_or_default();
     slack.put_app(AgentApp {
         agent: a.id.clone(),
@@ -717,26 +976,31 @@ async fn create_app(app: &Arc<App>, a: &crate::agents::Agent, team: &str, origin
         app_id: made["app_id"].as_str().unwrap_or_default().to_string(),
         client_id: made["credentials"]["client_id"].as_str().unwrap_or_default().to_string(),
         client_secret: made["credentials"]["client_secret"].as_str().unwrap_or_default().to_string(),
-        redirect,
+        signing_secret: made["credentials"]["signing_secret"].as_str().unwrap_or_default().to_string(),
+        redirects,
+        events_url,
+        manifest,
         authorize_url: made["oauth_authorize_url"].as_str().unwrap_or_default().to_string(),
-        handle: a.name.to_lowercase(),
+        handle: bot_handle(&a.name),
         ..Default::default()
     });
-    authorize(app, &a.id);
+    authorize(app, &a.id, origin);
     Ok(())
 }
 
-/// An install link good for 30 minutes: Slack's own, with our redirect and a
-/// one-time state.
-fn authorize(app: &App, agent: &str) {
+/// An install link good for 30 minutes: Slack's own, with a redirect for the
+/// window that asked and a one-time state.
+fn authorize(app: &App, agent: &str, origin: &str) {
     let Some(mut rec) = app.slack.app_of(agent) else { return };
-    if rec.redirect.is_empty() || rec.authorize_url.is_empty() {
+    let redirect = redirect_for(origin, &rec.redirects);
+    if redirect.is_empty() || rec.authorize_url.is_empty() {
         return;
     }
     let state = format!("{}{}", app.id("slack-"), random_hex());
-    app.slack.installs.lock().unwrap().insert(state.clone(), (agent.to_string(), now_ms() + 30 * 60 * 1000));
+    app.slack.installs.lock().unwrap().insert(state.clone(), (agent.to_string(), redirect.clone(), now_ms() + 30 * 60 * 1000));
     let base = rec.authorize_url.split("&redirect_uri=").next().unwrap_or_default().split("&state=").next().unwrap_or_default().to_string();
-    rec.authorize_url = format!("{base}&redirect_uri={}&state={state}", encode(&rec.redirect));
+    rec.authorize_url = format!("{base}&redirect_uri={}&state={state}", encode(&redirect));
+    rec.redirect = redirect;
     app.slack.put_app(rec);
 }
 
@@ -794,7 +1058,253 @@ pub async fn remove_app(app: &Arc<App>, agent: &str) {
         }
     }
     app.slack.change(|c| c.apps.retain(|a| a.agent != agent));
+    let _ = std::fs::remove_file(icon_path(&app.slack, agent));
     broadcast(app);
+}
+
+/// The agent's name or what it is for changed: its app follows, in the
+/// background. When Slack cannot be told (a lapsed configuration token, say)
+/// the save stands, and its dialog and its conversation say so.
+pub fn agent_changed(app: &Arc<App>, agent: &str) {
+    if !app.slack.has_app(agent) {
+        return;
+    }
+    let (app, agent) = (app.clone(), agent.to_string());
+    tokio::spawn(async move {
+        if let Err(e) = sync_app(&app, &agent).await {
+            let Some(a) = app.agents.get(&agent) else { return };
+            if let Some(sid) = a.chat.as_deref().filter(|sid| app.meta(sid).is_some()) {
+                app.emit(sid, json!({ "type": "note", "text": format!("{}'s Slack app still shows its old name: {e:#}", a.name) }));
+            }
+        }
+    });
+}
+
+/// Brings an agent's app in Slack up to date: its name, handle, description
+/// and install addresses (`apps.manifest.update`, which takes the whole
+/// manifest) and its icon (`apps.icon.set`). Nothing goes to Slack when it
+/// has it all already. A failure is kept for its dialog (`syncError`) and
+/// answered; the next change, a restart or a new configuration token tries
+/// again.
+pub async fn sync_app(app: &Arc<App>, agent: &str) -> Result<()> {
+    let slack = &app.slack;
+    let _one = slack.syncing.lock().await;
+    let (Some(rec), Some(a)) = (slack.app_of(agent), app.agents.get(agent)) else { return Ok(()) };
+    let (manifest, redirects, events_url) = wanted_manifest(slack, &rec, &a);
+    let icon = icon_path(slack, agent);
+    let icon_due = !rec.icon_key.is_empty() && !rec.icon_set && icon.exists();
+    let manifest_due = manifest != rec.manifest;
+    let result = if !manifest_due && !icon_due {
+        Ok(())
+    } else {
+        async {
+            let token = config_token(slack, &rec.team_id).await?;
+            if manifest_due {
+                slack.api(&token, "apps.manifest.update", &[("app_id", &rec.app_id), ("manifest", &manifest)]).await.map_err(|e| refused("Slack did not update the app", "", e))?;
+                let handle = bot_handle(&a.name);
+                slack.update_app(agent, |r| {
+                    r.manifest = manifest;
+                    r.redirects = redirects;
+                    r.events_url = events_url;
+                    r.handle = handle;
+                });
+            }
+            if icon_due {
+                let png = std::fs::read(&icon)?;
+                slack.set_icon(&token, &rec.app_id, &png).await.map_err(|e| refused("Slack did not take the icon", "", e))?;
+                let key = rec.icon_key.clone();
+                slack.update_app(agent, |r| r.icon_set = r.icon_key == key);
+            }
+            anyhow::Ok(())
+        }
+        .await
+    };
+    let error = result.as_ref().err().map(|e| format!("{e:#}")).unwrap_or_default();
+    if error != rec.sync_error {
+        slack.update_app(agent, |r| r.sync_error = error);
+    }
+    broadcast(app);
+    result
+}
+
+/// Where an agent app's icon is kept, as the UI drew it.
+fn icon_path(slack: &Slack, agent: &str) -> PathBuf {
+    let safe: String = agent.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_').collect();
+    slack.file.with_file_name("slack-icons").join(format!("{safe}.png"))
+}
+
+/// A PNG Slack takes as an app icon: 512 to 2000 pixels a side.
+fn icon_ok(png: &[u8]) -> Result<()> {
+    if png.len() > 4 << 20 {
+        bail!("The icon is larger than 4 MB.");
+    }
+    if png.len() < 24 || &png[..8] != b"\x89PNG\r\n\x1a\n" || &png[12..16] != b"IHDR" {
+        bail!("The icon is not a PNG.");
+    }
+    let side = |at: usize| u32::from_be_bytes([png[at], png[at + 1], png[at + 2], png[at + 3]]);
+    let (w, h) = (side(16), side(20));
+    if !(512..=2000).contains(&w) || !(512..=2000).contains(&h) {
+        bail!("Slack takes icons of 512 to 2000 pixels a side; this one is {w}×{h}.");
+    }
+    Ok(())
+}
+
+/// Tries the public address: it works when `GET <public>/slack/events`
+/// answers with this yardd's probe.
+async fn check_public(app: Arc<App>) {
+    let public = app.slack.public_url();
+    if public.is_empty() {
+        return;
+    }
+    crypto();
+    let url = format!("{public}/slack/events");
+    let res = app.slack.http().get(&url).timeout(Duration::from_secs(10)).send().await;
+    let check = match res {
+        Ok(r) if r.status().is_success() => match r.text().await {
+            Ok(body) if body.contains(&app.slack.probe) => String::new(),
+            _ => format!("{url} answers, but not from this Switchyard."),
+        },
+        Ok(r) => format!("{url} answers HTTP {}.", r.status().as_u16()),
+        Err(e) => format!("{url} cannot be reached from here ({}).", e.without_url()),
+    };
+    if public == app.slack.public_url() {
+        *app.slack.public_check.lock().unwrap() = Some(check);
+        broadcast(&app);
+    }
+}
+
+/// Requests larger than this are not Slack's events.
+const EVENT_MAX: usize = 1 << 20;
+/// Slack's timestamps older (or newer) than this are refused: a replay.
+const EVENT_AGE: i64 = 5 * 60;
+
+/// `GET /slack/events`: the probe's answer, so the owner can check the
+/// public address reaches this yardd.
+pub async fn events_probe(axum::extract::State(app): axum::extract::State<Arc<App>>) -> String {
+    format!("Switchyard receives Slack's events here. {}\n", app.slack.probe)
+}
+
+/// `POST /slack/events`: Slack's Events API, for agents' apps made with a
+/// public address. Nothing is read before its signature checks out with one
+/// of those apps' signing secrets (`v0`, HMAC-SHA256 over the timestamp and
+/// the body, within five minutes). Slack's address check is answered; an
+/// event is handed to the same handling as Socket Mode's and acknowledged at
+/// once (Slack wants an answer within 3 s and retries otherwise); a retry of
+/// an event already handled is acknowledged only.
+pub async fn events(axum::extract::State(app): axum::extract::State<Arc<App>>, headers: axum::http::HeaderMap, body: axum::body::Body) -> axum::response::Response {
+    use axum::{http::StatusCode, response::IntoResponse};
+    let slack = &app.slack;
+    let Ok(body) = axum::body::to_bytes(body, EVENT_MAX).await else {
+        return (StatusCode::PAYLOAD_TOO_LARGE, "too large").into_response();
+    };
+    let header = |name: &str| headers.get(name).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
+    let (ts, signature) = (header("x-slack-request-timestamp"), header("x-slack-signature"));
+    if !fresh(&ts, (now_ms() / 1000) as i64) {
+        return (StatusCode::UNAUTHORIZED, "stale or missing timestamp").into_response();
+    }
+    let mut rec = slack.signed_by(&ts, &body, &signature);
+    // An app being made may be checked before Slack's answer gave its secret.
+    let until = Instant::now() + Duration::from_millis(2500);
+    while rec.is_none() && slack.creating.load(std::sync::atomic::Ordering::SeqCst) > 0 && Instant::now() < until {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        rec = slack.signed_by(&ts, &body, &signature);
+    }
+    let Some(rec) = rec else {
+        eprintln!("yardd: slack: refused a request to /slack/events that no agent's app signed");
+        return (StatusCode::UNAUTHORIZED, "bad signature").into_response();
+    };
+    let payload: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+    match payload["type"].as_str().unwrap_or("") {
+        "url_verification" => axum::Json(json!({ "challenge": payload["challenge"] })).into_response(),
+        "event_callback" => {
+            let id = format!("{}/{}", rec.app_id, payload["event_id"].as_str().unwrap_or(""));
+            let first = {
+                let mut seen = slack.event_ids.lock().unwrap();
+                let first = !seen.contains(&id);
+                if first {
+                    seen.push_back(id);
+                    if seen.len() > 1000 {
+                        seen.pop_front();
+                    }
+                }
+                first
+            };
+            if first && !rec.bot_token.is_empty() {
+                if app.slack.app_status.lock().unwrap().get(&rec.agent).map_or(true, |s| s.state != "connected") {
+                    app_status(&app, &rec.agent, Status { state: "connected".into(), team: rec.team_name.clone(), bot: rec.handle.clone(), error: None });
+                }
+                if let Some(tx) = slack.events.get() {
+                    let me = Me { team_id: rec.team_id.clone(), bot_user: rec.bot_user.clone(), token: rec.bot_token.clone(), agent: Some(rec.agent.clone()) };
+                    let _ = tx.send((me, payload));
+                }
+            }
+            StatusCode::OK.into_response()
+        }
+        _ => StatusCode::OK.into_response(),
+    }
+}
+
+/// Slack's timestamp is within five minutes of now.
+fn fresh(ts: &str, now: i64) -> bool {
+    ts.parse::<i64>().is_ok_and(|t| (now - t).abs() <= EVENT_AGE)
+}
+
+/// Slack's `v0` signature of a request: HMAC-SHA256 of `v0:<ts>:<body>`
+/// with the app's signing secret, compared in constant time.
+fn signed(secret: &str, ts: &str, body: &[u8], signature: &str) -> bool {
+    let Some(tag) = signature.strip_prefix("v0=").and_then(unhex) else { return false };
+    if secret.is_empty() {
+        return false;
+    }
+    let key = ring::hmac::Key::new(ring::hmac::HMAC_SHA256, secret.as_bytes());
+    let mut msg = Vec::with_capacity(body.len() + ts.len() + 4);
+    msg.extend_from_slice(b"v0:");
+    msg.extend_from_slice(ts.as_bytes());
+    msg.push(b':');
+    msg.extend_from_slice(body);
+    ring::hmac::verify(&key, &msg, &tag).is_ok()
+}
+
+fn unhex(s: &str) -> Option<Vec<u8>> {
+    if s.len() % 2 != 0 || s.len() > 128 {
+        return None;
+    }
+    (0..s.len()).step_by(2).map(|i| u8::from_str_radix(s.get(i..i + 2)?, 16).ok()).collect()
+}
+
+impl Slack {
+    /// The agent's app (on HTTP) whose signing secret signed this request.
+    fn signed_by(&self, ts: &str, body: &[u8], signature: &str) -> Option<AgentApp> {
+        self.cfg.lock().unwrap().apps.iter().find(|a| !a.events_url.is_empty() && signed(&a.signing_secret, ts, body, signature)).cloned()
+    }
+
+    /// `apps.icon.set`, its image as `multipart/form-data` (built here:
+    /// one file part is all it takes).
+    async fn set_icon(&self, token: &str, app_id: &str, png: &[u8]) -> Result<()> {
+        let method = "apps.icon.set";
+        let boundary = format!("yard-{}", random_hex());
+        let mut body = Vec::with_capacity(png.len() + 400);
+        body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"app_id\"\r\n\r\n{app_id}\r\n").as_bytes());
+        body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"icon.png\"\r\nContent-Type: image/png\r\n\r\n").as_bytes());
+        body.extend_from_slice(png);
+        body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+        let res = self
+            .http()
+            .post(format!("{}{method}", api_base()))
+            .bearer_auth(token)
+            .header("content-type", format!("multipart/form-data; boundary={boundary}"))
+            .body(body)
+            .send()
+            .await
+            .map_err(|e| anyhow!("{method}: {}", e.without_url()))?;
+        let status = res.status();
+        let bytes = res.bytes().await.map_err(|e| anyhow!("{method}: {}", e.without_url()))?;
+        let v: Value = serde_json::from_slice(&bytes).map_err(|_| anyhow!("{method}: Slack answered HTTP {status} without JSON"))?;
+        if v["ok"] == true {
+            return Ok(());
+        }
+        bail!("{method}: {}", v["error"].as_str().unwrap_or("failed"))
+    }
 }
 
 #[derive(Deserialize)]
@@ -814,8 +1324,8 @@ pub async fn oauth(axum::extract::State(app): axum::extract::State<Arc<App>>, ax
 <p><a href=\"/#/agents\">Back to Switchyard</a></p></body>"
         ))
     };
-    let taken = q.state.as_deref().and_then(|s| app.slack.installs.lock().unwrap().remove(s)).filter(|(_, until)| *until > now_ms());
-    let Some((agent, _)) = taken else {
+    let taken = q.state.as_deref().and_then(|s| app.slack.installs.lock().unwrap().remove(s)).filter(|(_, _, until)| *until > now_ms());
+    let Some((agent, redirect, _)) = taken else {
         return page("This link has expired", "Open the agent in Switchyard and choose Approve in Slack again.");
     };
     if let Some(e) = q.error {
@@ -824,7 +1334,7 @@ pub async fn oauth(axum::extract::State(app): axum::extract::State<Arc<App>>, ax
     let Some(rec) = app.slack.app_of(&agent) else { return page("Not installed", "The agent left Slack meanwhile.") };
     crypto();
     let code = q.code.unwrap_or_default();
-    match app.slack.api_open("oauth.v2.access", &[("client_id", &rec.client_id), ("client_secret", &rec.client_secret), ("code", &code), ("redirect_uri", &rec.redirect)]).await {
+    match app.slack.api_open("oauth.v2.access", &[("client_id", &rec.client_id), ("client_secret", &rec.client_secret), ("code", &code), ("redirect_uri", &redirect)]).await {
         Ok(v) => {
             let mut rec = rec;
             rec.bot_token = v["access_token"].as_str().unwrap_or_default().to_string();
@@ -833,7 +1343,9 @@ pub async fn oauth(axum::extract::State(app): axum::extract::State<Arc<App>>, ax
             rec.owner = v["authed_user"]["id"].as_str().unwrap_or_default().to_string();
             installed(&app, rec).await;
             let name = app.agents.get(&agent).map(|a| a.name).unwrap_or_default();
-            page(&format!("{} is installed in Slack", escape(&name)), "One step is left in Switchyard: its connection token. You can close this tab.")
+            let ready = app.slack.app_of(&agent).is_some_and(|a| a.step() == "ready");
+            let next = if ready { "It is ready: mention it in Slack. You can close this tab." } else { "One step is left in Switchyard: its connection token. You can close this tab." };
+            page(&format!("{} is installed in Slack", escape(&name)), next)
         }
         Err(e) => page("Not installed", &escape(&format!("{e:#}"))),
     }
@@ -862,6 +1374,16 @@ pub async fn run(app: Arc<App>) {
     for agent in ready {
         start_app(&app, &agent);
     }
+    // Apps whose agent changed while yardd was down, or made before their
+    // name followed the agent's, are brought up to date.
+    let all: Vec<String> = app.slack.cfg.lock().unwrap().apps.iter().map(|a| a.agent.clone()).collect();
+    let syncing = app.clone();
+    tokio::spawn(async move {
+        for agent in all {
+            let _ = sync_app(&syncing, &agent).await;
+        }
+    });
+    tokio::spawn(check_public(app.clone()));
     let mut changed = app.slack.changed.subscribe();
     let mut backoff = Duration::from_secs(1);
     loop {
@@ -1002,7 +1524,8 @@ async fn run_app(app: Arc<App>, agent: String) {
     crypto();
     let mut backoff = Duration::from_secs(1);
     loop {
-        let Some(rec) = app.slack.app_of(&agent).filter(|a| a.step() == "ready") else { return };
+        // An app on HTTP has no connection: Slack calls `/slack/events`.
+        let Some(rec) = app.slack.app_of(&agent).filter(|a| a.step() == "ready" && a.events_url.is_empty()) else { return };
         let Some(events) = app.slack.events.get().cloned() else { return };
         app_status(&app, &agent, Status { state: "connecting".into(), ..Default::default() });
         let wait = match connect(&app, &rec.app_token, &rec.bot_token, &events, Some(&agent)).await {
@@ -1581,5 +2104,97 @@ mod tests {
         assert_eq!(hint(""), "");
         assert!(user_id_ok("U0123ABCD") && user_id_ok("W12AB"));
         assert!(!user_id_ok("u0123") && !user_id_ok("C0123ABCD") && !user_id_ok("U01 23"));
+    }
+
+    #[test]
+    fn a_bot_handle_is_the_name_as_slack_would_make_it() {
+        assert_eq!(bot_handle("Reviewer"), "reviewer");
+        assert_eq!(bot_handle("Code Reviewer"), "code-reviewer");
+        assert_eq!(bot_handle("  PR / Deploy — Watcher!! "), "pr-deploy-watcher");
+        assert_eq!(bot_handle("José's helper"), "jose-s-helper");
+        assert_eq!(bot_handle("Straße Ærø"), "strasse-aero");
+        assert_eq!(bot_handle("ops.bot_2"), "ops.bot_2");
+        assert_eq!(bot_handle("--Release---Manager--"), "release-manager");
+        assert_eq!(bot_handle("Rocket 🚀 Launcher"), "rocket-launcher");
+        // Cut to Slack's 21, with no dash left at the end.
+        assert_eq!(bot_handle("Pull request reviewer"), "pull-request-reviewer");
+        assert_eq!(bot_handle("Pull request reviewer bot"), "pull-request-reviewer");
+        assert_eq!(bot_handle("The quick brown fox jumps"), "the-quick-brown-fox-j");
+        assert_eq!(bot_handle("abcdefghijklmnopqrst uv"), "abcdefghijklmnopqrst");
+        // Nothing Slack keeps: a handle all the same.
+        assert_eq!(bot_handle("日本語"), "agent");
+        assert_eq!(bot_handle("!!!"), "agent");
+        let long = "x".repeat(40);
+        for name in ["Code Reviewer", "José", "a b c", "日本 bot", long.as_str()] {
+            let h = bot_handle(name);
+            assert!(h.len() <= 21 && h.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "-_.".contains(c)), "{h}");
+        }
+    }
+
+    #[test]
+    fn the_app_name_keeps_the_readable_name_within_35_characters() {
+        assert_eq!(app_name("Code Reviewer"), "Code Reviewer");
+        assert_eq!(app_name("  José   the   helper "), "José the helper");
+        assert_eq!(app_name(&"é".repeat(50)).chars().count(), 35);
+        assert_eq!(app_name(""), "Agent");
+        let m = agent_manifest("Code Reviewer", "", &[], "");
+        assert_eq!(m["display_information"]["name"], "Code Reviewer");
+        assert_eq!(m["display_information"]["description"], "Code Reviewer, an agent in Switchyard.");
+        assert_eq!(m["features"]["bot_user"]["display_name"], "code-reviewer");
+        assert_eq!(m["settings"]["socket_mode_enabled"], true);
+        assert!(m["settings"]["event_subscriptions"]["request_url"].is_null() && m["oauth_config"]["redirect_urls"].is_null());
+        let m = agent_manifest("Reviewer", &"x".repeat(200), &["https://yard.test/slack/oauth".into()], "https://pub.test/slack/events");
+        assert_eq!(m["settings"]["socket_mode_enabled"], false);
+        assert_eq!(m["settings"]["event_subscriptions"]["request_url"], "https://pub.test/slack/events");
+        assert_eq!(m["oauth_config"]["redirect_urls"], json!(["https://yard.test/slack/oauth"]));
+        assert_eq!(m["display_information"]["description"].as_str().unwrap().len(), 139);
+    }
+
+    #[test]
+    fn slack_signatures_are_checked_with_the_secret_within_five_minutes() {
+        // Slack's documented example: secret, timestamp, body and signature.
+        let body = b"token=xyzz0WbapA4vBCDEFasx0q6G&team_id=T1DC2JH3J&team_domain=testteamnow&channel_id=G8PSS9T3V&channel_name=foobar&user_id=U2CERLKJA&user_name=roadrunner&command=%2Fwebhook-collect&text=&response_url=https%3A%2F%2Fhooks.slack.com%2Fcommands%2FT1DC2JH3J%2F397700885554%2F96rGlfmibIGlgcZRskXaIFfN&trigger_id=398738663015.47445629121.803a0bc887a14d10d2c447fce8b6703c";
+        let sig = "v0=a2114d57b48eac39b9ad189dd8316235a7b4a8d21a10bd27519666489c69b503";
+        assert!(signed("8f742231b10e8888abcd99yyyzzz85a5", "1531420618", body, sig));
+        assert!(!signed("8f742231b10e8888abcd99yyyzzz85a5", "1531420619", body, sig));
+        assert!(!signed("another-secret", "1531420618", body, sig));
+        assert!(!signed("8f742231b10e8888abcd99yyyzzz85a5", "1531420618", &body[1..], sig));
+        assert!(!signed("", "1", body, "v0=00"));
+        assert!(!signed("s", "1", body, "a2114d57"));
+        assert!(!signed("s", "1", body, "v0=zz"));
+        assert!(fresh("1000", 1000 + 300) && fresh("1000", 1000 - 300));
+        assert!(!fresh("1000", 1000 + 301) && !fresh("", 1000) && !fresh("12a", 1000));
+    }
+
+    #[test]
+    fn the_install_comes_back_to_a_listed_https_address_only() {
+        let listed = vec!["https://yard.test/slack/oauth".to_string(), "https://pub.test/slack/oauth".to_string()];
+        // The asking window's own address when listed; else the first.
+        assert_eq!(redirect_for("https://pub.test", &listed), "https://pub.test/slack/oauth");
+        assert_eq!(redirect_for("http://127.0.0.1:47717", &listed), "https://yard.test/slack/oauth");
+        assert_eq!(redirect_for("https://evil.test", &listed), "https://yard.test/slack/oauth");
+        assert_eq!(redirect_for("https://yard.test", &[]), "");
+        assert_eq!(public_address(" https://slack.example.com/ ").unwrap(), "https://slack.example.com");
+        assert_eq!(public_address("https://example.com/yard").unwrap(), "https://example.com/yard");
+        assert_eq!(public_address("").unwrap(), "");
+        for bad in ["http://example.com", "https://", "https://a b", "https://x.test/?q=1", "https://u@x.test", "example.com"] {
+            assert!(public_address(bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn an_icon_is_a_png_slack_takes() {
+        let png = |w: u32, h: u32| {
+            let mut b = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR".to_vec();
+            b.extend_from_slice(&w.to_be_bytes());
+            b.extend_from_slice(&h.to_be_bytes());
+            b.extend_from_slice(&[8, 6, 0, 0, 0]);
+            b
+        };
+        assert!(icon_ok(&png(1024, 1024)).is_ok());
+        assert!(icon_ok(&png(512, 2000)).is_ok());
+        assert!(icon_ok(&png(256, 256)).unwrap_err().to_string().contains("512 to 2000"));
+        assert!(icon_ok(&png(2048, 2048)).is_err());
+        assert!(icon_ok(b"<svg></svg> and more bytes to pass the length").unwrap_err().to_string().contains("not a PNG"));
     }
 }

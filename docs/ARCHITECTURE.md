@@ -872,8 +872,9 @@ status words, the badge's words). Messages and answers ride the shared
 origins and reply hook (see Agents, Origins): Slack adds the `slack` kind,
 its engine framing and one arm in `origins::reply`.
 
-- **Transport: Socket Mode.** The server is tailnet-only, so Slack cannot
-  call it (no Events API webhooks). The app-level token (`xapp-`, scope
+- **Transport: Socket Mode** for the shared bot (and agents' apps unless a
+  public address is set, below). The server is tailnet-only, so Slack cannot
+  call it by default. The app-level token (`xapp-`, scope
   `connections:write`) opens a WebSocket with `apps.connections.open`; the bot
   token (`xoxb-`) makes the Web API calls (`auth.test`, `chat.postMessage`,
   `chat.postEphemeral`, `reactions.add/remove`, `users.info`,
@@ -954,33 +955,90 @@ its engine framing and one arm in `origins::reply`.
     works once; access lasts 12 h) and keeps both in `slack.json`. The next
     agent in that workspace is one click (`slack.app.create { teamId }`).
   - **Its app** (`apps.manifest.create` with the access token): display name
-    and description from the agent, a bot user called by its name in lower
-    case, Socket Mode, the shared bot's scopes and events.
-  - **Install.** The redirect is the page's own address plus `/slack/oauth`,
-    only when it is https and one yardd serves its page to
-    (`YARD_ALLOW_ORIGIN`): only the owner's browser has to reach it, so a
-    tailnet name works. The install link carries a one-time state for 30
+    the agent's name as written, cut to Slack's 35 characters (`app_name`);
+    description what it is for (139); the bot user's display name its handle
+    (`bot_handle`): lower case, accents folded (`José` → `jose`), spaces and
+    other separators a dash, runs of dashes one, only a-z 0-9 `-` `_` `.`,
+    cut to 21 characters with no separator at either end (`agent` if nothing
+    is left). 21 because Slack makes the bot's username from the display
+    name that way, so the two agree and people @mention what they see. The
+    shared bot's scopes and events; Socket Mode, or HTTP events (below). The
+    manifest Slack has is kept (`manifest`) with the app's signing secret.
+  - **Its name follows the agent.** Saving an agent (`agents::save`, so also
+    its own `update_setup`) with a new name or purpose calls `agent_changed`,
+    which in the background sends the whole manifest again
+    (`apps.manifest.update`, a rotated configuration token) when it differs
+    from the kept one. Apps made before this are updated when yardd starts
+    (no manifest kept). A failure never fails the save: it is kept as
+    `syncError`, shown in the dialog with a field for a new configuration
+    token (`slack.grant` with an agent that has an app sends what waited), and
+    noted in the agent's conversation. Changing the public address resends
+    every app's manifest.
+  - **Its icon is the agent's face.** Slack has `apps.icon.set` (configuration
+    token, scope `app_configurations:write`, a multipart `file` of 512 to
+    2000 pixels a side); the manifest has no icon field. Only a page can draw
+    the face, so `SlackIcon.tsx` (mounted once in `App`) renders each agent
+    with an app as `AgentAvatar` out of sight, serializes that rendered
+    `<svg>` with every element's paint inlined from computed style (so a
+    redrawn face needs no change here), puts it on the avatar's colour and
+    light (`avatarIconSvg`), draws it at 1024 px on a canvas and sends the PNG
+    (`slack.app.icon { agentId, key, png }`). The key (`iconKey`, a hash of
+    that SVG) is kept by yardd, so a window sends only when the face, colour
+    or drawing changed, once per picture per window. yardd checks the PNG's
+    size, keeps it as `slack-icons/<agent>.png`, and sends it with the manifest
+    update; a lapsed token leaves it waiting like a rename.
+  - **Install.** The manifest lists as redirects every https origin yardd
+    serves its page on (`YARD_ALLOW_ORIGIN`) and the public address, each
+    plus `/slack/oauth`. The install link uses the asking window's own origin
+    when listed, else the first listed one, whatever the window is: from the
+    desktop app's http://127.0.0.1 it is still https://switchyard.giovani.sh.
+    Only the owner's browser has to reach it, so a tailnet name works. A
+    window cannot name another site: only listed addresses are used. The
+    install link carries a one-time state for 30
     minutes (`slack.app.authorize` makes a new one); `GET /slack/oauth`
     exchanges the code (`oauth.v2.access` with the app's client secret) and
-    shows a small page. Without an https page (the desktop app's 127.0.0.1)
-    the dialog has the owner install from the app's page and paste its bot
+    shows a small page. With no https address at all the dialog has the
+    owner install from the app's page and paste its bot
     token (`slack.app.botToken`, checked with `auth.test`). Whoever installed
     it goes on the allowlist (for a pasted token: who made the configuration
     token).
-  - **Connection.** It needs an app-level token (`xapp-`, `connections:write`)
-    that Slack only makes by hand, the step Orca's cloud spares its users:
-    the dialog links the app's settings and says what to click
+  - **Connection, Socket Mode** (no public address). It needs an app-level
+    token (`xapp-`, `connections:write`) that Slack only makes by hand: one
+    screen with Open Basic Information (the app's own page) and three short
+    lines of what to click
     (`slack.app.appToken`, checked with `apps.connections.open`). Then it
     keeps its own Socket Mode connection (`run_app`, redialled like the
     shared bot's, from start after a restart).
+  - **Connection, HTTP** (Orca's way; strictly opt-in and off by default:
+    the owner would rather not expose anything, so the dialog does not offer
+    it and no tunnel is set up): with a public https address for Slack
+    (`YARD_SLACK_PUBLIC_URL`, which wins, or the `slack.publicUrl { url }`
+    op, which has no UI), a new app's manifest has
+    `socket_mode_enabled: false` and `request_url` `<public>/slack/events`,
+    and there is no app-level token: the configuration token is the only
+    paste (with an https redirect). `POST /slack/events` reads at most 1 MB,
+    refuses a timestamp more than 5 minutes off, and trusts nothing until the
+    `v0` signature (HMAC-SHA256 of `v0:<ts>:<body>`, ring, constant-time)
+    matches one HTTP app's signing secret; that app is the agent. It answers
+    `url_verification`, and hands an `event_callback` to the same queue and
+    `on_event` as Socket Mode at once (200 well within Slack's 3 s), once per
+    `event_id` (a retry, `X-Slack-Retry-Num`, is acknowledged only). A check
+    that comes while an app is being made waits up to 2.5 s for its secret.
+    `GET /slack/events` answers a per-process probe: setting the address
+    fetches it through the address and the dialog says whether it reached
+    this yardd (`publicCheck`). **Expose only `/slack/events` and
+    `/slack/oauth`** on the public address (a Cloudflare Tunnel with a path
+    rule, say); nothing else of yardd's may be public. An app keeps the way
+    it was made: one on Socket Mode stays there when an address is set later.
   - **Messages.** Everything it hears goes to its agent, never routed by
     name or default; the allowlist, origins (with `app`: its agent),
     reactions and answers are the shared bot's, and the answer is posted
     with its own bot token.
   - **Remove** (`slack.app.remove`, or deleting the agent) closes the
-    connection and deletes the app (`apps.manifest.delete`, best effort).
-  - Not built: updating the app when the agent is renamed (its Slack name
-    stays), Orca's member list and access requests per agent, "post as".
+    connection and deletes the app (`apps.manifest.delete`, best effort) and
+    its icon.
+  - Not built: Orca's member list and access requests per agent, "post as",
+    moving an app made on Socket Mode to HTTP.
 - **Tests.** `YARD_SLACK_API` points the Web API (and so Socket Mode)
   elsewhere: `verify/fakes/fake-slack` is a Bun fake of the Web API methods
   above and Socket Mode, with control endpoints to send a message, a
@@ -994,15 +1052,32 @@ its engine framing and one arm in `origins::reply`.
   host (its origin there, its answer posted from the hub), and an agent's own
   app (the token checks, the manifest, the install's redirect and a forged
   or reused state, the app-level token, a mention answered through its bot,
-  a restart, removal; the fake knows `tooling.tokens.rotate`,
-  `apps.manifest.create`/`delete`, `oauth.v2.access` and a second bot,
-  @agent). Unit tests cover routing, mention
-  stripping, Slack markup, mrkdwn, splitting and the `slack` framing. The
+  a restart, removal), an app on a public address (only the configuration
+  token; the https redirect from an http window; `url_verification` and
+  events signed, mis-signed, stale, unsigned and too large; a retry handled
+  once; no socket after a restart; no secret shown or logged), and an app
+  following its agent (`apps.manifest.update` on a rename with the new
+  handle, the icon sent once per key and refused when not a 512-2000 px PNG,
+  a lapsed configuration token shown and caught up by a new one, an old app
+  updated at start, the public address set from the page). The fake knows
+  `tooling.tokens.rotate`, `apps.manifest.create`/`update`/`delete`,
+  `apps.icon.set` (multipart), `oauth.v2.access`, a second bot @agent, signed
+  HTTP events (`/_fake/event`, `/_fake/challenge`) and a lapsed token
+  (`/_fake/lapse`). Unit tests cover routing, mention stripping, Slack
+  markup, mrkdwn, splitting, the `slack` framing, the handle and app name,
+  signatures (Slack's documented example) and their age, redirects, the
+  public address and the icon check; UI tests the steps, the token count,
+  the icon SVG and its key. The
   `slack` feature map drives the card (empty, refused, connected, a request,
   the default agent) and the badge in a conversation at both viewports,
   against the fake.
 - **Not checked:** a real Slack workspace. Nothing here has talked to
-  slack.com: the manifest import, real event shapes beyond Slack's documented
+  slack.com: the manifest import and update (whether a new bot display name
+  shows without a reinstall), `apps.icon.set` and its multipart body, Slack's
+  real signatures beyond its documented example, its checking of a request
+  URL set by `apps.manifest.create` (the manifest docs say it may need a
+  click on Verify in the app's settings), the public address through a real
+  tunnel, real event shapes beyond Slack's documented
   ones, rate limits, Enterprise Grid ids and the TLS path to slack.com are
   untested. Slack connects from the hub only (Slack on a remote host is not
   offered); an agent on a remote host is reached through the hub like any

@@ -1,8 +1,9 @@
 // Slack on the Connectors page: the app manifest the owner pastes at
 // api.slack.com, token checks before anything is sent, the connection's
-// status line, and how a Slack message is labelled in a thread. The
-// connection itself lives in yardd (slack.rs).
-import type { MessageOrigin, SlackOrigin, SlackView } from "./protocol";
+// status line, and how a Slack message is labelled in a thread; for an
+// agent's own app, the steps it still takes and the picture of its face that
+// becomes its icon. The connection itself lives in yardd (slack.rs).
+import type { MessageOrigin, SlackAgentApp, SlackOrigin, SlackView } from "./protocol";
 
 /** Socket Mode on (no public address needed), a bot that reads DMs and
  *  mentions, follow-ups in threads it answered, and reacts and posts. */
@@ -95,4 +96,63 @@ export function allowedSummary(view: SlackView): string {
   if (n === 0) return "Nobody yet. Send the bot a direct message, then allow yourself here.";
   if (n === 1) return `Only ${view.allowed[0].name}.`;
   return `${n} people.`;
+}
+
+/** The steps of putting an agent in Slack, as its dialog numbers them. Over
+ *  HTTP (a public address) Slack calls Switchyard, so there is no connection
+ *  token to paste and no Connect step. */
+export function setupSteps(view: SlackView | null | undefined, app: SlackAgentApp | undefined): string[] {
+  const http = app ? !!app.eventsUrl : !!view?.publicUrl;
+  return http ? ["Token", "Approve"] : ["Token", "Approve", "Connect"];
+}
+
+/** How many tokens a new agent app takes here: the configuration token,
+ *  the bot token when Slack cannot send the browser back to Switchyard, and
+ *  the app-level token when its events come over Socket Mode. */
+export function tokensNeeded(view: SlackView | null | undefined): number {
+  return 1 + (view?.canRedirect ? 0 : 1) + (view?.publicUrl ? 0 : 1);
+}
+
+/** The colours of an avatar as the page paints it. */
+export interface AvatarPaint {
+  /** Its colour. */
+  background: string;
+  /** The light from above, and where it has faded out (at 70%). */
+  light: string;
+  clear: string;
+}
+
+/** A colour from computed style, safe inside an attribute; else null. */
+const paint = (c: string) => (/^[#a-zA-Z0-9(),.%\s-]{1,64}$/.test(c.trim()) ? c.trim() : null);
+
+/** The agent's avatar as a standalone square SVG, for Slack's app icon: its
+ *  face (`face`, the rendered avatar's own `<svg>` with its styles inlined)
+ *  on its colour, lit from above as on the page. Slack rounds the corners.
+ *  Null when its colour is not one. */
+export function avatarIconSvg(face: string, colors: AvatarPaint, px = 1024): string | null {
+  const bg = paint(colors.background);
+  if (!bg) return null;
+  const light = paint(colors.light) ?? "transparent";
+  const clear = paint(colors.clear) ?? "transparent";
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 24 24">` +
+    `<defs><linearGradient id="yard-light" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${light}"/><stop offset="0.7" stop-color="${clear}"/></linearGradient></defs>` +
+    `<rect width="24" height="24" fill="${bg}"/><rect width="24" height="24" fill="url(#yard-light)"/>` +
+    face +
+    `</svg>`
+  );
+}
+
+/** A short key for an icon's SVG. yardd keeps the key of the icon Slack
+ *  has, so a window sends a picture only when the face, its colour or its
+ *  drawing changed, and every window agrees on the key. */
+export function iconKey(svg: string): string {
+  let a = 0x811c9dc5;
+  let b = (0x01000193 ^ svg.length) >>> 0;
+  for (let i = 0; i < svg.length; i++) {
+    const c = svg.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b ^ c, 0x5bd1e995) >>> 0;
+  }
+  return `v1-${a.toString(16).padStart(8, "0")}${b.toString(16).padStart(8, "0")}`;
 }

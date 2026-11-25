@@ -492,3 +492,253 @@ async fn an_agent_gets_a_slack_app_of_its_own_from_a_configuration_token() {
     let saved = std::fs::read_to_string(sb.data().join("slack.json")).unwrap();
     assert!(!saved.contains("xoxb-agent-TEST"));
 }
+
+/// A bare HTTP/1.1 POST to yardd: its status and body.
+fn http_post(port: u16, path: &str, headers: &[(&str, &str)], body: &[u8]) -> (u16, String) {
+    let mut s = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+    s.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    let mut head = format!("POST {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: {}\r\nConnection: close\r\n", body.len());
+    for (k, v) in headers {
+        head.push_str(&format!("{k}: {v}\r\n"));
+    }
+    head.push_str("\r\n");
+    s.write_all(head.as_bytes()).unwrap();
+    let _ = s.write_all(body);
+    let mut out = Vec::new();
+    let _ = s.read_to_end(&mut out);
+    let out = String::from_utf8_lossy(&out).to_string();
+    let status = out.split_whitespace().nth(1).and_then(|c| c.parse().ok()).unwrap_or(0);
+    (status, out.split_once("\r\n\r\n").map(|(_, b)| b.to_string()).unwrap_or_default())
+}
+
+/// The head of a PNG `w`×`h` pixels: enough for yardd's check and the fake's.
+fn png(w: u32, h: u32) -> String {
+    use base64::Engine;
+    let mut b = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR".to_vec();
+    b.extend_from_slice(&w.to_be_bytes());
+    b.extend_from_slice(&h.to_be_bytes());
+    b.extend_from_slice(&[8, 6, 0, 0, 0, 0x1f, 0x15, 0xc4, 0x89]);
+    base64::engine::general_purpose::STANDARD.encode(b)
+}
+
+#[tokio::test]
+async fn with_a_public_address_an_agents_app_needs_only_the_configuration_token() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-public");
+    let api = fake.api();
+    let env = [("YARD_SLACK_API", api.as_str()), ("YARD_ALLOW_ORIGIN", "https://yard.test"), ("YARD_SLACK_PUBLIC_URL", "https://slack.yard.test/")];
+    let d = sb.start_with(&env);
+    let port = d.port;
+    let events = format!("http://127.0.0.1:{port}/slack/events");
+    let mut c = d.client().await;
+    ready(&mut c).await;
+    assert_eq!(c.log[0]["slack"]["publicUrl"], "https://slack.yard.test");
+    assert_eq!(c.log[0]["slack"]["publicUrlFixed"], true);
+    assert_eq!(c.log[0]["slack"]["canRedirect"], true);
+    // Set where Switchyard runs: the page cannot change it.
+    assert!(step(&mut c, json!({ "op": "slack.publicUrl", "url": "https://other.test" })).await.unwrap_err().contains("YARD_SLACK_PUBLIC_URL"));
+    let id = reviewer(&mut c).await;
+
+    // The window is the desktop app's http page; the install still comes
+    // back on its own, to the https address yardd serves its page on.
+    let window = format!("http://127.0.0.1:{port}");
+    let s = step(&mut c, json!({ "op": "slack.grant", "token": "xoxe-1-TEST-refresh", "agentId": id, "origin": window })).await.unwrap();
+    let app = &s["agentApps"][&id];
+    assert_eq!(app["step"], "install");
+    assert_eq!(app["canRedirect"], true);
+    assert_eq!(app["eventsUrl"], "https://slack.yard.test/slack/events");
+    let manifest = &fake.state()["manifests"][0];
+    assert_eq!(manifest["settings"]["socket_mode_enabled"], false);
+    assert_eq!(manifest["settings"]["event_subscriptions"]["request_url"], "https://slack.yard.test/slack/events");
+    assert_eq!(manifest["oauth_config"]["redirect_urls"], json!(["https://yard.test/slack/oauth", "https://slack.yard.test/slack/oauth"]));
+    let url = app["authorizeUrl"].as_str().unwrap().to_string();
+    assert!(url.contains("redirect_uri=https%3A%2F%2Fyard.test%2Fslack%2Foauth"), "{url}");
+    // A window on the public address gets its own.
+    let s = step(&mut c, json!({ "op": "slack.app.authorize", "agentId": id, "origin": "https://slack.yard.test" })).await.unwrap();
+    assert!(s["agentApps"][&id]["authorizeUrl"].as_str().unwrap().contains("redirect_uri=https%3A%2F%2Fslack.yard.test%2Fslack%2Foauth"));
+    let s = step(&mut c, json!({ "op": "slack.app.authorize", "agentId": id, "origin": window })).await.unwrap();
+    let url = s["agentApps"][&id]["authorizeUrl"].as_str().unwrap().to_string();
+    assert!(url.contains("redirect_uri=https%3A%2F%2Fyard.test%2Fslack%2Foauth"), "{url}");
+
+    // Slack checks the events address: answered only when signed by the app.
+    let challenge = |sign: &str| fake.request("POST", "/_fake/challenge", &json!({ "url": events, "sign": sign }));
+    let good = challenge("good");
+    assert_eq!(good["status"], 200, "{good}");
+    assert!(good["body"].as_str().unwrap().contains("TEST-challenge-"));
+    for sign in ["bad", "stale", "none"] {
+        let r = challenge(sign);
+        assert_eq!(r["status"], 401, "{sign}: {r}");
+        assert!(!r["body"].as_str().unwrap().contains("TEST-challenge-"));
+    }
+    // Too large to be Slack's.
+    let (status, _) = tokio::task::spawn_blocking(move || http_post(port, "/slack/events", &[("Content-Type", "application/json")], &vec![b' '; 2 << 20])).await.unwrap();
+    assert_eq!(status, 413);
+    // The probe the public address is checked with.
+    let probe = tokio::task::spawn_blocking(move || http_get(port, "/slack/events").unwrap()).await.unwrap();
+    assert!(probe.contains("Switchyard receives Slack's events here."));
+
+    // The install: then it is ready, with no app-level token.
+    let state = url.split("&state=").nth(1).unwrap().to_string();
+    let path = format!("/slack/oauth?code=TEST-code&state={state}");
+    let page = tokio::task::spawn_blocking(move || http_get(port, &path).unwrap()).await.unwrap();
+    assert!(page.contains("Reviewer is installed in Slack") && page.contains("It is ready"), "{page}");
+    let exchange = fake.state()["calls"].as_array().unwrap().iter().find(|c| c["method"] == "oauth.v2.access").cloned().unwrap();
+    assert_eq!(exchange["params"]["redirect_uri"], "https://yard.test/slack/oauth");
+    let s = slack_state(&mut c, "its app ready", |s| s["agentApps"][&id]["step"] == "ready").await;
+    assert_eq!(s["agentApps"][&id]["state"], "events");
+    assert_eq!(fake.state()["opens"], 0, "no Socket Mode connection");
+
+    // A mention over HTTP reaches it; the answer goes back through its app.
+    let say = |extra: Value| {
+        let mut msg = json!({ "url": events, "user": "UOWNER", "channel": "C0OPS", "text": "<@UAGENT> TEST-over http" });
+        for (k, v) in extra.as_object().unwrap() {
+            msg[k] = v.clone();
+        }
+        fake.request("POST", "/_fake/event", &msg)
+    };
+    let r = say(json!({}));
+    assert!(r["results"].as_array().unwrap().iter().all(|x| x["status"] == 200), "{r}");
+    let ts = r["ts"].as_str().unwrap().to_string();
+    let st = fake.wait("its answer", |s| !FakeSlack::posts(s, &ts).is_empty() && s["reactions"][&ts] == json!(["white_check_mark"])).await;
+    assert_eq!(FakeSlack::posts(&st, &ts).len(), 1);
+    assert!(FakeSlack::posts(&st, &ts)[0].contains("TEST-over http"));
+    let sid = chat_of(&mut c, &id).await;
+    let history = c.history(&sid).await;
+    let m = history.iter().find(|e| e["type"] == "user_message").expect("the message in its conversation");
+    assert_eq!(m["text"], "TEST-over http");
+    assert_eq!(m["origin"]["app"], id.as_str());
+    slack_state(&mut c, "its app connected", |s| s["agentApps"][&id]["state"] == "connected").await;
+
+    // Unsigned, mis-signed and replayed requests reach nobody.
+    for sign in ["bad", "stale", "none"] {
+        let r = say(json!({ "sign": sign, "text": format!("<@UAGENT> TEST-forged {sign}") }));
+        assert!(r["results"].as_array().unwrap().iter().all(|x| x["status"] == 401), "{sign}: {r}");
+    }
+    // A retry of an event already handled is acknowledged, not handled again.
+    let r = say(json!({ "channel": "D0OWNER", "text": "TEST-once only", "event_id": "EvOnce" }));
+    let once = r["ts"].as_str().unwrap().to_string();
+    fake.wait("the answer to once", |s| s["reactions"][&once] == json!(["white_check_mark"])).await;
+    let again = say(json!({ "channel": "D0OWNER", "text": "TEST-once only", "event_id": "EvOnce", "retry": 1, "ts": once }));
+    assert_eq!(again["results"][0]["status"], 200, "{again}");
+    c.drain_for(Duration::from_millis(800)).await;
+    let history = c.history(&sid).await;
+    let texts: Vec<&str> = history.iter().filter(|e| e["type"] == "user_message").filter_map(|e| e["text"].as_str()).collect();
+    assert_eq!(texts.iter().filter(|t| t.contains("TEST-once only")).count(), 1, "{texts:?}");
+    assert!(!texts.iter().any(|t| t.contains("TEST-forged")), "{texts:?}");
+
+    // After a restart it still needs no connection.
+    drop(c);
+    d.stop();
+    let d = sb.start_with(&env);
+    let mut c = d.client().await;
+    let s = slack_state(&mut c, "its app ready again", |s| s["agentApps"][&id]["step"] == "ready").await;
+    assert_eq!(s["agentApps"][&id]["state"], "events");
+    assert_eq!(fake.state()["opens"], 0);
+    // Nothing secret reaches a window or the log.
+    let shown = s.to_string();
+    assert!(!shown.contains("TEST-signing-secret") && !shown.contains("TEST-secret"), "{shown}");
+    assert!(!d.log_text().contains("TEST-signing-secret"));
+}
+
+#[tokio::test]
+async fn an_agents_slack_app_follows_its_name_and_icon_and_says_when_it_cannot() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-rename");
+    let api = fake.api();
+    let env = [("YARD_SLACK_API", api.as_str())];
+    let d = sb.start_with(&env);
+    let mut c = d.client().await;
+    ready(&mut c).await;
+    // No https page and no public address: the bot token is pasted.
+    assert_eq!(c.log[0]["slack"]["canRedirect"], false);
+    let id = reviewer(&mut c).await;
+    let s = step(&mut c, json!({ "op": "slack.grant", "token": "xoxe-1-TEST-refresh", "agentId": id, "origin": "http://127.0.0.1" })).await.unwrap();
+    assert_eq!(s["agentApps"][&id]["canRedirect"], false);
+    assert!(s["agentApps"][&id]["authorizeUrl"].is_null());
+    assert!(fake.state()["manifests"][0]["oauth_config"]["redirect_urls"].is_null());
+    step(&mut c, json!({ "op": "slack.app.botToken", "agentId": id, "token": "xoxb-agent-TEST" })).await.unwrap();
+    assert!(fake.state()["updates"].as_array().unwrap().is_empty());
+
+    // A new name and purpose: Slack's app follows, the handle made from the name.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "id": id, "name": "Release-Auditor", "about": "TEST-audits releases" }, "ref": "r1" })).await;
+    c.wait_after(from, "renamed", |m| m["op"] == "agent.saved").await;
+    let st = fake.wait("the manifest update", |s| !s["updates"].as_array().unwrap().is_empty()).await;
+    let update = &st["updates"][0];
+    assert_eq!(update["app_id"], "A0AGENT");
+    assert_eq!(update["manifest"]["display_information"]["name"], "Release-Auditor");
+    assert_eq!(update["manifest"]["display_information"]["description"], "TEST-audits releases");
+    assert_eq!(update["manifest"]["features"]["bot_user"]["display_name"], "release-auditor");
+    assert_eq!(update["manifest"]["settings"]["socket_mode_enabled"], true);
+    slack_state(&mut c, "the new handle", |s| s["agentApps"][&id]["handle"] == "release-auditor").await;
+    // Its other settings alone change nothing in Slack.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "id": id, "instructions": "TEST-be brief" }, "ref": "r2" })).await;
+    c.wait_after(from, "saved", |m| m["op"] == "agent.saved").await;
+
+    // Its icon, as the page drew it.
+    assert!(step(&mut c, json!({ "op": "slack.app.icon", "agentId": id, "key": "k1", "png": png(256, 256) })).await.unwrap_err().contains("512 to 2000"));
+    assert!(step(&mut c, json!({ "op": "slack.app.icon", "agentId": id, "key": "k1", "png": "PHN2Zz4=" })).await.unwrap_err().contains("not a PNG"));
+    let s = step(&mut c, json!({ "op": "slack.app.icon", "agentId": id, "key": "k1", "png": png(1024, 1024) })).await.unwrap();
+    assert_eq!(s["agentApps"][&id]["iconKey"], "k1");
+    let icons = fake.state()["icons"].clone();
+    assert_eq!(icons.as_array().unwrap().len(), 1, "{icons}");
+    assert_eq!(icons[0]["app_id"], "A0AGENT");
+    assert_eq!(icons[0]["width"], 1024);
+    assert!(icons[0]["png"] == true && icons[0]["type"] == "image/png");
+    // The same picture again is not sent again.
+    step(&mut c, json!({ "op": "slack.app.icon", "agentId": id, "key": "k1", "png": png(1024, 1024) })).await.unwrap();
+    assert_eq!(fake.state()["icons"].as_array().unwrap().len(), 1);
+    assert_eq!(fake.state()["updates"].as_array().unwrap().len(), 1);
+
+    // The configuration token lapses: the rename is saved all the same, and
+    // its dialog says Slack was not told.
+    fake.request("POST", "/_fake/lapse", &json!({}));
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "id": id, "name": "Inspector" }, "ref": "r3" })).await;
+    let saved = c.wait_after(from, "renamed again", |m| m["op"] == "agent.saved" || (m["op"] == "error" && m["for"] == "agent.save")).await;
+    assert_eq!(saved["op"], "agent.saved");
+    let s = slack_state(&mut c, "the update failed", |s| s["agentApps"][&id]["syncError"].is_string()).await;
+    let error = s["agentApps"][&id]["syncError"].as_str().unwrap().to_string();
+    assert!(error.contains("configuration token"), "{error}");
+    let s = step(&mut c, json!({ "op": "slack.app.icon", "agentId": id, "key": "k2", "png": png(1024, 1024) })).await.unwrap();
+    assert!(s["agentApps"][&id]["syncError"].is_string());
+    assert_eq!(fake.state()["updates"].as_array().unwrap().len(), 1);
+
+    // A new configuration token sends what waited: the name and the icon.
+    let s = step(&mut c, json!({ "op": "slack.grant", "token": "xoxe-1-TEST-again", "agentId": id, "origin": "" })).await.unwrap();
+    assert!(s["agentApps"][&id]["syncError"].is_null(), "{s}");
+    assert_eq!(s["agentApps"][&id]["handle"], "inspector");
+    let st = fake.state();
+    assert_eq!(st["manifests"].as_array().unwrap().len(), 1, "no second app");
+    assert_eq!(st["updates"].as_array().unwrap().last().unwrap()["manifest"]["display_information"]["name"], "Inspector");
+    assert_eq!(st["icons"].as_array().unwrap().len(), 2);
+
+    // The public address, set from the page: checked through itself.
+    assert!(step(&mut c, json!({ "op": "slack.publicUrl", "url": "http://pub.test" })).await.unwrap_err().contains("https://"));
+    let s = step(&mut c, json!({ "op": "slack.publicUrl", "url": "https://pub.test/" })).await.unwrap();
+    assert_eq!(s["publicUrl"], "https://pub.test");
+    assert_eq!(s["publicUrlFixed"], false);
+    assert_eq!(s["canRedirect"], true);
+    assert_eq!(fake.state()["updates"].as_array().unwrap().last().unwrap()["manifest"]["oauth_config"]["redirect_urls"], json!(["https://pub.test/slack/oauth"]));
+    let s = slack_state(&mut c, "the address checked", |s| s["publicCheck"].is_string()).await;
+    assert!(s["publicCheck"].as_str().unwrap().contains("https://pub.test/slack/events"), "{s}");
+
+    // An app made before names followed (no manifest kept) is updated when yardd starts.
+    drop(c);
+    d.stop();
+    let file = sb.data().join("slack.json");
+    let mut saved: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+    saved["apps"][0].as_object_mut().unwrap().remove("manifest");
+    std::fs::write(&file, saved.to_string()).unwrap();
+    let before = fake.state()["updates"].as_array().unwrap().len();
+    let d = sb.start_with(&env);
+    let _c = d.client().await;
+    let st = fake.wait("the update at start", |s| s["updates"].as_array().unwrap().len() == before + 1).await;
+    let update = &st["updates"][before]["manifest"];
+    assert_eq!(update["features"]["bot_user"]["display_name"], "inspector");
+    // Its install may now come back to the public address; its events stay on
+    // Socket Mode, whose token it has.
+    assert_eq!(update["oauth_config"]["redirect_urls"], json!(["https://pub.test/slack/oauth"]));
+    assert_eq!(update["settings"]["socket_mode_enabled"], true);
+}

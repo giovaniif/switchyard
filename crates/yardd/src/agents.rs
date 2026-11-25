@@ -339,12 +339,18 @@ async fn save(app: &Arc<App>, input: &Value) -> Result<Agent> {
         Some(old) => follow(app, old, &a)?,
         None => {}
     }
-    let mut list = app.agents.list.lock().unwrap();
-    match list.iter_mut().find(|x| x.id == a.id) {
-        Some(slot) => *slot = a.clone(),
-        None => list.push(a.clone()),
+    {
+        let mut list = app.agents.list.lock().unwrap();
+        match list.iter_mut().find(|x| x.id == a.id) {
+            Some(slot) => *slot = a.clone(),
+            None => list.push(a.clone()),
+        }
+        app.agents.persist(&list);
     }
-    app.agents.persist(&list);
+    // Its own Slack app goes by its name and what it is for.
+    if existing.as_ref().is_some_and(|o| o.name != a.name || o.about != a.about) {
+        crate::slack::agent_changed(app, &a.id);
+    }
     Ok(a)
 }
 

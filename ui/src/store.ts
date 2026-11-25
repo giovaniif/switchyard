@@ -206,7 +206,7 @@ export interface State {
 
 export type SlackOp = "slack.tokens" | "slack.disconnect" | "slack.retry" | "slack.allow" | "slack.disallow" | "slack.dismiss" | "slack.route";
 /** An agent's own Slack app, step by step (`SlackSetup`). */
-export type SlackAppOp = "slack.grant" | "slack.app.create" | "slack.app.authorize" | "slack.app.botToken" | "slack.app.appToken" | "slack.app.remove";
+export type SlackAppOp = "slack.grant" | "slack.app.create" | "slack.app.authorize" | "slack.app.botToken" | "slack.app.appToken" | "slack.app.remove" | "slack.app.icon" | "slack.publicUrl";
 
 type Action =
   | { t: "socket"; connected: boolean }

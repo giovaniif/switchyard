@@ -113,6 +113,14 @@ export interface SlackView {
   workspaces?: { teamId: string; teamName: string }[];
   /** Agents with a Slack app of their own, by agent id. */
   agentApps?: Record<string, SlackAgentApp>;
+  /** The public https address Slack sends agents' new apps' events to; empty: Socket Mode. */
+  publicUrl?: string;
+  /** Set by YARD_SLACK_PUBLIC_URL where Switchyard runs, so not from here. */
+  publicUrlFixed?: boolean;
+  /** Whether that address reached this Switchyard: null untried, "" yes, else why not. */
+  publicCheck?: string | null;
+  /** A new app's install can come back to Switchyard on its own (an https address). */
+  canRedirect?: boolean;
 }
 
 /** An agent's own Slack app (yardd's slack.rs): its step and connection, never a token. */
@@ -122,14 +130,20 @@ export interface SlackAgentApp {
   appId: string;
   teamId: string;
   teamName: string;
-  /** Its bot's handle in Slack, the agent's name in lower case. */
+  /** Its bot's handle in Slack, made from the agent's name (`code-reviewer`). */
   handle: string;
   ownerName: string;
-  /** Slack sends the browser back here after the install (an https page only). */
+  /** Slack can send the browser back to Switchyard after the install (an https address). */
   canRedirect: boolean;
   authorizeUrl?: string;
-  /** When ready: `connecting`, `connected` or `error`. */
-  state?: "connecting" | "connected" | "error";
+  /** Where Slack sends its events over HTTP; empty: Socket Mode, with an app-level token. */
+  eventsUrl?: string;
+  /** Why its name, description or icon did not reach Slack (a lapsed configuration token). */
+  syncError?: string | null;
+  /** Which picture of the agent Slack has as its icon (`iconKey` in slack.ts); empty: none yet. */
+  iconKey?: string;
+  /** When ready: `connecting`, `connected` or `error` (Socket Mode); `events` until Slack's first event over HTTP. */
+  state?: "connecting" | "connected" | "error" | "events";
   error?: string | null;
 }
 
