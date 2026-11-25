@@ -1,0 +1,157 @@
+$ (cd ui && bun test) && verify/yv map run sidebar
+# exit 0 after 150572 ms at 0e38584700ac7bb4e21cb8123bff7cb41aaaee38
+
+bun test v1.4.4 (38afee6c8)
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "sidebar",
+      "at": "2026-11-25T11:09:49.482Z",
+      "counts": {
+        "pass": 26
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "rows-show-status",
+          "status": "pass",
+          "ms": 4607
+        },
+        {
+          "label": "compact-rows-with-engine-marks",
+          "status": "pass",
+          "ms": 5035
+        },
+        {
+          "label": "hover-shows-archive",
+          "status": "pass",
+          "ms": 7373
+        },
+        {
+          "label": "rows-mark-what-needs-you",
+          "status": "pass",
+          "ms": 11621
+        },
+        {
+          "label": "mark-chat-unread",
+          "status": "pass",
+          "ms": 13044
+        },
+        {
+          "label": "rename-session",
+          "status": "pass",
+          "ms": 11305
+        },
+        {
+          "label": "pin-and-unpin",
+          "status": "pass",
+          "ms": 6252
+        },
+        {
+          "label": "archive-and-restore",
+          "status": "pass",
+          "ms": 6069
+        },
+        {
+          "label": "archiving-the-open-session-keeps-the-list-closed",
+          "status": "pass",
+          "ms": 7028
+        },
+        {
+          "label": "delete-keeps-worktree",
+          "status": "pass",
+          "ms": 3696
+        },
+        {
+          "label": "group-new",
+          "status": "pass",
+          "ms": 3376
+        },
+        {
+          "label": "group-move-to-existing",
+          "status": "pass",
+          "ms": 3025
+        },
+        {
+          "label": "group-drag-out-to-ungrouped",
+          "status": "pass",
+          "ms": 6443
+        },
+        {
+          "label": "group-drag-into-group",
+          "status": "pass",
+          "ms": 5706
+        },
+        {
+          "label": "group-drag-noop",
+          "status": "pass",
+          "ms": 3796
+        },
+        {
+          "label": "group-collapse-persists",
+          "status": "pass",
+          "ms": 3173
+        },
+        {
+          "label": "group-rename",
+          "status": "pass",
+          "ms": 3200
+        },
+        {
+          "label": "group-remove-from-group",
+          "status": "pass",
+          "ms": 2886
+        },
+        {
+          "label": "group-ungroup",
+          "status": "pass",
+          "ms": 3090
+        },
+        {
+          "label": "group-count-clear-of-the-menu-button",
+          "status": "pass",
+          "ms": 6767
+        },
+        {
+          "label": "collapsed-group-shows-a-waiting-approval",
+          "status": "pass",
+          "ms": 6251
+        },
+        {
+          "label": "archived-header-stays-at-bottom",
+          "status": "pass",
+          "ms": 8858
+        },
+        {
+          "label": "hand-off-keeps-the-group",
+          "status": "pass",
+          "ms": 2353
+        },
+        {
+          "label": "hand-off-from-a-pinned-session-stays-in-its-group",
+          "status": "pass",
+          "ms": 5733
+        },
+        {
+          "label": "menu-on-a-row-below-the-fold",
+          "status": "pass",
+          "ms": 6736
+        },
+        {
+          "label": "session-named-from-the-conversation",
+          "status": "pass",
+          "ms": 1907
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
+
+ 479 pass
+ 0 fail
+ 4927 expect() calls
+Ran 479 tests across 35 files. [367.00ms]

@@ -1,0 +1,190 @@
+{
+  "v": 1,
+  "claim": "A collapsed sidebar group hid that a session in it waits for approval: the header kept only its name and count, so the turn could sit waiting with nothing on the sidebar saying so (#448)",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-3e46",
+  "base": "fcc9702b63a38329eb4abd941e7299b593a7f20c",
+  "head": "0e38584700ac7bb4e21cb8123bff7cb41aaaee38",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/sidebar.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-25T11:06:45.314Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "head",
+      "kind": "fix",
+      "at": "0e38584700ac7bb4e21cb8123bff7cb41aaaee38",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "5ed88be2bd002479b5f07e098eb0c3e9466fa4ffd8411ab905869e5e07ee7ac1"
+        },
+        {
+          "path": "p1-open-desktop.png",
+          "sha256": "3639ab08806677e69c08539dc87d1e071410835ad0054e674be39f17a6fa8cd4"
+        },
+        {
+          "path": "p1-collapsed-desktop.png",
+          "sha256": "62f36c0bc4d6c81c33e14a6f80b5663df4c221b27b74e3c85a1749533f6dfe54"
+        }
+      ],
+      "addedAt": "2026-11-25T11:06:45.360Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "head",
+      "kind": "fix",
+      "at": "0e38584700ac7bb4e21cb8123bff7cb41aaaee38",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "ba78be134bb47c9f3c62ff3a6648b70f3004d30f3ac799df812a2a05a1679745"
+        },
+        {
+          "path": "p2-collapsed-mobile.png",
+          "sha256": "a388784e512e5f2eaf718ecea38687e6288d424aef8a03cffe727fb72c4477b9"
+        }
+      ],
+      "addedAt": "2026-11-25T11:06:45.408Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "repro",
+      "at": "0b53c08cb115477e3053b0bb74d0e1ca94f892ae",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "1db5bb97e5ef76eb12940eecec0670f53bd77bd9e7c1558a1e2e37520db50e8e"
+        },
+        {
+          "path": "p3-open-desktop.png",
+          "sha256": "4a20458381854cce8e51ef93231c3a386e065cf699dc692452c228beff8e74dd"
+        },
+        {
+          "path": "p3-collapsed-desktop.png",
+          "sha256": "de77695a2a840f73a7c600e4de35cccf74259e6fe7c3aae6e5a8e04ef4b53c1f"
+        }
+      ],
+      "addedAt": "2026-11-25T11:07:00.618Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "repro",
+      "at": "0b53c08cb115477e3053b0bb74d0e1ca94f892ae",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "ae6259575ed11fef32cce332e4bc465467f03c3297f638f5c04f465c95bc2e52"
+        },
+        {
+          "path": "p4-collapsed-mobile.png",
+          "sha256": "fea1b47219e841d88b06ef6c7405cc86dd70588b20ed455a3ef6f2e72cfe7329"
+        }
+      ],
+      "addedAt": "2026-11-25T11:07:00.670Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "base",
+      "kind": "test",
+      "at": "0b53c08cb115477e3053b0bb74d0e1ca94f892ae",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "36a61a6cd8f6494af88628c7ba40237888615496a1cef4b1b58bd636971bd71d"
+        }
+      ],
+      "addedAt": "2026-11-25T11:07:00.721Z",
+      "cmd": "verify/yv map run sidebar --recipe collapsed-group-shows-a-waiting-approval",
+      "exit": 1
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "0e38584700ac7bb4e21cb8123bff7cb41aaaee38",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "c13e356b74a26490acac1c3f0c4820cd0590397efc48abc2d5756285ca206513"
+        }
+      ],
+      "addedAt": "2026-11-25T11:07:18.914Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run sidebar",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "0e38584700ac7bb4e21cb8123bff7cb41aaaee38",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "dd1defad3822f2fa8baa52016ffde73896d60737fdb70bc29299f55da113a9c7"
+        }
+      ],
+      "addedAt": "2026-11-25T11:09:49.536Z",
+      "cmd": "verify/yv design-check --base fcc9702b63a3",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "fix",
+      "at": "0e38584700ac7bb4e21cb8123bff7cb41aaaee38",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p8-drive.json",
+          "sha256": "78d0a18d56b63c676f39baaae01fa767f33e95e20eff33eccc3f0110108ceeb9"
+        },
+        {
+          "path": "p8-collapsed-working-desktop.png",
+          "sha256": "b6b3f93b4837cba2cc589a90618da713a0fd40328c2145e3a061529d27d2dcd4"
+        }
+      ],
+      "addedAt": "2026-11-25T11:10:00.712Z",
+      "failedApi": []
+    }
+  ]
+}

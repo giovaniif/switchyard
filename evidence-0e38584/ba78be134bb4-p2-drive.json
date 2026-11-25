@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "0e38584700ac7bb4e21cb8123bff7cb41aaaee38",
+    "short": "0e38584",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T11:05:50.219Z"
+  },
+  "dir": ".verify/evidence/cga-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2290,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/cga-head-mobile/collapsed-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "0b53c08cb115477e3053b0bb74d0e1ca94f892ae",
+    "short": "0b53c08",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T11:06:50.074Z"
+  },
+  "dir": ".verify/evidence/cga-base-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 1809,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/cga-base-desktop/open-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/cga-base-desktop/collapsed-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "!!document.querySelector(\".group-head .dot\")",
+          "value": false
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
