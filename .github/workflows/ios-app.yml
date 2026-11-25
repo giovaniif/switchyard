@@ -22,11 +22,14 @@ concurrency:
 
 jobs:
   simulator:
-    runs-on: macos-26
+    # Apple requires the iOS 27 SDK for uploads from April 2027 (ITMS-90725);
+    # GitHub's Xcode 27 image is still a public preview.
+    runs-on: xcode-27
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - run: brew install xcodegen
+      - run: xcodebuild -version && xcrun --sdk iphoneos --show-sdk-version
       - run: bash mobile/scripts/prepare.sh
       - name: Build and test on iPhone simulator
         working-directory: mobile
@@ -58,12 +61,15 @@ jobs:
   testflight:
     if: github.event_name == 'workflow_dispatch' && inputs.testflight
     needs: simulator
-    runs-on: macos-26
+    # Apple requires the iOS 27 SDK for uploads from April 2027 (ITMS-90725);
+    # GitHub's Xcode 27 image is still a public preview.
+    runs-on: xcode-27
     timeout-minutes: 30
     environment: testflight
     steps:
       - uses: actions/checkout@v5
       - run: brew install xcodegen
+      - run: xcodebuild -version && xcrun --sdk iphoneos --show-sdk-version
       - name: Archive and upload beta
         env:
           IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}

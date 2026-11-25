@@ -89,7 +89,7 @@ shows the beta's pending state instead of a fake download link.
 
 ## Build and test on a Mac
 
-Requires Xcode 26+ with the iOS SDK and XcodeGen (`brew install xcodegen`).
+Requires Xcode 27+ (the iOS 27 SDK, which App Store Connect requires) with the iOS SDK and XcodeGen (`brew install xcodegen`).
 
 ```sh
 bash mobile/scripts/prepare.sh
