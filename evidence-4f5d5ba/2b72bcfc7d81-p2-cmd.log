@@ -1,0 +1,40 @@
+$ verify/yv map run hosts --recipe long-name-fits-the-add-button
+# exit 1 after 4666 ms at ae4f1269a7acbe5f9036daaef394dfe9822e95fb
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "hosts",
+      "at": "2026-11-25T09:04:15.212Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "long-name-fits-the-add-button",
+          "status": "fail",
+          "ms": 3392,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 3 {\"eval\":\"(() => { const card = document.querySelector(\\\".add-host\\\").getBoundingClientRect(); const b = document.querySelector(\\\".add-host .btn-primary\\\"); const r = b.getBoundingClientRect(); const cancel = [...document.querySelectorAll(\\\".add-host button\\\")].find(x => x.textContent.trim() === \\\"Cancel\\\").getBoundingClientRect(); return b.scrollHeight <= b.clientHeight + 1 && r.right <= card.right && cancel.right <= card.right && Math.abs(cancel.top - r.top) < 1 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()\",\"equals\":true}: eval returned false, expected true",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-183e/.verify/drives/2026-11-25T09-04-11-830Z/fail-mobile-step3.png and the aria snapshot"
+            }
+          ],
+          "tail": "ssed]:\\n  - strong: iso-host\\n  - text: This machine Healthy CPU\\n  - strong: 6%\\n  - text: Memory\\n  - strong: 11.4 GB\\n  - text: Disk\\n  - strong: 131 GB\\n- region \\\"iso-host details\\\":\\n  - heading \\\"iso-host\\\" [level=2]\\n  - text: Healthy\\n  - tablist \\\"Host details\\\":\\n    - tab \\\"Sessions · 2\\\" [selected]\\n    - tab \\\"Engine logins\\\"\\n    - tab \\\"System\\\"\\n  - tabpanel \\\"Sessions · 2\\\":\\n    - button \\\"[cmd] TEST-run the migration Codex · Default Needs approval —\\\":\\n      - strong: \\\"[cmd] TEST-run the migration\\\"\\n      - text: Codex · Default Needs approval —\\n    - button \\\"TEST-hello from Claude Claude · Default Idle 25 MB 0.0 cores\\\":\\n      - strong: TEST-hello from Claude\\n      - text: Claude · Default Idle 25 MB 0.0 cores\\n    - button \\\"View all sessions →\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [\n        {\n          \"step\": 3,\n          \"eval\": \"(() => { const card = document.querySelector(\\\".add-host\\\").getBoundingClientRect(); const b = document.querySelector(\\\".add-host .btn-primary\\\"); const r = b.getBoundingClientRect(); const cancel = [...document.querySelectorAll(\\\".add-host button\\\")].find(x => x.textContent.trim() === \\\"Cancel\\\").getBoundingClientRect(); return b.scrollHeight <= b.clientHeight + 1 && r.right <= card.right && cancel.right <= card.right && Math.abs(cancel.top - r.top) < 1 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()\",\n          \"value\": false\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 3 {\\\"eval\\\":\\\"(() => { const card = document.querySelector(\\\\\\\".add-host\\\\\\\").getBoundingClientRect(); const b = document.querySelector(\\\\\\\".add-host .btn-primary\\\\\\\"); const r = b.getBoundingClientRect(); const cancel = [...document.querySelectorAll(\\\\\\\".add-host button\\\\\\\")].find(x => x.textContent.trim() === \\\\\\\"Cancel\\\\\\\").getBoundingClientRect(); return b.scrollHeight <= b.clientHeight + 1 && r.right <= card.right && cancel.right <= card.right && Math.abs(cancel.top - r.top) < 1 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()\\\",\\\"equals\\\":true}: eval returned false, expected true\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-183e/.verify/drives/2026-11-25T09-04-11-830Z/fail-mobile-step3.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "hosts/long-name-fits-the-add-button",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

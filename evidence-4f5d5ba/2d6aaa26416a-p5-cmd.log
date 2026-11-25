@@ -1,0 +1,26 @@
+$ verify/yv map run hosts --recipe long-name-fits-the-add-button
+# exit 0 after 8925 ms at 4f5d5ba9a141a54c2323b9b09c224c1a62bee02b
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "hosts",
+      "at": "2026-11-25T09:04:44.287Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "long-name-fits-the-add-button",
+          "status": "pass",
+          "ms": 7659
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+

@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "ae4f1269a7acbe5f9036daaef394dfe9822e95fb",
+    "short": "ae4f126",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T09:04:06.300Z"
+  },
+  "dir": ".verify/evidence/add-host-long-name-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3564,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/add-host-long-name-base/ipv6-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/add-host-long-name-base/long-name-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "(() => { document.querySelector(\".add-host .row\").scrollIntoView({block:\"center\"}); return true; })()",
+          "value": true
+        },
+        {
+          "step": 7,
+          "eval": "(() => { document.querySelector(\".add-host .row\").scrollIntoView({block:\"center\"}); return true; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

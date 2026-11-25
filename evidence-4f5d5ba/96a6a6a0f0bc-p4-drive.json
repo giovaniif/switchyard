@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "4f5d5ba9a141a54c2323b9b09c224c1a62bee02b",
+    "short": "4f5d5ba",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T09:04:28.686Z"
+  },
+  "dir": ".verify/evidence/add-host-long-name-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 1919,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/add-host-long-name-head-desktop/ipv6-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "(() => { document.querySelector(\".add-host .row\").scrollIntoView({block:\"center\"}); return true; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

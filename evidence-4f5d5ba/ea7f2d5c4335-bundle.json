@@ -1,0 +1,206 @@
+{
+  "v": 1,
+  "claim": "On a phone (390 px), Hosts > Add host with a Tailscale IPv6 destination (or a 40-character custom name) wraps the 'Add <name>' label inside the 32 px button: its second line is cut off and Cancel and Options drop to their own line.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-183e",
+  "base": "f466f250cbdc2ae90c8d3333e62ec047022d7036",
+  "head": "4f5d5ba9a141a54c2323b9b09c224c1a62bee02b",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/hosts.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-25T09:04:01.552Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "ae4f1269a7acbe5f9036daaef394dfe9822e95fb",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "ac0404756a6809a9afdb990f180947a29b18f071dcaaf6ddca2a6014b69a5c9e"
+        },
+        {
+          "path": "p1-ipv6-mobile.png",
+          "sha256": "274a8a0a0bef05c9303b9bcc08adfbe2c553922a7be3f04b6f7fff0d9bd3720d"
+        },
+        {
+          "path": "p1-long-name-mobile.png",
+          "sha256": "5063efa101cf518098271b3bfefc8de0a9012115ea7efc1228d478c66bae0894"
+        }
+      ],
+      "addedAt": "2026-11-25T09:04:10.505Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "ae4f1269a7acbe5f9036daaef394dfe9822e95fb",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "2b72bcfc7d813478520c89c616b9b0c1ed974308525ffde971f5e436e9b65130"
+        }
+      ],
+      "addedAt": "2026-11-25T09:04:10.550Z",
+      "cmd": "verify/yv map run hosts --recipe long-name-fits-the-add-button",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "4f5d5ba9a141a54c2323b9b09c224c1a62bee02b",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "3d426cf7afeaa8a41caf79aa895d9e2d4e977384c7f8053be9e0ff1f299ccbac"
+        },
+        {
+          "path": "p3-ipv6-mobile.png",
+          "sha256": "aec215c7e5ecbd6ec5f0b9b14a68e00eeb01270b63b22cf61e34334914c76775"
+        },
+        {
+          "path": "p3-long-name-mobile.png",
+          "sha256": "ba90d5440f2dbb4c5920e68612e5689b19c39850ff203460ef227b7049ead150"
+        }
+      ],
+      "addedAt": "2026-11-25T09:04:35.283Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "4f5d5ba9a141a54c2323b9b09c224c1a62bee02b",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "96a6a6a0f0bcae2185002a9ccfcafeeff0e34f22b28c94fb0c42895844fa18a8"
+        },
+        {
+          "path": "p4-ipv6-desktop.png",
+          "sha256": "5c9f4bbb33110bcf2bb500dc3cf3bacd0133d0f6777e121c2752335076edc06f"
+        }
+      ],
+      "addedAt": "2026-11-25T09:04:35.325Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "4f5d5ba9a141a54c2323b9b09c224c1a62bee02b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "2d6aaa26416ae4ea9074236819c7ebe847301e3fc1c6bee830f71229167eaaeb"
+        }
+      ],
+      "addedAt": "2026-11-25T09:04:35.366Z",
+      "cmd": "verify/yv map run hosts --recipe long-name-fits-the-add-button",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "4f5d5ba9a141a54c2323b9b09c224c1a62bee02b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "076e1e71bf42a3152f16f44722cd63e98358b91abcb367fbcfe40d3c4a3df38a"
+        }
+      ],
+      "addedAt": "2026-11-25T09:04:44.335Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "4f5d5ba9a141a54c2323b9b09c224c1a62bee02b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "86da861cd485199cb4eb1bd54ef56b479771fd6894871c733c9734f9d259d816"
+        }
+      ],
+      "addedAt": "2026-11-25T09:04:44.755Z",
+      "cmd": "verify/yv design-check --base f466f250cbdc",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "4f5d5ba9a141a54c2323b9b09c224c1a62bee02b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-hosts.json",
+          "sha256": "7a37685c2d69105399ea433290dee30936f8fa6b215b5ad5d4993cf5dd01c470"
+        }
+      ],
+      "addedAt": "2026-11-25T09:04:44.834Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/processes-say-the-host-is-offline",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    }
+  ]
+}
