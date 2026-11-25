@@ -15,6 +15,8 @@ yv var set remote_work "$(yv var get work --iso map-hosts-remote | jq -er .value
 
 ```sh
 yv iso down --name map-hosts-remote
+# Recipes that fail stop before their own teardown; a remote left up breaks the next run.
+yv iso down --name map-hosts-signin
 yv iso down
 ```
 
@@ -210,6 +212,23 @@ yv api '{"op":"session.create","host":"{{away_id}}","engine":"codex","model":"fa
 yv iso down --name map-hosts-away
 yv drive new --viewport desktop --steps '[{"expect":{"css":".session-row","hasText":"TEST-listed while away"},"text":"Offline","timeout":20000},{"click":{"css":".session-row","hasText":"TEST-listed while away"}},{"expect":"css:.offline-note","text":"is offline"},{"shot":"listed-while-away"}]'
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":{"css":".session-row","hasText":"TEST-listed while away"},"text":"Offline","timeout":20000},{"shot":"listed-while-away"},{"click":{"css":".session-row","hasText":"TEST-listed while away"}},{"expect":"css:.offline-note","text":"is offline"}]'
+```
+
+### subscriptions-sign-in-opens-the-accounts-host
+Viewports: both
+Sign in on a signed-out account's Subscriptions row opens Engine logins on
+the host that account lives on, as the sidebar usage popover does. Until
+2026-11-25 it opened the host the Hosts page had selected (this machine), so
+the account to sign in was not on screen (#430). Uses its own remote so the
+account is on that host only.
+
+```sh
+signin_port="$(yv iso up --name map-hosts-signin --host-name TEST-signin | jq -r .iso.port)"
+yv api '{"op":"host.add","name":"TEST-signin","kind":"direct","url":"ws://127.0.0.1:'"$signin_port"'/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-signin","status":"connected"}]}' --save signin_id='hosts[name=TEST-signin].id'
+yv api '{"op":"account.add","host":"{{signin_id}}","engine":"claude","name":"TEST-Faraway"}' --wait '{"op":"accounts"}'
+yv drive 'subscriptions' --steps '[{"expect":"role:region:Claude · TEST-Faraway","text":"Sign in to see usage"},{"click":"role:button:Sign in — Claude · TEST-Faraway"},{"expect":"css:.host-inspector-heading","text":"TEST-signin"},{"expect":"css:[role=tab][aria-selected=true]","text":"Engine logins"},{"expect":{"css":".account-row","hasText":"TEST-Faraway"},"text":"not logged in"},{"shot":"signin-on-its-host"}]'
+yv api '{"op":"host.remove","hostId":"{{signin_id}}"}' --wait '{"op":"hosts"}'
+yv iso down --name map-hosts-signin
 ```
 
 ## Gotchas
