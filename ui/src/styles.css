@@ -41,9 +41,8 @@
   --usage-badge: #fde7c7;
   --usage-badge-ink: #5c3200;
   --usage-pop-shadow: 0 0 0 1px rgba(24, 24, 27, .14), 0 16px 40px rgba(24, 24, 27, .16), 0 2px 6px rgba(24, 24, 27, .06);
-  /* Agent avatars: white faces on each, so mid-dark tones, lit from above. */
-  --avatar-light: rgba(255, 255, 255, 0.22);
-  --avatar-light-clear: rgba(255, 255, 255, 0);
+  /* Agent colours: mid-dark tones; each face is lit and shaded from its own
+     (AGENT_RGB in faces.ts holds the same values, a test keeps them equal). */
   --agent-blue: #2f6fed;
   --agent-green: #1f8a4c;
   --agent-amber: #b7791f;
@@ -1028,28 +1027,51 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .provider-filter { flex: none; }
 
 /* Agents: avatars, cards, the start page, @mentions in the composer. */
-.agent-avatar { flex: none; display: inline-grid; place-items: center; border-radius: 50%; color: var(--bg); background-image: linear-gradient(to bottom, var(--avatar-light), var(--avatar-light-clear) 70%); user-select: none; }
+.agent-avatar { flex: none; display: inline-grid; place-items: center; border-radius: 50%; user-select: none; }
 .agent-avatar > svg { display: block; overflow: visible; }
-/* Faces are alive: every few seconds the eyes blink and now and then glance
-   aside; while the agent works it looks around and talks. Each agent has its
-   own offset (--blink-delay), so faces side by side do not move together. */
-.agent-avatar .face-eyes, .agent-avatar .face-look, .agent-avatar .face-mouth { transform-box: fill-box; transform-origin: center; }
-.agent-avatar .face-eyes { animation: face-blink 5.2s var(--blink-delay, 0s) infinite; }
+/* Faces are alive (the drawing is faces.ts). They breathe, blink every 5.2 s,
+   glance aside and tilt their head now and then; while the agent works they
+   bounce, look around and talk; reached for, they hop with a squash and a
+   stretch; the big ones look at a nearby pointer (--look-x/y, AgentsPage).
+   Each agent has its own offset (--blink-delay), so faces side by side do
+   not move together. Lengths are in the face's 64-unit box. */
+.agent-avatar :is(.face-body, .face-bob, .face-tilt, .face-feature, .face-look, .face-lids, .face-mouth, .face-shadow, .face-follow, .face-follow-eyes) { transform-box: fill-box; transform-origin: center; }
+.agent-avatar :is(.face-body, .face-bob) { transform-origin: 50% 100%; }
+.agent-avatar .face-mouth { transform-origin: 50% 25%; }
+.agent-avatar .face-lids { animation: face-blink 5.2s var(--blink-delay, 0s) infinite; }
+.agent-avatar .face-bob { animation: face-breathe 4.2s var(--blink-delay, 0s) infinite ease-in-out; }
+.agent-avatar .face-tilt { animation: face-tilt 17s var(--blink-delay, 0s) infinite ease-in-out; }
+.agent-avatar .face-feature { animation: face-turn 13s var(--blink-delay, 0s) infinite ease-in-out; }
 .agent-avatar .face-look { animation: face-glance 13s var(--blink-delay, 0s) infinite ease-in-out; }
-.agent-avatar.is-busy > svg { animation: face-bob 1.4s infinite ease-in-out; }
+.agent-avatar :is(.face-follow, .face-follow-eyes) { transition: transform 0.3s ease-out; }
+.agent-avatar.is-following .face-follow { transform: translate(calc(var(--look-x, 0) * 1.6px), calc(var(--look-y, 0) * 1.2px)); }
+.agent-avatar.is-following .face-follow-eyes { transform: translate(calc(var(--look-x, 0) * 1.8px), calc(var(--look-y, 0) * 1.8px)); }
+.agent-avatar.is-busy .face-bob { animation: face-busy 0.8s infinite ease-in-out; }
+.agent-avatar.is-busy .face-shadow { animation: face-shadow-busy 0.8s infinite ease-in-out; }
+.agent-avatar.is-busy .face-tilt { animation: face-busy-tilt 2.4s infinite ease-in-out; }
+.agent-avatar.is-busy .face-feature { animation: face-scan-turn 2.4s infinite ease-in-out; }
 .agent-avatar.is-busy .face-look { animation: face-scan 2.4s infinite ease-in-out; }
-.agent-avatar.is-busy .face-mouth { animation: face-talk 0.9s infinite ease-in-out; }
-.agent-avatar.is-still .face-eyes, .agent-avatar.is-still .face-look { animation: none; }
-/* A small hop when you reach for it. */
-:is(.agent-card-head, .agent-face-option, .agent-start-face):hover .agent-avatar > svg { animation: face-hop 0.5s ease-out; }
-@keyframes face-blink { 0%, 91%, 100% { transform: scaleY(1); } 94% { transform: scaleY(0.12); } }
-@keyframes face-glance { 0%, 38%, 100% { transform: translate(0, 0); } 42%, 52% { transform: translate(-1.1px, 0); } 56%, 66% { transform: translate(1.1px, -0.4px); } 70% { transform: translate(0, 0); } }
-@keyframes face-scan { 0%, 100% { transform: translate(-1.2px, 0); } 25% { transform: translate(0, -0.6px); } 50% { transform: translate(1.2px, 0); } 75% { transform: translate(0, 0.3px); } }
-@keyframes face-talk { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(0.82, 1.25); } }
-@keyframes face-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
-@keyframes face-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-2.5px) rotate(-4deg); } 70% { transform: translateY(0) rotate(2deg); } }
+.agent-avatar.is-busy .face-mouth { animation: face-talk 0.5s infinite ease-in-out; }
+.agent-avatar.is-following :is(.face-feature, .face-look), .agent-avatar.is-still :is(.face-lids, .face-bob, .face-tilt, .face-feature, .face-look) { animation: none; }
+/* A happy hop when you reach for it. */
+:is(.agent-card-head, .agent-face-option, .agent-start-face):hover .agent-avatar .face-body { animation: face-hop 0.7s ease-out; }
+:is(.agent-card-head, .agent-face-option, .agent-start-face):hover .agent-avatar .face-shadow { animation: face-shadow-hop 0.7s ease-out; }
+@keyframes face-blink { 0%, 92%, 100% { transform: translateY(0); } 95% { transform: translateY(100%); } }
+@keyframes face-breathe { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-1px) scale(0.99, 1.02); } }
+@keyframes face-tilt { 0%, 52%, 100% { transform: rotate(0); } 58%, 68% { transform: rotate(-7deg); } 76% { transform: rotate(4deg); } 82% { transform: rotate(0); } }
+@keyframes face-turn { 0%, 38%, 100% { transform: translate(0, 0); } 42%, 52% { transform: translate(-1.4px, 0); } 56%, 66% { transform: translate(1.4px, -0.6px); } 70% { transform: translate(0, 0); } }
+@keyframes face-glance { 0%, 38%, 100% { transform: translate(0, 0); } 42%, 52% { transform: translate(-1.6px, 0.2px); } 56%, 66% { transform: translate(1.6px, -0.8px); } 70% { transform: translate(0, 0); } }
+@keyframes face-busy { 0%, 100% { transform: translateY(0) scale(1, 1); } 25% { transform: translateY(0) scale(1.05, 0.95); } 55% { transform: translateY(-3px) scale(0.97, 1.03); } }
+@keyframes face-shadow-busy { 0%, 25%, 100% { transform: scale(1); opacity: 1; } 55% { transform: scale(0.85); opacity: 0.7; } }
+@keyframes face-busy-tilt { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes face-scan-turn { 0%, 100% { transform: translate(-1.4px, 0); } 25% { transform: translate(0, -0.6px); } 50% { transform: translate(1.4px, 0); } 75% { transform: translate(0, 0.3px); } }
+@keyframes face-scan { 0%, 100% { transform: translate(-1.8px, 0); } 25% { transform: translate(0, -1px); } 50% { transform: translate(1.8px, 0); } 75% { transform: translate(0, 0.6px); } }
+@keyframes face-talk { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(0.86, 1.35); } }
+@keyframes face-hop { 0%, 100% { transform: none; } 15% { transform: scale(1.12, 0.86); } 45% { transform: translateY(-9px) scale(0.93, 1.09) rotate(-4deg); } 72% { transform: translateY(0) scale(1.08, 0.92); } 86% { transform: scale(0.98, 1.02); } }
+@keyframes face-shadow-hop { 0%, 100% { transform: none; opacity: 1; } 15% { transform: scale(1.08); } 45% { transform: scale(0.6); opacity: 0.45; } 72% { transform: scale(1.06); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .agent-avatar .face-eyes, .agent-avatar .face-look, .agent-avatar .face-mouth, .agent-avatar > svg, :is(.agent-card-head, .agent-face-option, .agent-start-face):hover .agent-avatar > svg { animation: none; }
+  .agent-avatar :is(.face-body, .face-bob, .face-tilt, .face-feature, .face-look, .face-lids, .face-mouth, .face-shadow, .face-follow, .face-follow-eyes),
+  :is(.agent-card-head, .agent-face-option, .agent-start-face):hover .agent-avatar :is(.face-body, .face-shadow) { animation: none; transition: none; }
 }
 .agent-avatar-xs { width: 14px; height: 14px; }
 .agent-avatar-sm { width: 20px; height: 20px; }

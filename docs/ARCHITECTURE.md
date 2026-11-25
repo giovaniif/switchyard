@@ -623,18 +623,36 @@ the composer and session view in `App.tsx`.
   to <Name>". An agent working in its own folder has no Terminal, Subagents
   or Processes pane; one given a project folder keeps them. Each answer
   carries the agent's face and name.
-- **Faces move.** Each of the eight faces is drawn in parts (`FACES` in
-  agents.ts: eyes, mouth, and a frame for glasses or a brow; white strokes on
-  the agent's colour; yardd keeps the name and drops one it does not know;
-  an agent with none shows one picked from its id). The eyes blink every 5.2
-  s and glance aside now and then, each agent at its own moment
-  (`blinkDelay` from its id) so faces side by side do not move together;
-  while its conversation runs (header, card, the answer being written) the
-  face looks around, talks and bobs; reaching for one (card, face picker,
-  start page) makes it hop. CSS keyframes on the SVG's parts, off under
-  `prefers-reduced-motion`, still for the form's unpicked faces. The owner
-  asked for faces "animated, like grokbot"; Orca has no animated avatars
-  (only two mascots blinking in a tip dialog), so the motion is ours.
+- **Faces move.** Each agent is a small 3D character (`faces.ts`): a
+  shaded ball in its colour (radial gradient lit from the top left, a soft
+  specular highlight, a rim light, a contact shadow), eyes with whites,
+  pupils and catchlights, eyelids, cheeks and a mouth. The eight face names
+  are expressions (`FACES`: smile, grin, wink, calm with heavy lids,
+  glasses, bot with an antenna and screen eyes, happy with smiling lower
+  lids, curious with a raised brow and a tilt); yardd keeps the name and
+  drops one it does not know, and an agent with none shows one picked from
+  its id. The colours are `AGENT_RGB`, equal to the `--agent-*` tokens (a
+  test checks). Detail follows size: at 14-20 px the head fills the box and
+  drops shadow, rim and cheeks; card sizes grow 12 %; 88 px adds sparkles.
+  One description (`faceTree`) renders as React elements in `AgentAvatar`
+  and as a standalone SVG string (`avatarSvg(agent, px)`, the still pose,
+  for an agent's Slack icon): every colour, gradient and clip is inside the
+  SVG with ids unique per instance, so serializing the rendered face and
+  rasterizing it gives the same picture. CSS moves named groups: it
+  breathes, blinks every 5.2 s (the lids slide down), glances aside with
+  its features turning a little (a 3D turn) and tilts its head now and then,
+  each agent at its own moment (`blinkDelay` from its id); while its
+  conversation runs (header, card, the answer being written) it bounces with
+  a squash, sways, looks around and talks; reaching for one (card, face
+  picker, start page) makes it hop with a squash and stretch while its
+  shadow shrinks. The large ones (lg, xl) look at the pointer within 260 px:
+  one shared `pointermove` listener, read once per frame, sets `--look-x/y`.
+  Everything is off under `prefers-reduced-motion`, and the form's unpicked
+  faces stay still. The owner asked for faces "3D and move around like
+  grokbot, blink and etc., friendly": xAI's Grok Bot (agent product, 2026)
+  gives its Bots simple shapes with big expressive eyes whose motion shows
+  their state (calm and slightly curious at rest, "kicks into gear" when
+  working); Grok's CLI carries no mascot, so the drawing and motion are ours.
 - **The form** (`#/agents/<id>/edit`, existing agents) is one centred column:
   the face large with the name under it, then cards for Look (faces and
   colours on one 8-column grid, 4 on a phone, so each colour sits under a
