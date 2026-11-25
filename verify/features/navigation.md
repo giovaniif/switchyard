@@ -30,7 +30,7 @@ yv drive 'session:{{sid_echo}}' --steps '[{"click":"label:Message"},{"fill":"lab
 ### command-k-finds-agents
 Viewports: both
 Agents is a sidebar page, so the palette lists it too, and Switchy's old name
-still finds it (Switchy became the agents' host agent, Scout).
+still finds it (Switchy's page became the Agents page).
 
 ```sh
 yv drive new --steps '[{"press":"Meta+k"},{"expect":"role:dialog:Go to session or page"},{"fill":"role:combobox:Search sessions and pages","value":"Switchy"},{"expect":{"css":".navigation-option","hasText":"Agents"}},{"shot":"agents-search"},{"press":"Enter"},{"expect":"role:heading:Agents"}]'

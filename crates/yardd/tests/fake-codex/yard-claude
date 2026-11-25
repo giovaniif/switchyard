@@ -12,8 +12,15 @@
 //           result with its duration (`ms`), then "Echo: <prompt>". It also
 //           leaves a `sleep 30` running under the sidecar, so a session's
 //           process list has something to show.
+//   [subagents] three subagents side by side, as a planner fans out: a long
+//           title, two still running with a long latest command for 30 s,
+//           then all done and "Echo: <prompt>"
 //   [chart] an MCP call to `chart` (verify/fakes/mcp-chart) that ends with
 //           its widget on `tool_completed` (`app`), then "Here is the chart."
+//   [[tool NAME {json}]]  calls Switchyard's agent tool NAME through the
+//           server `start` gave (`tools`, the SDK's `mcpServers` entry; see
+//           agent-tools.mjs), labelled as the real sidecar labels it, then
+//           "Called NAME: <result>" per call
 //   other   replies "Echo: <prompt>"
 // A widget's calls (`mcp_call`) go to mcp-chart: a read-only tool runs, any
 // other is refused as Claude Code's permission check would without an answer.
@@ -44,14 +51,13 @@
 
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { CHART_URI, chartCall, rpc } from "./chart.mjs";
+import { afterCalls, callTools, toolMarkers } from "./agent-tools.mjs";
+import { describe as describeTool } from "../../../../sidecar/yard-claude/src/tools.ts";
 
-// An agent's session hands the engine a preamble, then the user's message;
-// the host agent's question comes after its evidence. Only what the user
-// typed controls the scripted behaviour.
+// An agent's session hands the engine a preamble, then the user's message.
+// Only what the user typed controls the scripted behaviour.
 const AGENT_MARK = "\nThe user's message:\n";
-const hostQuestion = (text) => text.includes("\nEvidence: ") && text.includes("\nQuestion: ");
-const typed = (text) =>
-  hostQuestion(text) ? text.slice(text.lastIndexOf("\nQuestion: ") + 11) : text.includes(AGENT_MARK) ? text.slice(text.lastIndexOf(AGENT_MARK) + AGENT_MARK.length) : text;
+const typed = (text) => (text.includes(AGENT_MARK) ? text.slice(text.lastIndexOf(AGENT_MARK) + AGENT_MARK.length) : text);
 
 const dir = process.env.FAKE_CODEX_DIR;
 const log = (line) => {
@@ -193,6 +199,22 @@ async function runChart(text) {
 
 let n = 0;
 let stuck = false;
+// Switchyard's tools server, when `start` gave one (an agent's conversation).
+let tools = null;
+
+async function runTools(calls) {
+  const ids = calls.map((c) => {
+    const id = `tool-${process.pid}-${++n}`;
+    const name = `mcp__switchyard__${c.tool}`;
+    const d = describeTool(name, c.args, "/");
+    emit({ type: "tool_started", itemId: id, kind: d.kind, title: d.title, detail: d.detail });
+    return id;
+  });
+  const results = await callTools(tools, calls);
+  results.forEach((r, i) => emit({ type: "tool_completed", itemId: ids[i], ok: !r.isError, output: r.text }));
+  emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: afterCalls(results) });
+  emit({ type: "turn_completed", status: "completed" });
+}
 // A [steps] turn in progress: messages that arrive are folded into it.
 let steps = null;
 
@@ -215,6 +237,29 @@ async function runSteps(text) {
   emit({ type: "turn_completed", status: "completed" });
 }
 let sleeper = null;
+async function runSubagents(text) {
+  const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+  const agents = [
+    ["TEST-build agent tools (needs-you, agent messaging, memory) and prove each one on the scripted engines", "cd /tmp/TEST-worktrees/agent-tools && CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents -- --nocapture"],
+    ["TEST-per-agent accounts and remote agents", "grep -rn \"context request timed out\\|during context\" crates/yardd/src"],
+    ["TEST-Slack connector", "cd /tmp/TEST-worktrees/agents-slack && bun test ui/src/slack.test.ts"],
+  ].map(([detail, command]) => ({ id: `tool-${process.pid}-${++n}`, detail, command }));
+  for (const a of agents) emit({ type: "tool_started", itemId: a.id, kind: "other", title: "Agent", detail: a.detail, agent: "general-purpose" });
+  for (const a of agents) {
+    for (const [kind, title, detail] of [["read", "Read", "README.md"], ["command", "Bash", a.command]]) {
+      const id = `tool-${process.pid}-${++n}`;
+      await pause(150);
+      emit({ type: "tool_started", itemId: id, parent: a.id, kind, title, detail });
+      if (kind === "read") emit({ type: "tool_completed", itemId: id, ok: true, output: `${title} done` });
+    }
+  }
+  emit({ type: "tool_completed", itemId: agents[2].id, ok: true, output: "TEST-subagents report: Slack done", ms: 900 });
+  await pause(30000);
+  for (const a of agents.slice(0, 2)) emit({ type: "tool_completed", itemId: a.id, ok: true, output: "TEST-subagents report: done", ms: 6900 });
+  emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: `Echo: ${text}` });
+  emit({ type: "turn_completed", status: "completed" });
+}
+
 async function runSubagent(text) {
   // A background process, as `npm run dev &` would be. Ends on its own after 30 s.
   if (!sleeper) {
@@ -242,7 +287,8 @@ for await (const line of console) {
     continue;
   }
   if (msg.type === "start") {
-    log(`start pid=${process.pid} config=${process.env.CLAUDE_CONFIG_DIR ?? ""} resume=${msg.resume ?? ""}${msg.restricted ? " restricted=true" : ""}`);
+    log(`start pid=${process.pid} config=${process.env.CLAUDE_CONFIG_DIR ?? ""} resume=${msg.resume ?? ""}${msg.restricted ? " restricted=true" : ""}${msg.tools ? " tools=switchyard" : ""}`);
+    tools = msg.tools ?? null;
     out({ type: "session", claudeSessionId: msg.resume ?? `fake-claude-${process.pid}` });
     // The shape the real sidecar sends (sidecar/yard-claude/src/usage.ts):
     // utilization is a fraction, resetsAt epoch seconds.
@@ -271,12 +317,21 @@ for await (const line of console) {
       continue;
     }
     const behaviorText = typed(text);
+    const calls = toolMarkers(behaviorText);
+    if (calls.length) {
+      runTools(calls);
+      continue;
+    }
     if (behaviorText.includes("[steps]")) {
       runSteps(text);
       continue;
     }
     if (behaviorText.includes("[chart]")) {
       runChart(text);
+      continue;
+    }
+    if (behaviorText.includes("[subagents]")) {
+      runSubagents(text);
       continue;
     }
     if (behaviorText.includes("[subagent]")) {
@@ -290,7 +345,7 @@ for await (const line of console) {
       emit({ type: "assistant_delta", itemId, text: "Stuck" });
       continue;
     }
-    emit({ type: "assistant_message", itemId, text: hostQuestion(text) ? "Scripted Claude host agent answer [local:1]." : `Echo: ${typed(text)}` });
+    emit({ type: "assistant_message", itemId, text: `Echo: ${typed(text)}` });
     emit({ type: "turn_completed", status: "completed" });
   } else if (msg.type === "mcp_reconnect") {
     log(`reconnect ${msg.server}`);

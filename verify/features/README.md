@@ -29,6 +29,15 @@ some output is absent (`"count":0`) must use words the prompt itself does not
 contain, or the user's own message matches it (`"Late"` matched a `[late] …`
 prompt).
 
+A page-level no-horizontal-overflow check compares against
+`document.documentElement.clientWidth`, never `innerWidth`. The mobile
+viewport emulates a phone, so content wider than 390 px stretches the layout
+viewport and `innerWidth` with it: on a page whose error banner pushed
+Dismiss off screen (#425), `scrollWidth` and `innerWidth` both read 397, so
+`scrollWidth <= innerWidth` passed. `clientWidth` stays 390. An element check like
+`r.right <= innerWidth` has the same blind spot: move it to `clientWidth`
+when you touch it.
+
 | Area | What it covers |
 |---|---|
 | [mobile](mobile.md) | iOS setup discovery, successful connection status and phone workspace navigation |
@@ -60,9 +69,10 @@ prompt).
 | [security](security.md) | Origin checks on the WebSocket, loopback binding |
 | [import](import.md) | Importing Claude Code sessions from the host, with history and resume |
 | [automations](automations.md) | Scheduled runs: the Automations page, create (daily, interval, weekly), Run now, auto-archive, pin, edit, disable, delete, the working-run dot |
-| [agents](agents.md) | Agents: cards, Scout (the host agent, read-only, evidence), the start page, the form, @mentions that route a message, ongoing and new chats, Switchy's old address |
+| [agents](agents.md) | Agents: cards with living faces (blink, busy), New agent set up in its conversation with its `update_setup` tool, what it asks for, the edit form with colours under the faces, @mentions that route a message, the one conversation, agents messaging each other (badges), an agent that needs you, an agent's own memory, Add to Slack's first step, remote agents, Switchy's old address |
 | [layout](layout.md) | Viewport behaviour: desktop, the narrow pane cut-off, mobile |
 | [dropdowns](dropdowns.md) | Menus inside the viewport: composer options, workspace tabs, custom schedules, connector host, handover under the same agent |
 | [usage](usage.md) | Usage popover, Subscriptions, reset times and separate account/model controls |
 | [accounts](accounts.md) | More than one login per engine: add, log in, pick for a new session, remove |
 | [connectors](connectors.md) | MCP servers per engine account: states, sign-in (claude.ai, pasted redirects, ChatGPT apps), chart widgets in the thread |
+| [slack](slack.md) | The Slack connector: setup guide and manifest, refused and good tokens, allowing someone who wrote, the default agent, answers posted in the Slack thread, the Slack badge in a conversation, tokens kept out of the page and logs |

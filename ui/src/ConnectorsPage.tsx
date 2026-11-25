@@ -2,6 +2,7 @@
 // config files, ChatGPT apps) each engine account can use on each host, whether
 // it works, and a way to sign it in. Opening the page asks yardd to list them;
 // for Claude that starts Claude Code with no prompt, so it spends no usage.
+import { EngineIcon } from "./EngineIcon";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { SelectPicker } from "./SelectPicker";
@@ -12,6 +13,7 @@ import { accountsOn, hostName, hostOnline, mcpAuthKey, mcpKey, type Actions, typ
 import { Icon, MenuButton, PLUS } from "./App";
 import { loadHost } from "./sessionDefaults";
 import { ENGINE_NAME } from "./engines";
+import { SlackCard } from "./SlackCard";
 
 const REFRESH = "M21 12a9 9 0 1 1-3-6.7M21 4v5h-5";
 const ENGINES: Engine[] = ["claude", "codex"];
@@ -80,6 +82,15 @@ export function ConnectorsPage({ state, actions, usage }: { state: State; action
             {shown.map(({ key, engine, account, accountName }) => <AccountCard key={key} state={state} actions={actions} host={host} engine={engine} account={account} accountName={accountName} online={online} />)}
             {!shown.length && <p className="muted">No accounts for this engine on {hostName(state, host)}.</p>}
           </div>
+          {state.slack && (
+            <div className="connector-apps">
+              <div className="connector-section-head">
+                <h2>Messaging</h2>
+                <p className="muted small">Write to your agents from other apps. Each answer goes back where you asked.</p>
+              </div>
+              <SlackCard state={state} actions={actions} />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -120,7 +131,9 @@ function AccountCard(props: { state: State; actions: Actions; host: string; engi
   return (
     <section className={`host-card connectors-card ${needsSignIn ? "connectors-card-attention" : ""}`} aria-label={`${ENGINE_NAME[engine]} · ${props.accountName}`}>
       <header className="connectors-card-head">
-        <span className={`connector-account-icon connector-account-${engine}`} aria-hidden="true">{engine === "claude" ? "CC" : "CX"}</span>
+        <span className={`connector-account-icon connector-account-${engine}`} aria-hidden="true">
+          <EngineIcon engine={engine} size={18} />
+        </span>
         <div className="connector-account-name">
           <strong>{props.accountName}</strong>
           <span className="muted small">{ENGINE_NAME[engine]}{engineState?.account ? ` · ${engineState.account}` : ""}</span>

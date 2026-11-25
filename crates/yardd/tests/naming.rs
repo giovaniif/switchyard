@@ -46,7 +46,22 @@ async fn until(what: &str, ok: impl Fn() -> bool) {
 }
 
 #[tokio::test]
-async fn a_session_is_named_from_its_conversation_after_its_first_and_third_turns() {
+async fn a_session_is_named_from_its_task_while_its_first_turn_runs() {
+    let sb = Sandbox::new("naming-start");
+    let d = sb.start_with(&ON);
+    let mut c = d.client().await;
+    // `[slow]` keeps the first turn running until it is interrupted.
+    let sid = c.create(&sb.folder("proj"), "[name] [slow] hey can you look at the sidebar", json!({})).await;
+
+    let session = titled(&mut c, &sid, "Fake named session").await;
+    assert_eq!(session["titleSource"], "auto");
+    assert_eq!(session["status"], "running", "named before the first turn ended");
+    let input = &naming_inputs(&sb)[0];
+    assert!(input.ends_with("\n\nUser: [name] [slow] hey can you look at the sidebar"), "only the task so far: {input}");
+}
+
+#[tokio::test]
+async fn a_session_is_named_again_after_its_first_and_third_turns() {
     let sb = Sandbox::new("naming");
     let d = sb.start_with(&ON);
     let mut c = d.client().await;
@@ -58,7 +73,9 @@ async fn a_session_is_named_from_its_conversation_after_its_first_and_third_turn
     // The store writes behind the broadcast.
     until("the title on disk", || saved_meta(&sb, &sid).is_some_and(|m| m["title"] == "Fake named session" && m["titleSource"] == "auto")).await;
 
-    let input = &naming_inputs(&sb)[0];
+    // Once from the task as it started, once after the first turn.
+    until("naming after the first turn", || naming_inputs(&sb).len() == 2).await;
+    let input = &naming_inputs(&sb)[1];
     assert!(input.contains("\n\nUser: [name] hey can you look at the sidebar it overflows\nAssistant: Echo:"), "{input}");
     // A private, read-only, ephemeral thread that never asks for approval.
     let starts = fs::read_to_string(sb.fake_state().join("thread-starts.jsonl")).unwrap();
@@ -69,10 +86,10 @@ async fn a_session_is_named_from_its_conversation_after_its_first_and_third_turn
     // Not after the second turn; again after the third, with more context.
     turn(&mut c, &sid, "and the group header too").await;
     c.drain_for(Duration::from_millis(500)).await;
-    assert_eq!(naming_inputs(&sb).len(), 1);
+    assert_eq!(naming_inputs(&sb).len(), 2);
     turn(&mut c, &sid, "thanks").await;
-    until("a second naming turn", || naming_inputs(&sb).len() == 2).await;
-    let input = &naming_inputs(&sb)[1];
+    until("a third naming turn", || naming_inputs(&sb).len() == 3).await;
+    let input = &naming_inputs(&sb)[2];
     assert!(input.contains("User: and the group header too") && input.contains("User: thanks"), "{input}");
 }
 
@@ -84,6 +101,8 @@ async fn a_title_typed_by_the_user_is_never_replaced() {
     let sid = c.create(&sb.folder("proj"), "[name] first task", json!({})).await;
     c.wait_turn_done(&sid, 0).await;
     titled(&mut c, &sid, "Fake named session").await;
+    // From the task, then after the first turn.
+    until("both namings", || naming_inputs(&sb).len() == 2).await;
 
     c.send(json!({ "op": "session.rename", "sessionId": sid, "title": " My own name " })).await;
     let session = titled(&mut c, &sid, "My own name").await;
@@ -92,7 +111,7 @@ async fn a_title_typed_by_the_user_is_never_replaced() {
     turn(&mut c, &sid, "two").await;
     turn(&mut c, &sid, "three").await;
     c.drain_for(Duration::from_millis(800)).await;
-    assert_eq!(naming_inputs(&sb).len(), 1, "no naming after a rename");
+    assert_eq!(naming_inputs(&sb).len(), 2, "no naming after a rename");
     assert_eq!(saved_meta(&sb, &sid).unwrap()["title"], "My own name");
 }
 
@@ -107,7 +126,7 @@ async fn haiku_names_the_session_when_codex_fails() {
 
     let session = titled(&mut c, &sid, "Claude named session").await;
     assert_eq!(session["titleSource"], "auto");
-    assert_eq!(naming_inputs(&sb).len(), 1, "Codex was asked first");
+    assert!(!naming_inputs(&sb).is_empty(), "Codex was asked first");
     // Haiku, in a tool-less private sidecar.
     let log = fs::read_to_string(sb.fake_state().join("sidecar.log")).unwrap_or_default();
     assert!(log.lines().any(|l| l.contains("start pid=") && l.contains("restricted=true")), "{log}");
@@ -145,4 +164,31 @@ async fn naming_can_be_turned_off() {
 /// A private engine thread's id (crates/yardd/src/private.rs).
 fn crate_private(id: &str) -> bool {
     id.starts_with("private-") || id.starts_with("switchy-")
+}
+
+/// A private naming thread disables the user's MCP servers; Codex's null
+/// optional fields are left out, not sent as empty strings.
+#[tokio::test]
+async fn codex_nullable_config_does_not_break_the_restricted_thread() {
+    let sb = Sandbox::new("naming-null-config");
+    let config = json!({"mcp_servers": {"linear": {
+        "url": "https://example.invalid/mcp", "enabled": true,
+        "tool_timeout_sec": null, "startup_timeout_sec": null,
+        "bearer_token_env_var": null, "http_headers": null
+    }}});
+    fs::write(sb.fake_state().join("config-read.json"), config.to_string()).unwrap();
+    let d = sb.start_with(&ON);
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "[name] hey can you look at the sidebar", json!({})).await;
+    c.wait_turn_done(&sid, 0).await;
+    titled(&mut c, &sid, "Fake named session").await;
+    let starts: Vec<Value> = fs::read_to_string(sb.fake_state().join("thread-starts.jsonl"))
+        .unwrap_or_default()
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    let server = starts.iter().find_map(|s| s["config"]["mcp_servers"].get("linear")).expect("a restricted thread start");
+    assert_eq!(server["enabled"], false);
+    assert_eq!(server["url"], config["mcp_servers"]["linear"]["url"]);
+    assert!(!server.as_object().unwrap().contains_key("tool_timeout_sec"));
 }

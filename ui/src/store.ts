@@ -29,13 +29,16 @@ import {
   type AccountEntry,
   type Automation,
   type Agent,
+  type AgentRequest,
   type McpAuthState,
   type McpStatus,
+  type SlackView,
 } from "./protocol";
 import type { WidgetRecord } from "./widget";
 import { createNotifier } from "./notify";
 import { inMobileApp, type MobileStatus } from "./mobile";
 import { base64ToBlob, fileToBase64, Replies, tooLarge } from "./attach";
+import { fileError } from "./fileLinks";
 
 /** Where an upload goes: a host from the new-session page, or the host of a
  *  session from its reply box. Empty means this machine. */
@@ -141,6 +144,8 @@ export interface State {
   mobile: MobileStatus;
   /** Remote hosts' phones: a phone connects to the host it can reach. */
   hostMobile: Record<string, MobileStatus>;
+  /** The hub's Slack connection; null until the snapshot. */
+  slack: SlackView | null;
   /** The hub's agents (agents live on this yardd only). */
   agents: Agent[];
   connected: boolean;
@@ -201,6 +206,10 @@ export interface State {
   notice: string | null;
 }
 
+export type SlackOp = "slack.tokens" | "slack.disconnect" | "slack.retry" | "slack.allow" | "slack.disallow" | "slack.dismiss" | "slack.route";
+/** An agent's own Slack app, step by step (`SlackSetup`). */
+export type SlackAppOp = "slack.grant" | "slack.app.create" | "slack.app.authorize" | "slack.app.botToken" | "slack.app.appToken" | "slack.app.remove" | "slack.app.icon" | "slack.publicUrl";
+
 type Action =
   | { t: "socket"; connected: boolean }
   | { t: "route"; route: Route }
@@ -214,6 +223,7 @@ const emptyThread = (): Thread => ({ next: -1, items: [], early: [] });
 export const initial: State = {
   mobile: { configured: false },
   hostMobile: {},
+  slack: null,
   agents: [],
   connected: false,
   route: { page: "new" },
@@ -342,6 +352,9 @@ export function sidebarLayout(sessions: SessionMeta[]): SidebarLayout {
 
 /** The host a session runs on, `local` for this machine. */
 export const hostOf = (s: SessionMeta | undefined) => s?.host || "local";
+/** A live event can create a thread before its history (it waits in `early`),
+ *  so only a thread that has had its history counts as loaded. */
+export const historyLoaded = (state: State, id: string): boolean => (state.threads[id]?.next ?? -1) >= 0;
 export const modelsOn = (state: State, host: string): Models => state.models[host] ?? EMPTY_MODELS;
 export const usageOn = (state: State, host: string): Usage => state.usage[host] ?? NO_USAGE;
 export const homeOn = (state: State, host: string): string => state.home[host] ?? "";
@@ -384,6 +397,8 @@ function reduceServer(state: State, msg: any): State {
       return msg.hostId ? { ...state, hostMobile: { ...state.hostMobile, [msg.hostId]: msg.mobile } } : { ...state, mobile: msg.mobile };
     case "agents":
       return msg.hostId ? state : { ...state, agents: (msg.agents as Agent[] | undefined) ?? [] };
+    case "slack":
+      return msg.hostId ? state : { ...state, slack: msg.slack as SlackView };
     case "snapshot": {
       const hosts = (msg.hosts ?? []) as HostEntry[];
       const known = new Set(hosts.map((h) => h.id));
@@ -399,6 +414,7 @@ function reduceServer(state: State, msg: any): State {
       return {
         ...next,
         mobile: msg.mobile ?? { configured: false },
+        slack: (msg.slack as SlackView | undefined) ?? null,
         agents: (msg.agents as Agent[] | undefined) ?? [],
         sessions,
         route,
@@ -603,6 +619,9 @@ function reduceServer(state: State, msg: any): State {
   }
 }
 
+/** A file read for the workspace: where yardd found it and its bytes. */
+export type FileRead = { name: string; path: string; data: Uint8Array } | { error: string };
+
 export interface Actions {
   /** A message for an agent: into its one conversation, which opens.
    *  Resolves with an error fit to show when yardd refused it. */
@@ -610,7 +629,15 @@ export interface Actions {
   /** Create (no `id`) or change an agent; only the fields given change. */
   saveAgent(agent: Partial<Agent>): Promise<{ agent?: Agent; error?: string }>;
   /** Its chats stay, as plain sessions. The built-in agent cannot be deleted. */
-  deleteAgent(id: string): void;
+  deleteAgent(id: string): Promise<{ error?: string }>;
+  /** A window opened the agent's conversation: its call for the owner (`needsYou`) was seen. */
+  agentSeen(id: string): void;
+  /** New agent: one with a placeholder name, opened at its conversation, where it sets itself up. */
+  newAgent(choice: { engine: string; model: string; effort: string }): Promise<{ agent?: Agent; error?: string }>;
+  /** The owner's answer to what an agent asked for. */
+  answerRequest(id: string, part: keyof AgentRequest, allow: boolean): void;
+  /** A step of putting an agent in Slack (`slack.grant`, `slack.app.create`, …); answered with Slack's state or why not. */
+  slackApp(op: SlackAppOp, fields: Record<string, unknown>): Promise<{ slack?: SlackView; error?: string }>;
 
   go(route: Route): void;
   dismissError(): void;
@@ -644,6 +671,8 @@ export interface Actions {
   upload(file: File, target: UploadTarget): Promise<Attachment>;
   /** An object URL for an attachment of a session, for a thumbnail. */
   attachmentUrl(sessionId: string, attachment: Attachment): Promise<string>;
+  /** Read a file a link in the session names, on the session's host. */
+  readFile(sessionId: string, path: string): Promise<FileRead>;
   setModel(sessionId: string, model: string, effort: string): void;
   setServiceTier(sessionId: string, serviceTier: string): void;
   /** Change what the engine may do unasked; Claude switches at once, Codex from its next turn. */
@@ -721,6 +750,8 @@ export interface Actions {
   mcpChangeClear(host: string, engine: Engine, account: string, name: string): void;
   /** Forget a finished or abandoned sign-in on this page. */
   mcpAuthClear(host: string, engine: Engine, account: string, server: string): void;
+  /** Slack on the hub: `slack.tokens`, `slack.allow`, `slack.route`, ...; answers as `slack`. */
+  slack(op: SlackOp, fields?: Record<string, unknown>): void;
   /** A tool call's widget: its HTML, CSP, input and result. */
   widget(sessionId: string, id: string): Promise<{ widget?: WidgetRecord; error?: string }>;
   /** A call a widget makes to its own server. */
@@ -870,6 +901,17 @@ export function useYard(): { state: State; actions: Actions } {
     return url;
   };
 
+  const readFile = async (sessionId: string, path: string): Promise<FileRead> => {
+    const reply = await ask({ op: "file.get", sessionId, path }, 2 * 60_000);
+    if (reply.error || typeof reply.data !== "string") return { error: fileError(reply) };
+    const blob = base64ToBlob(reply.data, "application/octet-stream");
+    return {
+      name: typeof reply.name === "string" && reply.name ? reply.name : "file",
+      path: typeof reply.path === "string" ? reply.path : path,
+      data: new Uint8Array(await blob.arrayBuffer()),
+    };
+  };
+
   // Load a session's history the first time it is shown on this connection.
   // A host snapshot drops that host's threads, so reload whatever is gone.
   // An agent's page shows its conversation.
@@ -877,7 +919,7 @@ export function useYard(): { state: State; actions: Actions } {
   const routeId = state.route.page === "session" ? state.route.id : agentChat && state.sessions[agentChat] ? agentChat : null;
   const routeHost = routeId ? hostOf(state.sessions[routeId]) : "local";
   const online = routeId ? hostOnline(state, routeHost) : false;
-  const loaded = routeId ? !!state.threads[routeId] : false;
+  const loaded = routeId ? historyLoaded(state, routeId) : false;
   useEffect(() => {
     if (routeId && !loaded) opened.current.delete(routeId);
     if (!routeId || !online || opened.current.has(routeId)) return;
@@ -939,7 +981,24 @@ export function useYard(): { state: State; actions: Actions } {
         const reply = await ask({ op: "agent.save", agent }, 30_000);
         return reply.error || !reply.agent ? { error: reply.error ?? "The agent was not saved." } : { agent: reply.agent as Agent };
       },
-      deleteAgent: (id) => post({ op: "agent.delete", id }),
+      deleteAgent: async (id) => {
+        // A conversation on an offline host keeps the agent; the form says so.
+        const reply = await ask({ op: "agent.delete", id }, 30_000);
+        return reply.error ? { error: reply.error as string } : {};
+      },
+      agentSeen: (id) => post({ op: "agent.seen", agentId: id }),
+      newAgent: async (choice) => {
+        const reply = await ask({ op: "agent.new", ...choice }, 30_000);
+        if (reply.error || !reply.agent) return { error: reply.error ?? "No agent was made." };
+        dispatch({ t: "route", route: { page: "agent", id: reply.agent.id } });
+        return { agent: reply.agent as Agent };
+      },
+      answerRequest: (id, part, allow) => post({ op: "agent.request", id, part, allow }),
+      slackApp: async (op, fields) => {
+        // Slack's own calls take a few seconds each; making an app several.
+        const reply = await ask({ ...fields, op }, 60_000);
+        return reply.error ? { error: reply.error as string } : { slack: reply.slack as SlackView };
+      },
       go: (route) => dispatch({ t: "route", route }),
       dismissError: () => dispatch({ t: "dismiss" }),
       create: (input) => post({ op: "session.create", ...input }),
@@ -955,6 +1014,7 @@ export function useYard(): { state: State; actions: Actions } {
       },
       upload,
       attachmentUrl,
+      readFile,
       setModel: (sessionId, model, effort) => {
         const session = sessionsRef.current[sessionId];
         if (session) rememberSession({ ...session, model, effort });
@@ -1039,6 +1099,7 @@ export function useYard(): { state: State; actions: Actions } {
       },
       mcpChangeClear: (host, engine, account, name) => dispatch({ t: "server", msg: { op: "mcp.change", host, engine, account, name, state: null } }),
       mcpAuthClear: (host, engine, account, server) => dispatch({ t: "server", msg: { op: "mcp.auth", host, engine, account, server, state: null } }),
+      slack: (op, fields = {}) => post({ ...fields, op }),
       widget: (sessionId, id) => {
         const key = `${sessionId}\n${id}`;
         let p = widgets.get(key);

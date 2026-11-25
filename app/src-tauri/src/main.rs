@@ -23,7 +23,7 @@ use std::{
 
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
-    webview::{NewWindowResponse, PermissionKind, PermissionResponse},
+    webview::{DownloadEvent, NewWindowResponse, PermissionKind, PermissionResponse},
     AppHandle, Manager, Url, WebviewUrl, WebviewWindowBuilder,
 };
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
@@ -396,6 +396,18 @@ fn main() {
                 // is granted without a WebKit prompt on top of macOS's own.
                 // Without a handler wry grants every capture request; the
                 // camera, which nothing uses, is now refused.
+                // A file an agent linked downloads from yardd's page as a
+                // blob. Without a handler wry cancels every download; with
+                // one, WebKit saves it to ~/Downloads under a free name, and
+                // Finder shows it, since the window has no download list.
+                .on_download(|_, event| {
+                    if let DownloadEvent::Finished { path: Some(path), success: true, .. } = event {
+                        if let Err(e) = Command::new("/usr/bin/open").arg("-R").arg(&path).spawn() {
+                            eprintln!("switchyard: could not show {}: {e}", path.display());
+                        }
+                    }
+                    true
+                })
                 .on_permission_request(|_, kind| match kind {
                     PermissionKind::Microphone => PermissionResponse::Allow,
                     PermissionKind::Camera => PermissionResponse::Deny,

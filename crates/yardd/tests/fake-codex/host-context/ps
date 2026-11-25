@@ -1,2 +1,0 @@
-#!/bin/sh
-printf 'PID PPID %%CPU %%MEM COMMAND\n42 1 12.0 2.0 TEST-api\n43 1 3.0 1.0 TEST-worker\n'

@@ -1,6 +1,7 @@
 // Labels and patches for Claude Code tool calls, shared by a live session
 // (main.ts) and an imported one (history.ts).
 import { relative } from "node:path";
+import { ownToolLabel } from "./agentTools";
 
 export const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 export const short = (s: unknown, n = 160) => {
@@ -39,6 +40,8 @@ export function describe(name: string, toolInput: any, cwd: string): { kind: str
     case "TodoWrite":
       return { kind: "other", title: "Updated tasks", detail: "" };
     default: {
+      const own = ownToolLabel(name, toolInput);
+      if (own) return { kind: "other", ...own };
       // An MCP tool: `mcp__<server>__<tool>` reads better as the tool, then its server.
       const mcp = /^mcp__(.+?)__(.+)$/.exec(name);
       if (mcp) return { kind: "other", title: mcp[2], detail: `${mcp[1]} · ${short(toolInput, 100)}` };

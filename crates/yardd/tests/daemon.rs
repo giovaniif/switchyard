@@ -1336,6 +1336,14 @@ async fn attachments_reach_codex_as_a_local_image_and_a_path() {
     assert_eq!(user["attachments"][0]["path"], shot_path);
     assert_eq!(user["attachments"][1]["size"], 18);
 
+    // A file the agent links is read from the session's folder, whatever
+    // dialect the link is in; a missing one says so.
+    fs::write(Path::new(&cwd).join("report.csv"), "org,domain\n").unwrap();
+    assert_eq!(c.file(&sid, "report.csv:2").await.unwrap(), ("report.csv".to_string(), b"org,domain\n".to_vec()));
+    assert_eq!(c.file(&sid, "sandbox:/mnt/data/report.csv").await.unwrap().1, b"org,domain\n");
+    let missing = c.file(&sid, "gone.csv").await.unwrap_err();
+    assert!(missing.contains("gone.csv was not found"), "{missing}");
+
     // Thumbnails: the bytes come back for this session's attachments only.
     assert_eq!(c.fetch(&sid, shot["id"].as_str().unwrap()).await.unwrap(), png(300));
     let stray = c.upload("other.png", "image/png", &png(20), json!({})).await.unwrap();
@@ -1469,6 +1477,12 @@ async fn attachments_land_on_the_remote_host_through_the_hub() {
     let history = c.history(&sid).await;
     assert_eq!(history[0]["attachments"][0]["path"], shot_path.as_str());
     assert_eq!(c.fetch(&sid, shot["id"].as_str().unwrap()).await.unwrap(), big);
+    // A linked file is read on the remote host, at the size cap, through the hub.
+    let csv = vec![b'x'; 10 * 1024 * 1024];
+    fs::write(Path::new(&cwd).join("big.csv"), &csv).unwrap();
+    assert_eq!(c.file(&sid, &format!("{cwd}/big.csv")).await.unwrap(), ("big.csv".to_string(), csv));
+    let over = c.file(&sid, "../proj").await.unwrap_err();
+    assert!(over.contains("is a folder"), "{over}");
 
     // Over the cap through the hub: refused by the remote, the link stays up.
     let err = c.upload("huge.bin", "", &vec![0u8; 10 * 1024 * 1024 + 1], json!({ "host": host })).await.unwrap_err();
@@ -2766,6 +2780,30 @@ async fn a_session_whose_folder_is_gone_says_so() {
 }
 
 #[tokio::test]
+async fn a_message_to_a_session_whose_folder_is_gone_says_so() {
+    let sb = Sandbox::new("gonesend");
+    let d = sb.start();
+    let mut c = d.client().await;
+    for engine in ["codex", "claude"] {
+        let folder = sb.folder(&format!("proj-{engine}"));
+        // As the merged-worktree sweep leaves it: Claude's sidecar stopped, folder gone.
+        let first = if engine == "claude" { "[die] hi" } else { "hi" };
+        let sid = c.create(&folder, first, json!({ "engine": engine })).await;
+        c.wait_turn_done(&sid, 0).await;
+        c.wait_status(&sid, "idle").await;
+        fs::remove_dir_all(&folder).unwrap();
+
+        // The engine would fail its own way: Claude Code's SDK blames libc.
+        let seq = c.next_seq(&sid);
+        c.send(json!({ "op": "session.send", "sessionId": sid, "text": "keep going" })).await;
+        let error = c.wait_event(&sid, "error", seq).await;
+        let message = error["message"].as_str().unwrap_or_default();
+        assert!(message.contains("no longer exists") && message.contains(&folder), "{engine}: {error}");
+        assert_eq!(c.wait_turn_done(&sid, seq).await["status"], "failed", "{engine}");
+    }
+}
+
+#[tokio::test]
 async fn claude_usage_survives_a_restart() {
     // Claude reports its limits only during a turn, so without saving them a
     // restart blanks the meters and lets a usage-capped automation run.
@@ -2846,4 +2884,31 @@ async fn pr_get_says_when_the_folder_is_a_repository_it_cannot_read_a_pr_for() {
     let reply = c.wait_after(from, "a pr reply", |m| m["op"] == "pr" && m["sessionId"] == sid).await;
     assert_eq!(reply["pr"]["repo"], false, "{reply}");
     assert!(reply["pr"]["error"].is_null(), "{reply}");
+}
+
+#[tokio::test]
+async fn removing_an_account_in_use_names_its_sessions() {
+    let sb = Sandbox::new("accounts-rm-in-use");
+    let d = sb.start();
+    let mut c = d.client().await;
+    let id = add_account(&mut c, "codex", "Work").await;
+    async fn refusal(c: &mut Client, id: &str) -> String {
+        let from = c.mark();
+        c.send(json!({ "op": "account.remove", "id": id })).await;
+        c.wait_error(from, "account.remove").await
+    }
+
+    // An archived session is not in the sidebar, so the refusal has to say
+    // which one it is and where it went.
+    let old = c.create(&sb.folder("old"), "fix the login page", json!({ "account": id })).await;
+    c.wait_turn_done(&old, 0).await;
+    c.send(json!({ "op": "session.update", "sessionId": old, "archived": true })).await;
+    c.wait_for("the archived session", |m| m["op"] == "session" && m["session"]["id"] == old && m["session"]["archived"] == true).await;
+    let one = refusal(&mut c, &id).await;
+    assert_eq!(one, "The session \"fix the login page\" (archived) still uses this account. Delete it first.");
+
+    let new = c.create(&sb.folder("new"), "write the docs", json!({ "account": id })).await;
+    c.wait_turn_done(&new, 0).await;
+    let two = refusal(&mut c, &id).await;
+    assert_eq!(two, "2 sessions still use this account: \"fix the login page\" (archived) and \"write the docs\". Delete them first.");
 }

@@ -173,9 +173,7 @@ impl Daemon {
             .env("YARD_PORT", port.to_string())
             .env("YARD_DATA_DIR", sandbox.data())
             .env("YARD_ROOT", repo_root())
-            .env_remove("YARD_CONTEXT_ROOTS")
             .env("YARD_WORKSPACE", sandbox.root.join("work"))
-            .env("YARD_CONTEXT_COMMAND_DIR", fake_bin().join("host-context"))
             .env("PATH", path)
             .env("HOME", sandbox.home())
             .env("SHELL", "/bin/bash")
@@ -653,6 +651,26 @@ impl Client {
         Ok(base64::engine::general_purpose::STANDARD
             .decode(reply["data"].as_str().unwrap())
             .unwrap())
+    }
+
+    /// `file.get`: the name and bytes of the file a link in the session names.
+    pub async fn file(&mut self, sid: &str, path: &str) -> Result<(String, Vec<u8>), String> {
+        let from = self.mark();
+        self.send(json!({ "op": "file.get", "sessionId": sid, "path": path }))
+            .await;
+        let reply = self
+            .wait_after(from, "the reply to file.get", |m| {
+                (m["op"] == "file.data" && m["sessionId"] == sid && m["path"].is_string())
+                    || (m["op"] == "error" && m["for"] == "file.get")
+            })
+            .await;
+        if let Some(e) = reply["error"].as_str().or(reply["message"].as_str()) {
+            return Err(e.to_string());
+        }
+        let data = base64::engine::general_purpose::STANDARD
+            .decode(reply["data"].as_str().unwrap())
+            .unwrap();
+        Ok((reply["name"].as_str().unwrap().to_string(), data))
     }
 
     /// `session.open` and the history that comes back.

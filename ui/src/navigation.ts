@@ -2,7 +2,7 @@ import type { Agent, HostEntry, SessionMeta } from "./protocol";
 import type { Route } from "./store";
 import { ENGINE_NAME } from "./engines";
 import { hiddenFromSidebar } from "./automations";
-import { isAgentConversation } from "./agents";
+import { handleOf, isAgentConversation } from "./agents";
 
 export interface NavigationEntry {
   id: string;
@@ -17,8 +17,8 @@ export interface NavigationEntry {
 
 const PAGES: NavigationEntry[] = [
   { id: "new", title: "New session", detail: "Start a conversation", group: "Pages", route: { page: "new" } },
-  // Switchy's quick questions are the host agent's now; the old name still finds them.
-  { id: "agents", title: "Agents", detail: "Your agents, and Scout for questions about your hosts", search: "switchy scout assistant ask", group: "Pages", route: { page: "agents" } },
+  // Switchy's page became this one; the old name still finds it.
+  { id: "agents", title: "Agents", detail: "Your named agents: @mention them anywhere, or in Slack", search: "switchy assistant ask bots", group: "Pages", route: { page: "agents" } },
   { id: "automations", title: "Automations", detail: "Scheduled work and runs", group: "Pages", route: { page: "automations" } },
   { id: "connectors", title: "Connectors", detail: "MCP servers and connections", group: "Pages", route: { page: "connectors" } },
   { id: "settings", title: "Settings", detail: "Notifications and sidebar", group: "Pages", route: { page: "settings" } },
@@ -31,11 +31,11 @@ const PAGES: NavigationEntry[] = [
 /** Search the whole session catalog, including archived conversations and runs.
  *  The empty query lists recent sessions the sidebar shows: an hourly
  *  automation's archived runs would otherwise be all of them. */
-export function navigationEntries(sessions: SessionMeta[], context: { localName: string; hosts: Pick<HostEntry, "id" | "name">[]; agents?: Pick<Agent, "id" | "name" | "about" | "builtin">[] }, query: string): NavigationEntry[] {
+export function navigationEntries(sessions: SessionMeta[], context: { localName: string; hosts: Pick<HostEntry, "id" | "name">[]; agents?: Pick<Agent, "id" | "name" | "handle" | "about" | "chat" | "previous">[] }, query: string): NavigationEntry[] {
   const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
   const matches = (e: NavigationEntry) => words.every((word) => `${e.title} ${e.detail} ${e.search ?? ""}`.toLowerCase().includes(word));
   // Agents' conversations are reached through their agent, below.
-  const own = sessions.filter((s) => !isAgentConversation(s));
+  const own = sessions.filter((s) => !isAgentConversation(s, context.agents ?? []));
   const listed = words.length ? own : own.filter((s) => !s.archived && !hiddenFromSidebar(s));
   const recent = [...listed].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
   const rows = recent.map((s): NavigationEntry => {
@@ -51,7 +51,7 @@ export function navigationEntries(sessions: SessionMeta[], context: { localName:
     };
   }).filter(matches).slice(0, words.length ? 40 : 8);
   const agents = (context.agents ?? [])
-    .map((a): NavigationEntry => ({ id: `agent-${a.id}`, title: a.name, detail: a.about || (a.builtin ? "Questions about your hosts" : "Agent"), search: `@${a.name} agent`, group: "Agents", route: { page: "agent", id: a.id } }))
+    .map((a): NavigationEntry => ({ id: `agent-${a.id}`, title: a.name, detail: a.about || "Agent", search: `@${handleOf(a)} agent`, group: "Agents", route: { page: "agent", id: a.id } }))
     .filter(matches);
   const pages = PAGES.filter(matches);
   return words.length ? [...pages, ...agents, ...rows] : [...rows, ...agents, ...pages];

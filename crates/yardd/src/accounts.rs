@@ -26,6 +26,34 @@ pub struct Account {
     pub name: String,
 }
 
+/// Why an account cannot be removed yet, naming the sessions on it: the
+/// user has to find and delete them, and an archived one is not in the
+/// sidebar. `sessions` are (title, archived) pairs.
+pub fn in_use(sessions: &[(String, bool)]) -> String {
+    // Archived ones first: they are the ones the user cannot see, so they
+    // must not fall under "N more".
+    let mut sessions = sessions.to_vec();
+    sessions.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    // A title can be a whole first message; the banner has one line.
+    let name = |(title, archived): &(String, bool)| {
+        let short: String = if title.chars().count() > 50 { title.chars().take(49).collect::<String>() + "…" } else { title.clone() };
+        format!("\"{short}\"{}", if *archived { " (archived)" } else { "" })
+    };
+    const SHOWN: usize = 3;
+    match sessions.len() {
+        0 => "no session uses this account".to_string(),
+        1 => format!("The session {} still uses this account. Delete it first.", name(&sessions[0])),
+        n => {
+            let mut names: Vec<String> = sessions.iter().take(SHOWN).map(name).collect();
+            if n > SHOWN {
+                names.push(format!("{} more", n - SHOWN));
+            }
+            let last = names.pop().unwrap();
+            format!("{n} sessions still use this account: {} and {last}. Delete them first.", names.join(", "))
+        }
+    }
+}
+
 pub struct Accounts {
     dir: PathBuf,
     file: PathBuf,
@@ -124,5 +152,27 @@ impl Accounts {
         std::fs::write(&tmp, serde_json::to_string_pretty(list)?).with_context(|| format!("could not write {}", tmp.display()))?;
         std::fs::rename(&tmp, &self.file).with_context(|| format!("could not write {}", self.file.display()))?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::in_use;
+
+    fn s(title: &str, archived: bool) -> (String, bool) {
+        (title.to_string(), archived)
+    }
+
+    #[test]
+    fn in_use_names_three_sessions_then_counts_the_rest() {
+        let all = [s("e", false), s("z", true), s("d", false), s("c", false), s("b", false)];
+        assert_eq!(in_use(&all), "5 sessions still use this account: \"z\" (archived), \"b\", \"c\" and 2 more. Delete them first.");
+        assert_eq!(in_use(&all[..3]), "3 sessions still use this account: \"z\" (archived), \"d\" and \"e\". Delete them first.");
+    }
+
+    #[test]
+    fn in_use_shortens_a_long_title() {
+        let long = "x".repeat(80);
+        assert_eq!(in_use(&[s(&long, false)]), format!("The session \"{}…\" still uses this account. Delete it first.", "x".repeat(49)));
     }
 }

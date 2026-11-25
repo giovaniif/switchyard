@@ -113,6 +113,22 @@ An account with sessions cannot be removed: yardd says so and the row stays.
 yv drive hosts --viewport desktop --allow-errors --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Remove TEST-Work"},{"click":"role:button:Remove TEST-Work"},{"expect":"css:.banner-error","text":"session"},{"expect":{"css":".account-row","hasText":"TEST-Work"}}]'
 ```
 
+### refusal-names-the-sessions-archived-too
+Viewports: both
+The refusal names the sessions still on the account and marks an archived
+one, which is not in the sidebar and so comes first, so the user knows what
+to delete. The
+confirming click disarms Remove, so the row does not keep saying "Click again
+to remove" beside the refusal. (Before #397: "1 session still use this
+account. Delete it first.", nothing named.)
+
+```sh
+sid="$(yv state | jq -r '.sessions[] | select(.title == "TEST-account pick mobile") | .id')"
+yv api "{\"op\":\"session.update\",\"sessionId\":\"$sid\",\"archived\":true}"
+yv drive hosts --allow-errors --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Remove TEST-Work"},{"click":"role:button:Remove TEST-Work"},{"expect":"css:.banner-error","text":"2 sessions still use this account: \"TEST-account pick mobile\" (archived) and \"TEST-account pick desktop\". Delete them first."},{"eval":"document.querySelector(\"[aria-label=\\\"Remove TEST-Work\\\"]\").textContent","equals":"Remove"},{"eval":"document.querySelector(\".banner-error\").scrollIntoView(); 1"},{"shot":"refusal-names-sessions"}]'
+yv api "{\"op\":\"session.update\",\"sessionId\":\"$sid\",\"archived\":false}"
+```
+
 ### remove-account
 Viewports: desktop
 Once its sessions are deleted the account can be removed: the row goes, and
@@ -131,7 +147,7 @@ Viewports: both
 Desktop actions align at the right; on mobile the whole action group moves under the login identity, with no overflow.
 
 ```sh
-yv drive 'hosts' --steps '[{"click":"role:tab:Engine logins"},{"expect":"role:button:Add OpenCode account"},{"expect":"role:button:Add Gemini account"},{"eval":"[...document.querySelectorAll(\".engine-actions\")].every(a => { const r=a.getBoundingClientRect(), p=a.closest(\".engine-row\").getBoundingClientRect(); return r.left>=p.left && r.right<=p.right+1; })","equals":true},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"engine-actions"}]'
+yv drive 'hosts' --steps '[{"click":"role:tab:Engine logins"},{"expect":"role:button:Add OpenCode account"},{"expect":"role:button:Add Gemini account"},{"eval":"[...document.querySelectorAll(\".engine-actions\")].every(a => { const r=a.getBoundingClientRect(), p=a.closest(\".engine-row\").getBoundingClientRect(); return r.left>=p.left && r.right<=p.right+1; })","equals":true},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"engine-actions"}]'
 ```
 
 ### install-command-stays-at-the-right
@@ -156,8 +172,8 @@ of pushing the page wider. A long name never widens the desktop badge. (Before
 shrink-to-fit width and clipped the chip to "Codex · Def…" next to free space.)
 
 ```sh
-yv drive 'session:{{sid_edit}}' --viewport desktop --steps '[{"expect":"role:button:Account: Codex, Default"},{"eval":"(() => { const b = document.querySelector(\".composer .account-trigger\"); return [b.title, b.querySelector(\".account-avatar\").textContent].join(\"|\"); })()","equals":"Codex · Default|D"},{"shot":"account-chip"},{"eval":"(() => { const b = document.querySelector(\".composer .account-trigger\"), w = b.getBoundingClientRect().width; b.querySelector(\".account-trigger-name\").textContent = \"Codex · \" + \"TEST-averyverylongaccountname\".repeat(4); return b.getBoundingClientRect().width === w && document.documentElement.scrollWidth <= innerWidth; })()","equals":true}]'
-yv drive 'session:{{sid_edit}}' --viewport mobile --steps '[{"click":"role:button:Session setup"},{"expect":"css:.setup-options .account-trigger-name","text":"Codex · Default"},{"eval":"(() => { const n = document.querySelector(\".setup-options .account-trigger-name\"); return n.scrollWidth <= n.clientWidth; })()","equals":true},{"shot":"account-chip"},{"eval":"(() => { const n = document.querySelector(\".setup-options .account-trigger-name\"); n.textContent = \"Codex · \" + \"TEST-averyverylongaccountname\".repeat(4); const b = n.parentElement.getBoundingClientRect(), sheet = document.querySelector(\".setup-options\").getBoundingClientRect(); return n.scrollWidth > n.clientWidth && b.right <= sheet.right + 0.5 && document.documentElement.scrollWidth <= innerWidth; })()","equals":true}]'
+yv drive 'session:{{sid_edit}}' --viewport desktop --steps '[{"expect":"role:button:Account: Codex, Default"},{"eval":"(() => { const b = document.querySelector(\".composer .account-trigger\"); return [b.title, b.querySelector(\".account-avatar\").textContent].join(\"|\"); })()","equals":"Codex · Default|D"},{"shot":"account-chip"},{"eval":"(() => { const b = document.querySelector(\".composer .account-trigger\"), w = b.getBoundingClientRect().width; b.querySelector(\".account-trigger-name\").textContent = \"Codex · \" + \"TEST-averyverylongaccountname\".repeat(4); return b.getBoundingClientRect().width === w && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()","equals":true}]'
+yv drive 'session:{{sid_edit}}' --viewport mobile --steps '[{"click":"role:button:Session setup"},{"expect":"css:.setup-options .account-trigger-name","text":"Codex · Default"},{"eval":"(() => { const n = document.querySelector(\".setup-options .account-trigger-name\"); return n.scrollWidth <= n.clientWidth; })()","equals":true},{"shot":"account-chip"},{"eval":"(() => { const n = document.querySelector(\".setup-options .account-trigger-name\"); n.textContent = \"Codex · \" + \"TEST-averyverylongaccountname\".repeat(4); const b = n.parentElement.getBoundingClientRect(), sheet = document.querySelector(\".setup-options\").getBoundingClientRect(); return n.scrollWidth > n.clientWidth && b.right <= sheet.right + 0.5 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()","equals":true}]'
 ```
 
 ### account-chip-chevron-keeps-its-size
@@ -196,6 +212,19 @@ the Log in button past the right edge of the screen.)
 ```sh
 yv drive hosts --viewport desktop --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Add Codex account"},{"fill":"label:Account name","value":"TEST-ACME_WORLDWIDE_ENGINEERING_PLATFORM"},{"press":"Enter"},{"expect":{"css":".account-row","hasText":"TEST-ACME_WORLDWIDE_ENGINEERING_PLATFORM"},"text":"not logged in"}]'
 yv drive new --viewport mobile --steps '[{"click":"role:button:Session setup"},{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · TEST-ACME_WORLDWIDE_ENGINEERING_PLATFORM"}},{"press":"Escape"},{"expect":"role:dialog:Session setup","count":0},{"expect":{"css":".new-inner .engine-notice","hasText":"TEST-ACME_WORLDWIDE_ENGINEERING_PLATFORM"},"text":"logged in on iso-host"},{"shot":"long-account-banner"},{"eval":"(() => { const n = document.querySelector(\".new-inner .engine-notice\").getBoundingClientRect(), b = document.querySelector(\".new-inner .engine-notice .btn-primary\").getBoundingClientRect(); return n.right <= innerWidth + 0.5 && b.left >= n.left && b.right <= n.right + 0.5; })()","equals":true}]'
+```
+
+### refusal-with-a-long-word-keeps-dismiss-on-screen
+Viewports: both
+A refusal that quotes a session title with no spaces wraps inside the error
+banner: the page does not scroll sideways and Dismiss stays on screen, at
+390 px too. (#425: the banner's text did not wrap an unbroken word, so at
+390 px the layout grew to 397 px and Dismiss ended past the screen edge.)
+
+```sh
+yv api '{"op":"account.add","engine":"codex","name":"TEST-Unbroken"}' --wait '{"op":"accounts"}' --save uacct='accounts[name=TEST-Unbroken].id'
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{work}}","account":"{{uacct}}","text":"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithoutAnySpacesAtAllForSeventyChars"}' --wait '{"op":"created"}'
+yv drive hosts --allow-errors --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Remove TEST-Unbroken"},{"click":"role:button:Remove TEST-Unbroken"},{"expect":"css:.banner-error","text":"still use"},{"shot":"long-word-refusal"},{"eval":"(() => { const w = document.documentElement.clientWidth, b = document.querySelector(\".banner-error\").getBoundingClientRect(), d = [...document.querySelectorAll(\".banner-error button\")].find((x) => x.textContent.trim() === \"Dismiss\").getBoundingClientRect(); return document.documentElement.scrollWidth <= w && b.right <= w + 0.5 && d.left >= b.left && d.right <= b.right + 0.5; })()","equals":true},{"click":"role:button:Dismiss"},{"expect":"css:.banner-error","count":0}]'
 ```
 
 ## Gotchas
