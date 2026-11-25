@@ -15,6 +15,9 @@
 //   [subagents] three subagents side by side, as a planner fans out: a long
 //           title, two still running with a long latest command for 30 s,
 //           then all done and "Echo: <prompt>"
+//   [background-agent] an Agent call run in the background, as Claude does by
+//           default: the turn answers and completes at once, and the
+//           subagent reports 1.5 s later (its `tool_completed` after the turn)
 //   [chart] an MCP call to `chart` (verify/fakes/mcp-chart) that ends with
 //           its widget on `tool_completed` (`app`), then "Here is the chart."
 //   [[tool NAME {json}]]  calls Switchyard's agent tool NAME through the
@@ -237,6 +240,15 @@ async function runSteps(text) {
   emit({ type: "turn_completed", status: "completed" });
 }
 let sleeper = null;
+async function runBackgroundAgent(text) {
+  const id = `tool-${process.pid}-${++n}`;
+  emit({ type: "tool_started", itemId: id, kind: "other", title: "Agent", detail: "TEST-work in the background", agent: "general-purpose" });
+  emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: `Echo: ${text}` });
+  emit({ type: "turn_completed", status: "completed" });
+  await new Promise((r) => setTimeout(r, 1500));
+  emit({ type: "tool_completed", itemId: id, ok: true, output: "TEST-background report", ms: 1500 });
+}
+
 async function runSubagents(text) {
   const pause = (ms) => new Promise((r) => setTimeout(r, ms));
   const agents = [
@@ -328,6 +340,10 @@ for await (const line of console) {
     }
     if (behaviorText.includes("[chart]")) {
       runChart(text);
+      continue;
+    }
+    if (behaviorText.includes("[background-agent]")) {
+      runBackgroundAgent(text);
       continue;
     }
     if (behaviorText.includes("[subagents]")) {

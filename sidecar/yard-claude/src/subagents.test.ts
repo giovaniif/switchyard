@@ -46,6 +46,8 @@ describe("the Agent call", () => {
 
   test("the older Task name is the same call; an ordinary tool has no agent field", () => {
     expect(toolStarted({ id: "t", name: "Task", input: { description: "d", subagent_type: "Explore" } }, "/w")).toMatchObject({ title: "Agent", agent: "Explore" });
+    // A call that names no type runs the general-purpose agent, and still reads as an agent.
+    expect(toolStarted({ id: "t", name: "Agent", input: { description: "Live update", prompt: "…", run_in_background: true } }, "/w")).toMatchObject({ title: "Agent", agent: "general-purpose" });
     const bash = toolStarted({ id: "b", name: "Bash", input: { command: "ls" } }, "/w");
     expect(bash).toEqual({ type: "tool_started", itemId: "b", kind: "command", title: "Ran", detail: "ls" });
   });

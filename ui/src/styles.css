@@ -139,6 +139,8 @@ h1, h2, h3, p { margin: 0; }
 .row-engine .mark-queued::before { width: 7px; height: 7px; border-width: 1.5px; }
 .row-engine .mark-answered::before, .row-engine .mark-unread::before { width: 8px; height: 8px; box-shadow: none; }
 .row-engine .mark-failed::before { width: 8px; height: 8px; }
+/* An agent in the sidebar: its face in the harness's place, a little larger so it reads. */
+.row-engine.row-agent-face { width: 20px; height: 20px; }
 .host-row { height: 32px; padding: 0 10px; font-size: 12px; }
 .host-row code { font-size: 11px; color: var(--muted); }
 .host-row code.warn { color: var(--warn-ink); }
@@ -181,6 +183,8 @@ h1, h2, h3, p { margin: 0; }
 /* A refusal can quote a title or path with no spaces; without wrapping it set the row's width and pushed Dismiss off a phone screen. */
 .banner > span { min-width: 0; overflow-wrap: anywhere; }
 .banner > button { flex-shrink: 0; }
+.app-update { flex-wrap: wrap; row-gap: 4px; }
+.banner > .app-update-actions { display: flex; flex-shrink: 0; gap: 2px; margin-right: -10px; }
 
 /* buttons */
 .btn-primary, .btn, .btn-text, .btn-quiet, .btn-icon { height: 32px; border-radius: 8px; }

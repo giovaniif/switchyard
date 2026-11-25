@@ -4152,7 +4152,7 @@ dependencies = [
 
 [[package]]
 name = "switchyard"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "serde_json",
  "tauri",
@@ -5951,7 +5951,7 @@ dependencies = [
 
 [[package]]
 name = "yardd"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "anyhow",
  "axum",
