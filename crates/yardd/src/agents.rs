@@ -1248,7 +1248,11 @@ fn current_setup(app: &App, a: &Agent) -> String {
         folder,
         a.permission,
         permission_words(&a.permission),
-        if app.slack.has_app(&a.id) { "has an app of its own: people @mention you there" } else { "not connected for you" },
+        &match (app.slack.has_app(&a.id), app.slack.mentions_note(&a.id)) {
+            (true, Some(people)) => format!("has an app of its own: people @mention you there; your answers there can @mention only {people}, written exactly like that"),
+            (true, None) => "has an app of its own: people @mention you there; your answers there cannot @mention anyone".to_string(),
+            (false, _) => "not connected for you".to_string(),
+        },
         crate::engines::name(&a.engine),
         if list.is_empty() { "(none listed yet)".to_string() } else { list.join(", ") },
     )
