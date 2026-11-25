@@ -1,0 +1,310 @@
+{
+  "v": 1,
+  "claim": "Agents: a name had to be one @mentionable word, and changing an agent's model, host, face, colour or name meant leaving its conversation for the Edit form. Now a name is display text (any printable text, 40 characters) with a handle made from it for @mentions, the start page and reply box carry New session's pickers, and the face, name and what it is for are edited in place.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-a168632d95382869e",
+  "base": "78d53289499b8feffeeeb31bf1f7fe6c3b52aabc",
+  "head": "3e0aa60afebacb3308b2fabea8ecccc5b6caf674",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/origins.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/AgentsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/agents.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/agents.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/agents.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-25T02:07:55.155Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "1b566af9236cf7e1a3ef5fa48f11c6a4ed2d6b43",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "541314e7e0a8e69c478425238a3fb2caa4023b602e4fdb0efc49ae50b60af694"
+        },
+        {
+          "path": "p1-name-refused-desktop.png",
+          "sha256": "627b5e53fa09a868e074eb55e866872dcf7742efd261a5ca8fa6e759a98318d3"
+        },
+        {
+          "path": "p1-no-in-place-editing-desktop.png",
+          "sha256": "9cc7c0698a0a9e1eb58b51902312350b4b90d336fb3ee9151787beb3a6c1f029"
+        }
+      ],
+      "addedAt": "2026-11-25T02:08:09.116Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "1b566af9236cf7e1a3ef5fa48f11c6a4ed2d6b43",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "5c9d46f2b45eba66e1098dc27258406ce1b03c06ffafc3957f326f63e2621db0"
+        }
+      ],
+      "addedAt": "2026-11-25T02:08:09.161Z",
+      "cmd": "cd ui && bun test src/agents.test.ts",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "1b566af9236cf7e1a3ef5fa48f11c6a4ed2d6b43",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "9bf3e0fad8d98f6aabe238f448c1683fe1619615702af1e676c01a984e14c78e"
+        }
+      ],
+      "addedAt": "2026-11-25T02:08:09.218Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents --test agent_tools",
+      "exit": 101
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "3e0aa60afebacb3308b2fabea8ecccc5b6caf674",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "76580ccf75c1feee9c2a15ced4164213262fd9bbbf184cf5702010d9ffed309d"
+        },
+        {
+          "path": "p4-name-ok-desktop.png",
+          "sha256": "4a27e778a02f51e2713051fe7ea5775953c0042f0f7f89b10bf24cfff5c385c0"
+        },
+        {
+          "path": "p4-look-desktop.png",
+          "sha256": "c93e5f46587a6cf6d1b1e72ec597c0ca4b39e5125c414c03464bf775588254fb"
+        },
+        {
+          "path": "p4-rename-problem-desktop.png",
+          "sha256": "332d93f97f3f7a3495124be62d47a97f21d5fc3004b502356ed2e0dd496397e8"
+        },
+        {
+          "path": "p4-reply-box-pickers-desktop.png",
+          "sha256": "67a5b3bb6fbef71eecac2c7a54cebe285f7c6ee61c2dcf34d61705ca430f6f9e"
+        }
+      ],
+      "addedAt": "2026-11-25T02:08:42.619Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "3e0aa60afebacb3308b2fabea8ecccc5b6caf674",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "76612950b58586b9b77197d7bf2e48ca11ae515a7390a37b0b77d812cf3edffc"
+        },
+        {
+          "path": "p5-name-ok-mobile.png",
+          "sha256": "fbec80f06e02dbfc0aa146b7942e21da030ba9d845402b56bbbe645bd181da7c"
+        },
+        {
+          "path": "p5-look-mobile.png",
+          "sha256": "21f3120b9ffebac7d6d85929afa5e4bb325beecb82d4c9fafa44d42e057c3c0a"
+        },
+        {
+          "path": "p5-rename-problem-mobile.png",
+          "sha256": "1400449c379901c472173ad658e852c06a81b1897e8116906abb20852fbdc69f"
+        },
+        {
+          "path": "p5-reply-box-pickers-mobile.png",
+          "sha256": "b500f18f7cdd8ff92e94413bfe56c67c8b05bbc4f53ee20e81559cd78c8704c8"
+        }
+      ],
+      "addedAt": "2026-11-25T02:08:42.660Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "3e0aa60afebacb3308b2fabea8ecccc5b6caf674",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "209b0fd03977db381895fef9b55f55d19c8c8ce984473f8a2d134dee747286b3"
+        }
+      ],
+      "addedAt": "2026-11-25T02:08:42.700Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test) && (cd sidecar/yard-claude && bun test) && verify/yv selftest",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "3e0aa60afebacb3308b2fabea8ecccc5b6caf674",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "c7b20edfb46431d8fa52a6f6004733260ebb99569557f2dd6f2aeb88244cab04"
+        }
+      ],
+      "addedAt": "2026-11-25T02:10:11.053Z",
+      "cmd": "verify/yv design-check --base 78d53289499b",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "3e0aa60afebacb3308b2fabea8ecccc5b6caf674",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-agents.json",
+          "sha256": "8de5675b77696ff70e17440abb2e73305291e90a09fb42f3d0bc25da534ff7fe"
+        }
+      ],
+      "addedAt": "2026-11-25T02:10:11.142Z",
+      "cmd": "verify/yv map run agents",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "agents/cards-show-the-users-agents",
+        "agents/cards-in-a-row-line-up",
+        "agents/agent-views-on-a-phone",
+        "agents/colours-line-up-under-the-faces",
+        "agents/at-mention-from-new-session-goes-to-the-agents-conversation",
+        "agents/at-mention-in-a-session-goes-to-the-agents-conversation",
+        "agents/one-conversation-and-the-agents-mark",
+        "agents/agents-message-each-other-with-badges",
+        "agents/an-agent-that-needs-you",
+        "agents/an-agents-own-memory-shows-in-the-form",
+        "agents/new-agent-sets-itself-up-in-its-conversation",
+        "agents/new-agent-on-a-phone",
+        "agents/a-working-agent-looks-busy",
+        "agents/edit-an-agent-in-the-form",
+        "agents/a-name-of-a-few-words-is-mentioned-by-its-handle",
+        "agents/face-name-and-what-it-is-for-change-in-place",
+        "agents/the-boxs-pickers-save-the-agent",
+        "agents/add-to-slack-walks-through-the-tokens",
+        "agents/switchys-address-lands-on-the-agents",
+        "agents/deleting-an-agent-deletes-its-conversation",
+        "agents/form-host-and-account-pickers",
+        "agents/a-mention-reaches-an-agent-on-a-remote-host",
+        "agents/a-remote-agents-conversation-on-a-phone",
+        "agents/a-remote-agents-tools-act-on-the-hub",
+        "agents/moving-an-agent-says-what-happens-to-its-conversation",
+        "agents/a-host-picked-in-the-box",
+        "agents/a-remote-agents-host-offline"
+      ]
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "regression",
+      "at": "3e0aa60afebacb3308b2fabea8ecccc5b6caf674",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-map-slack.json",
+          "sha256": "acc8a16b5dd833756edbecb69e9a1a6e6c9df87f93b04317e078d11bc998c1ec"
+        }
+      ],
+      "addedAt": "2026-11-25T02:13:33.714Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/setup-guide",
+        "slack/refused-token-then-connected",
+        "slack/allow-from-a-direct-message",
+        "slack/answer-in-the-slack-thread",
+        "slack/tokens-stay-in-yardd",
+        "slack/an-agent-setting-up-is-not-reached-from-slack",
+        "slack/an-agents-own-slack-app",
+        "slack/one-token-with-a-public-address"
+      ]
+    }
+  ]
+}

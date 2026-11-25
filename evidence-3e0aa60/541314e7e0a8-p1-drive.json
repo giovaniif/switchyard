@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "1b566af9236cf7e1a3ef5fa48f11c6a4ed2d6b43",
+    "short": "1b566af",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T02:08:05.637Z"
+  },
+  "dir": ".verify/evidence/agent-names-base",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2800,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agent-names-base/name-refused-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agent-names-base/no-in-place-editing-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "3e0aa60afebacb3308b2fabea8ecccc5b6caf674",
+    "short": "3e0aa60",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T02:08:33.211Z"
+  },
+  "dir": ".verify/evidence/agent-names-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4306,
+      "steps": 18,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agent-names-head-desktop/name-ok-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agent-names-head-desktop/look-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agent-names-head-desktop/rename-problem-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agent-names-head-desktop/reply-box-pickers-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

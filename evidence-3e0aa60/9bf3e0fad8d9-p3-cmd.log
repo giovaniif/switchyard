@@ -1,0 +1,68 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents --test agent_tools
+# exit 101 after 13877 ms at 1b566af9236cf7e1a3ef5fa48f11c6a4ed2d6b43
+
+
+running 12 tests
+test an_agent_with_a_spaced_name_is_messaged_by_its_handle_or_its_name ... FAILED
+test an_agent_reaches_the_owner_a_few_times_an_hour_and_is_marked_until_seen ... ok
+test the_tools_endpoint_answers_only_a_key_it_made ... ok
+test a_message_to_another_agent_comes_back_as_its_answer ... FAILED
+test an_opencode_agent_calls_its_tools_without_asking ... ok
+test a_claude_agent_edits_its_own_memory ... ok
+test the_owners_own_sessions_get_no_tools ... ok
+test a_failed_or_stopped_answer_still_reaches_the_sender ... ok
+test a_new_agent_sets_itself_up_with_its_tool ... FAILED
+test a_remote_agents_tools_act_on_the_hub ... FAILED
+test chains_stop_at_three_hops_and_an_agent_cannot_message_itself ... ok
+test a_hosted_agent_gets_tools_only_from_a_hub_that_answers_them ... ok
+
+failures:
+
+---- an_agent_with_a_spaced_name_is_messaged_by_its_handle_or_its_name stdout ----
+
+thread 'an_agent_with_a_spaced_name_is_messaged_by_its_handle_or_its_name' (1698128) panicked at crates/yardd/tests/agent_tools.rs:45:5:
+assertion `left == right` failed: {"for":"agent.save","message":"A name is one word of up to 24 letters, digits, - or _, starting with a letter, so it can be @mentioned.","op":"error","ref":"save-4"}
+  left: String("error")
+ right: "agent.saved"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1698120-tools-handles-7 for inspection
+
+---- a_message_to_another_agent_comes_back_as_its_answer stdout ----
+
+thread 'a_message_to_another_agent_comes_back_as_its_answer' (1698124) panicked at crates/yardd/tests/agent_tools.rs:157:5:
+assertion `left == right` failed
+  left: Object {"agentId": String("g1a21075e88c1"), "hops": Number(1), "kind": String("agent"), "name": String("Ada")}
+ right: Object {"agentId": String("g1a21075e88c1"), "handle": String("Ada"), "hops": Number(1), "kind": String("agent"), "name": String("Ada")}
+kept /tmp/yardd-test-1698120-tools-message-3 for inspection
+
+---- a_new_agent_sets_itself_up_with_its_tool stdout ----
+
+thread 'a_new_agent_sets_itself_up_with_its_tool' (1698125) panicked at crates/yardd/tests/agent_tools.rs:658:5:
+assertion `left == right` failed: {"args":{"name":"Deploy  Watcher"},"isError":true,"text":"A name is one word of up to 24 letters, digits, - or _, starting with a letter, so it can be @mentioned.","tool":"update_setup"}
+  left: Bool(true)
+ right: false
+kept /tmp/yardd-test-1698120-tools-setup-4 for inspection
+
+---- a_remote_agents_tools_act_on_the_hub stdout ----
+
+thread 'a_remote_agents_tools_act_on_the_hub' (1698126) panicked at crates/yardd/tests/agent_tools.rs:485:5:
+assertion `left == right` failed
+  left: Object {"agentId": String("g1a21075e8e13"), "hops": Number(1), "kind": String("agent"), "name": String("Far")}
+ right: Object {"agentId": String("g1a21075e8e13"), "handle": String("Far"), "hops": Number(1), "kind": String("agent"), "name": String("Far")}
+kept /tmp/yardd-test-1698120-tools-far-hub-12 for inspection
+kept /tmp/yardd-test-1698120-tools-far-remote-5 for inspection
+
+
+failures:
+    a_message_to_another_agent_comes_back_as_its_answer
+    a_new_agent_sets_itself_up_with_its_tool
+    a_remote_agents_tools_act_on_the_hub
+    an_agent_with_a_spaced_name_is_messaged_by_its_handle_or_its_name
+
+test result: FAILED. 8 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.77s
+
+
+   Compiling yardd v0.19.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-a168632d95382869e/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 3.04s
+     Running tests/agent_tools.rs (target/debug/build/yardd/a41fc96ed29d814d/out/agent_tools-a41fc96ed29d814d)
+error: test failed, to rerun pass `-p yardd --test agent_tools`
