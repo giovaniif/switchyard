@@ -2,7 +2,7 @@ import type { Agent, HostEntry, SessionMeta } from "./protocol";
 import type { Route } from "./store";
 import { ENGINE_NAME } from "./engines";
 import { hiddenFromSidebar } from "./automations";
-import { isAgentConversation } from "./agents";
+import { handleOf, isAgentConversation } from "./agents";
 
 export interface NavigationEntry {
   id: string;
@@ -31,7 +31,7 @@ const PAGES: NavigationEntry[] = [
 /** Search the whole session catalog, including archived conversations and runs.
  *  The empty query lists recent sessions the sidebar shows: an hourly
  *  automation's archived runs would otherwise be all of them. */
-export function navigationEntries(sessions: SessionMeta[], context: { localName: string; hosts: Pick<HostEntry, "id" | "name">[]; agents?: Pick<Agent, "id" | "name" | "about" | "chat" | "previous">[] }, query: string): NavigationEntry[] {
+export function navigationEntries(sessions: SessionMeta[], context: { localName: string; hosts: Pick<HostEntry, "id" | "name">[]; agents?: Pick<Agent, "id" | "name" | "handle" | "about" | "chat" | "previous">[] }, query: string): NavigationEntry[] {
   const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
   const matches = (e: NavigationEntry) => words.every((word) => `${e.title} ${e.detail} ${e.search ?? ""}`.toLowerCase().includes(word));
   // Agents' conversations are reached through their agent, below.
@@ -51,7 +51,7 @@ export function navigationEntries(sessions: SessionMeta[], context: { localName:
     };
   }).filter(matches).slice(0, words.length ? 40 : 8);
   const agents = (context.agents ?? [])
-    .map((a): NavigationEntry => ({ id: `agent-${a.id}`, title: a.name, detail: a.about || "Agent", search: `@${a.name} agent`, group: "Agents", route: { page: "agent", id: a.id } }))
+    .map((a): NavigationEntry => ({ id: `agent-${a.id}`, title: a.name, detail: a.about || "Agent", search: `@${handleOf(a)} agent`, group: "Agents", route: { page: "agent", id: a.id } }))
     .filter(matches);
   const pages = PAGES.filter(matches);
   return words.length ? [...pages, ...agents, ...rows] : [...rows, ...agents, ...pages];

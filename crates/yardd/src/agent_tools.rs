@@ -321,7 +321,7 @@ fn definitions(app: &App, me: &crate::agents::Agent) -> Value {
     let names = if others.is_empty() {
         "There are no other agents yet.".to_string()
     } else {
-        format!("Agents: {}.", others.iter().map(|a| format!("@{}", a.name)).collect::<Vec<_>>().join(", "))
+        format!("Agents: {}.", others.iter().map(crate::agents::who_at).collect::<Vec<_>>().join(", "))
     };
     described(&names)
 }
@@ -338,8 +338,8 @@ fn described(names: &str) -> Value {
         },
         {
             "name": "message_agent",
-            "description": format!("Send a message to another agent in Switchyard, by name. It goes into that agent's conversation; when the agent's turn that answers it ends, its final answer comes back to you as a new message. Do not wait or poll for it. Chains of agents messaging agents stop after {} hops. {names}", origins::MAX_HOPS),
-            "inputSchema": { "type": "object", "properties": { "to": text("The agent's name, such as Reviewer."), "text": text("The message.") }, "required": ["to", "text"] },
+            "description": format!("Send a message to another agent in Switchyard, by its @handle. It goes into that agent's conversation; when the agent's turn that answers it ends, its final answer comes back to you as a new message. Do not wait or poll for it. Chains of agents messaging agents stop after {} hops. {names}", origins::MAX_HOPS),
+            "inputSchema": { "type": "object", "properties": { "to": text("The agent's handle, such as Reviewer or Custom-Domains (its name works too)."), "text": text("The message.") }, "required": ["to", "text"] },
             "annotations": { "title": "Message an agent", "readOnlyHint": false, "destructiveHint": false, "openWorldHint": false },
         },
         {
@@ -366,7 +366,7 @@ fn described(names: &str) -> Value {
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "name": text("One word people @mention you by: a letter, then letters, digits, - or _, at most 24."),
+                    "name": text("Your name as people see it: a word or a few, at most 40 characters. People @mention you by a handle made from it (Custom Domains Triage is @Custom-Domains-Triage)."),
                     "about": text("One line: what you are for. Shown on your card."),
                     "instructions": text("Who you are and how you work, written to yourself. Replaces the old text."),
                     "memory": text("Facts to keep in mind. Replaces the old text (remember adds a line)."),
@@ -383,6 +383,11 @@ fn described(names: &str) -> Value {
             "annotations": { "title": "Update its setup", "readOnlyHint": false, "destructiveHint": false, "openWorldHint": false },
         },
     ])
+}
+
+/// Two names or handles that are the same ignoring case.
+fn same(a: &str, b: &str) -> bool {
+    a.to_lowercase() == b.to_lowercase()
 }
 
 fn others(app: &App, me: &crate::agents::Agent) -> Vec<crate::agents::Agent> {
@@ -463,11 +468,13 @@ async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Resul
                 bail!("Not sent: the message is empty.");
             }
             let others = others(app, me);
-            let Some(target) = others.iter().find(|a| a.name.eq_ignore_ascii_case(&to)).cloned() else {
-                if me.name.eq_ignore_ascii_case(&to) {
+            // By handle; a model may well write the name as it reads.
+            let is = |a: &crate::agents::Agent| same(crate::agents::mention(a), &to) || same(&a.name, &to);
+            let Some(target) = others.iter().find(|a| same(crate::agents::mention(a), &to)).or_else(|| others.iter().find(|a| is(a))).cloned() else {
+                if is(me) {
                     bail!("Not sent: that is you. message_agent sends to another agent.");
                 }
-                let names = others.iter().map(|a| a.name.as_str()).collect::<Vec<_>>().join(", ");
+                let names = others.iter().map(crate::agents::who_at).collect::<Vec<_>>().join(", ");
                 bail!("Not sent: no agent is called {to}. {}", if names.is_empty() { "There are no other agents.".to_string() } else { format!("Agents: {names}.") });
             };
             let hops = origins::next_hops(&caller.answering);
@@ -480,14 +487,14 @@ async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Resul
             if let Err(until) = app.tools.take(&me.id, tool, MESSAGES_PER_HOUR, now_ms()) {
                 bail!("Not sent: you already sent {MESSAGES_PER_HOUR} messages to agents in the last hour. Try again after {}.", at_clock(until));
             }
-            let origin = json!({ "kind": "agent", "agentId": me.id, "name": me.name, "hops": hops });
+            let origin = json!({ "kind": "agent", "agentId": me.id, "name": me.name, "handle": crate::agents::mention(me), "hops": hops });
             let text = clip(&text, MESSAGE_BYTES);
             // Delivery may start the target's engine: the tool answers now,
             // and a message that cannot be delivered comes back as a reply.
             let (app2, target2, me) = (app.clone(), target.clone(), me.clone());
             tokio::spawn(async move {
                 if let Err(e) = crate::agents::deliver(&app2, &target2.id, &text, &origin).await {
-                    let back = json!({ "kind": "agentReply", "agentId": target2.id, "name": target2.name, "hops": hops });
+                    let back = json!({ "kind": "agentReply", "agentId": target2.id, "name": target2.name, "handle": crate::agents::mention(&target2), "hops": hops });
                     let note = origins::answer_text(&target2.name, "undelivered", &format!("{e:#}"));
                     if let Err(e) = crate::agents::deliver(&app2, &me.id, &note, &back).await {
                         eprintln!("yardd: could not tell {} its message failed: {e:#}", me.name);
@@ -496,7 +503,7 @@ async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Resul
             });
             Ok(format!(
                 "Sent to @{} (hop {hops} of {}). Its answer will arrive in this conversation as a new message when it is done; you do not need to wait for it.",
-                target.name,
+                crate::agents::mention(&target),
                 origins::MAX_HOPS
             )
             .into())
@@ -508,7 +515,7 @@ async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Resul
             }
             Ok(list
                 .iter()
-                .map(|a| format!("@{}{}", a.name, if a.about.is_empty() { String::new() } else { format!(": {}", a.about) }))
+                .map(|a| format!("{}{}", crate::agents::who_at(a), if a.about.is_empty() { String::new() } else { format!(": {}", a.about) }))
                 .collect::<Vec<_>>()
                 .join("\n")
                 .into())

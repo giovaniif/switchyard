@@ -3,13 +3,14 @@
 // conversation, an ordinary session tagged with it (yardd's agents.rs), kept
 // out of the sidebar: this page and the Agents nav row show its state. A new
 // agent is made with a placeholder name and set up by talking to it.
-import { createElement, useEffect, useId, useMemo, useRef, useState } from "react";
+import { createElement, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Agent, AgentColor, AgentFace, AgentRequest, Attachment, Engine, Permission } from "./protocol";
 import { accountsOn, hostName, hostOf, hostOnline, homeOn, modelsOn, type Actions, type State, type UploadTarget } from "./store";
-import { AGENT_COLORS, agentHost, agentStatus, agentWhere, conversationOf, leadingMention, moveNote, nameProblem, runsOn, type AgentTone } from "./agents";
+import { AGENT_COLORS, AGENT_NAME_MAX, agentChoice, agentHost, agentStatus, agentWhere, cleanName, conversationOf, handleFor, handleOf, hostChange, leadingMention, moveNote, nameProblem, runsOn, type AgentTone } from "./agents";
 import { AGENT_FACES, blinkDelay, detailFor, faceOf, faceTree, type SvgNode } from "./faces";
-import { DEFAULT_ACCOUNT, accountChoices, accountLabel, choiceOnEngine } from "./accounts";
-import { pickerEngines } from "./engines";
+import { DEFAULT_ACCOUNT, accountChoices, accountLabel, accountName, choiceOnEngine } from "./accounts";
+import { pickerEngines, shownEffort } from "./engines";
+import { AnchoredPopover } from "./AnchoredPopover";
 import { useSeen } from "./rowState";
 import { SLACK_MARK, SlackSetup } from "./SlackSetup";
 import {
@@ -28,7 +29,9 @@ import {
   effortFor,
   loadChoice,
   isAgentHome,
+  modelName,
   readRecent,
+  setupSettings,
   tilde,
 } from "./App";
 
@@ -127,6 +130,302 @@ export function AgentAvatar({ agent, size = "md", busy = false, still = false }:
   );
 }
 
+/** One change to an agent, saved at once (a picker, its face): answers why
+ *  not, also kept in `error` for the page to show. */
+export function useAgentSave(actions: Actions, id: string | undefined) {
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => setError(null), [id]);
+  const save = async (patch: Partial<Agent>): Promise<string | null> => {
+    if (!id) return null;
+    setError(null);
+    const r = await actions.saveAgent({ id, ...patch });
+    if (r.error) setError(r.error);
+    return r.error ?? null;
+  };
+  return { save, error };
+}
+
+/** Picking another host for the agent. Before its first message that is all;
+ *  after it, its conversation stays where it is and the next message starts
+ *  one there, so the pick is said first and confirmed (`confirm`, shown above
+ *  the box). */
+export function useAgentMove(state: State, agent: Agent | undefined, save: (patch: Partial<Agent>) => Promise<string | null>) {
+  const [to, setTo] = useState<string | null>(null);
+  useEffect(() => setTo(null), [agent?.id, agent?.host]);
+  const change = (host: string) => {
+    if (!agent) return;
+    const accounts = accountChoices(accountsOn(state, host), agent.engine).map((a) => a.id);
+    void save(hostChange(agent, host, modelsOn(state, host), accounts));
+  };
+  const pick = (host: string) => {
+    if (!agent || host === agentHost(agent)) return;
+    if (agent.chat) setTo(host);
+    else change(host);
+  };
+  const note = agent && to ? moveNote(agent, to, (h) => hostName(state, h)) : null;
+  const confirm = agent && to && (
+    <div className="agent-requests" role="group" aria-label={`Move ${agent.name}`}>
+      <div className="agent-request agent-move">
+        <Cloud size={13} />
+        <span className="agent-request-text">{note}</span>
+        <span className="agent-request-actions">
+          <button className="btn-text" onClick={() => setTo(null)}>
+            Keep it here
+          </button>
+          <button
+            className="btn"
+            onClick={() => {
+              setTo(null);
+              change(to);
+            }}
+          >
+            Move to {hostName(state, to)}
+          </button>
+        </span>
+      </div>
+    </div>
+  );
+  return { pick, confirm: confirm || null };
+}
+
+/** How the agent runs, as New session's box has it: the model (with its
+ *  engine), the account where the engine has a choice, effort and
+ *  permission, and the host when `onHost` is given. Each pick saves the
+ *  agent at once, with Edit's rules: a new engine, model or account goes on
+ *  in a fresh context, refused while a turn runs. */
+export function AgentRunPickers({ state, actions, agent, save, onHost, speed }: {
+  state: State;
+  actions: Actions;
+  agent: Agent;
+  save(patch: Partial<Agent>): Promise<string | null>;
+  onHost?(host: string): void;
+  speed?: { value: string; onChange(value: string): void; nextTurn?: boolean };
+}) {
+  const host = agentHost(agent);
+  const models = modelsOn(state, host);
+  const choice = agentChoice(agent, models);
+  const engines = pickerEngines(models, choice.engine);
+  const accounts = accountsOn(state, host);
+  const account = accountChoices(accounts, choice.engine).some((a) => a.id === agent.account) ? agent.account : DEFAULT_ACCOUNT;
+  const pickModel = (next: { engine: Engine; model: string; effort: string }) => {
+    if (next.engine === choice.engine && next.model === choice.model && next.effort === choice.effort) return;
+    // An account belongs to its engine: another engine runs on its Default.
+    void save({ engine: next.engine, model: next.model, effort: next.effort, ...(next.engine !== agent.engine ? { account: DEFAULT_ACCOUNT } : {}) });
+  };
+  return (
+    <>
+      {onHost && <HostPicker state={state} value={host} onChange={onHost} onAddHost={() => actions.go({ page: "hosts" })} />}
+      <ModelPicker models={models} value={choice} engines={engines} onChange={pickModel} speed={speed} />
+      {accountChoices(accounts, choice.engine).length > 1 && (
+        <AccountPicker
+          state={state}
+          host={host}
+          engine={choice.engine}
+          account={account}
+          engines={engines}
+          onPick={(engine, id) => {
+            // Picking an account under another engine means running on it, as on New session.
+            const next = engine === choice.engine ? null : choiceOnEngine(models, engine, choice.effort);
+            if (id !== account || next) void save({ account: id, ...(next ?? {}) });
+          }}
+          onManage={() => actions.go({ page: "hosts", host, tab: "engines" })}
+        />
+      )}
+      <EffortPicker models={models} value={choice} onChange={(effort) => effort !== choice.effort && void save({ effort })} />
+      <PermissionPicker engine={choice.engine} value={agent.permission} onChange={(permission) => permission !== agent.permission && void save({ permission })} />
+    </>
+  );
+}
+
+/** What the narrow box's setup button says about the agent's pickers. */
+export function agentSettings(state: State, agent: Agent) {
+  const host = agentHost(agent);
+  const models = modelsOn(state, host);
+  const c = agentChoice(agent, models);
+  const accounts = accountsOn(state, host);
+  const account = accountChoices(accounts, c.engine).length > 1 ? accountName(accounts, c.engine, agent.account) : "";
+  return setupSettings(modelName(models, c.engine, c.model), account, shownEffort(models, c.engine, c.model, c.effort), agent.permission);
+}
+
+/** The agent's face as a button: a small popover picks its face and colour,
+ *  saved at once. The popover's own face shows the pick before yardd has it. */
+export function AgentFaceButton({ actions, agent, size, busy = false, className = "" }: { actions: Actions; agent: Agent; size: "sm" | "lg" | "xl"; busy?: boolean; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const anchor = useRef<HTMLButtonElement>(null);
+  return (
+    <>
+      <button ref={anchor} className={`btn-quiet agent-face-button ${className}`} aria-label={`Face and colour of ${agent.name}`} title="Change its face and colour" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <AgentAvatar agent={agent} size={size} busy={busy} />
+      </button>
+      {open && <AgentLook actions={actions} agent={agent} anchor={anchor} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function AgentLook({ actions, agent, anchor, onClose }: { actions: Actions; agent: Agent; anchor: React.RefObject<HTMLButtonElement | null>; onClose(): void }) {
+  const [look, setLook] = useState<{ face: AgentFace; color: AgentColor }>(() => ({ face: faceOf(agent), color: agent.color }));
+  const [error, setError] = useState<string | null>(null);
+  const pick = async (next: { face: AgentFace; color: AgentColor }) => {
+    const before = look;
+    setLook(next);
+    setError(null);
+    const r = await actions.saveAgent({ id: agent.id, face: next.face, color: next.color });
+    if (r.error) {
+      setLook(before);
+      setError(r.error);
+    }
+  };
+  return (
+    <AnchoredPopover anchor={anchor} label={`Face and colour of ${agent.name}`} variant="agent-look-popover" onClose={onClose}>
+      <div className="agent-look-head">
+        <AgentAvatar agent={{ id: agent.id, ...look }} size="lg" />
+        <span className="agent-look-title">
+          <strong>{agent.name}</strong>
+          <span className="muted small">Its face and colour, saved as you pick.</span>
+        </span>
+      </div>
+      <div className="agent-look-grid" role="group" aria-label="Face">
+        {AGENT_FACES.map((f) => (
+          <button key={f} type="button" className="btn-icon agent-face-option agent-look-option" aria-label={`Face: ${f}`} aria-pressed={look.face === f} title={f} onClick={() => void pick({ ...look, face: f })}>
+            <AgentAvatar agent={{ id: `${agent.id}-${f}`, color: look.color, face: f }} size="md" still={look.face !== f} />
+          </button>
+        ))}
+      </div>
+      <div className="agent-look-grid" role="group" aria-label="Colour">
+        {AGENT_COLORS.map((c) => (
+          <button key={c} type="button" className="btn-icon agent-swatch" aria-label={`Colour: ${c}`} aria-pressed={look.color === c} title={c} onClick={() => void pick({ ...look, color: c })}>
+            <span className={`agent-swatch-dot agent-${c}`} />
+          </button>
+        ))}
+      </div>
+      {error && (
+        <div className="small error-line" role="alert">
+          {error}
+        </div>
+      )}
+    </AnchoredPopover>
+  );
+}
+
+/** A line of the agent's (its name, what it is for) edited where it is shown:
+ *  click it, Enter saves, Escape cancels; leaving the field saves a change.
+ *  A problem is said under the field, which stays open. */
+export function InPlace({ value, label, empty, problem, maxLength, onSave, className = "" }: {
+  value: string;
+  /** The field's name, also the button's tooltip ("Rename", …). */
+  label: string;
+  /** Shown when there is no value yet, to add one. */
+  empty?: string;
+  problem?(text: string): string | null;
+  maxLength: number;
+  onSave(text: string): Promise<string | null>;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(value);
+  const [error, setError] = useState<string | null>(null);
+  const saving = useRef(false);
+  const field = useRef<HTMLInputElement>(null);
+  const problemId = `in-place-${label.replace(/\W+/g, "-").toLowerCase()}`;
+  useLayoutEffect(() => {
+    if (!editing) return;
+    field.current?.focus();
+    field.current?.select();
+  }, [editing]);
+  const cancel = () => {
+    setEditing(false);
+    setError(null);
+  };
+  const commit = async () => {
+    if (saving.current) return;
+    const next = text.trim();
+    if (next === value) return cancel();
+    const why = problem?.(next) ?? null;
+    if (why) return setError(why);
+    saving.current = true;
+    const failed = await onSave(next);
+    saving.current = false;
+    if (failed) setError(failed);
+    else setEditing(false);
+  };
+  if (!editing)
+    return (
+      <button
+        className={`btn-quiet in-place${value ? "" : " in-place-empty"} ${className}`}
+        title={label}
+        onClick={() => {
+          setText(value);
+          setError(null);
+          setEditing(true);
+        }}
+      >
+        <span className="in-place-text">{value || empty}</span>
+      </button>
+    );
+  return (
+    <span className={`in-place-edit ${className}`}>
+      <input
+        ref={field}
+        className="field in-place-input"
+        aria-label={label}
+        aria-invalid={!!error}
+        aria-describedby={error ? problemId : undefined}
+        value={text}
+        maxLength={maxLength}
+        enterKeyHint="done"
+        placeholder={empty}
+        onChange={(e) => {
+          setText(e.target.value);
+          setError(null);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            void commit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            cancel();
+          }
+        }}
+        onBlur={() => !error && void commit()}
+      />
+      {error && (
+        <span id={problemId} className="small in-place-problem" role="alert">
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** The agent's name, renamed in place. A name of its own ends its setup. */
+export function AgentName({ state, actions, agent }: { state: State; actions: Actions; agent: Agent }) {
+  return (
+    <InPlace
+      value={agent.name}
+      label="Rename"
+      maxLength={AGENT_NAME_MAX + 8}
+      problem={(text) => nameProblem(text, state.agents, agent.id)}
+      onSave={async (name) => (await actions.saveAgent({ id: agent.id, name: cleanName(name) })).error ?? null}
+    />
+  );
+}
+
+/** What the agent is for, changed in place. */
+export function AgentAbout({ actions, agent, className }: { actions: Actions; agent: Agent; className?: string }) {
+  return (
+    <InPlace
+      value={agent.about}
+      label="What it is for"
+      empty="Add what it is for"
+      maxLength={160}
+      className={className}
+      onSave={async (about) => (await actions.saveAgent({ id: agent.id, about })).error ?? null}
+    />
+  );
+}
+
 /** New agent: made at once with a placeholder name and the last model used,
  *  opened at its conversation, where it sets itself up. */
 function useNewAgent(state: State, actions: Actions) {
@@ -213,7 +512,7 @@ function AgentCard({ state, actions, agent, now, seenAt }: { state: State; actio
         <AgentAvatar agent={agent} busy={status.tone === "live"} />
         <span className="agent-card-name">
           <strong className="automation-name">{agent.name}</strong>
-          <span className="muted small">{agent.setup ? "Setting up" : `@${agent.name}`}</span>
+          <span className="muted small">{agent.setup ? "Setting up" : `@${handleOf(agent)}`}</span>
         </span>
       </button>
       {agent.about ? <p className="agent-about small">{agent.about}</p> : agent.setup && <p className="agent-about small muted">Tell it what it is for in its conversation.</p>}
@@ -286,7 +585,7 @@ export function AgentsPage({ state, actions }: { state: State; actions: Actions 
 }
 
 /** The agent's header in its conversation and before it: face, name, what it
- *  is for, Slack, Edit. `host`: where the conversation shown runs, when not
+ *  is for (each changed in place), Slack, Edit. `host`: where the conversation shown runs, when not
  *  the agent's own host (one it left behind when it moved). */
 export function AgentBar({ state, agent, actions, host = agentHost(agent), busy = false, children }: { state: State; agent: Agent; actions: Actions; host?: string; busy?: boolean; children?: React.ReactNode }) {
   const [slackOpen, setSlackOpen] = useState(false);
@@ -295,9 +594,15 @@ export function AgentBar({ state, agent, actions, host = agentHost(agent), busy 
   return (
     <header className="bar agent-bar">
       <MenuButton />
-      <AgentAvatar agent={agent} size="sm" busy={busy} />
-      <h1>{agent.name}</h1>
-      {agent.about && <span className="muted small agent-bar-about">{agent.about}</span>}
+      <AgentFaceButton actions={actions} agent={agent} size="sm" busy={busy} />
+      <h1 className="agent-bar-name">
+        <AgentName state={state} actions={actions} agent={agent} />
+      </h1>
+      {agent.about && (
+        <span className="small agent-bar-about">
+          <AgentAbout actions={actions} agent={agent} />
+        </span>
+      )}
       {host !== "local" && (
         <span className="muted small bar-host">
           <Cloud size={13} />
@@ -383,6 +688,8 @@ export function AgentStart({ state, actions, agent, earlier }: { state: State; a
   const [slackOpen, setSlackOpen] = useState(false);
   const host = agentHost(agent);
   const online = hostOnline(state, host);
+  const edit = useAgentSave(actions, agent.id);
+  const move = useAgentMove(state, agent, edit.save);
   // Its files go to the host its conversation will run on.
   const target = useMemo<UploadTarget>(() => (host === "local" ? {} : { host }), [host]);
   const send = async (text: string, attachments: Attachment[]) => {
@@ -411,7 +718,7 @@ export function AgentStart({ state, actions, agent, earlier }: { state: State; a
       <div className="new agent-start">
         <div className="new-inner">
           <div className="agent-start-face">
-            <AgentAvatar agent={agent} size={agent.setup ? "xl" : "lg"} />
+            <AgentFaceButton actions={actions} agent={agent} size={agent.setup ? "xl" : "lg"} />
           </div>
           {agent.setup ? (
             <>
@@ -424,7 +731,9 @@ export function AgentStart({ state, actions, agent, earlier }: { state: State; a
           ) : (
             <>
               <h1>Message {agent.name}</h1>
-              {agent.about && <p className="agent-start-about muted">{agent.about}</p>}
+              <p className="agent-start-about muted">
+                <AgentAbout actions={actions} agent={agent} />
+              </p>
             </>
           )}
           {earlier}
@@ -440,13 +749,14 @@ export function AgentStart({ state, actions, agent, earlier }: { state: State; a
             onSubmit={send}
             mentions={state.agents}
             mentionHint={(other) => (other.id === agent.id ? null : `Goes to ${other.name}`)}
+            settings={agentSettings(state, agent)}
+            setupTitle="Agent setup"
           >
-            <span className="muted small agent-runs-chip" title="It changes this itself when you ask, or in Edit">
-              {howItRuns(state, agent)}
-            </span>
+            <AgentRunPickers state={state} actions={actions} agent={agent} save={edit.save} />
           </Composer>
           <div className="new-chips">
-            <span className="muted small">Works in {where}</span>
+            <HostPicker state={state} value={host} onChange={move.pick} onAddHost={() => actions.go({ page: "hosts" })} />
+            <span className="muted small agent-start-where">Works in {where}</span>
             {/* Send is disabled until its host is back; say why, as New session does. */}
             {!online && host !== "local" && (
               <>
@@ -457,9 +767,10 @@ export function AgentStart({ state, actions, agent, earlier }: { state: State; a
               </>
             )}
           </div>
-          {error && (
+          {move.confirm}
+          {(error || edit.error) && (
             <div className="small automation-message" role="alert">
-              {error}
+              {error ?? edit.error}
             </div>
           )}
           {agent.setup && (
@@ -586,7 +897,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
     setError(null);
     const r = await actions.saveAgent({
       ...(existing ? { id: existing.id } : {}),
-      name: name.trim(),
+      name: cleanName(name),
       color,
       face,
       about,
@@ -649,14 +960,14 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
               <label htmlFor="agent-name" className="sr-only">
                 Name
               </label>
-              <input id="agent-name" className="field agent-name-input" value={name} maxLength={24} onChange={(e) => setName(e.target.value)} placeholder="Name it" autoFocus={!existing} />
+              <input id="agent-name" className="field agent-name-input" value={name} maxLength={AGENT_NAME_MAX + 8} onChange={(e) => setName(e.target.value)} placeholder="Name it" autoFocus={!existing} />
               {nameIssue ? (
                 <span className="small automation-reason" role="alert">
                   {nameIssue}
                 </span>
               ) : (
                 <span className="muted small">
-                  {name.trim() ? `Mention it as @${name.trim()} in any message.` : "One word, so it can be @mentioned."} Or tell it what to change in its conversation.
+                  {name.trim() ? `Mention it as @${handleFor(name, state.agents, existing?.id)} in any message.` : "A word or a few: it is @mentioned by a handle made from them."} Or tell it what to change in its conversation.
                 </span>
               )}
             </div>

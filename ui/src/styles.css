@@ -1122,7 +1122,6 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .agent-start-face { display: flex; justify-content: center; margin-bottom: 4px; }
 .new.agent-start h1 { margin-bottom: 0; }
 .agent-start-about { text-align: center; margin-bottom: 10px; overflow-wrap: anywhere; }
-.agent-runs-chip { padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 /* A remote agent's card line: the cloud, then host and how it runs, cut as one line. */
 .agent-runs-remote { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .agent-runs-remote > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -1174,17 +1173,42 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .composer { position: relative; }
 .mention-list { position: absolute; z-index: 20; left: 8px; right: 8px; bottom: calc(100% + 6px); display: flex; flex-direction: column; gap: 1px; max-height: 260px; overflow-y: auto; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); box-shadow: var(--shadow-pop); }
 .mention-list .menu-item { min-height: 36px; }
-.mention-name { flex: none; font-weight: 500; }
+.mention-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.mention-handle { flex: none; }
 .mention-about { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mention-route { display: flex; align-items: center; gap: 6px; color: var(--muted); }
-.agent-bar > .agent-avatar { margin-right: -2px; }
-.agent-bar-about { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-bar-about { display: flex; min-width: 0; color: var(--muted); }
 .agent-page { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 .btn-quiet.agent-card-head { height: auto; margin: -4px 0 0 -4px; padding: 4px; border-radius: 8px; text-align: left; justify-content: flex-start; }
 .btn-quiet.agent-card-head:hover { background: var(--fill); }
 @media (max-width: 700px) {
   .agent-bar-about { display: none; }
 }
+/* The face, name and what it is for change where they are shown. */
+.btn-quiet.agent-face-button { flex: none; height: auto; margin: 0; padding: 2px; border-radius: 50%; }
+.agent-bar > .agent-face-button { margin: -2px -4px -2px -2px; }
+.agent-start-face > .agent-face-button { padding: 4px; }
+.bar h1.agent-bar-name { display: flex; min-width: 0; overflow: visible; }
+.btn-quiet.in-place { min-width: 0; height: auto; margin: -3px -6px; padding: 3px 6px; border-radius: 6px; font: inherit; color: inherit; text-align: left; cursor: text; }
+.in-place-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn-quiet.in-place-empty { color: var(--muted); }
+.in-place-edit { position: relative; display: inline-flex; flex: 0 1 280px; min-width: 120px; }
+.field.in-place-input { height: 28px; margin: -3px -6px -3px -2px; padding: 0 6px; border-radius: 6px; font: inherit; color: var(--ink); }
+.in-place-problem { position: absolute; z-index: 5; top: calc(100% + 8px); left: -6px; width: max-content; max-width: min(320px, calc(100vw - 32px)); padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); box-shadow: var(--shadow-pop); color: var(--bad-ink); font-size: 12px; font-weight: 400; white-space: normal; text-align: left; }
+.agent-start-about .btn-quiet.in-place { max-width: 100%; margin: 0 auto; white-space: normal; text-align: center; }
+.agent-start-about .in-place-text { white-space: normal; overflow-wrap: anywhere; }
+.agent-start-about .in-place-edit { width: 100%; flex: none; }
+.agent-start-about .field.in-place-input { height: 32px; margin: 0; text-align: center; }
+.agent-start-where { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-look-popover { width: min(340px, calc(100vw - 16px)); }
+.agent-look-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 2px 0 12px; border-bottom: 1px solid var(--line); }
+.agent-look-title { display: flex; flex-direction: column; min-width: 0; }
+.agent-look-title > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.agent-look-grid { display: grid; grid-template-columns: repeat(8, 36px); justify-content: space-between; margin-bottom: 10px; }
+.btn-icon.agent-face-option.agent-look-option { width: 36px; height: 36px; }
+.agent-look-grid > .agent-swatch { justify-self: center; }
+.agent-move > svg { flex: none; color: var(--muted); }
+.dock > .agent-edit-error { max-width: 680px; margin: 0 auto 8px; }
 
 /* Focused pages keep host summaries stable, with one inspector below them. */
 .focused-page { width: 100%; max-width: 1080px; margin: 0 auto; padding: 28px 32px; display: flex; flex-direction: column; gap: 24px; }

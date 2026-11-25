@@ -20,8 +20,9 @@
 //! ignored.
 //!
 //! Routing: a follow-up in a Slack thread goes to the agent the thread's
-//! first message went to; else a message starting with an agent's name
-//! (`Reviewer …`, `@Reviewer …`, `Reviewer: …`) goes to it; else the
+//! first message went to; else a message starting with an agent's handle or
+//! name (`Reviewer …`, `@Reviewer …`, `Reviewer: …`, `@Custom-Domains …`,
+//! `Custom Domains: …`; the longest that fits) goes to it; else the
 //! channel's default agent, then the default agent; else the bot answers with
 //! the agents' names. In a channel, a message without an @mention is read
 //! only as a follow-up in a thread already routed.
@@ -1663,12 +1664,13 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
     // One still setting up has only a placeholder name and sets itself up
     // from its first message: that is the owner's to write, not a teammate's.
     let named: Vec<(String, String)> = all.iter().filter(|a| !a.setup).map(|a| (a.id.clone(), a.name.clone())).collect();
+    let labels: Vec<(String, String)> = all.iter().filter(|a| !a.setup).flat_map(|a| [(a.id.clone(), crate::agents::mention(a).to_string()), (a.id.clone(), a.name.clone())]).collect();
     let name_of = |id: &str| agents.iter().find(|(a, _)| a == id).map(|(_, n)| n.clone());
     // An agent's own app is only ever that agent. Else a thread keeps its
     // agent; a deleted one lets the message route anew.
     let (agent, text) = match me.agent.clone().or(known).filter(|id| name_of(id).is_some()) {
         Some(id) => (Some(id), text),
-        None => match route(&text, &named) {
+        None => match route(&text, &labels) {
             Some((id, rest)) => (Some(id), rest),
             None => {
                 let (channel_default, default) = {
@@ -1864,18 +1866,38 @@ pub fn from_slack(text: &str) -> String {
 }
 
 /// The agent a message names first, and the message without the name:
-/// `Reviewer look`, `@Reviewer look`, `Reviewer: look`, `reviewer, look`.
+/// `Reviewer look`, `@Reviewer look`, `Reviewer: look`, `reviewer, look`,
+/// `Custom Domains: look`. `agents` pairs an id with each label it answers
+/// to (its handle and its name); the longest label that fits wins, so
+/// `Deploy Bot …` is not `Deploy`'s.
 pub fn route(text: &str, agents: &[(String, String)]) -> Option<(String, String)> {
     let t = text.trim_start();
     let t = t.strip_prefix('@').unwrap_or(t);
-    let end = t.find(|c: char| !(c.is_alphanumeric() || c == '-' || c == '_')).unwrap_or(t.len());
-    let (word, rest) = t.split_at(end);
-    if word.is_empty() || !(rest.is_empty() || rest.starts_with([':', ',']) || rest.starts_with(char::is_whitespace)) {
-        return None;
-    }
-    let (id, _) = agents.iter().find(|(_, name)| name.eq_ignore_ascii_case(word) || name.to_lowercase() == word.to_lowercase())?;
+    let (id, rest) = agents
+        .iter()
+        .filter_map(|(id, label)| {
+            let rest = after_label(t, label)?;
+            (rest.is_empty() || rest.starts_with([':', ',']) || rest.starts_with(char::is_whitespace)).then(|| (label.chars().count(), id, rest))
+        })
+        .max_by_key(|(len, _, _)| *len)
+        .map(|(_, id, rest)| (id, rest))?;
     let rest = rest.trim_start_matches([':', ',']).trim();
     Some((id.clone(), rest.to_string()))
+}
+
+/// What follows `label` at the start of `text`, compared ignoring case.
+fn after_label<'a>(text: &'a str, label: &str) -> Option<&'a str> {
+    if label.is_empty() {
+        return None;
+    }
+    let mut chars = text.char_indices();
+    for l in label.chars() {
+        let (_, c) = chars.next()?;
+        if !c.to_lowercase().eq(l.to_lowercase()) {
+            return None;
+        }
+    }
+    Some(chars.next().map_or("", |(i, _)| &text[i..]))
 }
 
 /// Markdown as Slack mrkdwn: bold, italics, strikes, links, headings and
@@ -2052,6 +2074,12 @@ mod tests {
         }
         assert_eq!(route("pr-bot: go", &a), Some(("g2".into(), "go".into())));
         assert_eq!(route("Scribe", &a), Some(("g0".into(), "".into())));
+        // A name of a few words, by its handle or as it reads; the longest that fits.
+        let a = [a, vec![("g3".into(), "Deploy".into()), ("g4".into(), "Deploy-Bot".into()), ("g4".into(), "Deploy Bot".into())]].concat();
+        assert_eq!(route("@Deploy-Bot ship it", &a), Some(("g4".into(), "ship it".into())));
+        assert_eq!(route("deploy bot: ship it", &a), Some(("g4".into(), "ship it".into())));
+        assert_eq!(route("Deploy ship it", &a), Some(("g3".into(), "ship it".into())));
+        assert_eq!(route("Deploy Bots ship", &a), Some(("g3".into(), "Bots ship".into())));
         for text in ["Reviewers look", "look Reviewer", "Reviewer's turn", "", "@ Reviewer x", "Nobody: hi"] {
             assert_eq!(route(text, &a), None, "{text:?}");
         }
