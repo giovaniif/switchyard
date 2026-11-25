@@ -4872,7 +4872,12 @@ function AccountRow({ account, state: st, onLogin, onRemove }: { account: Accoun
           className="btn-text account-remove"
           aria-label={`Remove ${account.name}`}
           title="Deletes the account's login on this host"
-          onClick={() => (armed ? onRemove() : setArmed(true))}
+          // Disarm on the confirming click: if yardd refuses, the row should
+          // not keep offering a click that will be refused again.
+          onClick={() => {
+            setArmed(!armed);
+            if (armed) onRemove();
+          }}
         >
           {armed ? "Click again to remove" : "Remove"}
         </button>

@@ -2885,3 +2885,30 @@ async fn pr_get_says_when_the_folder_is_a_repository_it_cannot_read_a_pr_for() {
     assert_eq!(reply["pr"]["repo"], false, "{reply}");
     assert!(reply["pr"]["error"].is_null(), "{reply}");
 }
+
+#[tokio::test]
+async fn removing_an_account_in_use_names_its_sessions() {
+    let sb = Sandbox::new("accounts-rm-in-use");
+    let d = sb.start();
+    let mut c = d.client().await;
+    let id = add_account(&mut c, "codex", "Work").await;
+    async fn refusal(c: &mut Client, id: &str) -> String {
+        let from = c.mark();
+        c.send(json!({ "op": "account.remove", "id": id })).await;
+        c.wait_error(from, "account.remove").await
+    }
+
+    // An archived session is not in the sidebar, so the refusal has to say
+    // which one it is and where it went.
+    let old = c.create(&sb.folder("old"), "fix the login page", json!({ "account": id })).await;
+    c.wait_turn_done(&old, 0).await;
+    c.send(json!({ "op": "session.update", "sessionId": old, "archived": true })).await;
+    c.wait_for("the archived session", |m| m["op"] == "session" && m["session"]["id"] == old && m["session"]["archived"] == true).await;
+    let one = refusal(&mut c, &id).await;
+    assert_eq!(one, "The session \"fix the login page\" (archived) still uses this account. Delete it first.");
+
+    let new = c.create(&sb.folder("new"), "write the docs", json!({ "account": id })).await;
+    c.wait_turn_done(&new, 0).await;
+    let two = refusal(&mut c, &id).await;
+    assert_eq!(two, "2 sessions still use this account: \"fix the login page\" (archived) and \"write the docs\". Delete them first.");
+}
