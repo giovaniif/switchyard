@@ -154,9 +154,9 @@ struct NewSessionView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text(model.map { "\($0.name)\(effort.isEmpty ? "" : " · \(effort.capitalized)")" } ?? "Default")
-                        Image(systemName: "chevron.up.chevron.down").font(.caption)
+                        Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.tint)
                     }
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                 }
             }
             Divider().padding(.leading, 48)

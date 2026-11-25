@@ -25,23 +25,31 @@ enum ThreadRow: Identifiable {
 
         var rows: [ThreadRow] = []
         var run: [ToolNode] = []
+        // A finished turn's "Worked for" goes under its last item, not where it started.
+        var footer: Item?
         func flush() {
             if let first = run.first { rows.append(.tools(key: first.tool.key, nodes: run)) }
             run = []
+        }
+        func close() {
+            flush()
+            if let f = footer { rows.append(.item(f)) }
+            footer = nil
         }
         for it in items {
             switch it {
             case .tool(let t):
                 if let p = t.parent, agents.contains(p) { continue }
                 run.append(node(t))
-            case .turn(_, _, let end, _) where end == nil:
-                continue
+            case .turn(_, _, _, let status):
+                close()
+                if status != "running" { footer = it }
             default:
-                flush()
+                if it.startsTurn { close() } else { flush() }
                 rows.append(.item(it))
             }
         }
-        flush()
+        close()
         return rows
     }
 }
@@ -386,7 +394,7 @@ struct ApprovalCard: View {
                         Button {
                             decide(.allow)
                         } label: {
-                            Text("Allow once").frame(maxWidth: .infinity)
+                            Text("Allow once").lineLimit(1).fixedSize().frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.glassProminent)
                         Button {
@@ -403,7 +411,7 @@ struct ApprovalCard: View {
                         .buttonStyle(.glass)
                         .tint(.yardBad)
                     }
-                    .controlSize(.large)
+                    .controlSize(.regular)
                     .disabled(approval.sending)
                 }
             }

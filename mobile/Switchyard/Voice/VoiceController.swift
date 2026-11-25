@@ -41,6 +41,8 @@ final class VoiceController {
     @ObservationIgnored private var lastCue: String?
     @ObservationIgnored private var detachTimer: Task<Void, Never>?
     @ObservationIgnored private var authorized = false
+    /// A demo phase to show once a reply box attaches (screenshots).
+    @ObservationIgnored private var demoPhase: (VoiceRules.Phase, String)?
 
     private enum Want { case none, dictate, voice }
 
@@ -78,6 +80,12 @@ final class VoiceController {
         }
         if carried { lastCue = nil }
         self.target = target
+        if let shown = demoPhase {
+            demoPhase = nil
+            mode = VoiceRules.Mode(phase: shown.0, after: .listen)
+            heard = shown.1
+            level = 0.55
+        }
     }
 
     /// A reply box went away. The new-session page hands voice mode on to
@@ -286,7 +294,9 @@ final class VoiceController {
         if let problem { fail(problem); return }
         // A run ends on its own after a pause or a minute; keep listening for as long as wanted.
         guard want != .none else {
+            // The last words of a stopped dictation are in: the microphone can go.
             dictating = false
+            idleSoon()
             return
         }
         restarts = Date().timeIntervalSince(runStarted) < 1.5 ? restarts + 1 : 0
@@ -304,8 +314,6 @@ final class VoiceController {
 
     /// Shows voice mode in a phase without audio, for screenshots.
     func demo(_ phase: VoiceRules.Phase, heard: String) {
-        mode = VoiceRules.Mode(phase: phase, after: .listen)
-        self.heard = heard
-        level = 0.55
+        demoPhase = (phase, heard)
     }
 }

@@ -32,7 +32,7 @@ final class SpeechIO: NSObject, AVSpeechSynthesizerDelegate {
     private var written = false
     private var speaking = false
     private var observers: [NSObjectProtocol] = []
-    private let playFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 24_000, channels: 1, interleaved: false)!
+    let playFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 24_000, channels: 1, interleaved: false)!
 
     var isListening: Bool { task != nil }
     var isSpeaking: Bool { speaking }
@@ -216,7 +216,7 @@ final class SpeechIO: NSObject, AVSpeechSynthesizerDelegate {
         scheduled = 0
         played = 0
         written = false
-        let convert = Converter(to: playFormat)
+        let convert = SpeechConverter(to: playFormat)
         writer.write(utterance) { [weak self] buffer in
             // Converted here: the synthesizer may reuse its buffer once this returns.
             guard let pcm = buffer as? AVAudioPCMBuffer else { return }
@@ -321,7 +321,7 @@ private final class TapBox: @unchecked Sendable {
 }
 
 /// Converts the synthesizer's buffers to the player's format.
-private final class Converter: @unchecked Sendable {
+final class SpeechConverter: @unchecked Sendable {
     private let target: AVAudioFormat
     private var converter: AVAudioConverter?
     private var source: AVAudioFormat?

@@ -260,6 +260,7 @@ struct HostStatsPill: View {
                 meter("memorychip", s.memTotal > 0 ? s.memUsed / s.memTotal : 0)
             }
             .font(.caption.monospacedDigit())
+            .fixedSize()
             .padding(.horizontal, 6)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("CPU \(Int(s.cpu)) percent, memory \(Int(s.memTotal > 0 ? s.memUsed / s.memTotal * 100 : 0)) percent")

@@ -107,6 +107,9 @@ final class YardTests: XCTestCase {
         XCTAssertEqual(groups.count, 1)
         XCTAssertEqual(groups.first?.count, 1, "the subagent's steps sit under its call")
         XCTAssertEqual(groups.first?.first?.children.count, 2)
+        // "Worked for" closes the turn, under its answer.
+        guard case .item(.turn(_, _, _, "completed"))? = rows.last else { return XCTFail("\(rows.map(\.id))") }
+        guard case .item(.user)? = rows.first else { return XCTFail("\(rows.map(\.id))") }
     }
 
     func testLiveEventsWaitForHistory() throws {

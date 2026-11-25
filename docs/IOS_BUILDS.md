@@ -136,7 +136,7 @@ release is needed to use TestFlight.
 
 The Linux server does not have Xcode. Run the build on the workflow's macOS 26
 runner, or on a Mac with Xcode 26+ selected. Apple requires an iOS 26+ SDK for
-uploads; the minimum supported device OS can still be iOS 16.
+uploads. The app itself needs iOS 26 or later (Liquid Glass).
 
 ```sh
 # Simulator build and unit tests, without signing or uploading:

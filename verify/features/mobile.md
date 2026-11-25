@@ -1,8 +1,10 @@
 # Mobile app
 
-The iOS app shares the host UI. Setup is always on Hosts; the phone shortcut
+The iOS app is native (mobile/README.md) and opens the host's web page for a
+session's workspace. On the web: setup is always on Hosts; the phone shortcut
 appears in session headers until an actual phone connection is recorded by the
-hub. The workspace tabs remain accessible on narrow screens.
+hub. The workspace tabs remain accessible on narrow screens. The native screens
+are checked by the iOS workflow's simulator tests and demo screenshots, not here.
 
 ## Setup
 
@@ -62,8 +64,8 @@ yv drive hosts --steps '[{"expect":"role:region:iPhone app","text":"Connected"},
 
 ### native-device (manual: requires a signed build and physical iPhone)
 Follow `mobile/README.md` for device voice, permissions, attachments, lifecycle,
-network and TestFlight checks. JavaScript bridge tests cover callback routing
-and cancellation; Swift unit tests cover host and deep-link validation.
+network and TestFlight checks. Swift unit tests cover host and deep-link
+validation, the thread built from recorded yardd messages, and the voice rules.
 
 ## Gotchas
 

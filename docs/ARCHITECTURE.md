@@ -31,21 +31,24 @@ The WebSocket is on a localhost TCP port because a webview cannot open a unix so
 
 ## iOS / TestFlight
 
-`mobile/` is a SwiftUI + WKWebView iPhone/iPad shell loading the same privately
-reachable HTTPS yardd UI. It never starts a local daemon. `project.yml` generates
-the Xcode project; `.github/workflows/ios-app.yml` builds/tests on a simulator,
-and its explicit TestFlight dispatch archives and uploads with iOS distribution
-credentials. See [mobile/README.md](../mobile/README.md).
+`mobile/` is a native SwiftUI app (iOS 26, Liquid Glass) for iPhone and iPad.
+It is a client of the same `/ws` protocol as the web page, over the privately
+reachable HTTPS host, and never starts a daemon. `Core/Thread.swift` ports
+`applyEvent` and `Voice/VoiceRules.swift` ports `ui/src/voice.ts`; change them
+with their TypeScript twins. Terminals, changes, PRs and processes open the
+host's web page in a sheet. `project.yml` generates the Xcode project;
+`.github/workflows/ios-app.yml` builds, tests and screenshots the bundled demo
+on a simulator, and its explicit TestFlight dispatch archives and uploads with
+iOS distribution credentials. See [mobile/README.md](../mobile/README.md).
 
 The host page always offers phone setup; new-session and session headers show
 a small phone icon until a phone has received a hub snapshot and reported
 `mobile.connected`. yardd saves `mobile.json`, includes `mobile` in snapshots,
 and broadcasts `mobile.status`; remotes' setup state does not replace the hub's.
 `YARD_TESTFLIGHT_URL` supplies the real beta invitation once available.
-The narrow workspace is reachable with Workspace, with Terminal, Subagents and Processes.
-The native main-frame bridge adapts Apple's speech APIs to the shared voice
-hook and local notifications to the shared notification rules. Backgrounding
-stops speech; foregrounding reconnects the WebSocket. There is no APNs service.
+The app sends the host's origin as `Origin`, so `YARD_ALLOW_ORIGIN` needs no
+new entry. Backgrounding stops speech; foregrounding reconnects the socket.
+Notifications are local, from the live socket: there is no APNs service.
 
 ## Events
 
@@ -331,6 +334,8 @@ Speech in the composer, all in the page: the browser's Web Speech API (`SpeechRe
 - What gets spoken comes from the session's items, not its status (`voiceCue` in `ui/src/voice.ts`): a quick turn can go running and idle in one render. The rules (speakable text, cues, the mode's state machine `voiceStep`, echo and stop words, error texts) are pure and tested in `ui/src/voice.test.ts`; `ui/src/useVoice.ts` drives the browser APIs.
 - **Where it works.** Feature-detected, never by user agent. Chrome and Edge: recognition runs on Google's servers (needs the network; audio leaves the machine). Safari on macOS and iOS: Apple's recognizer (Siri/Dictation must be on). Firefox has no recognition: the mic shows greyed out (`aria-disabled`) with the reason as its tooltip and under the box when pressed, and voice mode is hidden. Recognition needs a secure context: `https://switchyard.giovani.sh` and `http://127.0.0.1` both are. A blocked microphone or recognizer says so under the box (`recognitionProblem`).
 - **Desktop app** (WKWebView, macOS): WebKit exposes `webkitSpeechRecognition` to embedded web views (the `SpeechRecognitionEnabled` preference is on by default where `SFSpeechRecognizer` exists, and loopback counts as secure). It refuses recognition without a prompt unless the app's Info.plist has both `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` (WebKit's `MediaPermissionUtilities.mm`), so `app/src-tauri/Info.plist` has them; tauri-build merges that file into the bundle and embeds it in dev builds. The hardened runtime also needs `com.apple.security.device.audio-input`, or macOS denies the microphone silently: `.github/scripts/app-entitlements.plist`, passed when `macos-sign.sh` signs the app. The first use asks macOS for Speech Recognition, then Microphone. WebKit then asks the app (`WKUIDelegate` `requestMediaCapturePermission`); `main.rs` answers through `on_permission_request`: microphone allowed (so there is no second, WebKit prompt), camera refused (wry used to grant every capture request when no handler was set). `speechSynthesis` works in WKWebView with the system voices.
+- **WebKit's results.** Chrome reports each phrase as its own result; WebKit (Safari, the desktop app) keeps one result whose transcript grows while recognition runs. Words already used, an echo of the answer or text typed during dictation, are marked by result and word count (`Mark`, `markEnd`), never by index alone: an index skipped everything said after the greeting's echo, so voice mode never sent in WebKit (`verify/features/voice.md`, `voice-mode-webkit-results`).
+- **iPhone app.** Native: `SFSpeechRecognizer` (on-device when supported) and `AVSpeechSynthesizer` on one `AVAudioEngine` with voice processing, so echo cancellation lets the user talk over an answer. Same rules, ported (`mobile/Switchyard/Voice`). See [mobile/README.md](../mobile/README.md).
 - **Limits.** Language: the browser's default (the page is `lang="en"`, so Chrome listens for English; Safari uses the system's). Echo detection is a heuristic: on loud speakers without echo cancellation an answer may still cut itself off; headphones avoid it. iOS Safari may not keep recognition running while it speaks, so talking over an answer may not work on a phone. Safari may end recognition after a pause; it is restarted, and one that keeps ending right after it starts is given up with an error.
 - Not covered by tests: real recognition, real voices, the browser and macOS prompts, the desktop app. The feature map (`verify/features/voice.md`) replaces both APIs with recorders.
 

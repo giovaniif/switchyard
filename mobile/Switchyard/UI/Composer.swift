@@ -121,53 +121,33 @@ struct Composer: View {
 
     @ViewBuilder private var action: some View {
         if canSend {
-            Button {
-                onSend()
-            } label: {
-                Image(systemName: "arrow.up")
-                    .font(.title3.weight(.bold))
-                    .frame(width: 32, height: 32)
-            }
-            .buttonStyle(.glassProminent)
-            .buttonBorderShape(.circle)
-            .controlSize(.large)
-            .accessibilityLabel(running ? "Send (queued until the agent's next step)" : "Send")
+            round("arrow.up", .yardInfo, running ? "Send (queued until the agent's next step)" : "Send") { onSend() }
         } else if running, let onStop {
-            Button {
-                onStop()
-            } label: {
-                Image(systemName: "stop.fill")
-                    .font(.title3.weight(.bold))
-                    .frame(width: 32, height: 32)
-            }
-            .buttonStyle(.glassProminent)
-            .buttonBorderShape(.circle)
-            .controlSize(.large)
-            .tint(Color.yardBad)
-            .accessibilityLabel("Stop")
+            round("stop.fill", .yardBad, "Stop") { onStop() }
         } else if allowVoiceMode {
-            Button {
+            round("waveform", .yardInfo, "Voice mode") {
                 focused = false
                 voice.toggleVoice()
-            } label: {
-                Image(systemName: "waveform")
-                    .font(.title3.weight(.bold))
-                    .frame(width: 32, height: 32)
             }
-            .buttonStyle(.glassProminent)
-            .buttonBorderShape(.circle)
-            .controlSize(.large)
-            .accessibilityLabel("Voice mode")
         } else {
-            Button {} label: {
-                Image(systemName: "arrow.up").font(.title3.weight(.bold)).frame(width: 32, height: 32)
-            }
-            .buttonStyle(.glass)
-            .buttonBorderShape(.circle)
-            .controlSize(.large)
-            .disabled(true)
-            .accessibilityLabel("Send")
+            round("arrow.up", .secondary, "Send") {}
+                .disabled(true)
         }
+    }
+
+    /// A 46-point glass circle, as big as the + beside the box.
+    private func round(_ symbol: String, _ color: Color, _ label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.white)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 46, height: 46)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.regular.tint(color).interactive(), in: .circle)
+        .accessibilityLabel(label)
     }
 
     private var uploadChips: some View {
