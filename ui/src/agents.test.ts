@@ -45,7 +45,7 @@ test("faces: its own, else a steady one from its id; each in parts that move", (
   // An unknown face from a newer yardd falls back instead of drawing nothing.
   expect(AGENT_FACES).toContain(faceOf(agent("g7", "Docs", { face: "moustache" as Agent["face"] })));
   // Eyes blink and mouths talk, so every face has both.
-  for (const f of AGENT_FACES) expect(FACES[f].eyes && FACES[f].mouth).toBeTruthy();
+  for (const f of AGENT_FACES) expect(FACES[f].eyes && FACES[f].mouth.d).toBeTruthy();
   // Each agent blinks at its own steady moment, within the 5.2 s blink.
   expect(blinkDelay("g1")).toBe(blinkDelay("g1"));
   expect(new Set(["g1", "g2", "g3", "g4"].map(blinkDelay)).size).toBeGreaterThan(1);
