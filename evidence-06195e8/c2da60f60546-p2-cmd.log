@@ -1,0 +1,18 @@
+$ cd ui && bun test src/agents.test.ts
+# exit 1 after 18 ms at cedcb88e84ec71c3aa3f0e032298c84327a44095
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/agents.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+SyntaxError: Export named 'agentChoice' not found in module '/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-a168632d95382869e/ui/src/agents.ts'.
+-------------------------------
+
+
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file. [13.00ms]

@@ -1,0 +1,152 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "agents",
+      "at": "2026-11-25T02:06:49.338Z",
+      "counts": {
+        "pass": 27
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "cards-show-the-users-agents",
+          "status": "pass",
+          "ms": 5050
+        },
+        {
+          "label": "cards-in-a-row-line-up",
+          "status": "pass",
+          "ms": 2370
+        },
+        {
+          "label": "agent-views-on-a-phone",
+          "status": "pass",
+          "ms": 3292
+        },
+        {
+          "label": "colours-line-up-under-the-faces",
+          "status": "pass",
+          "ms": 5982
+        },
+        {
+          "label": "at-mention-from-new-session-goes-to-the-agents-conversation",
+          "status": "pass",
+          "ms": 4200
+        },
+        {
+          "label": "at-mention-in-a-session-goes-to-the-agents-conversation",
+          "status": "pass",
+          "ms": 5127
+        },
+        {
+          "label": "one-conversation-and-the-agents-mark",
+          "status": "pass",
+          "ms": 8110
+        },
+        {
+          "label": "agents-message-each-other-with-badges",
+          "status": "pass",
+          "ms": 9115
+        },
+        {
+          "label": "an-agent-that-needs-you",
+          "status": "pass",
+          "ms": 11893
+        },
+        {
+          "label": "an-agents-own-memory-shows-in-the-form",
+          "status": "pass",
+          "ms": 7327
+        },
+        {
+          "label": "new-agent-sets-itself-up-in-its-conversation",
+          "status": "pass",
+          "ms": 7091
+        },
+        {
+          "label": "new-agent-on-a-phone",
+          "status": "pass",
+          "ms": 6054
+        },
+        {
+          "label": "a-working-agent-looks-busy",
+          "status": "pass",
+          "ms": 5138
+        },
+        {
+          "label": "edit-an-agent-in-the-form",
+          "status": "pass",
+          "ms": 9018
+        },
+        {
+          "label": "a-name-of-a-few-words-is-mentioned-by-its-handle",
+          "status": "pass",
+          "ms": 8047
+        },
+        {
+          "label": "face-name-and-what-it-is-for-change-in-place",
+          "status": "pass",
+          "ms": 18239
+        },
+        {
+          "label": "the-boxs-pickers-save-the-agent",
+          "status": "pass",
+          "ms": 14996
+        },
+        {
+          "label": "add-to-slack-walks-through-the-tokens",
+          "status": "pass",
+          "ms": 7359
+        },
+        {
+          "label": "switchys-address-lands-on-the-agents",
+          "status": "pass",
+          "ms": 2900
+        },
+        {
+          "label": "deleting-an-agent-deletes-its-conversation",
+          "status": "pass",
+          "ms": 3106
+        },
+        {
+          "label": "form-host-and-account-pickers",
+          "status": "pass",
+          "ms": 8617
+        },
+        {
+          "label": "a-mention-reaches-an-agent-on-a-remote-host",
+          "status": "pass",
+          "ms": 4906
+        },
+        {
+          "label": "a-remote-agents-conversation-on-a-phone",
+          "status": "pass",
+          "ms": 4388
+        },
+        {
+          "label": "a-remote-agents-tools-act-on-the-hub",
+          "status": "pass",
+          "ms": 11547
+        },
+        {
+          "label": "moving-an-agent-says-what-happens-to-its-conversation",
+          "status": "pass",
+          "ms": 9727
+        },
+        {
+          "label": "a-host-picked-in-the-box",
+          "status": "pass",
+          "ms": 9160
+        },
+        {
+          "label": "a-remote-agents-host-offline",
+          "status": "pass",
+          "ms": 6085
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
