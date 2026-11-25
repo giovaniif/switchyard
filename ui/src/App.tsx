@@ -40,8 +40,8 @@ import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinne
 import { voiceCue, type Cue } from "./voice";
 import { useVoice } from "./useVoice";
 import { MobileSetup, MobileSetupButton } from "./MobileSetup";
-import { loadChoice, loadFolder, loadHost, readRecent, rememberSession, validChoice, type Choice } from "./sessionDefaults";
-export { loadChoice, readRecent } from "./sessionDefaults";
+import { isAgentHome, loadChoice, loadFolder, loadHost, readRecent, rememberSession, validChoice, type Choice } from "./sessionDefaults";
+export { isAgentHome, loadChoice, readRecent } from "./sessionDefaults";
 export type { Choice } from "./sessionDefaults";
 import { NavigationPalette } from "./NavigationPalette";
 import { navigationShortcut, type NavigationEntry } from "./navigation";
@@ -2469,7 +2469,8 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
   // session counts as the repository it was cut from.
   const recent = useMemo(() => {
     const fromSessions = Object.values(state.sessions)
-      .filter((s) => hostOf(s) === target)
+      // Agents' conversations run in the agents' own folders, not projects.
+      .filter((s) => hostOf(s) === target && !s.agent && !isAgentHome(s.cwd))
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .map((s) => s.repo || s.cwd);
     return [...new Set([...readRecent(target), ...fromSessions])].slice(0, 12);
@@ -3495,6 +3496,16 @@ function TurnFold({ row, render }: { row: Extract<Row, { type: "fold" }>; render
   const [open, setOpen] = useState(false);
   const verb = row.status === "interrupted" ? "Stopped after" : "Worked for";
   const label = row.ms != null ? `${verb} ${duration(row.ms)}` : row.status === "interrupted" ? "Stopped" : "Worked";
+  // Its messages and steps follow in place: this line only says how long.
+  if (row.inline)
+    return (
+      <div className="fold">
+        <div className="fold-row fold-row-static">
+          <span>{label}</span>
+          {row.summary && <span className="muted">· {row.summary}</span>}
+        </div>
+      </div>
+    );
   return (
     <div className="fold">
       <button className="fold-row" aria-expanded={open} onClick={() => setOpen(!open)}>

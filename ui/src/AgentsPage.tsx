@@ -3,10 +3,11 @@
 // conversation, an ordinary session tagged with it (yardd's agents.rs), kept
 // out of the sidebar: this page and the Agents nav row show its state. A new
 // agent is made with a placeholder name and set up by talking to it.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { Agent, AgentColor, AgentFace, AgentRequest, Attachment, Engine, Permission } from "./protocol";
 import { accountsOn, hostName, hostOf, hostOnline, homeOn, modelsOn, type Actions, type State, type UploadTarget } from "./store";
-import { AGENT_COLORS, AGENT_FACES, FACES, agentHost, agentStatus, agentWhere, blinkDelay, conversationOf, faceOf, leadingMention, moveNote, nameProblem, runsOn, type AgentTone } from "./agents";
+import { AGENT_COLORS, agentHost, agentStatus, agentWhere, conversationOf, leadingMention, moveNote, nameProblem, runsOn, type AgentTone } from "./agents";
+import { AGENT_FACES, blinkDelay, detailFor, faceOf, faceTree, type SvgNode } from "./faces";
 import { DEFAULT_ACCOUNT, accountChoices, accountLabel, choiceOnEngine } from "./accounts";
 import { pickerEngines } from "./engines";
 import { useSeen } from "./rowState";
@@ -26,6 +27,7 @@ import {
   PLUS,
   effortFor,
   loadChoice,
+  isAgentHome,
   readRecent,
   tilde,
 } from "./App";
@@ -38,26 +40,89 @@ const FIRST_IDEAS = ["Review my pull requests and say what to fix", "Watch my de
 export const permissionLabel = (p: Permission) => PERMISSIONS.find((x) => x.id === p)?.label ?? p;
 
 const AVATAR_PX = { xs: 14, sm: 20, md: 32, lg: 48, xl: 88 } as const;
-// Small avatars draw thicker lines, so the eyes stay visible at 14px.
-const FACE_STROKE = { xs: 2.6, sm: 2.3, md: 2, lg: 1.8, xl: 1.6 } as const;
 
-/** The agent's face, drawn on its colour. It blinks and glances now and then,
- *  and while `busy` it looks around and talks. Decorative: its name is
- *  always beside it. `still` where motion would distract (unpicked faces). */
+/** The face's SVG description as React elements (SVG attribute names to React's). */
+function svgElement(n: SvgNode, key = 0): React.ReactElement {
+  const props: Record<string, string | number> = { key };
+  for (const [k, v] of Object.entries(n.attrs)) props[k === "class" ? "className" : k.replace(/-(\w)/g, (_, c: string) => c.toUpperCase())] = v;
+  return createElement(n.tag, props, ...n.children.map((c, i) => svgElement(c, i)));
+}
+
+// Big faces follow the pointer when it comes near: one listener for all of
+// them, read once per frame, so a page of faces costs nothing while it is still.
+const NEAR_PX = 260;
+const followers = new Set<HTMLElement>();
+let pointer: { x: number; y: number } | null = null;
+let frame = 0;
+function follow() {
+  frame = 0;
+  for (const el of followers) {
+    const r = el.getBoundingClientRect();
+    const dx = pointer ? pointer.x - (r.left + r.width / 2) : 0;
+    const dy = pointer ? pointer.y - (r.top + r.height / 2) : 0;
+    const d = Math.hypot(dx, dy);
+    const near = !!pointer && d < NEAR_PX;
+    el.classList.toggle("is-following", near);
+    if (!near) continue;
+    // A full look once the pointer is a face-width away; towards it, never past.
+    const k = Math.min(1, d / r.width) / (d || 1);
+    el.style.setProperty("--look-x", (dx * k).toFixed(2));
+    el.style.setProperty("--look-y", (dy * k).toFixed(2));
+  }
+}
+const schedule = () => {
+  if (!frame) frame = requestAnimationFrame(follow);
+};
+const onPointer = (e: PointerEvent) => {
+  pointer = { x: e.clientX, y: e.clientY };
+  schedule();
+};
+const onLeave = () => {
+  pointer = null;
+  schedule();
+};
+function useFollowPointer(ref: React.RefObject<HTMLElement | null>, on: boolean) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!on || !el || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!followers.size) {
+      window.addEventListener("pointermove", onPointer, { passive: true });
+      document.documentElement.addEventListener("pointerleave", onLeave);
+    }
+    followers.add(el);
+    return () => {
+      followers.delete(el);
+      el.classList.remove("is-following");
+      if (!followers.size) {
+        window.removeEventListener("pointermove", onPointer);
+        document.documentElement.removeEventListener("pointerleave", onLeave);
+      }
+    };
+  }, [ref, on]);
+}
+
+/** The agent's face: a little 3D character in its colour (faces.ts). It
+ *  breathes, blinks, glances and tilts its head now and then; while `busy` it
+ *  bounces, looks around and talks; the big ones follow a nearby pointer.
+ *  Decorative: its name is always beside it. `still` where motion would
+ *  distract (unpicked faces). */
 export function AgentAvatar({ agent, size = "md", busy = false, still = false }: { agent: Pick<Agent, "color"> & Partial<Pick<Agent, "face" | "id">>; size?: keyof typeof AVATAR_PX; busy?: boolean; still?: boolean }) {
-  const face = FACES[faceOf({ face: agent.face ?? "", id: agent.id ?? "" })];
+  const face = faceOf({ face: agent.face ?? "", id: agent.id ?? "" });
   const px = AVATAR_PX[size];
+  // Gradient and clip ids must be unique on a page full of faces.
+  const uid = "f" + useId().replace(/[^\w-]/g, "");
+  const svg = useMemo(() => {
+    const tree = faceTree({ color: agent.color, face }, detailFor(px), uid);
+    tree.attrs = { ...tree.attrs, width: px, height: px };
+    return svgElement(tree);
+  }, [agent.color, face, px, uid]);
+  const ref = useRef<HTMLSpanElement>(null);
+  useFollowPointer(ref, (size === "lg" || size === "xl") && !still);
   // Faces side by side blink at their own moments.
   const style = { "--blink-delay": `${blinkDelay(agent.id ?? agent.color)}s` } as React.CSSProperties;
   return (
-    <span className={`agent-avatar agent-avatar-${size} agent-${agent.color}${busy ? " is-busy" : ""}${still ? " is-still" : ""}`} style={style} aria-hidden="true">
-      <svg width={px} height={px} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={FACE_STROKE[size]} strokeLinecap="round" strokeLinejoin="round">
-        <g className="face-look">
-          {face.frame && <path d={face.frame} />}
-          <path className="face-eyes" d={face.eyes} />
-        </g>
-        <path className="face-mouth" d={face.mouth} />
-      </svg>
+    <span ref={ref} className={`agent-avatar agent-avatar-${size}${busy ? " is-busy" : ""}${still ? " is-still" : ""}`} style={style} aria-hidden="true">
+      {svg}
     </span>
   );
 }
@@ -495,7 +560,8 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
   const engines = pickerEngines(models, choice.engine);
   const recent = useMemo(() => {
     const fromSessions = Object.values(state.sessions)
-      .filter((s) => hostOf(s) === host)
+      // Agents' conversations run in the agents' own folders, not projects.
+      .filter((s) => hostOf(s) === host && !s.agent && !isAgentHome(s.cwd))
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .map((s) => s.repo || s.cwd);
     return [...new Set([...readRecent(host), ...fromSessions])].slice(0, 12);

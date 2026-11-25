@@ -2,8 +2,9 @@
 
 Named agents the user talks to by name, one conversation each for its whole
 life. The Agents page is a grid of cards (side by side on a wide window,
-stacked below 700 px, rows lining up): a face that blinks and glances now and
-then (and looks around and talks while its agent works), name and `@name`,
+stacked below 700 px, rows lining up): a little 3D face that breathes, blinks
+and glances now and then (and bounces, looks around and talks while its agent
+works), name and `@name`,
 what it is for, how it runs, a status line from its conversation, Message and
 Edit. There is no built-in agent: Scout was removed, and `#/assistant` (and
 Switchy's name in Cmd-K) still lands here. New agent opens no form: it makes
@@ -47,11 +48,13 @@ yv iso down --name map-agents-remote || true
 
 ### cards-show-the-users-agents
 The user's agent shows its mention name, what it is for and how it runs, and
-has no message yet; there is no Scout. Its face blinks. At 390 px the page is
+has no message yet; there is no Scout. Its face blinks (its eyelids close), and
+the drawn face stands alone: every gradient and clip it uses is inside its own
+SVG, with no CSS variables (so it can become a Slack icon). At 390 px the page is
 in the drawer and the cards stack inside the window.
 
 ```sh
-yv drive new --viewport desktop --steps '[{"click":"role:button:Agents"},{"expect":"role:heading:Agents"},{"expect":{"css":".agent-card","hasText":"@TEST-Reviewer"}},{"expect":{"css":".agent-card","hasText":"Fake Fast · Low · Ask first"}},{"expect":{"css":".agent-card","hasText":"No messages yet"}},{"expect":{"css":".agent-card","hasText":"Scout"},"count":0},{"eval":"document.querySelector(\".agent-card .face-eyes\").getAnimations().map((a) => a.animationName).join()","equals":"face-blink"},{"shot":"cards"}]'
+yv drive new --viewport desktop --steps '[{"click":"role:button:Agents"},{"expect":"role:heading:Agents"},{"expect":{"css":".agent-card","hasText":"@TEST-Reviewer"}},{"expect":{"css":".agent-card","hasText":"Fake Fast · Low · Ask first"}},{"expect":{"css":".agent-card","hasText":"No messages yet"}},{"expect":{"css":".agent-card","hasText":"Scout"},"count":0},{"eval":"document.querySelector(\".agent-card .face-lids\").getAnimations().map((a) => a.animationName).join()","equals":"face-blink"},{"eval":"(() => { const s = new XMLSerializer().serializeToString(document.querySelector(\".agent-card .agent-avatar svg\")); const ids = [...s.matchAll(/ id=\"([^\"]+)\"/g)].map((m) => m[1]); const refs = [...s.matchAll(/url\\(#([^)]+)\\)/g)].map((m) => m[1]); return refs.length > 0 && refs.every((r) => ids.includes(r)) && !/var\\(|currentColor/.test(s); })()","equals":true},{"shot":"cards"}]'
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Agents"},{"expect":"role:heading:Agents","inViewport":true},{"expect":{"css":".agent-card","hasText":"TEST-Reviewer"},"inViewport":true},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"cards"}]'
 ```
 
@@ -182,11 +185,11 @@ yv drive agents --viewport mobile --steps '[{"click":"role:button:New agent"},{"
 
 ### a-working-agent-looks-busy
 Viewports: desktop
-While its turn runs, the agent's face in its header and on its card looks
-around and talks; Stop calms it.
+While its turn runs, the agent's face in its header and on its card bounces,
+looks around and talks; Stop calms it.
 
 ```sh
-yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Long\"] .agent-message"},{"fill":"label:Message","value":"[slow] TEST-take a while"},{"press":"Enter"},{"expect":"css:.agent-bar .agent-avatar.is-busy"},{"eval":"document.querySelector(\".agent-bar .face-mouth\").getAnimations().map((a) => a.animationName).join()","equals":"face-talk"},{"click":"role:button:Agents"},{"expect":"css:.agent-card[aria-label=\"TEST-Long\"] .agent-avatar.is-busy"},{"shot":"busy"},{"click":"css:.agent-card[aria-label=\"TEST-Long\"] .agent-message"},{"click":"role:button:Stop"},{"expect":"css:.agent-bar .agent-avatar.is-busy","count":0}]'
+yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Long\"] .agent-message"},{"fill":"label:Message","value":"[slow] TEST-take a while"},{"press":"Enter"},{"expect":"css:.agent-bar .agent-avatar.is-busy"},{"eval":"document.querySelector(\".agent-bar .face-mouth\").getAnimations().map((a) => a.animationName).join()","equals":"face-talk"},{"eval":"document.querySelector(\".agent-bar .face-bob\").getAnimations().map((a) => a.animationName).join()","equals":"face-busy"},{"click":"role:button:Agents"},{"expect":"css:.agent-card[aria-label=\"TEST-Long\"] .agent-avatar.is-busy"},{"shot":"busy"},{"click":"css:.agent-card[aria-label=\"TEST-Long\"] .agent-message"},{"click":"role:button:Stop"},{"expect":"css:.agent-bar .agent-avatar.is-busy","count":0}]'
 ```
 
 ### edit-an-agent-in-the-form
