@@ -380,6 +380,18 @@ yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --save remote_agent='agent
 yv api '{"op":"agent.ask","agentId":"{{remote_agent}}","text":"TEST-anyone there?"}' --wait '{"op":"error"}' --expect '{"op":"error","message":"~which is offline. Your message was not sent."}'
 ```
 
+### agents-in-the-sidebar
+Agents are listed in the sidebar like direct messages: an "Agents" section,
+the list's last, with each agent's face and name in the session rows' style.
+A row opens the agent's conversation and is highlighted there; a working
+agent shows the same badge as a working session. On a phone they are in the
+drawer, inside the window.
+
+```sh
+yv drive new --viewport desktop --steps '[{"expect":"role:group:Agents"},{"expect":{"css":".agent-dms .session-row","hasText":"TEST-Reviewer"}},{"expect":{"css":".agent-dms .session-row .agent-avatar"}},{"eval":"document.querySelector(\".session-list\").lastElementChild.classList.contains(\"agent-dms\")","equals":true},{"click":{"css":".agent-dms .session-row","hasText":"TEST-Reviewer"}},{"expect":"css:.agent-bar","text":"TEST-Reviewer"},{"expect":{"css":".agent-dms .session-row.active","hasText":"TEST-Reviewer"}},{"shot":"sidebar"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"wait":500},{"expect":{"css":".agent-dms .session-row","hasText":"TEST-Reviewer"},"inViewport":true},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"drawer"}]'
+```
+
 ## Gotchas
 
 - Real engines are not exercised here: the scripted Codex echoes what the user
