@@ -121,6 +121,27 @@ yv drive connectors --viewport desktop --steps '[{"expect":"css:.slack-tokens","
 ls -l "$(v data)/slack.json" | cut -c1-10 | grep -qx -- "-rw-------"
 ```
 
+### an-agent-setting-up-is-not-reached-from-slack
+Viewports: both
+A New agent nobody has set up yet (its placeholder name, "Hi! What should I
+do?") is not in the bot's "Which agent?" list, and its placeholder name in
+Slack reaches nobody: it still waits for the owner's first words.
+
+```sh
+yv api '{"op":"slack.tokens","appToken":"xapp-1-A0TEST-TESTsecretapptoken","botToken":"xoxb-TEST-TESTsecretbottoken"}' --wait '{"op":"slack","slack":{"state":"connected"}}'
+yv api '{"op":"slack.allow","user":"UOWNER"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.route","agent":""}' --wait '{"op":"slack"}'
+yv api '{"op":"agent.new","engine":"codex","model":"fake-fast","effort":"low"}' --wait '{"op":"agent.saved"}' --save blank_name=agent.name
+N=$(v blank_name)
+TS=$(curl -sf -XPOST "$(v slack)/_fake/message" -d '{"user":"UOWNER","text":"TEST-anyone there?"}' | jq -r .ts)
+for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '.posts | any(.thread_ts == $ts)' > /dev/null && break; sleep 0.2; done
+curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" --arg n "$N" '.posts | map(select(.thread_ts == $ts)) | .[0].text | startswith("Which agent?") and contains("TEST-Reviewer") and (contains($n) | not)'
+TS=$(curl -sf -XPOST "$(v slack)/_fake/message" -d "{\"user\":\"UOWNER\",\"text\":\"$N TEST-set yourself up\"}" | jq -r .ts)
+for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '.posts | any(.thread_ts == $ts)' > /dev/null && break; sleep 0.2; done
+curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '.posts | map(select(.thread_ts == $ts)) | .[0].text | startswith("Which agent?")'
+yv drive agents --steps '[{"click":"css:.agent-card[aria-label=\"{{blank_name}}\"] .agent-message"},{"expect":"role:heading:Hi! What should I do?"},{"expect":"css:.user-message","count":0},{"expect":"role:button:Discard"},{"shot":"still-blank"}]'
+```
+
 ### an-agents-own-slack-app
 Viewports: both
 Add to Slack, in TEST-Reviewer's header, takes the configuration token, makes
