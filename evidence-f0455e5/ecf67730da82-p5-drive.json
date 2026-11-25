@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "f0455e5cad96bc13f2649c255d50d687a340e173",
+    "short": "f0455e5",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-25T01:51:16.754Z"
+  },
+  "dir": ".verify/evidence/agent-names-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3768,
+      "steps": 19,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agent-names-head-mobile/name-ok-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agent-names-head-mobile/look-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agent-names-head-mobile/rename-problem-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agent-names-head-mobile/reply-box-pickers-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
