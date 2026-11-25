@@ -8,9 +8,9 @@ import { Subscriptions, UsageStrip, type UsageAccount } from "./UsageMeters";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
-import { AgentAvatar, AgentBar, AgentForm, AgentRequests, AgentsPage, AgentStart, EarlierConversations, NewAgentRedirect } from "./AgentsPage";
+import { AgentAvatar, AgentBar, AgentForm, AgentRequests, AgentRunPickers, AgentsPage, AgentStart, EarlierConversations, NewAgentRedirect, agentSettings, useAgentMove, useAgentSave } from "./AgentsPage";
 import { SlackIcons } from "./SlackIcon";
-import { agentOf, agentsAttention, conversationOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
+import { agentOf, agentsAttention, conversationOf, handleOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
 import { accountChoices, accountLabel, accountName, accountOf, choiceOnEngine, DEFAULT_ACCOUNT } from "./accounts";
@@ -93,7 +93,7 @@ export const tilde = (path: string, home: string) => (home && path.startsWith(ho
 const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 /** What the phone's Session setup chip shows and says. */
-const setupSettings = (model: string, account: string, effort: string, permission: Permission | undefined) => ({
+export const setupSettings = (model: string, account: string, effort: string, permission: Permission | undefined) => ({
   model,
   effort,
   label: [model, account, capitalize(effort), (PERMISSIONS.find((p) => p.id === permission) ?? PERMISSIONS[0]).label].filter(Boolean).join(", "),
@@ -1696,6 +1696,8 @@ export function Composer(props: {
   /** Hands-free voice mode for a session: what it has to say, numbered. */
   voice?: { scope: string; cue: { n: number; cue: Cue } | null; approval: boolean; carry?: boolean };
   settings?: { label: string; model: string; effort: string; full: boolean };
+  /** What the narrow box's setup button and popover are called: "Session setup" unless an agent's. */
+  setupTitle?: string;
   /** Agents an `@` offers. A message starting with one goes to it (the caller routes it). */
   mentions?: Agent[];
   /** What a leading `@Name` does with this message, shown above the box; null says nothing. */
@@ -1921,7 +1923,7 @@ export function Composer(props: {
   const hint = routed && props.mentionHint ? props.mentionHint(routed.agent) : null;
   const choose = (agent: Agent) => {
     if (!mention) return;
-    const next = insertMention(text, mention.start, caret, agent.name);
+    const next = insertMention(text, mention.start, caret, handleOf(agent));
     setText(next.text);
     setCaret(next.caret);
     requestAnimationFrame(() => {
@@ -2058,6 +2060,8 @@ export function Composer(props: {
             >
               <AgentAvatar agent={a} size="sm" />
               <span className="mention-name">{a.name}</span>
+              {/* What gets typed, when it reads differently from the name. */}
+              {handleOf(a) !== a.name && <span className="muted small mention-handle">@{handleOf(a)}</span>}
               {a.about && <span className="muted small mention-about">{a.about}</span>}
             </button>
           ))}
@@ -2143,7 +2147,7 @@ export function Composer(props: {
                 <button
                   ref={setup}
                   className={`btn-quiet composer-setup ${props.settings.full ? "permission-full" : ""}`}
-                  aria-label={`Session setup: ${props.settings.label}`}
+                  aria-label={`${props.setupTitle ?? "Session setup"}: ${props.settings.label}`}
                   aria-haspopup="dialog"
                   aria-expanded={setupOpen}
                   title={props.settings.label}
@@ -2156,8 +2160,8 @@ export function Composer(props: {
                 </button>
               )}
               {compact && setupOpen && (
-                <AnchoredPopover anchor={setup} label="Session setup" variant="session-setup-popover" onClose={() => setSetupOpen(false)}>
-                  <div className="popover-heading"><strong>Session setup</strong></div>
+                <AnchoredPopover anchor={setup} label={props.setupTitle ?? "Session setup"} variant="session-setup-popover" onClose={() => setSetupOpen(false)}>
+                  <div className="popover-heading"><strong>{props.setupTitle ?? "Session setup"}</strong></div>
                   <div className="setup-options">{props.children}</div>
                 </AnchoredPopover>
               )}
@@ -3012,6 +3016,10 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
   // The agents live on the hub: a remote session's box offers them only in
   // an agent's own conversation.
   const mentionable = host === "local" || !!agent;
+  // In an agent's conversation the box's pickers are the agent's: a pick
+  // saves it, and the conversation follows (agents.rs `follow`).
+  const agentEdit = useAgentSave(actions, earlier ? undefined : agent?.id);
+  const agentMove = useAgentMove(state, earlier ? undefined : agent, agentEdit.save);
   // An agent in its own folder has no project: no terminal, subagents or
   // processes to show.
   const noPane = !!agent && !agent.cwd;
@@ -3208,6 +3216,12 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
             />
           )}
           {agent && !earlier && <AgentRequests state={state} actions={actions} agent={agent} />}
+          {agentMove.confirm}
+          {agentEdit.error && (
+            <div className="small error-line agent-edit-error" role="alert">
+              {agentEdit.error}
+            </div>
+          )}
           <Composer
             placeholder={!online ? "Offline" : busy ? "Queue a message for the agent" : agent ? `Reply to ${agent.name}` : "Reply"}
             mentions={mentionable ? state.agents : undefined}
@@ -3226,8 +3240,20 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
             upload={actions.upload}
             onSubmit={submit}
             voice={voice}
-            settings={setupSettings(modelName(models, meta.engine, meta.model), accountName(accounts, meta.engine, accountOf(meta)), shownEffort(models, meta.engine, meta.model, meta.effort), meta.permission)}
+            settings={agent ? agentSettings(state, agent) : setupSettings(modelName(models, meta.engine, meta.model), accountName(accounts, meta.engine, accountOf(meta)), shownEffort(models, meta.engine, meta.model, meta.effort), meta.permission)}
+            setupTitle={agent ? "Agent setup" : undefined}
           >
+            {agent ? (
+              <AgentRunPickers
+                state={state}
+                actions={actions}
+                agent={agent}
+                save={agentEdit.save}
+                onHost={agentMove.pick}
+                speed={{ value: meta.serviceTier ?? STANDARD_SPEED.id, onChange: (tier) => actions.setServiceTier(meta.id, tier), nextTurn: busy }}
+              />
+            ) : (
+            <>
             <ModelPicker
               models={models}
               value={{ engine: meta.engine, model: meta.model, effort: meta.effort }}
@@ -3239,6 +3265,8 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
             <AccountPicker state={state} host={host} engine={meta.engine} account={accountOf(meta)} onManage={() => actions.go({ page: "new" })} />
             <EffortPicker models={models} value={{ engine: meta.engine, model: meta.model, effort: meta.effort }} onChange={(effort) => actions.setModel(meta.id, meta.model, effort)} />
             <PermissionPicker engine={meta.engine} value={meta.permission ?? "ask"} onChange={(p) => actions.setPermission(meta.id, p)} />
+            </>
+            )}
           </Composer>
         </div>
         )}

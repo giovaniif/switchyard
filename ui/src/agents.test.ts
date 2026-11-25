@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Agent, SessionMeta } from "./protocol";
-import { AGENT_FACES, FACES, agentOf, blinkDelay, agentStatus, agentWhere, agentsAttention, faceOf, initial, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, moveNote, nameProblem, originLabel, runsOn } from "./agents";
+import { AGENT_FACES, FACES, agentChoice, agentOf, blinkDelay, agentStatus, agentWhere, agentsAttention, cleanName, faceOf, handleBase, handleFor, handleOf, hostChange, initial, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, moveNote, nameProblem, originLabel, runsOn } from "./agents";
 import { initial as empty, parseHash, reduce, routeHash } from "./store";
 
 const agent = (id: string, name: string, extra: Partial<Agent> = {}): Agent => ({
@@ -35,6 +35,45 @@ describe("mentions", () => {
     expect(leadingMention("ask @scribe later", agents)).toBeNull();
     expect(leadingMention("@scribes", agents)).toBeNull();
   });
+  // A display name of a few words is mentioned by its handle.
+  const triage = agent("g3", "Custom Domains Triage", { handle: "Custom-Domains-Triage" });
+  const spaced = [...agents, triage];
+  test("a spaced name is offered for any of its words and inserted as its handle", () => {
+    expect(matchAgents(spaced, "dom").map((a) => a.id)).toEqual(["g3"]);
+    expect(matchAgents(spaced, "custom-d").map((a) => a.id)).toEqual(["g3"]);
+    expect(matchAgents(spaced, "riage").map((a) => a.id)).toEqual(["g3"]);
+    expect(mentionAt("hi @Custom-Do", 13)).toEqual({ start: 3, query: "Custom-Do" });
+    expect(insertMention("@dom fix it", 0, 4, handleOf(triage))).toEqual({ text: "@Custom-Domains-Triage fix it", caret: 23 });
+  });
+  test("a leading @handle goes to the agent; its name as typed does not", () => {
+    expect(leadingMention("@custom-domains-triage look at x.dev", spaced)).toEqual({ agent: triage, rest: "look at x.dev" });
+    expect(leadingMention("@Custom Domains Triage look", spaced)).toBeNull();
+    // From a yardd before handles: the name is the handle.
+    expect(handleOf(agents[1])).toBe("Reviewer");
+    expect(leadingMention("@Release-bot ship", spaced)?.agent.id).toBe("g2");
+  });
+});
+
+test("handles: one mentionable word made from the name, numbered when taken, kept while it fits", () => {
+  for (const [name, handle] of [
+    ["Custom Domains Triage", "Custom-Domains-Triage"],
+    ["Reviewer", "Reviewer"],
+    ["pr-review_2", "pr-review_2"],
+    ["  Release -- bot! ", "Release-bot"],
+    ["2fast 4you", "fast-4you"],
+    ["🚀 Deployer", "Deployer"],
+    ["Revisão & co.", "Revisão-co"],
+    ["!!!", "agent"],
+  ]) {
+    expect(handleBase(name)).toBe(handle);
+  }
+  const list = [agent("g1", "Reviewer", { handle: "Reviewer" }), agent("g2", "Reviewer two", { handle: "Reviewer-2" })];
+  expect(handleFor("reviewer!", list)).toBe("reviewer-3");
+  expect(handleFor("Docs Bot", list)).toBe("Docs-Bot");
+  // Its own handle is not taken from itself, and stays while the words do.
+  expect(handleFor("Reviewer", list, "g1")).toBe("Reviewer");
+  expect(handleFor("Reviewer!", list, "g2")).toBe("Reviewer-2");
+  expect(handleFor("Proofreader", list, "g2")).toBe("Proofreader");
 });
 
 test("faces: its own, else a steady one from its id; each in parts that move", () => {
@@ -52,13 +91,19 @@ test("faces: its own, else a steady one from its id; each in parts that move", (
   for (const id of ["g1", "x", ""]) expect(blinkDelay(id) <= 0 && blinkDelay(id) > -5.2).toBe(true);
 });
 
-test("names: one mentionable word, unique, the rule said before yardd refuses", () => {
+test("names: display text up to 40 characters, unique, the rule said before yardd refuses", () => {
   expect(nameProblem("Helper", agents)).toBeNull();
   expect(nameProblem("Reviewer", agents, "g1")).toBeNull();
   expect(nameProblem("reviewer", agents)).toContain("already called");
-  expect(nameProblem("two words", agents)).toContain("One word");
+  expect(nameProblem("Custom Domains Triage", agents)).toBeNull();
+  expect(nameProblem("Revisão & co. 🚀", agents)).toBeNull();
+  expect(nameProblem("  reviewer  ", agents)).toContain("already called");
   expect(nameProblem("", agents)).toBe("Give it a name.");
-  expect(nameProblem("x".repeat(25), agents)).toContain("24");
+  expect(nameProblem("   ", agents)).toBe("Give it a name.");
+  expect(nameProblem("x".repeat(40), agents)).toBeNull();
+  expect(nameProblem("x".repeat(41), agents)).toContain("40");
+  expect(nameProblem("look\u202ealike", agents)).toContain("invisible");
+  expect(cleanName("  Custom   Domains\tTriage ")).toBe("Custom Domains Triage");
   expect(initial(" scribe")).toBe("S");
 });
 
@@ -151,6 +196,8 @@ test("a message from another agent is badged with who sent it", () => {
   expect(originLabel({ kind: "agent", agentId: "g1", name: "Builder", hops: 1 })).toEqual({ text: "From @Builder", agentId: "g1" });
   expect(originLabel({ kind: "agentReply", agentId: "g2", name: "Reviewer", hops: 2 })).toEqual({ text: "Reply from @Reviewer", agentId: "g2" });
   expect(originLabel({ kind: "agent", agentId: "g1", name: "", hops: 1 })?.text).toBe("From another agent");
+  // Said by the handle it is mentioned by, when the name has spaces.
+  expect(originLabel({ kind: "agent", agentId: "g3", name: "Custom Domains", handle: "Custom-Domains", hops: 1 })?.text).toBe("From @Custom-Domains");
   // A kind this build does not know yet shows no badge rather than a wrong one.
   expect(originLabel({ kind: "slack", channel: "C1", channelName: "#ops", userName: "Gio" })?.text).toBe("From Gio on Slack · #ops");
   expect(originLabel({ kind: "mail" })).toBeNull();
@@ -163,6 +210,18 @@ test("how it runs, in the pickers' words", () => {
   expect(runsOn(agent("g", "A"), models, "Plan only")).toBe("Fake Fast · Plan only");
   expect(runsOn(agent("g", "A"), {}, "Plan only")).toBe("Codex default · Plan only");
   expect(runsOn(agent("g", "A", { model: "fake-fast", effort: "low" }), models, "Ask first", "TEST-Work")).toBe("Fake Fast · TEST-Work · Low · Ask first");
+});
+
+test("the box's pickers show the agent's model, or the host's default, and a host change keeps what the new host has", () => {
+  const models = { codex: [{ id: "fake-fast", name: "Fake Fast", efforts: ["low", "high"], defaultEffort: "low" }, { id: "fake-deep", name: "Fake Deep", efforts: ["high"], isDefault: true }] };
+  expect(agentChoice(agent("g", "A", { model: "fake-fast", effort: "high" }), models)).toEqual({ engine: "codex", model: "fake-fast", effort: "high" });
+  expect(agentChoice(agent("g", "A", { model: "fake-fast", effort: "max" }), models)).toEqual({ engine: "codex", model: "fake-fast", effort: "low" });
+  expect(agentChoice(agent("g", "A"), models)).toEqual({ engine: "codex", model: "fake-deep", effort: "high" });
+  // A model the host does not list is shown as it is, not swapped for another.
+  expect(agentChoice(agent("g", "A", { model: "gone", effort: "low" }), models)).toEqual({ engine: "codex", model: "gone", effort: "low" });
+  const far = agent("g", "A", { model: "fake-fast", account: "a1", cwd: "/w/proj" });
+  expect(hostChange(far, "box", models, ["default", "a1"])).toEqual({ host: "box", cwd: "", model: "fake-fast", account: "a1" });
+  expect(hostChange(far, "box", {}, ["default"])).toEqual({ host: "box", cwd: "", model: "", account: "default" });
 });
 
 test("routes and the agents broadcast", () => {

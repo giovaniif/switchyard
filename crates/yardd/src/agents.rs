@@ -1,7 +1,8 @@
 //! Agents: named assistants the user sets up once and talks to by name.
 //!
-//! An agent is saved in `agents.json` in the data dir: its name (the `@Name`
-//! it is mentioned by), a colour, what it is for, how it runs (engine, model,
+//! An agent is saved in `agents.json` in the data dir: its name (shown as
+//! typed, spaces and all), the handle it is mentioned by (`@Custom-Domains`,
+//! made from the name: `handle_for`), a colour, what it is for, how it runs (engine, model,
 //! effort, account, folder, permission) and two notes the user writes for it:
 //! instructions (who it is and how it works) and memory (what it should keep
 //! in mind). Each agent has exactly one conversation for its whole life: a
@@ -43,7 +44,8 @@ const RETIRED: &str = "scout";
 pub const COLORS: [&str; 8] = ["blue", "green", "amber", "rose", "violet", "teal", "orange", "slate"];
 /// Avatar faces, named; the UI draws each (agents.ts). Empty: one picked from the id.
 pub const FACES: [&str; 8] = ["smile", "grin", "wink", "calm", "glasses", "bot", "happy", "curious"];
-pub const NAME_MAX: usize = 24;
+/// A display name's length, in characters.
+pub const NAME_MAX: usize = 40;
 const ABOUT_MAX: usize = 160;
 const NOTES_MAX: usize = 20_000;
 /// The name New agent gives until the agent picks its own.
@@ -53,7 +55,12 @@ const PLACEHOLDER: &str = "New-agent";
 #[serde(rename_all = "camelCase")]
 pub struct Agent {
     pub id: String,
+    /// As people see it: any printable text, 1 to `NAME_MAX` characters.
     pub name: String,
+    /// What it is `@mentioned` by, made from the name by yardd (`handle_for`):
+    /// a letter, then letters, digits, `-` or `_`; unique ignoring case.
+    #[serde(default)]
+    pub handle: String,
     #[serde(default = "default_color")]
     pub color: String,
     #[serde(default)]
@@ -178,9 +185,12 @@ impl Agents {
         };
         let before = list.len();
         list.retain(|a| a.id != RETIRED);
+        // Agents from before handles: a name that was one word is its handle,
+        // so every `@Name` already written keeps working.
+        let handled = give_handles(&mut list);
         let (ends, ends_rx) = mpsc::unbounded_channel();
         let agents = Agents { file, list: Mutex::new(list), later: Mutex::default(), ends, ends_rx: Mutex::new(Some(ends_rx)) };
-        if agents.list.lock().unwrap().len() != before {
+        if handled || agents.list.lock().unwrap().len() != before {
             agents.persist(&agents.list.lock().unwrap());
         }
         agents
@@ -263,17 +273,126 @@ pub fn home(id: &str) -> PathBuf {
     crate::store::data_dir().join("agents").join(id)
 }
 
-/// A name that reads as one `@Name` token: a letter, then letters, digits,
-/// `-` or `_`, at most `NAME_MAX` characters.
-fn check_name(name: &str) -> Result<()> {
-    let mut chars = name.chars();
-    let ok = chars.next().is_some_and(char::is_alphabetic)
-        && chars.all(|c| c.is_alphanumeric() || c == '-' || c == '_')
-        && name.chars().count() <= NAME_MAX;
-    if !ok {
-        bail!("A name is one word of up to {NAME_MAX} letters, digits, - or _, starting with a letter, so it can be @mentioned.");
+/// A display name as it is kept: trimmed, each run of spaces one space, 1 to
+/// `NAME_MAX` characters, nothing invisible (control characters, zero-width
+/// and direction marks, which could make one name look like another).
+pub fn clean_name(name: &str) -> Result<String> {
+    let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
+    if name.is_empty() {
+        bail!("Give it a name.");
     }
-    Ok(())
+    if name.chars().count() > NAME_MAX {
+        bail!("A name is at most {NAME_MAX} characters.");
+    }
+    if name.chars().any(|c| c.is_control() || matches!(c, '\u{AD}' | '\u{200B}'..='\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2060}'..='\u{2069}' | '\u{FEFF}')) {
+        bail!("A name can't hold control or invisible characters.");
+    }
+    Ok(name)
+}
+
+/// A word that reads as one `@handle`: a letter, then letters, digits, `-`
+/// or `_`. What names were before display names, so those stay their handle.
+fn is_handle(word: &str) -> bool {
+    let mut chars = word.chars();
+    chars.next().is_some_and(char::is_alphabetic) && chars.all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+}
+
+/// The handle a name reads as, before it is made unique: its letters and
+/// digits as typed, one `-` for whatever stands between them, starting with
+/// a letter. "Custom Domains Triage" is `Custom-Domains-Triage`; a name with
+/// no letter at all is `agent`. The name's case is kept: it reads better in
+/// a mention, which matches ignoring case anyway. The UI's twin is
+/// `handleBase` in agents.ts.
+pub fn handle_base(name: &str) -> String {
+    let mut out = String::new();
+    let mut gap = false;
+    for c in name.chars() {
+        if !(c.is_alphanumeric() || c == '_') {
+            gap = true;
+            continue;
+        }
+        if out.is_empty() && !c.is_alphabetic() {
+            continue;
+        }
+        if gap && !out.is_empty() {
+            out.push('-');
+        }
+        gap = false;
+        out.push(c);
+    }
+    if out.is_empty() {
+        return "agent".into();
+    }
+    out
+}
+
+/// The handle an agent called `name` gets among the `taken` ones (lower
+/// case): the name's own (`handle_base`), with `-2`, `-3`… on a collision.
+/// `old` stays while it still fits the name (the same words in another
+/// case take the name's case; a numbered one stays numbered), so mentions
+/// already written keep working.
+pub fn handle_for(name: &str, old: Option<&str>, taken: &[String]) -> String {
+    let free = |h: &str| !taken.contains(&h.to_lowercase());
+    let base = handle_base(name);
+    if let Some(old) = old.filter(|o| !o.is_empty() && free(o)) {
+        let (lo, lb) = (old.to_lowercase(), base.to_lowercase());
+        if lo == lb {
+            return base;
+        }
+        if lo.strip_prefix(&lb).and_then(|n| n.strip_prefix('-')).is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit())) {
+            return old.to_string();
+        }
+    }
+    if free(&base) {
+        return base;
+    }
+    (2..).map(|n| format!("{base}-{n}")).find(|h| free(h)).unwrap()
+}
+
+/// Agents without a handle get one: a name that already reads as one is
+/// its handle as it is. True when any changed.
+fn give_handles(list: &mut [Agent]) -> bool {
+    let mut changed = false;
+    for i in 0..list.len() {
+        if !list[i].handle.is_empty() {
+            continue;
+        }
+        let taken: Vec<String> = list.iter().enumerate().filter(|(j, x)| *j != i && !x.hosted && !x.handle.is_empty()).map(|(_, x)| x.handle.to_lowercase()).collect();
+        let name = list[i].name.clone();
+        list[i].handle = if is_handle(&name) && !taken.contains(&name.to_lowercase()) { name } else { handle_for(&name, None, &taken) };
+        changed = true;
+    }
+    changed
+}
+
+/// How an agent is named to an engine: its name, and its handle when that
+/// reads differently ("Custom Domains (@Custom-Domains)").
+pub fn who(a: &Agent) -> String {
+    if a.handle.is_empty() || a.handle == a.name {
+        a.name.clone()
+    } else {
+        format!("{} (@{})", a.name, a.handle)
+    }
+}
+
+/// An agent as another one addresses it: `@handle`, and its name when that
+/// reads differently ("@Custom-Domains (Custom Domains)").
+pub fn who_at(a: &Agent) -> String {
+    let handle = mention(a);
+    if handle == a.name {
+        format!("@{handle}")
+    } else {
+        format!("@{handle} ({})", a.name)
+    }
+}
+
+/// The handle an agent is mentioned by; its name for a record without one.
+pub fn mention(a: &Agent) -> &str {
+    if a.handle.is_empty() {
+        &a.name
+    } else {
+        &a.handle
+    }
 }
 
 fn one_line(text: &str, max: usize) -> String {
@@ -302,7 +421,7 @@ async fn save(app: &Arc<App>, input: &Value) -> Result<Agent> {
     };
     for (k, v) in obj {
         // yardd owns these.
-        if !["id", "createdAt", "updatedAt", "chat", "previous", "seed", "hosted", "hub", "setup", "request"].contains(&k.as_str()) {
+        if !["id", "handle", "createdAt", "updatedAt", "chat", "previous", "seed", "hosted", "hub", "setup", "request"].contains(&k.as_str()) {
             merged[k] = v.clone();
         }
     }
@@ -326,8 +445,14 @@ async fn save(app: &Arc<App>, input: &Value) -> Result<Agent> {
         a.setup = false;
     }
     a.updated_at = now_ms();
-    if app.agents.list.lock().unwrap().iter().any(|x| !x.hosted && x.id != a.id && x.name.to_lowercase() == a.name.to_lowercase()) {
-        bail!("Another agent is already called {}.", a.name);
+    {
+        let list = app.agents.list.lock().unwrap();
+        let others: Vec<&Agent> = list.iter().filter(|x| !x.hosted && x.id != a.id).collect();
+        if others.iter().any(|x| x.name.to_lowercase() == a.name.to_lowercase()) {
+            bail!("Another agent is already called {}.", a.name);
+        }
+        let taken: Vec<String> = others.iter().map(|x| x.handle.to_lowercase()).filter(|h| !h.is_empty()).collect();
+        a.handle = handle_for(&a.name, existing.as_ref().map(|o| o.handle.as_str()), &taken);
     }
     match &existing {
         Some(old) if old.host != a.host => move_host(app, old, &mut a).await?,
@@ -357,7 +482,7 @@ async fn save(app: &Arc<App>, input: &Value) -> Result<Agent> {
 /// The checks that need nothing but the record, on the hub and on the host
 /// that keeps a copy.
 fn check_fields(a: &mut Agent) -> Result<()> {
-    check_name(&a.name)?;
+    a.name = clean_name(&a.name)?;
     a.about = one_line(&a.about, ABOUT_MAX);
     a.instructions = a.instructions.trim().to_string();
     a.memory = a.memory.trim().to_string();
@@ -755,6 +880,10 @@ fn save_hosted(app: &App, input: &Value) -> Result<Agent> {
         bail!("invalid agent id");
     }
     check_fields(&mut a)?;
+    // A hub from before handles sends none: its names were handles.
+    if a.handle.is_empty() {
+        a.handle = if is_handle(&a.name) { a.name.clone() } else { handle_base(&a.name) };
+    }
     app.accounts.check(&a.engine, &a.account)?;
     if !a.cwd.is_empty() && !std::path::Path::new(&a.cwd).is_dir() {
         bail!("{} is not a folder on {}", a.cwd, crate::hosts::local_name());
@@ -1046,10 +1175,13 @@ pub async fn apply_setup(app: &Arc<App>, id: &str, sid: &str, change: &Value) ->
     if !now.is_empty() {
         now.insert("id".into(), json!(a.id));
         let saved = save(app, &Value::Object(now)).await?;
+        // Every window shows its new name or look at once, asked for or not.
+        broadcast(app);
         // It wrote these itself: its engine knows them already.
         app.update_meta(sid, |m| m.notes_changed = false);
         said.push(if a.setup && !saved.setup {
-            format!("{} is set up as @{}: {}.", a.name, saved.name, changed.join(", "))
+            let called = if saved.handle.is_empty() || saved.handle == saved.name { format!("@{}", saved.name) } else { format!("{} (@{})", saved.name, saved.handle) };
+            format!("{} is set up as {called}: {}.", a.name, changed.join(", "))
         } else {
             format!("{} changed its {}.", saved.name, changed.join(", "))
         });
@@ -1107,7 +1239,7 @@ fn current_setup(app: &App, a: &Agent) -> String {
     let folder = if a.cwd.is_empty() { "its own folder".to_string() } else { a.cwd.clone() };
     format!(
         "Your setup now: name {}; face {}; colour {}; engine {}; model {}; effort {}; folder {}; permission {}, {}; Slack {}. Models on {}: {}.\n",
-        a.name,
+        who(a),
         if a.face.is_empty() { "(picked for you)" } else { &a.face },
         a.color,
         a.engine,
@@ -1131,7 +1263,7 @@ fn setup_rules(a: &Agent, tools: bool) -> String {
     format!(
         "\n<first_run>\nYou were just created and are not set up yet; {} is a placeholder name. There is no form: the user sets you up by telling you what they want. From their message:\n\
 - If you cannot tell what you are for, ask that one short question and nothing else.\n\
-- Otherwise set yourself up now with update_setup: a fitting one-word name, a one-line about, instructions written to yourself from what they said, and a face and colour that suit you. If the work is in a project folder, ask for it with cwd. If it needs more than asking before changes and commands, ask for that permission. If they want you in Slack, or the work reports there, add connect: slack.\n\
+- Otherwise set yourself up now with update_setup: a short fitting name (a word or a few, as people would call you), a one-line about, instructions written to yourself from what they said, and a face and colour that suit you. If the work is in a project folder, ask for it with cwd. If it needs more than asking before changes and commands, ask for that permission. If they want you in Slack, or the work reports there, add connect: slack.\n\
 - If you can, also do one small real piece of the work and show it in a few lines.\n\
 - Then tell the user in one line what you set up, and that they can change anything by telling you. No tour, no list of features.\n</first_run>\n",
         a.name
@@ -1277,7 +1409,7 @@ pub async fn prepare(app: &Arc<App>, sid: &str, text: &str) -> Result<String> {
 
 /// The user changed the agent's notes during the conversation.
 fn notes_update(a: &Agent) -> String {
-    let mut out = format!("<notes_changed>\nThe user updated your setup. You are {}.", a.name);
+    let mut out = format!("<notes_changed>\nThe user updated your setup. You are {}.", who(a));
     if !a.about.is_empty() {
         out.push_str(&format!(" What you are for: {}", a.about));
     }
@@ -1337,7 +1469,7 @@ pub fn recap(history: &[(String, String, u64)]) -> String {
 pub fn preamble(a: &Agent, earlier: &str, tools: bool, setup: &str, text: &str) -> String {
     let mut out = format!(
         "You are {}, an agent the user set up in Switchyard, the app that runs their coding agents. Keep this role for the whole conversation.\n",
-        a.name
+        who(a)
     );
     if !a.about.is_empty() {
         out.push_str(&format!("What you are for: {}\n", a.about));
@@ -1410,12 +1542,52 @@ mod tests {
     }
 
     #[test]
-    fn names_are_one_mentionable_word() {
-        assert!(check_name("Scout").is_ok());
-        assert!(check_name("pr-review_2").is_ok());
-        for bad in ["", "2fast", "two words", "@scout", "a".repeat(NAME_MAX + 1).as_str(), "dot.name"] {
-            assert!(check_name(bad).is_err(), "{bad:?} should be refused");
+    fn names_are_display_text_trimmed_and_visible() {
+        assert_eq!(clean_name("  Custom   Domains\tTriage ").unwrap(), "Custom Domains Triage");
+        for ok in ["Scout", "pr-review_2", "2fast", "@scout", "dot.name", "Revisão & co.", "🚀 Deployer"] {
+            assert_eq!(clean_name(ok).unwrap(), ok);
         }
+        assert_eq!(clean_name(&"a".repeat(NAME_MAX)).unwrap().len(), NAME_MAX);
+        for bad in ["", "   ", "a".repeat(NAME_MAX + 1).as_str(), "zero\u{200B}width", "right\u{202E}left", "nul\u{0}"] {
+            assert!(clean_name(bad).is_err(), "{bad:?} should be refused");
+        }
+    }
+
+    #[test]
+    fn a_handle_reads_as_one_mention_made_from_the_name() {
+        for (name, handle) in [
+            ("Custom Domains Triage", "Custom-Domains-Triage"),
+            ("Reviewer", "Reviewer"),
+            ("pr-review_2", "pr-review_2"),
+            ("  Release -- bot! ", "Release-bot"),
+            ("2fast 4you", "fast-4you"),
+            ("🚀 Deployer", "Deployer"),
+            ("Revisão & co.", "Revisão-co"),
+            ("!!!", "agent"),
+        ] {
+            assert_eq!(handle_base(name), handle, "{name:?}");
+            assert!(is_handle(&handle_base(name)), "{name:?}");
+        }
+        let taken = vec!["reviewer".to_string(), "reviewer-2".to_string()];
+        assert_eq!(handle_for("Reviewer", None, &taken), "Reviewer-3");
+        assert_eq!(handle_for("Docs Bot", None, &taken), "Docs-Bot");
+        // Kept while it fits the name: a numbered one, and the same words in the name's case.
+        assert_eq!(handle_for("Reviewer", Some("Reviewer-7"), &taken), "Reviewer-7");
+        assert_eq!(handle_for("docs bot", Some("Docs-Bot"), &taken), "docs-bot");
+        // New words, a new handle.
+        assert_eq!(handle_for("Deploy Watcher", Some("Docs-Bot"), &taken), "Deploy-Watcher");
+    }
+
+    #[test]
+    fn agents_from_before_handles_keep_their_name_as_handle() {
+        let mut list = vec![agent(), agent()];
+        list[1].id = "g2".into();
+        list[1].name = "Two  words".into();
+        assert!(give_handles(&mut list));
+        assert_eq!((list[0].handle.as_str(), list[1].handle.as_str()), ("Reviewer", "Two-words"));
+        assert!(!give_handles(&mut list));
+        assert_eq!(who(&list[0]), "Reviewer");
+        assert_eq!(who(&list[1]), "Two  words (@Two-words)");
     }
 
     #[test]

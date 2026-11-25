@@ -71,7 +71,8 @@ async fn an_agents_first_turn_carries_its_preamble_and_every_message_goes_to_its
     .unwrap();
     let id = agent["id"].as_str().unwrap().to_string();
     assert_eq!(agent["about"], "Reviews pull requests");
-    for (bad, why) in [(json!({ "name": "two words", "engine": "codex" }), "one word"), (json!({ "name": "reviewer", "engine": "codex" }), "already called")] {
+    assert_eq!(agent["handle"], "Reviewer");
+    for (bad, why) in [(json!({ "name": "reviewer", "engine": "codex" }), "already called"), (json!({ "name": " \n ", "engine": "codex" }), "Give it a name")] {
         assert!(save(&mut c, bad).await.unwrap_err().contains(why));
     }
     assert_eq!(agent["face"], "wink");
@@ -430,6 +431,58 @@ async fn an_agent_moves_between_hosts_and_its_next_conversation_starts_where_the
         c.wait_after(from, "a conversation deleted", |m| m["op"] == "session.deleted" && m["sessionId"] == sid.as_str()).await;
     }
     assert!(!saved_agents(&hub_sb).iter().any(|a| a["id"] == id.as_str()));
+}
+
+#[tokio::test]
+async fn a_display_name_gets_a_mention_handle_that_stays_while_it_fits() {
+    let sb = Sandbox::new("agents-handles");
+    let daemon = sb.start();
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    let base = json!({ "engine": "codex", "model": MODEL, "effort": EFFORT });
+    let with = |extra: Value| {
+        let mut v = base.clone();
+        v.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+        v
+    };
+    // Spaces and punctuation are kept in the name; the handle is one word made from it.
+    let a = save(&mut c, with(json!({ "name": "  Custom   Domains Triage ", "handle": "ignored" }))).await.unwrap();
+    let id = a["id"].as_str().unwrap().to_string();
+    assert_eq!((a["name"].as_str(), a["handle"].as_str()), (Some("Custom Domains Triage"), Some("Custom-Domains-Triage")));
+    // Unique names ignoring case; a name whose handle is taken gets a number.
+    assert!(save(&mut c, with(json!({ "name": "custom domains triage" }))).await.unwrap_err().contains("Another agent is already called"));
+    let b = save(&mut c, with(json!({ "name": "Custom-Domains: Triage!" }))).await.unwrap();
+    assert_eq!(b["handle"], "Custom-Domains-Triage-2");
+    // Too long, or with something invisible in it, is refused with the reason.
+    assert!(save(&mut c, with(json!({ "name": "x".repeat(41) }))).await.unwrap_err().contains("at most 40 characters"));
+    assert!(save(&mut c, with(json!({ "name": "Look\u{202E}alike" }))).await.unwrap_err().contains("invisible"));
+    // A rename to the same words keeps mentions working; new words, a new handle.
+    let b2 = save(&mut c, json!({ "id": b["id"], "name": "Custom domains: triage" })).await.unwrap();
+    assert_eq!(b2["handle"], "Custom-Domains-Triage-2");
+    let a2 = save(&mut c, json!({ "id": id, "name": "Domain Watcher", "handle": "Nope" })).await.unwrap();
+    assert_eq!(a2["handle"], "Domain-Watcher");
+    let a3 = save(&mut c, json!({ "id": id, "about": "Watches domains" })).await.unwrap();
+    assert_eq!(a3["handle"], "Domain-Watcher");
+
+    // The preamble names it as it reads and by its handle.
+    let sid = ask(&mut c, &id, "TEST-hello", json!({})).await.unwrap();
+    c.wait_turn_done(&sid, 0).await;
+    let first = sb.turn_inputs()[0][0]["text"].as_str().unwrap().to_string();
+    assert!(first.starts_with("You are Domain Watcher (@Domain-Watcher),"), "{first}");
+
+    // Agents saved before handles get their one-word name as handle.
+    drop(c);
+    daemon.stop();
+    let file = sb.data().join("agents.json");
+    let mut list: Vec<Value> = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+    list.push(json!({ "id": "gold", "name": "Old-timer", "engine": "codex", "createdAt": 1, "updatedAt": 1 }));
+    std::fs::write(&file, serde_json::to_string(&list).unwrap()).unwrap();
+    let daemon = sb.start();
+    let c = daemon.client().await;
+    let old = c.log[0]["agents"].as_array().unwrap().iter().find(|a| a["id"] == "gold").unwrap().clone();
+    assert_eq!(old["handle"], "Old-timer");
+    let saved: Vec<Value> = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+    assert!(saved.iter().all(|a| a["handle"].as_str().is_some_and(|h| !h.is_empty())), "{saved:?}");
 }
 
 #[tokio::test]

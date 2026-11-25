@@ -76,7 +76,8 @@ export interface PendingMessage {
  *  `user`: typed by the owner. */
 export type MessageOrigin =
   | { kind: "user" }
-  | { kind: "agent" | "agentReply"; agentId: string; name: string; hops: number }
+  /** `handle`: the sender's `@handle` (none from a yardd before handles). */
+  | { kind: "agent" | "agentReply"; agentId: string; name: string; handle?: string; hops: number }
   /** `slack` (and kinds this build does not know); `isSlack` narrows to SlackOrigin. */
   | { kind: string; [field: string]: unknown };
 
@@ -936,10 +937,15 @@ export interface AgentRequest {
   slack?: boolean;
 }
 
-/** A named agent, mentioned as `@name`. Agents live on the hub (yardd's agents.rs). */
+/** A named agent, mentioned as `@handle`. Agents live on the hub (yardd's agents.rs). */
 export interface Agent {
   id: string;
+  /** As people see it: any printable text, spaces and all, up to 40 characters. */
   name: string;
+  /** What it is `@mentioned` by, made from the name by yardd ("Custom Domains"
+   *  is `Custom-Domains`); unique ignoring case. Older yardds send none: their
+   *  names were handles (handleOf). */
+  handle?: string;
   color: AgentColor;
   /** Empty: one picked from its id (faceOf). */
   face: AgentFace | "";

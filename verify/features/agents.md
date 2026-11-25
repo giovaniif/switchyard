@@ -4,7 +4,7 @@ Named agents the user talks to by name, one conversation each for its whole
 life. The Agents page is a grid of cards (side by side on a wide window,
 stacked below 700 px, rows lining up): a little 3D face that breathes, blinks
 and glances now and then (and bounces, looks around and talks while its agent
-works), name and `@name`,
+works), name and `@handle`,
 what it is for, how it runs, a status line from its conversation, Message and
 Edit. There is no built-in agent: Scout was removed, and `#/assistant` (and
 Switchy's name in Cmd-K) still lands here. New agent opens no form: it makes
@@ -17,9 +17,15 @@ ordinary session tagged with it but never a sidebar row: the Agents nav row
 and the card carry its state (working, needs approval, needs you, an unseen
 answer). Its view has the agent's header (face, name, Add to Slack, Edit)
 and, for an agent in its own folder, no Terminal pane. Typing `@` in a
-message box offers the agents; a message that starts with `@Name` goes to
+message box offers the agents; a message that starts with `@handle` goes to
 that agent's conversation, and the box says so before it is sent. The edit
-form puts the colours on the faces' grid, one under each face. An agent runs
+form puts the colours on the faces' grid, one under each face. A name is
+any text up to 40 characters; the agent is mentioned by a handle made from
+it (`TEST Custom Domains` is `@TEST-Custom-Domains`). Without leaving its
+conversation, its face opens a face-and-colour popover and its name and
+what it is for are edited in place; its start page and reply box carry New
+session's pickers (host, model, account, effort, permission), each pick
+saving the agent. An agent runs
 on this host or on a remote one, picked in its form with the host picker; the
 account picker shows when the engine has more than one account there. A
 remote agent's card and header name its host; while the host is offline they
@@ -199,9 +205,56 @@ agent's conversation.
 
 ```sh
 yv api '{"op":"agent.save","agent":{"name":"TEST-Desk","engine":"codex","model":"fake-fast","effort":"low"}}' --wait '{"op":"agent.saved"}'
-yv drive agents --viewport desktop --steps '[{"click":"role:button:Edit: TEST-Desk"},{"fill":"label:Name","value":"test-reviewer"},{"expect":"role:button:Save agent","enabled":false},{"expect":"css:.agent-form-name [role=alert]","text":"Another agent is already called test-reviewer.","inViewport":true},{"fill":"label:Name","value":"two words"},{"expect":"css:.agent-form-name [role=alert]","text":"One word","inViewport":true},{"fill":"label:Name","value":"TEST-Desk"},{"expect":"css:.agent-form-name","text":"Mention it as @TEST-Desk"},{"click":"role:button:Colour: rose"},{"click":"role:button:Face: wink"},{"expect":"css:.agent-face-option[aria-pressed=\"true\"][aria-label=\"Face: wink\"]"},{"fill":"label:Instructions","value":"TEST-plan first"},{"shot":"form"},{"click":"role:button:Save agent"},{"expect":"css:.agent-bar","text":"TEST-Desk"}]'
+yv drive agents --viewport desktop --steps '[{"click":"role:button:Edit: TEST-Desk"},{"fill":"label:Name","value":"test-reviewer"},{"expect":"role:button:Save agent","enabled":false},{"expect":"css:.agent-form-name [role=alert]","text":"Another agent is already called test-reviewer.","inViewport":true},{"fill":"label:Name","value":"TEST a name far too long to read as one, really"},{"expect":"css:.agent-form-name [role=alert]","text":"At most 40 characters.","inViewport":true},{"fill":"label:Name","value":"TEST Front Desk"},{"expect":"css:.agent-form-name","text":"Mention it as @TEST-Front-Desk"},{"fill":"label:Name","value":"TEST-Desk"},{"expect":"css:.agent-form-name","text":"Mention it as @TEST-Desk"},{"click":"role:button:Colour: rose"},{"click":"role:button:Face: wink"},{"expect":"css:.agent-face-option[aria-pressed=\"true\"][aria-label=\"Face: wink\"]"},{"fill":"label:Instructions","value":"TEST-plan first"},{"shot":"form"},{"click":"role:button:Save agent"},{"expect":"css:.agent-bar","text":"TEST-Desk"}]'
 yv drive agents --viewport mobile --steps '[{"click":"role:button:Edit: TEST-Desk"},{"click":"role:button:Colour: teal"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"form"},{"click":"role:button:Save agent"},{"expect":"css:.agent-bar","text":"TEST-Desk"}]'
 yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"name":"TEST-Desk","color":"teal","face":"wink","instructions":"TEST-plan first","permission":"ask"}]}'
+```
+
+### a-name-of-a-few-words-is-mentioned-by-its-handle
+A name can have spaces and punctuation; the agent is `@mentioned` by a handle
+made from it (`TEST Custom Domains` is `@TEST-Custom-Domains`). The card
+shows the handle under the name; `@` and any word of the name offers it, with
+its handle beside the name; picking it types the handle, and a message that
+starts with it goes to the agent's conversation (owner, 2026-11-24: "display
+names with spaces, dashes and whatever").
+
+```sh
+yv api '{"op":"agent.save","agent":{"name":"TEST Custom Domains","engine":"codex","model":"fake-fast","effort":"low","color":"teal","about":"TEST-checks custom domains"}}' --wait '{"op":"agent.saved"}' --expect '{"op":"agent.saved","agent":{"name":"TEST Custom Domains","handle":"TEST-Custom-Domains"}}' --save domains=agent.id
+yv drive new --viewport desktop --steps '[{"fill":"label:Message","value":"@dom"},{"expect":{"css":".mention-list .menu-item","hasText":"TEST Custom Domains"}},{"expect":{"css":".mention-list .mention-handle","hasText":"@TEST-Custom-Domains"}},{"shot":"mention-list"},{"press":"Enter"},{"expect":"label:Message","value":"@TEST-Custom-Domains "},{"expect":"css:.mention-route","text":"Goes to TEST Custom Domains"},{"fill":"label:Message","value":"@TEST-Custom-Domains TEST-check x.dev"},{"press":"Enter"},{"expect":"css:.agent-bar","text":"TEST Custom Domains"},{"expect":"css:.thread","text":"Echo: TEST-check x.dev"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST Custom Domains\"]","hasText":"@TEST-Custom-Domains"}},{"shot":"card"}]'
+yv drive agents --viewport mobile --steps '[{"eval":"document.querySelector(\".agent-card[aria-label=\\\"TEST Custom Domains\\\"]\").scrollIntoView({block:\"center\"}) ?? true","equals":true},{"expect":{"css":".agent-card[aria-label=\"TEST Custom Domains\"]","hasText":"@TEST-Custom-Domains"},"inViewport":true},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"card"}]'
+```
+
+### face-name-and-what-it-is-for-change-in-place
+In an agent's header the face opens a small popover of faces and colours,
+saved as they are picked, its own face showing the pick; the name and what
+it is for become a field when clicked: Enter saves, Escape cancels, and a
+problem is said under the field, which stays open. A new name gets a new
+handle. On a phone, a new agent's large face and its name in the header do
+the same, and a name of its own ends its setup; what it is for is changed on
+its start page (Edit stays for the rest).
+
+```sh
+yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST Custom Domains\"] .agent-message"},{"click":"role:button:Face and colour of TEST Custom Domains"},{"expect":"role:dialog:Face and colour of TEST Custom Domains"},{"click":"role:button:Colour: rose"},{"click":"role:button:Face: glasses"},{"expect":"css:.agent-look-grid .agent-swatch[aria-pressed=\"true\"][aria-label=\"Colour: rose\"]"},{"expect":"css:.agent-look-grid .agent-look-option[aria-pressed=\"true\"][aria-label=\"Face: glasses\"]"},{"shot":"look"},{"press":"Escape"},{"expect":"role:dialog:Face and colour of TEST Custom Domains","count":0},{"click":{"css":".agent-bar-name .in-place"}},{"fill":"label:Rename","value":"test-reviewer"},{"press":"Enter"},{"expect":"css:.in-place-problem","text":"Another agent is already called test-reviewer."},{"expect":"label:Rename"},{"shot":"rename-problem"},{"press":"Escape"},{"expect":"label:Rename","count":0},{"expect":"css:.agent-bar-name","text":"TEST Custom Domains"},{"click":{"css":".agent-bar-name .in-place"}},{"fill":"label:Rename","value":"TEST Domain Desk"},{"press":"Enter"},{"expect":"css:.agent-bar-name","text":"TEST Domain Desk"},{"click":{"css":".agent-bar-about .in-place"}},{"fill":"label:What it is for","value":"TEST-watches the custom domains"},{"press":"Enter"},{"expect":"css:.agent-bar-about","text":"TEST-watches the custom domains"},{"shot":"renamed"}]'
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"id":"{{domains}}","name":"TEST Domain Desk","handle":"TEST-Domain-Desk","about":"TEST-watches the custom domains","color":"rose","face":"glasses"}]}'
+yv drive agents --viewport mobile --steps '[{"click":"role:button:New agent"},{"expect":"role:heading:Hi! What should I do?","inViewport":true},{"click":{"css":".agent-start-face .agent-face-button"}},{"expect":"role:dialog:Face and colour of New-agent","inViewport":true},{"click":"role:button:Colour: green"},{"expect":"css:.agent-look-grid .agent-swatch[aria-pressed=\"true\"][aria-label=\"Colour: green\"]"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"look"},{"press":"Escape"},{"click":{"css":".agent-bar-name .in-place"}},{"fill":"label:Rename","value":"TEST Phone Helper"},{"press":"Enter"},{"expect":"role:heading:Message TEST Phone Helper","inViewport":true},{"click":{"css":".agent-start-about .in-place"}},{"fill":"label:What it is for","value":"TEST-helps from the phone"},{"press":"Enter"},{"expect":"css:.agent-start-about","text":"TEST-helps from the phone"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"set-up-by-hand"}]'
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"name":"TEST Phone Helper","handle":"TEST-Phone-Helper","about":"TEST-helps from the phone","color":"green"}]}'
+```
+
+### the-boxs-pickers-save-the-agent
+An agent's start page and its conversation's reply box have New session's
+pickers (model, effort, permission; the account where the engine has more
+than one; the host): a pick saves the agent at once, and its conversation
+follows it. On a phone they fold into "Agent setup", as New session's do.
+
+```sh
+yv api '{"op":"agent.save","agent":{"name":"TEST Pickers","engine":"codex","model":"fake-fast","effort":"low"}}' --wait '{"op":"agent.saved"}' --save pickers=agent.id
+yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST Pickers\"] .agent-message"},{"expect":"role:heading:Message TEST Pickers"},{"click":"role:button:Effort Low"},{"click":{"css":"[role=menuitemradio]","hasText":"High"}},{"expect":"role:button:Effort High"},{"click":"role:button:Ask first"},{"click":{"css":"[role=menuitemradio]","hasText":"Plan only"}},{"expect":"css:.composer .permission","text":"Plan only"},{"shot":"start-pickers"}]'
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"id":"{{pickers}}","effort":"high","permission":"plan"}]}'
+yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST Domain Desk\"] .agent-message"},{"expect":"css:.thread","text":"Echo: TEST-check x.dev"},{"click":"role:button:Ask first"},{"click":{"css":"[role=menuitemradio]","hasText":"Accept edits"}},{"expect":"css:.composer .permission","text":"Accept edits"},{"shot":"reply-box-pickers"}]'
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"id":"{{domains}}","permission":"acceptEdits"}]}'
+yv state --expect '{"sessions":[{"agent":"{{domains}}","permission":"acceptEdits"}]}'
+yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label=\"TEST Pickers\"] .agent-message"},{"click":{"css":".composer-setup"}},{"expect":"role:dialog:Agent setup","inViewport":true},{"shot":"agent-setup"},{"click":{"css":".setup-options .permission"}},{"click":{"css":"[role=menuitemradio]","hasText":"Ask first"}},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true}]'
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"id":"{{pickers}}","permission":"ask"}]}'
 ```
 
 ### add-to-slack-walks-through-the-tokens
@@ -298,6 +351,20 @@ starts a new one on the new host with its notes and the latest messages.
 ```sh
 yv drive agents --viewport desktop --steps '[{"click":"role:button:Edit: TEST-Remote"},{"eval":"document.querySelector(\".agent-form-foot\").previousElementSibling.scrollIntoView({block:\"end\"}); true","equals":true},{"click":{"css":".agent-form-where .chip","hasText":"TEST-agents-box"}},{"click":{"css":".picker-item","nth":0}},{"expect":"css:.agent-form-card-head:has(#agent-form-where) p","text":"Its conversation stays on TEST-agents-box, readable. The next message starts a new one on"},{"shot":"move-note"},{"click":"role:button:Cancel"}]'
 yv drive agents --viewport mobile --steps '[{"click":"role:button:Edit: TEST-Remote"},{"eval":"document.querySelector(\".agent-form-foot\").previousElementSibling.scrollIntoView({block:\"end\"}); true","equals":true},{"click":{"css":".agent-form-where .chip","hasText":"TEST-agents-box"}},{"click":{"css":".picker-item","nth":0}},{"expect":"css:.agent-form-card-head:has(#agent-form-where) p","text":"Its conversation stays on TEST-agents-box, readable."},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"move-note"},{"click":"role:button:Cancel"}]'
+```
+
+### a-host-picked-in-the-box
+The host picker sits under a new agent's box, as on New session, and in a
+conversation's reply box. Before the first message a pick just moves the
+agent; after it, the box first says that the conversation stays where it is
+and the next message starts one on the new host, and Keep it here changes
+nothing.
+
+```sh
+yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST Domain Desk\"] .agent-message"},{"click":{"css":".composer .chip"}},{"click":{"css":".picker-item","hasText":"TEST-agents-box"}},{"expect":"role:group:Move TEST Domain Desk","text":"Its conversation stays on"},{"expect":"role:button:Move to TEST-agents-box"},{"shot":"move-asks-first"},{"click":"role:button:Keep it here"},{"expect":"role:group:Move TEST Domain Desk","count":0}]'
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"id":"{{domains}}","host":"local"}]}'
+yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label=\"TEST Pickers\"] .agent-message"},{"click":{"css":".new-chips .chip"}},{"click":{"css":".picker-item","hasText":"TEST-agents-box"}},{"expect":{"css":".new-chips .chip","hasText":"TEST-agents-box"}},{"expect":"css:.agent-bar","text":"TEST-agents-box"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"moved"}]'
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"id":"{{pickers}}","host":"{{box}}"}]}'
 ```
 
 ### a-remote-agents-host-offline

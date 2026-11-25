@@ -5,7 +5,8 @@ import { isSlack, slackFrom } from "./slack";
 import { ENGINE_NAME } from "./engines";
 
 export const AGENT_COLORS: AgentColor[] = ["blue", "green", "amber", "rose", "violet", "teal", "orange", "slate"];
-export const AGENT_NAME_MAX = 24;
+/** A display name's length, in characters (yardd's NAME_MAX). */
+export const AGENT_NAME_MAX = 40;
 /** The avatar's letter. */
 export const initial = (name: string) => (name.trim()[0] ?? "?").toUpperCase();
 
@@ -13,45 +14,97 @@ export const initial = (name: string) => (name.trim()[0] ?? "?").toUpperCase();
 // reachable from here.
 export { AGENT_FACES, FACES, avatarSvg, blinkDelay, faceOf } from "./faces";
 
-/** yardd's rule, said before it refuses: one word that reads as `@Name`. */
+/** A display name as yardd keeps it: trimmed, each run of spaces one space. */
+export const cleanName = (name: string) => name.trim().split(/\s+/).filter(Boolean).join(" ");
+
+// Control characters, and zero-width and direction marks that could make one name look like another.
+const INVISIBLE = /[\p{Cc}\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/u;
+
+/** yardd's rule, said before it refuses: any printable text up to
+ *  AGENT_NAME_MAX characters, unique ignoring case. */
 export function nameProblem(name: string, agents: Agent[], id?: string): string | null {
-  const n = name.trim();
+  const n = cleanName(name);
   if (!n) return "Give it a name.";
-  if (!/^\p{L}[\p{L}\p{N}_-]*$/u.test(n)) return "One word: letters, digits, - or _, starting with a letter, so it can be @mentioned.";
   if ([...n].length > AGENT_NAME_MAX) return `At most ${AGENT_NAME_MAX} characters.`;
+  if (INVISIBLE.test(n)) return "No control or invisible characters.";
   if (agents.some((a) => a.id !== id && a.name.toLowerCase() === n.toLowerCase())) return `Another agent is already called ${n}.`;
   return null;
 }
 
+// What a handle is made of: letters (with their marks), digits, - and _.
+const HANDLE_CHAR = "[\\p{L}\\p{M}\\p{N}_-]";
+
+/** The handle a name reads as (yardd's `handle_base`): its letters and digits
+ *  as typed, one `-` for whatever stands between them, starting with a
+ *  letter; `agent` for a name with no letter. "Custom Domains Triage" is
+ *  `Custom-Domains-Triage`. */
+export function handleBase(name: string): string {
+  let out = "";
+  let gap = false;
+  for (const c of name) {
+    if (!/[\p{L}\p{M}\p{N}_]/u.test(c)) {
+      gap = true;
+      continue;
+    }
+    if (!out && !/\p{L}/u.test(c)) continue;
+    if (gap && out) out += "-";
+    gap = false;
+    out += c;
+  }
+  return out || "agent";
+}
+
+/** The handle a new name would get among the other agents' (yardd's
+ *  `handle_for`), to say it before saving. */
+export function handleFor(name: string, agents: Agent[], id?: string): string {
+  const taken = new Set(agents.filter((a) => a.id !== id).map((a) => handleOf(a).toLowerCase()));
+  const old = agents.find((a) => a.id === id)?.handle;
+  const base = handleBase(name);
+  if (old && !taken.has(old.toLowerCase())) {
+    const lo = old.toLowerCase();
+    const lb = base.toLowerCase();
+    if (lo === lb) return base;
+    if (lo.startsWith(`${lb}-`) && /^\d+$/.test(lo.slice(lb.length + 1))) return old;
+  }
+  if (!taken.has(base.toLowerCase())) return base;
+  for (let n = 2; ; n++) if (!taken.has(`${base}-${n}`.toLowerCase())) return `${base}-${n}`;
+}
+
+/** What an agent is `@mentioned` by: its handle, or its name from a yardd
+ *  before handles (those names were handles). */
+export const handleOf = (agent: Pick<Agent, "name" | "handle">): string => agent.handle || agent.name;
+
 /** The `@word` the caret is in, if any: `@` at the start or after a space,
- *  then name characters up to the caret. */
+ *  then handle characters up to the caret. */
 export function mentionAt(text: string, caret: number): { start: number; query: string } | null {
-  const m = /(^|\s)@([\p{L}\p{N}_-]*)$/u.exec(text.slice(0, caret));
+  const m = new RegExp(`(^|\\s)@(${HANDLE_CHAR}*)$`, "u").exec(text.slice(0, caret));
   if (!m) return null;
   return { start: caret - m[2].length - 1, query: m[2] };
 }
 
-/** Agents for a typed `@query`: names that start with it first, then any that contain it. */
+/** Agents for a typed `@query`: those whose handle or name starts with it
+ *  first, then any where a word of the name, or the handle, contains it. */
 export function matchAgents(agents: Agent[], query: string, max = 6): Agent[] {
   const q = query.toLowerCase();
-  const starts = agents.filter((a) => a.name.toLowerCase().startsWith(q));
-  const contains = agents.filter((a) => !starts.includes(a) && a.name.toLowerCase().includes(q));
+  const words = (a: Agent) => [handleOf(a), a.name, ...a.name.split(/[^\p{L}\p{M}\p{N}_]+/u)].map((w) => w.toLowerCase());
+  const starts = agents.filter((a) => words(a).some((w) => w.startsWith(q)));
+  const contains = agents.filter((a) => !starts.includes(a) && words(a).some((w) => w.includes(q)));
   return [...starts, ...contains].slice(0, max);
 }
 
-/** Replace the `@query` at `start` with the agent's name and a space. */
-export function insertMention(text: string, start: number, caret: number, name: string): { text: string; caret: number } {
-  const after = text.slice(caret).replace(/^[\p{L}\p{N}_-]*/u, "");
-  const head = `${text.slice(0, start)}@${name} `;
+/** Replace the `@query` at `start` with the agent's handle and a space. */
+export function insertMention(text: string, start: number, caret: number, handle: string): { text: string; caret: number } {
+  const after = text.slice(caret).replace(new RegExp(`^${HANDLE_CHAR}*`, "u"), "");
+  const head = `${text.slice(0, start)}@${handle} `;
   return { text: head + after.replace(/^ /, ""), caret: head.length };
 }
 
-/** A message that starts with `@Name` of an agent goes to that agent; `rest`
- *  is what it is sent (the mention dropped). */
+/** A message that starts with an agent's `@handle` goes to that agent;
+ *  `rest` is what it is sent (the mention dropped). */
 export function leadingMention(text: string, agents: Agent[]): { agent: Agent; rest: string } | null {
-  const m = /^\s*@([\p{L}\p{N}_-]+)(?=\s|$)/u.exec(text);
+  const m = new RegExp(`^\\s*@(${HANDLE_CHAR}+)(?=\\s|$)`, "u").exec(text);
   if (!m) return null;
-  const agent = agents.find((a) => a.name.toLowerCase() === m[1].toLowerCase());
+  const agent = agents.find((a) => handleOf(a).toLowerCase() === m[1].toLowerCase());
   return agent ? { agent, rest: text.slice(m[0].length).trim() } : null;
 }
 
@@ -156,7 +209,8 @@ const oneLine = (text: string) => text.split(/\s+/).filter(Boolean).join(" ");
  *  Null for the user's own (and for a kind this build does not know). */
 export function originLabel(origin: MessageOrigin | undefined): { text: string; agentId: string | null } | null {
   if (!origin || origin.kind === "user") return null;
-  const name = typeof origin.name === "string" && origin.name ? origin.name : null;
+  // Said by its handle, as it would be mentioned; its name from a yardd before handles.
+  const name = typeof origin.handle === "string" && origin.handle ? origin.handle : typeof origin.name === "string" && origin.name ? origin.name : null;
   const agentId = typeof origin.agentId === "string" ? origin.agentId : null;
   if (origin.kind === "agent") return { text: name ? `From @${name}` : "From another agent", agentId };
   if (origin.kind === "agentReply") return { text: name ? `Reply from @${name}` : "Reply from another agent", agentId };
@@ -173,4 +227,24 @@ export function runsOn(agent: Agent, models: Models, permissionLabel: string, ac
   const model = agent.model ? (list.find((m) => m.id === agent.model)?.name ?? agent.model) : (fallback?.name ?? `${ENGINE_NAME[agent.engine]} default`);
   const effort = agent.effort ? agent.effort[0].toUpperCase() + agent.effort.slice(1) : "";
   return [model, account, effort, permissionLabel].filter(Boolean).join(" · ");
+}
+
+/** The model an agent's pickers show: its own, else the host's default for
+ *  its engine (which a new conversation starts on), with an effort the model
+ *  has. A model the host does not list is shown as it is. */
+export function agentChoice(agent: Pick<Agent, "engine" | "model" | "effort">, models: Models): { engine: Agent["engine"]; model: string; effort: string } {
+  const list = models[agent.engine] ?? [];
+  const m = agent.model ? list.find((x) => x.id === agent.model) : (list.find((x) => x.isDefault) ?? list[0]);
+  if (!m) return { engine: agent.engine, model: agent.model, effort: agent.effort };
+  const effort = m.efforts.includes(agent.effort) ? agent.effort : (m.defaultEffort ?? m.efforts[0] ?? agent.effort);
+  return { engine: agent.engine, model: m.id, effort };
+}
+
+/** What a pick of another host saves with it: the agent's own folder (one on
+ *  the old host means nothing on the new), and the host's default model or
+ *  account where the new host lacks the agent's. `accounts`: the account ids
+ *  the new host has for the agent's engine. */
+export function hostChange(agent: Pick<Agent, "engine" | "model" | "account">, host: string, models: Models, accounts: string[]): Partial<Agent> {
+  const listed = (models[agent.engine] ?? []).some((m) => m.id === agent.model);
+  return { host, cwd: "", model: listed ? agent.model : "", account: accounts.includes(agent.account) ? agent.account : "default" };
 }

@@ -470,8 +470,9 @@ longer read.
 
 ## Agents
 
-Named agents, after Orca's Bots: each has a name it is mentioned by
-(`@Reviewer`), a colour, what it is for, how it runs, and two notes the user
+Named agents, after Orca's Bots: each has a display name ("Custom Domains
+Triage", spaces and all), a handle it is mentioned by (`@Custom-Domains-Triage`,
+made from the name), a colour, what it is for, how it runs, and two notes the user
 writes for it. **Each agent has exactly one conversation, for its whole
 life**, and agent conversations never mix with the owner's coding sessions in
 the sidebar. There is no built-in agent: Scout, the read-only host agent that
@@ -485,8 +486,10 @@ card words, attention), `ui/src/SlackSetup.tsx` (an agent's own Slack app),
 the composer and session view in `App.tsx`.
 
 - **The record** is saved in `agents.json` in the data dir (an unreadable file
-  is kept as `.json.bad`): `name` (one word: a letter, then letters, digits,
-  `-` or `_`, at most 24; unique ignoring case), `color` (one of eight, a token
+  is kept as `.json.bad`): `name` (any printable text, trimmed with runs of
+  spaces made one, 1 to 40 characters, no control, zero-width or direction
+  characters; unique ignoring case; `agents::clean_name`), `handle` (see
+  Names and handles), `color` (one of eight, a token
   each in `styles.css`), `about` (one line), `engine`, `model` (empty: the
   host's default for the engine), `effort`, `account`, `cwd` (empty: its own
   folder, `<data dir>/agents/<id>/`), `permission` (Ask first unless the user
@@ -502,6 +505,22 @@ the composer and session view in `App.tsx`.
   remote session as an agent's by id (`chat` or `previous`), not by the
   remote's `agent` tag, which may name one of the remote's own; a local
   session tagged with an agent the window does not know is an ordinary one.
+- **Names and handles.** The owner asked for "display names with spaces,
+  dashes and whatever" (2026-11-24); a mention needs one word. So the name is
+  for reading and the handle for typing: yardd makes the handle, never the
+  client (`agent.save` ignores one sent): the name's letters and digits as
+  typed, one `-` for whatever stands between them, starting with a letter,
+  `agent` when there is none ("TEST Custom Domains!" is `TEST-Custom-Domains`;
+  `handle_base`). It is unique ignoring case, `-2`, `-3`… on a collision, and
+  kept while it still fits a new name: the same words in another case take
+  the name's case, a numbered one stays numbered; other words, a new handle
+  (`handle_for`; the UI's twin `handleFor` says it in the form before saving).
+  Case is kept rather than lowered: `@Reviewer` stays what it always was, and
+  a mention matches ignoring case anyway. Agents from before handles get
+  their name as handle at start (those names were one word), so every
+  mention already written keeps working; a hosted copy from an older hub
+  derives its own. The engine hears both: "You are Custom Domains Triage
+  (@Custom-Domains-Triage), …", and other agents as `@handle (Name)`.
 - **Ops:** `agent.list`, `agent.save { agent }` (an `id` edits; only the fields
   sent change; answers `agent.saved`), `agent.delete { id }` (deletes its
   conversation and its own Slack app too, after a confirm in the UI),
@@ -530,8 +549,10 @@ the composer and session view in `App.tsx`.
   folder" at once; a folder of the user's, more access and `connect:
   "slack"` become `request`. Unknown fields are ignored and named. Its own
   changes are no notes change. A note in the thread says what changed
-  ("New-agent is set up as @Deployer: name, what it is for, …"); a name of
-  its own ends `setup`, from the tool or from Edit. Requests show as cards
+  ("New-agent is set up as @Deployer: name, what it is for, …", or "… as
+  Custom Domains (@Custom-Domains): …"); a name of its own ends `setup`,
+  from the tool, from Edit or renamed in place. Each saved change broadcasts
+  `agents`, so the header follows at once. Requests show as cards
   above the reply box ("Deployer asks for Full access: it would run anything
   without asking", Give Full access / Not now; Allow for a folder; Add to
   Slack opens the Slack dialog); the answer is a note and reaches the agent
@@ -603,9 +624,12 @@ the composer and session view in `App.tsx`.
   the user typed.
 - **@mentions:** the composer (New session, any local session's reply box, an
   agent's conversation) offers the agents when `@` starts a word, filtered by
-  what follows (names that start with it first); arrows, Enter or Tab pick,
-  Escape closes only the list. A message that starts with an agent's `@Name`
-  goes to that agent's conversation instead (the mention dropped), and the
+  what follows (a handle, name or word of the name that starts with it
+  first, then any that contain it); each row shows the name, the `@handle`
+  when it reads differently, and what it is for; arrows, Enter or Tab pick,
+  and the handle is typed. Escape closes only the list. A message that
+  starts with an agent's `@handle` goes to that agent's conversation instead
+  (the mention dropped), and the
   box says so above the text ("Goes to Reviewer", "… not this session"). In
   the agent's own conversation a leading mention is just text.
 - **Not in the sidebar.** Agent conversations are left out of the sidebar's
@@ -614,12 +638,13 @@ the composer and session view in `App.tsx`.
   instead: a dot for the most pressing state of any agent's conversation
   (needs approval, working, an unseen failure, an unseen answer; seen as in
   the sidebar, `yard.seen`), and on each agent's card. Cmd-K lists the agents
-  themselves (group Agents), each opening its conversation. An OS
+  themselves (group Agents, found by name or `@handle`), each opening its
+  conversation. An OS
   notification about an agent's turn opens its conversation.
 - **UI.** Agents (`#/agents`, an at-sign row in the sidebar; `#/assistant`
   redirects; Cmd-K "switchy" finds it) is a grid of cards like Automations,
   rows sharing their height so status lines and buttons line up: face, name
-  and `@name` ("Setting up" while new), what it is for, how it runs, "In
+  and `@handle` ("Setting up" while new), what it is for, how it runs, "In
   Slack" for one with its own app, a status line from the conversation
   ("Working…", "Needs approval", "Asks you for something", "Answered 5 min
   ago · <start of the last answer>", "Failed …", "No messages yet"), then
@@ -628,7 +653,34 @@ the composer and session view in `App.tsx`.
   `#/agents/new/edit` does the same. An agent's place is `#/agents/<id>`:
   its header (face, name, what it is for, Stop, Add to Slack / Finish Slack /
   In Slack, Edit), its requests and the thread, the reply box saying "Reply
-  to <Name>". An agent working in its own folder has no Terminal, Subagents
+  to <Name>".
+- **Changed where it is shown** (owner: "easy to edit without leaving the
+  initial chat page"). The face, in the header and large on the start page,
+  opens a small popover (`AgentLook`): its face large in the picked colour,
+  the eight faces drawn in that colour and the eight colours under them;
+  each pick saves at once and shows there before yardd answers (a refusal
+  puts it back and says why). The name and what it is for (the header's on a
+  wide window, the start page's under its heading on any) become a field
+  when clicked (`InPlace`): Enter saves, Escape cancels, leaving the field
+  saves a change; a problem (the UI's `nameProblem` first, then yardd's
+  refusal) is said under the field, which stays open. Edit keeps the whole
+  form.
+- **How it runs, from its box** (owner: "allow changing the model, server,
+  and etc on the chat box"). The start page's box and the conversation's
+  reply box carry New session's pickers for the agent (`AgentRunPickers`):
+  model with its engine, the account where the engine has more than one
+  there, effort and permission, plus the host (under the start page's box,
+  as New session has it; in the reply box's row). On a phone they fold into
+  "Agent setup", as New session's do. Each pick is an `agent.save` of that
+  field alone, with Edit's rules: an engine, model or account change goes on
+  in a fresh context and is refused while a turn runs (said above the box);
+  a model of another engine runs on that engine's Default account; Full
+  access is only ever the owner's pick. A host picked before the first
+  message just moves the agent (its own folder there, the host's default
+  model or account where the new host lacks its own: `hostChange`); after
+  it, the box first says what a move does (`moveNote`) with Keep it here /
+  Move to <host>. The conversation's speed (Codex service tier) stays the
+  session's. An earlier conversation it left on another host keeps no box. An agent working in its own folder has no Terminal, Subagents
   or Processes pane; one given a project folder keeps them. Each answer
   carries the agent's face and name.
 - **Faces move.** Each agent is a small 3D character (`faces.ts`): a
@@ -678,14 +730,15 @@ the composer and session view in `App.tsx`.
   did not type carries an `origin`, kept on its `user_message` (and on the
   queued message before that) and shown in the thread as a small badge above
   the bubble, the sender's face and words (`originLabel` in agents.ts; React
-  text only): `{ kind: "agent", agentId, name, hops }` is "From @Name",
-  `{ kind: "agentReply", agentId, name, hops }` is "Reply from @Name",
+  text only): `{ kind: "agent", agentId, name, handle, hops }` is "From
+  @handle", `{ kind: "agentReply", agentId, name, handle, hops }` is "Reply
+  from @handle" (`name` from a yardd before handles),
   `{ kind: "slack", team, channel, channelName, threadTs, ts, user, userName }`
   is "From Gio on Slack · #general" with an aubergine dot. None,
   or `{ kind: "user" }`, is the owner (no badge); a kind the UI does not know
   shows none. Origins are set by yardd only, never read from a client's op.
   The engine reads such a message framed with where it came from
-  (`origins::engine_text`: `<message from="@Builder">…</message>` and that the
+  (`origins::engine_text`: `<message from="@Builder">…</message>`, by handle, and that the
   answer goes back; `<reply from="@Reviewer">…</reply>`; `<slack from="Gio"
   in="#general">…</slack>` with names flattened to one line without quotes or
   angle brackets, so a Slack display name cannot break the frame); the thread shows only
@@ -714,7 +767,10 @@ the composer and session view in `App.tsx`.
   line), `set_memory { text }` (replaces it) and `update_setup { name?,
   about?, instructions?, memory?, face?, color?, engine?, model?, effort?,
   cwd?, permission?, connect? }` (see Set up by talking to it; "Updated its
-  setup"). Private threads and the owner's own sessions never get them.
+  setup"; `name` is a display name too). `message_agent`'s `to` is the
+  other's handle, or its name as it reads; `list_agents` and the tool's
+  description list `@handle (Name): what it is for`. Private threads and the
+  owner's own sessions never get them.
   - **How they reach the engines.** yardd is also a stdio MCP server:
     `yardd agent-tools`. An agent's conversation hands its engine that server
     with two variables, `YARD_TOOLS_URL` (`http://127.0.0.1:<port>/agent-tools`)
@@ -897,8 +953,9 @@ its engine framing and one arm in `origins::reply`.
 - **Routing.** A DM or an @mention goes to: the agent of its Slack thread (a
   follow-up stays with the agent the thread's first routed message went to,
   saved as `team/channel/thread_ts`, the newest 1,000); else the agent whose
-  name starts the text (`Reviewer …`, `@Reviewer …`, `Reviewer: …`, any case;
-  the name is dropped); else the channel's default agent, then the default
+  handle or name starts the text (`Reviewer …`, `@Reviewer …`, `Reviewer: …`,
+  `@Custom-Domains …`, `Custom Domains, …`, any case, the longest that fits;
+  it is dropped); else the channel's default agent, then the default
   agent; else the bot answers in the thread with the agents' names. An agent
   still setting up (New agent's placeholder) is neither named nor reached by
   name: its first message sets it up, and that is the owner's. In a
