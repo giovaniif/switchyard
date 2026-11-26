@@ -1098,3 +1098,179 @@ async fn a_watched_turn_cannot_change_the_agents_setup_or_pass_its_access_on() {
     let log = std::fs::read_to_string(sb.fake_state().join("sidecar.log")).unwrap();
     assert_eq!(log.lines().filter(|l| l.starts_with("turn permission=")).last(), Some("turn permission=full"), "{log}");
 }
+
+/// The owner's own Slack, connected by pasting his user token (no https address).
+async fn connect_me(c: &mut Client) {
+    step(c, json!({ "op": "slack.grant", "token": "xoxe-1-TEST-refresh", "me": true })).await.unwrap();
+    step(c, json!({ "op": "slack.me.userToken", "token": "xoxp-you-TEST" })).await.unwrap();
+    step(c, json!({ "op": "slack.me.appToken", "token": "xapp-1-you-TEST" })).await.unwrap();
+    slack_state(c, "his Slack connected", |s| s["me"]["state"] == "connected").await;
+}
+
+/// An inbox op with a `ref`; its answer.
+async fn inbox(c: &mut Client, msg: Value) -> Value {
+    let from = c.mark();
+    let r = format!("inbox-{from}");
+    let mut msg = msg;
+    msg["ref"] = json!(r);
+    c.send(msg).await;
+    c.wait_after(from, "the inbox's answer", |m| m["ref"] == r.as_str()).await
+}
+
+fn texts(v: &Value) -> Vec<String> {
+    v["messages"].as_array().unwrap().iter().map(|m| m["text"].as_str().unwrap().to_string()).collect()
+}
+
+/// The inbox list as last broadcast (or in the snapshot) once `pred` holds.
+async fn inbox_list(c: &mut Client, what: &str, pred: impl Fn(&[Value]) -> bool) -> Vec<Value> {
+    let m = c.wait_for(what, |m| (m["op"] == "slack.inbox" && pred(m["conversations"].as_array().unwrap())) || (m["op"] == "snapshot" && m["slackInbox"].as_array().is_some_and(|l| pred(l)))).await;
+    m[if m["op"] == "snapshot" { "slackInbox" } else { "conversations" }].as_array().unwrap().clone()
+}
+
+#[tokio::test]
+async fn the_owners_direct_messages_come_into_switchyard_new_ones_too() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-inbox");
+    let env = [("YARD_SLACK_API", fake.api())];
+    let env: Vec<(&str, &str)> = env.iter().map(|(k, v)| (*k, v.as_str())).collect();
+    let daemon = sb.start_with(&env);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    assert_eq!(c.log[0]["slackInbox"], json!([]));
+    connect_me(&mut c).await;
+
+    // Every DM and group DM with a message in the last 60 days, newest first;
+    // a DM quiet for longer is not listed. Unread counts from Slack's read mark.
+    let list = inbox_list(&mut c, "the DMs synced", |l| l.len() == 2).await;
+    assert_eq!(list[0]["id"], "D0ANA");
+    assert_eq!(list[0]["kind"], "im");
+    assert_eq!(list[0]["name"], "TEST-Ana");
+    assert_eq!(list[0]["unread"], 1);
+    assert_eq!(list[0]["preview"], "TEST-lunch tomorrow?");
+    assert_eq!(list[0]["previewFrom"], "TEST-Ana");
+    assert_eq!(list[1]["id"], "G0TRIO");
+    assert_eq!(list[1]["kind"], "mpim");
+    assert_eq!(list[1]["name"], "TEST-Ana, TEST-Stranger");
+
+    // A page: the 60 days' top-level messages, oldest first, with names, the
+    // thread's count and reactions; more may be older.
+    let page = inbox(&mut c, json!({ "op": "slack.inbox.messages", "team": "T0TEST", "channel": "D0ANA" })).await;
+    assert_eq!(texts(&page), ["TEST-are you around? *bold* <https://example.com|a link>", "TEST-yes, <@UANA>", "TEST-lunch tomorrow?"]);
+    assert_eq!(page["more"], true);
+    assert_eq!(page["users"]["UANA"], "TEST-Ana");
+    assert_eq!(page["users"]["UOWNER"], "TEST-Owner");
+    let lunch = page["messages"][2].clone();
+    assert_eq!(lunch["replyCount"], 1);
+    assert_eq!(lunch["reactions"][0]["name"], "thumbsup");
+    let lunch_ts = lunch["ts"].as_str().unwrap().to_string();
+    // Its thread, read from Slack when it opens.
+    let thread = inbox(&mut c, json!({ "op": "slack.inbox.messages", "team": "T0TEST", "channel": "D0ANA", "thread": lunch_ts })).await;
+    assert_eq!(texts(&thread), ["TEST-lunch tomorrow?", "TEST-sure, noon"]);
+    assert_eq!(thread["messages"][1]["threadTs"], lunch_ts.as_str());
+    // Older than 60 days, on demand: from Slack, and then there is no more.
+    let first = page["messages"][0]["ts"].as_str().unwrap().to_string();
+    let older = inbox(&mut c, json!({ "op": "slack.inbox.messages", "team": "T0TEST", "channel": "D0ANA", "before": first })).await;
+    assert_eq!(texts(&older), ["TEST-old news", "TEST-older still"]);
+    assert_eq!(older["more"], false);
+
+    // Live: a new message in the DM, and someone new writing for the first time.
+    let from = c.mark();
+    let new_ts = fake.say(json!({ "app": "you", "user": "UANA", "channel": "D0ANA", "text": "TEST-one more thing" }));
+    let m = c.wait_after(from, "the new message", |m| m["op"] == "slack.inbox.message" && m["message"]["ts"] == new_ts.as_str()).await;
+    assert_eq!(m["channel"], "D0ANA");
+    assert_eq!(m["message"]["text"], "TEST-one more thing");
+    inbox_list(&mut c, "two unread", |l| l.iter().any(|v| v["id"] == "D0ANA" && v["unread"] == 2)).await;
+    fake.say(json!({ "app": "you", "user": "UNEW", "channel": "D0NEW", "text": "TEST-hi, I'm new here" }));
+    let list = inbox_list(&mut c, "the new DM", |l| l.iter().any(|v| v["id"] == "D0NEW")).await;
+    assert_eq!(list[0]["id"], "D0NEW");
+    assert_eq!(list[0]["name"], "TEST-UNEW");
+    assert_eq!(list[0]["unread"], 1);
+
+    // Edited, then deleted, then a reaction on the lunch message.
+    let raw = |event: Value| fake.request("POST", "/_fake/raw", &json!({ "app": "you", "event": event }));
+    let from = c.mark();
+    raw(json!({ "type": "message", "subtype": "message_changed", "channel": "D0ANA", "channel_type": "im", "message": { "type": "message", "user": "UANA", "text": "TEST-one more thing, edited", "ts": new_ts, "edited": { "user": "UANA", "ts": "1" } } }));
+    let m = c.wait_after(from, "the edit", |m| m["op"] == "slack.inbox.message" && m["message"]["ts"] == new_ts.as_str()).await;
+    assert_eq!((m["message"]["text"].as_str(), m["message"]["edited"].as_bool()), (Some("TEST-one more thing, edited"), Some(true)));
+    let from = c.mark();
+    raw(json!({ "type": "message", "subtype": "message_deleted", "channel": "D0ANA", "channel_type": "im", "deleted_ts": new_ts }));
+    let m = c.wait_after(from, "the deletion", |m| m["op"] == "slack.inbox.message" && m["message"]["deleted"] == true).await;
+    assert_eq!(m["message"]["text"], "");
+    let from = c.mark();
+    raw(json!({ "type": "reaction_added", "user": "UANA", "reaction": "tada", "item": { "type": "message", "channel": "D0ANA", "ts": lunch_ts } }));
+    let m = c.wait_after(from, "the reaction", |m| m["op"] == "slack.inbox.message" && m["message"]["reactions"].as_array().is_some_and(|r| r.len() == 2)).await;
+    assert_eq!(m["message"]["reactions"][1], json!({ "name": "tada", "users": ["UANA"] }));
+    // Opening its thread earlier stored its reply: still one reply, not two.
+    assert_eq!(m["message"]["replyCount"], 1);
+    assert_eq!(m["users"]["UANA"], "TEST-Ana");
+
+    // Read in Switchyard: nothing unread there any more.
+    let page = inbox(&mut c, json!({ "op": "slack.inbox.messages", "team": "T0TEST", "channel": "D0ANA" })).await;
+    let newest = page["messages"].as_array().unwrap().last().unwrap()["ts"].as_str().unwrap().to_string();
+    c.send(json!({ "op": "slack.inbox.read", "team": "T0TEST", "channel": "D0ANA", "ts": newest })).await;
+    inbox_list(&mut c, "read", |l| l.iter().any(|v| v["id"] == "D0ANA" && v["unread"] == 0)).await;
+
+    // Kept across a restart.
+    drop(c);
+    daemon.stop();
+    let daemon = sb.start_with(&env);
+    let mut c = daemon.client().await;
+    let list = c.log[0]["slackInbox"].as_array().unwrap().clone();
+    assert_eq!(list.len(), 3, "{list:?}");
+    // Disconnecting his Slack forgets his DMs.
+    step(&mut c, json!({ "op": "slack.me.remove" })).await.unwrap();
+    inbox_list(&mut c, "forgotten", |l| l.is_empty()).await;
+}
+
+#[tokio::test]
+async fn the_owner_replies_reacts_and_reads_from_switchyard_as_himself() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-reply-me");
+    let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api())]);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    connect_me(&mut c).await;
+    inbox_list(&mut c, "the DMs synced", |l| l.len() == 2).await;
+    let page = inbox(&mut c, json!({ "op": "slack.inbox.messages", "team": "T0TEST", "channel": "D0ANA" })).await;
+    let lunch = page["messages"][2]["ts"].as_str().unwrap().to_string();
+
+    // A reply in the DM, as him: what he types is plain text in Slack.
+    let from = c.mark();
+    let sent = inbox(&mut c, json!({ "op": "slack.inbox.send", "team": "T0TEST", "channel": "D0ANA", "text": "TEST-see you <@UANA> & <!channel>" })).await;
+    assert_eq!(sent["op"], "slack.inbox.sent", "{sent}");
+    let ts = sent["ts"].as_str().unwrap().to_string();
+    let posted = fake.state()["posts"].as_array().unwrap().iter().find(|p| p["ts"] == ts.as_str()).cloned().unwrap();
+    assert_eq!(posted["app"], "you");
+    assert_eq!(posted["text"], "TEST-see you &lt;@UANA&gt; &amp; &lt;!channel&gt;");
+    let m = c.wait_after(from, "his message", |m| m["op"] == "slack.inbox.message" && m["message"]["ts"] == ts.as_str()).await;
+    assert_eq!(m["message"]["user"], "UOWNER");
+    // Writing reads: nothing before it is unread.
+    inbox_list(&mut c, "read by replying", |l| l.iter().any(|v| v["id"] == "D0ANA" && v["unread"] == 0 && v["preview"] == "TEST-see you <@UANA> & <!channel>")).await;
+
+    // In a thread: the parent counts it.
+    let from = c.mark();
+    let sent = inbox(&mut c, json!({ "op": "slack.inbox.send", "team": "T0TEST", "channel": "D0ANA", "text": "TEST-in the thread", "thread": lunch })).await;
+    let reply = sent["ts"].as_str().unwrap().to_string();
+    assert!(fake.state()["posts"].as_array().unwrap().iter().any(|p| p["ts"] == reply.as_str() && p["thread_ts"] == lunch.as_str()));
+    c.wait_after(from, "the parent's count", |m| m["op"] == "slack.inbox.message" && m["message"]["ts"] == lunch.as_str() && m["message"]["replyCount"] == 2).await;
+    // Nothing to send is refused before Slack hears it.
+    let empty = inbox(&mut c, json!({ "op": "slack.inbox.send", "team": "T0TEST", "channel": "D0ANA", "text": "   " })).await;
+    assert_eq!(empty["op"], "error");
+
+    // Reactions, his: on, then off.
+    let from = c.mark();
+    inbox(&mut c, json!({ "op": "slack.inbox.react", "team": "T0TEST", "channel": "D0ANA", "ts": lunch, "name": "tada", "add": true })).await;
+    let m = c.wait_after(from, "his reaction", |m| m["op"] == "slack.inbox.message" && m["message"]["ts"] == lunch.as_str() && m["message"]["reactions"].as_array().is_some_and(|r| r.iter().any(|x| x["name"] == "tada"))).await;
+    assert_eq!(m["message"]["reactions"][1]["users"], json!(["UOWNER"]));
+    let from = c.mark();
+    inbox(&mut c, json!({ "op": "slack.inbox.react", "team": "T0TEST", "channel": "D0ANA", "ts": lunch, "name": "thumbsup", "add": false })).await;
+    let m = c.wait_after(from, "his reaction off", |m| m["op"] == "slack.inbox.message" && m["message"]["ts"] == lunch.as_str()).await;
+    assert_eq!(m["message"]["reactions"], json!([{ "name": "tada", "users": ["UOWNER"] }]));
+    assert!(fake.state()["reactions"][&lunch].is_array() || fake.state()["calls"].as_array().unwrap().iter().any(|c| c["method"] == "reactions.add" && c["token"] == "user"));
+
+    // Read here is read in Slack.
+    let group = inbox(&mut c, json!({ "op": "slack.inbox.messages", "team": "T0TEST", "channel": "G0TRIO" })).await;
+    let last = group["messages"][0]["ts"].as_str().unwrap().to_string();
+    c.send(json!({ "op": "slack.inbox.read", "team": "T0TEST", "channel": "G0TRIO", "ts": last })).await;
+    fake.wait("the read mark in Slack", |s| s["marks"].as_array().is_some_and(|m| m.iter().any(|x| x["channel"] == "G0TRIO" && x["ts"] == last.as_str()))).await;
+}

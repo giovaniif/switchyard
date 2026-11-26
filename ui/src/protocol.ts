@@ -136,6 +136,8 @@ export interface SlackMe {
   teamName: string;
   /** The owner's name in Slack, once approved. */
   userName: string;
+  /** His Slack user id (older yardds send none). */
+  userId?: string;
   /** Slack can send the browser back to Switchyard after the install (an https address). */
   canRedirect: boolean;
   authorizeUrl?: string;
@@ -147,6 +149,49 @@ export interface SlackMe {
   /** His handle in Slack, from the connection. */
   handle?: string;
   error?: string | null;
+}
+
+/** One of the owner's own Slack conversations (yardd's slack/inbox.rs). */
+export interface SlackConversation {
+  team: string;
+  id: string;
+  kind: "im" | "mpim" | "channel" | "group";
+  /** A DM: the other person; a group DM: the others; a channel: `#name`. */
+  name: string;
+  /** A DM's other person's id. */
+  peer: string;
+  lastTs: string;
+  lastRead: string;
+  unread: number;
+  preview?: string;
+  previewFrom?: string;
+}
+
+/** A Slack message as kept: its text is Slack's markup (see slackText.ts). */
+export interface SlackMessage {
+  ts: string;
+  /** Set on a thread reply: its parent's ts. */
+  threadTs?: string;
+  user: string;
+  /** An integration's or a bot's name, when it has no user. */
+  username?: string;
+  text: string;
+  edited: boolean;
+  deleted: boolean;
+  replyCount: number;
+  reactions: { name: string; users: string[] }[];
+  files: { name: string }[];
+  subtype?: string;
+}
+
+/** A conversation's (or a thread's) loaded messages, oldest first. */
+export interface SlackPage {
+  messages: SlackMessage[];
+  /** Names by user id. */
+  users: Record<string, string>;
+  /** Older messages may exist (Load older). */
+  more: boolean;
+  loading: boolean;
 }
 
 /** An agent's own Slack app (yardd's slack.rs): its step and connection, never a token. */

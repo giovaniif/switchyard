@@ -1025,14 +1025,63 @@ its engine framing and one arm in `origins::reply`.
     a minute), a new token or `slack.me.retry`, and after a restart. `connect`
     takes his user token; his user id is not added to `own_bots` (his posts
     are not a bot's).
-  - His events are acknowledged and not stored yet: keeping DMs and channels
-    in `yard.db` and showing them is the next step. He goes on the allowlist
-    when he approves.
+  - His events go to his inbox (below). He goes on the allowlist when he
+    approves.
   - `slack.me.remove` (Disconnect): forgets his tokens, closes the connection
     and deletes his app (best effort). Always Socket Mode, even with a public
     address. The view sends `me { step, appId, teamId, teamName, userName,
     canRedirect, authorizeUrl?, userToken, appToken, state?, handle?, error? }`,
     tokens as kind and last four characters only.
+- **His inbox** (`crates/yardd/src/slack/inbox.rs`, a child of slack.rs so
+  it shares the Web API client; UI `SlackPage.tsx`, `slackInbox.ts`,
+  `slackText.ts`). Tables in `yard.db`, through a connection of its own (WAL,
+  beside the session store's writer): `slack_conversations` (team, id, kind
+  `im`/`mpim`/`channel`/`group`, name, the DM's other person, newest
+  top-level ts, his read mark, `synced`, `complete` = nothing older in
+  Slack), `slack_messages` (team, channel, ts, thread_ts, user, a bot's name,
+  Slack's text as sent, subtype, edited, deleted, reply count, reactions as
+  `[{name, users}]`, file names), `slack_users` (names). ts are compared as
+  text (ten-digit seconds).
+  - **Sync** when his connection says hello the first time in a process, and
+    after a connection that dropped or failed, not after Slack's routine
+    `disconnect` refresh (which would refetch every DM every few hours):
+    `users.conversations types=im,mpim` (deleted users left out); for each,
+    one not loaded gets 60 days (`conversations.history oldest`, every page)
+    and Slack's read mark (`conversations.info last_read`, only when it had
+    messages; none, or zeros, counts everything as read), one loaded catches
+    up from its newest ts. One at a time (the client waits out 429s twice).
+    Internal apps are not under Slack's 2025 history limits for distributed
+    apps.
+  - **Live**: `message` in an `im`/`mpim` (an unknown one is looked up with
+    `conversations.info` first: someone new wrote), `message_changed`,
+    `message_deleted` (kept as deleted, text dropped), `message_replied`,
+    `reaction_added`/`removed`. A reply live for the first time is one more
+    on its parent (Slack's count; replies loaded from history are already in
+    it), never fewer than the replies kept. Each change is broadcast as
+    `slack.inbox.message { team, channel, message, users }`; the list as
+    `slack.inbox { conversations }` (coalesced, 300 ms), also in the snapshot
+    as `slackInbox`. Remotes' copies are dropped.
+  - **Ops**: `slack.inbox.list`; `slack.inbox.messages { team, channel,
+    before?, thread? }` (50 top-level messages, oldest first, with `users`
+    and `more`; past what is kept, `conversations.history latest` a page at a
+    time until Slack has no more; a thread is read fresh with
+    `conversations.replies`); `slack.inbox.read { ts }` (his mark here, and
+    `conversations.mark` in Slack); `slack.inbox.send { text, thread? }`
+    (`chat.postMessage` with his user token; `&`, `<`, `>` escaped so typed
+    text is never markup; Slack's answer is stored and broadcast at once, and
+    his own message reads everything before it); `slack.inbox.react { ts,
+    name, add }`. Disconnecting his Slack forgets his inbox.
+  - **The page**: the sidebar's Slack section (before Agents): his
+    conversations newest first, the first 8 plus any unread or open one, an
+    unread count, Show all. `#/slack/<team>/<channel>` (yv route
+    `slack:<name>`): messages grouped by author (five minutes) and day,
+    Slack's markup parsed into React elements (`slackText.ts`: bold,
+    italics, strikes, code, code blocks, quotes, http/https/mailto links
+    only, mentions by name, a few emoji drawn), edited and deleted marks,
+    reactions (his highlighted, a click toggles), "N replies", Load older,
+    a thread pane (the whole screen on a phone), each message's actions
+    floating at its top right on hover or a tap, and a reply box that sends
+    as him. Opening it reads it.
 - **Transport: Socket Mode** for his app and agents' apps (unless a public
   address is set, below). The server is tailnet-only, so Slack cannot call
   it by default. The app-level token (`xapp-`, scope `connections:write`)
