@@ -1,0 +1,200 @@
+{
+  "v": 1,
+  "claim": "Host picker (new session, settings defaults): a long host name (a whole IPv6 address or a 40-character name) squeezes the row's cloud icon to nothing and pushes 'unreachable' past the row's edge",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-a329",
+  "base": "60ef57bd498bf3c58cf018a471ecde6d5a9183a8",
+  "head": "ef25213095f9acaf7f3a086fc519ce36a4fac504",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/new-session.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T03:14:41.586Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "0d3c6f8c2a4fafb94d7c1359c51d6e34915981a5",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "96492464229cadaa11971dc0391c5c8badce94d33539cef5535cde73ce02ae3f"
+        },
+        {
+          "path": "p1-sheet-mobile.png",
+          "sha256": "a37e0688731d29f2c9bf781b3ebd7d15caf3f4f7eef8b6e932dc7f8e8d113b37"
+        },
+        {
+          "path": "p1-fail-mobile-step4.png",
+          "sha256": "a37e0688731d29f2c9bf781b3ebd7d15caf3f4f7eef8b6e932dc7f8e8d113b37"
+        },
+        {
+          "path": "p1-sheet-desktop.png",
+          "sha256": "0a953d03593760c24c472ca9ce3a0d288526c4692b116cbe2deed82671f6d416"
+        },
+        {
+          "path": "p1-fail-desktop-step4.png",
+          "sha256": "0a953d03593760c24c472ca9ce3a0d288526c4692b116cbe2deed82671f6d416"
+        }
+      ],
+      "addedAt": "2026-11-26T03:14:53.328Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "0d3c6f8c2a4fafb94d7c1359c51d6e34915981a5",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "0c1f302da08daa68e9eb421fb76eb24b7de4d3163a2ba1fb4bb33b17e03e5f67"
+        }
+      ],
+      "addedAt": "2026-11-26T03:14:53.375Z",
+      "cmd": "verify/yv map run new-session --recipe long-host-name-keeps-the-host-sheet-row",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "ef25213095f9acaf7f3a086fc519ce36a4fac504",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "fbe02f2faa7d80d906349693b66bcfd395cc41213660797d4d78923b54156ec9"
+        },
+        {
+          "path": "p3-sheet-mobile.png",
+          "sha256": "2b92db3e5716ecd500e0a7c6a6cad85d6243703b721e4134887963828325d4bb"
+        },
+        {
+          "path": "p3-sheet-desktop.png",
+          "sha256": "15c9b26a9c70490417d0ee2680147eb99f5908b3a64c2c3d25c992c07320d0d7"
+        }
+      ],
+      "addedAt": "2026-11-26T03:15:25.081Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "ef25213095f9acaf7f3a086fc519ce36a4fac504",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "a029e74598294e518092123bb4c1f7ce9c301ee8567a168ead4cd0ebaf95e297"
+        }
+      ],
+      "addedAt": "2026-11-26T03:15:25.129Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "ef25213095f9acaf7f3a086fc519ce36a4fac504",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "f36890d02dd3e0898014466be5e0809cedd701bc92c5aefd76d5306e788fa5c8"
+        }
+      ],
+      "addedAt": "2026-11-26T03:15:25.586Z",
+      "cmd": "verify/yv design-check --base 60ef57bd498b",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "ef25213095f9acaf7f3a086fc519ce36a4fac504",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-new-session.json",
+          "sha256": "a1a19f8913f12e3ac23196c240f2d5f79879935ec8bf2cd1d6cd021fd722f633"
+        }
+      ],
+      "addedAt": "2026-11-26T03:15:25.671Z",
+      "cmd": "verify/yv map run new-session",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "new-session/page-renders",
+        "new-session/send-creates-session",
+        "new-session/long-prompt-titled-at-a-word",
+        "new-session/long-second-word-is-cut-not-dropped",
+        "new-session/empty-prompt-cannot-send",
+        "new-session/worktree-note",
+        "new-session/base-branch-picker",
+        "new-session/typed-path-with-no-match-says-so",
+        "new-session/typed-path-under-a-missing-folder-names-it",
+        "new-session/typed-path-through-a-file-names-the-file",
+        "new-session/remembered-folder-that-is-gone-says-so",
+        "new-session/long-folder-keeps-its-chip-icon",
+        "new-session/long-host-name-keeps-the-host-sheet-row",
+        "new-session/folder-menu-stays-on-screen",
+        "new-session/recent-folder-opens-with-tab",
+        "new-session/refused-send-names-the-session-in-the-way",
+        "new-session/task-draft-survives-opening-a-session"
+      ]
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "ef25213095f9acaf7f3a086fc519ce36a4fac504",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-dropdowns.json",
+          "sha256": "aa76899db24b1cd6354d6c18fbe84480a38689acc1a30803da8e9eea04bcccd5"
+        }
+      ],
+      "addedAt": "2026-11-26T03:17:25.272Z",
+      "cmd": "verify/yv map run dropdowns",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "dropdowns/composer-options-fit",
+        "dropdowns/workspace-tab-spacing",
+        "dropdowns/custom-schedule-options",
+        "dropdowns/connector-host-and-refresh",
+        "dropdowns/handover-nests-the-new-session"
+      ]
+    }
+  ]
+}

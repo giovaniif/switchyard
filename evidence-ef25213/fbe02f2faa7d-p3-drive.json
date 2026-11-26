@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "ef25213095f9acaf7f3a086fc519ce36a4fac504",
+    "short": "ef25213",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T03:15:08.666Z"
+  },
+  "dir": ".verify/evidence/host-sheet-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2395,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/host-sheet-head/sheet-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "[...document.querySelectorAll(\".picker-item\")].filter(x => x.textContent.includes(\"fd7a\") || x.textContent.includes(\"TEST-a-long\")).every(b => { const r=b.getBoundingClientRect(); const s=b.querySelector(\"svg\"); const a=b.querySelector(\".menu-aside\").getBoundingClientRect(); return s.getBoundingClientRect().width === Number(s.getAttribute(\"width\")) && a.right <= r.right && a.left >= s.getBoundingClientRect().right && r.height <= 44; })",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 1867,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/host-sheet-head/sheet-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "[...document.querySelectorAll(\".picker-item\")].filter(x => x.textContent.includes(\"fd7a\") || x.textContent.includes(\"TEST-a-long\")).every(b => { const r=b.getBoundingClientRect(); const s=b.querySelector(\"svg\"); const a=b.querySelector(\".menu-aside\").getBoundingClientRect(); return s.getBoundingClientRect().width === Number(s.getAttribute(\"width\")) && a.right <= r.right && a.left >= s.getBoundingClientRect().right && r.height <= 44; })",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
