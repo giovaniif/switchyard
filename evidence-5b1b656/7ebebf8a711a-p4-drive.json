@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "connectors",
+  "build": {
+    "sha": "5b1b65618130ecea3b29d581db72f9408e581b05",
+    "short": "5b1b656",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T14:25:47.490Z"
+  },
+  "dir": ".verify/evidence/slack-connect-you-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2824,
+      "steps": 3,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/slack-connect-you-head-mobile/connected-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 1,
+          "eval": "(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), document.documentElement.scrollWidth <= document.documentElement.clientWidth)",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

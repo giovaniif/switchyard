@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "connectors",
+  "build": {
+    "sha": "6c3e781e98a2e12e9c2222187f319dea15869536",
+    "short": "6c3e781",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T14:25:25.613Z"
+  },
+  "dir": ".verify/evidence/slack-connect-you-base",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2327,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-connect-you-base/base-shared-bot-card-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), true)",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

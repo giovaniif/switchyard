@@ -1,0 +1,57 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "slack",
+      "at": "2026-11-26T14:33:07.660Z",
+      "counts": {
+        "pass": 8
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "not-connected",
+          "status": "pass",
+          "ms": 6554
+        },
+        {
+          "label": "an-agents-own-slack-app",
+          "status": "pass",
+          "ms": 14388
+        },
+        {
+          "label": "allow-from-an-agents-app",
+          "status": "pass",
+          "ms": 5783
+        },
+        {
+          "label": "answer-in-the-slack-thread",
+          "status": "pass",
+          "ms": 7049
+        },
+        {
+          "label": "connect-your-slack",
+          "status": "pass",
+          "ms": 13538
+        },
+        {
+          "label": "tokens-stay-in-yardd",
+          "status": "pass",
+          "ms": 3404
+        },
+        {
+          "label": "one-token-with-a-public-address",
+          "status": "pass",
+          "ms": 10085
+        },
+        {
+          "label": "a-watched-channel",
+          "status": "pass",
+          "ms": 13434
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

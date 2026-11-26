@@ -1,0 +1,69 @@
+{
+  "ok": true,
+  "route": "connectors",
+  "build": {
+    "sha": "5b1b65618130ecea3b29d581db72f9408e581b05",
+    "short": "5b1b656",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T14:25:47.490Z"
+  },
+  "dir": ".verify/evidence/slack-connect-you-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 6534,
+      "steps": 12,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-connect-you-head-desktop/approve-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-connect-you-head-desktop/connection-token-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-connect-you-head-desktop/connected-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), true)",
+          "value": true
+        },
+        {
+          "step": 4,
+          "eval": "fetch(\"/slack/oauth?code=TEST-code&state=\" + new URL(document.querySelector(\".slack-card a.btn-primary\").href).searchParams.get(\"state\")).then((r) => r.text()).then((t) => t.includes(\"Your Slack is approved\"))",
+          "value": true
+        },
+        {
+          "step": 10,
+          "eval": "(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), !document.body.innerText.includes(\"Default agent\"))",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

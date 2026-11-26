@@ -1,0 +1,241 @@
+{
+  "v": 1,
+  "claim": "The Slack card set up a shared bot (a manifest to paste, two tokens, routing by agent name and a default agent) that never brought the owner's own DMs or channels into Switchyard; it now connects his own Slack account and the shared bot is retired",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a",
+  "base": "1c816f9feeedb88bcbcc3f2e5567c77605cc993c",
+  "head": "5b1b65618130ecea3b29d581db72f9408e581b05",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/origins.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/ConnectorsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackCard.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackSetup.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/fakes/fake-slack"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/README.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T14:24:55.948Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "6c3e781e98a2e12e9c2222187f319dea15869536",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "d4dbe4df5d6d5f33e5c53cfddfe9aeb6b1e12613f31e8fb18c700fd1b65e8c75"
+        },
+        {
+          "path": "p1-base-shared-bot-card-desktop.png",
+          "sha256": "baa33fc498d5960d22d7c55c5b1694bc96d8abb86b226cc1a62a039b0f8a8087"
+        }
+      ],
+      "addedAt": "2026-11-26T14:25:28.622Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "6c3e781e98a2e12e9c2222187f319dea15869536",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "5d9772638ced54a5fb555f78a1ad7f798c67664d1082ca96be9979b7093d30fc"
+        }
+      ],
+      "addedAt": "2026-11-26T14:25:28.671Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack the_owner_connects_his_own_slack",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "5b1b65618130ecea3b29d581db72f9408e581b05",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-2-drive.json",
+          "sha256": "a2f508248dbc56e1b8a1fa94ecb34cc5aebb514b1c80197e2645c49b9c2d9963"
+        },
+        {
+          "path": "p3-2-approve-desktop.png",
+          "sha256": "076cf400041ea0d508d9a741eeab49c34740d96b1112c1a2605b251d9100d909"
+        },
+        {
+          "path": "p3-2-connection-token-desktop.png",
+          "sha256": "8921e655ccad6a5e78a0f0fa17220ad913da9acbacbc4300857732a6301b0de4"
+        },
+        {
+          "path": "p3-2-connected-desktop.png",
+          "sha256": "56cbed6dc9645163e4943b3a2b2fa9e855972777bede25fef4b2b77318457917"
+        }
+      ],
+      "addedAt": "2026-11-26T14:31:25.678Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "5b1b65618130ecea3b29d581db72f9408e581b05",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-2-drive.json",
+          "sha256": "0c9e80aba6e375a203173ca2e537ed6bd69b5a5e9ce8a6a75541622b74dbb536"
+        },
+        {
+          "path": "p4-2-connected-mobile.png",
+          "sha256": "eb04e40954e10f69a9f28d6322816b2c308aae6e17ca0c04c7fe7e19739455c5"
+        }
+      ],
+      "addedAt": "2026-11-26T14:31:28.686Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "note",
+      "at": "5b1b65618130ecea3b29d581db72f9408e581b05",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T14:31:28.865Z",
+      "text": "An earlier full run of the slack area under load (another session running cargo test) timed out in one-token-with-a-public-address (the icon upload wait) and a-watched-channel (the page loading); neither recipe is touched by this change and both passed on rerun."
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "5b1b65618130ecea3b29d581db72f9408e581b05",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "a1dc473929b9f38a69f50a4f24afb2e51892a0fd2713cd32b812c3aa7083f6ba"
+        }
+      ],
+      "addedAt": "2026-11-26T14:31:28.907Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "5b1b65618130ecea3b29d581db72f9408e581b05",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "c307a61223514dca61167d004690b0c24c8461a35891572cd69242aa296ed5f1"
+        }
+      ],
+      "addedAt": "2026-11-26T14:31:52.720Z",
+      "cmd": "verify/yv design-check --base 1c816f9feeed",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "5b1b65618130ecea3b29d581db72f9408e581b05",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-slack.json",
+          "sha256": "5b4174b31ec75c20fe67b98c1a6a0d4a47d5e6e077109e814d6d3ac9e29c65e6"
+        }
+      ],
+      "addedAt": "2026-11-26T14:31:52.807Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/not-connected",
+        "slack/an-agents-own-slack-app",
+        "slack/allow-from-an-agents-app",
+        "slack/answer-in-the-slack-thread",
+        "slack/connect-your-slack",
+        "slack/tokens-stay-in-yardd",
+        "slack/one-token-with-a-public-address",
+        "slack/a-watched-channel"
+      ]
+    }
+  ]
+}
