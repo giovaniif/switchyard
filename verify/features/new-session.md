@@ -124,6 +124,17 @@ directory (os error 2)" and offered "Use <the missing folder>".)
 yv drive new --steps '[{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{work}}/TEST-gone/TEST-deeper/b"},{"expect":"css:.picker-empty","text":"TEST-gone doesn’t exist."},{"expect":"text:os error","count":0},{"shot":"missing-parent"},{"fill":"role:textbox:Folder","value":"{{work}}/TEST-gone/"},{"expect":"css:.picker-empty","text":"TEST-gone doesn’t exist."},{"expect":"role:option","count":0},{"press":"Enter"},{"press":"Escape"},{"expect":{"role":"button","name":"work","exact":true}}]'
 ```
 
+### typed-path-through-a-file-names-the-file
+Viewports: both
+A typed path that goes through a file (`README.md/`, a file mistaken for a
+folder) says that file is a file, not a folder, in words, and offers no
+"Use" row: Enter keeps the folder the chip had. (Before #467 the list showed
+yardd's raw "cannot read …: Not a directory (os error 20)".)
+
+```sh
+yv drive new --steps '[{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{repo}}/README.md/"},{"expect":"css:.picker-empty","text":"README.md is a file, not a folder."},{"expect":"text:os error","count":0},{"expect":"role:option","count":0},{"shot":"through-a-file"},{"fill":"role:textbox:Folder","value":"{{repo}}/README.md/TEST-deeper/b"},{"expect":"css:.picker-empty","text":"README.md is a file, not a folder."},{"expect":"text:os error","count":0},{"press":"Enter"},{"press":"Escape"},{"expect":{"role":"button","name":"work","exact":true}}]'
+```
+
 ### remembered-folder-that-is-gone-says-so
 Viewports: both
 The page reopens on the folder last used. When that folder was deleted since,
