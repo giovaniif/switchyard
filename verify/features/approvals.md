@@ -162,13 +162,15 @@ in Full access too. (Codex used to get "not supported", and outside Plan mode
 it never asked: yardd now starts it with
 `features.default_mode_request_user_input`.) The fake asks a color (options,
 plus its own answer) and a secret token (typed only, hidden); the token never
-shows on the card or in the log.
+shows on the card or in the log (the fake's reply repeats it, to prove Codex
+got it). Codex's question has no tool row, so a turn with no other steps has
+no "Worked for" fold: the answered card stays in place.
 
 ```sh
 for vp in desktop mobile; do
   yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{repo}}","permission":"full","text":"[question] TEST-codex asks '$vp'"}' --wait '{"op":"event","event":{"type":"approval_request"}}' --save cq_sid=sessionId
   yv state --expect '{"sessions":[{"id":"{{cq_sid}}","status":"needs_approval"}]}'
-  yv drive 'session:{{cq_sid}}' --viewport $vp --steps '[{"expect":"text:Codex has 2 questions"},{"expect":"role:button:Send answers","enabled":false},{"click":"role:radio:Blue"},{"expect":"role:button:Send answers","enabled":false},{"fill":"label:Answer: Paste the TEST-app deploy token.","value":"s3cret-TEST"},{"expect":"css:.question-card input[type=password]"},{"shot":"codex-question-'$vp'"},{"click":"role:button:Send answers"},{"expect":"css:.thread","text":"Answered: color=Blue | token=s3cret-TEST"},{"click":"role:button:Worked for"},{"expect":"css:.question-answer","text":"Blue"},{"expect":"css:.question-card","text":"••••••"},{"shot":"codex-answered-'$vp'"}]'
+  yv drive 'session:{{cq_sid}}' --viewport $vp --steps '[{"expect":"text:Codex has 2 questions"},{"expect":"role:button:Send answers","enabled":false},{"click":"role:radio:Blue"},{"expect":"role:button:Send answers","enabled":false},{"fill":"label:Answer: Paste the TEST-app deploy token.","value":"s3cret-TEST"},{"expect":"css:.question-card input[type=password]"},{"shot":"codex-question-'$vp'"},{"click":"role:button:Send answers"},{"expect":"css:.thread","text":"Answered: color=Blue | token=s3cret-TEST"},{"expect":"css:.question-answer","text":"Blue"},{"expect":"css:.question-card","text":"••••••"},{"shot":"codex-answered-'$vp'"}]'
   yv state --expect '{"sessions":[{"id":"{{cq_sid}}","status":"idle"}]}'
 done
 ```
