@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "session:s1a217fe50d14",
+  "build": {
+    "sha": "4256dd4eceb8e330548741e4bb440d4673689974",
+    "short": "4256dd4",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T13:14:23.648Z"
+  },
+  "dir": ".verify/evidence/claude-questions-head-m",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4207,
+      "steps": 11,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/claude-questions-head-m/head-card-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/claude-questions-head-m/head-after-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

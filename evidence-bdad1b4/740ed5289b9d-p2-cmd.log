@@ -1,0 +1,29 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test daemon a_claude_question_takes_the_owners_answers
+# exit 101 after 1356 ms at 24b8ef35a7222929461645ce023fd7b950692dd6
+
+
+running 1 test
+test a_claude_question_takes_the_owners_answers ... FAILED
+
+failures:
+
+---- a_claude_question_takes_the_owners_answers stdout ----
+
+thread 'a_claude_question_takes_the_owners_answers' (1789155) panicked at crates/yardd/tests/daemon.rs:2980:5:
+assertion `left == right` failed
+  left: String("The user did not answer the questions.")
+ right: "Answered: Which database should TEST-app use? → SQLite | Which checks should run before merging? → Unit tests, Lint"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1789154-question-0 for inspection
+
+
+failures:
+    a_claude_question_takes_the_owners_answers
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 88 filtered out; finished in 0.18s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 1.11s
+     Running tests/daemon.rs (target/debug/build/yardd/bc3e500ead7d3ac6/out/daemon-bc3e500ead7d3ac6)
+error: test failed, to rerun pass `-p yardd --test daemon`

@@ -1,0 +1,273 @@
+{
+  "v": 1,
+  "claim": "Claude's AskUserQuestion showed as 'Allow this?' with raw JSON, and allowing it told Claude 'The user did not answer the questions.': the owner never saw the questions",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a",
+  "base": "1c816f9feeedb88bcbcc3f2e5567c77605cc993c",
+  "head": "bdad1b4a6d43e49644cf7e77311fc0f0821257a2",
+  "changed": [
+    {
+      "status": "M",
+      "path": ".claude/skills/verify/SKILL.md"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/claude.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/codex.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/codex"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/yard-claude"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/main.ts"
+    },
+    {
+      "status": "A",
+      "path": "sidecar/yard-claude/src/questions.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "sidecar/yard-claude/src/questions.ts"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/tools.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/notify.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/notify.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/questions.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/questions.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/approvals.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T13:13:43.891Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "24b8ef35a7222929461645ce023fd7b950692dd6",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "b11be310c82c55c51510556270e5e15e5112a011546002244a03b0ee7b3b067e"
+        },
+        {
+          "path": "p1-base-card-desktop.png",
+          "sha256": "7054a60f64ee4c041a7b404f4ce79be1dd053944d59dc3a4fe19bd64ea5e23ce"
+        },
+        {
+          "path": "p1-base-after-desktop.png",
+          "sha256": "647f6bc4e193eb17f0aa06537caf340da993d0e73b3b75ced4bc45835c0afb3a"
+        }
+      ],
+      "addedAt": "2026-11-26T13:14:07.519Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "24b8ef35a7222929461645ce023fd7b950692dd6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "740ed5289b9dd5f6ee33d33bb68620ad14f7de142b50dc0fad5766a32dac774a"
+        }
+      ],
+      "addedAt": "2026-11-26T13:14:07.568Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test daemon a_claude_question_takes_the_owners_answers",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "bdad1b4a6d43e49644cf7e77311fc0f0821257a2",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-2-drive.json",
+          "sha256": "6fd5efa9c866c5bed22ff650d0d64fbed4786d93f95000a7ec000c5c7a5fff43"
+        },
+        {
+          "path": "p3-question-desktop.png",
+          "sha256": "d77733f70488c163ea4fbd527760de1db42b4da76f2785d2e6572d2dc70f2e7c"
+        },
+        {
+          "path": "p3-answered-desktop.png",
+          "sha256": "5108bbb267b0e21b402a65e905d5b22f10cf51f59f2c58233c2a44ad6aef7aa5"
+        }
+      ],
+      "addedAt": "2026-11-26T14:41:26.574Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "bdad1b4a6d43e49644cf7e77311fc0f0821257a2",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-2-drive.json",
+          "sha256": "08c896d5d0be8fd56038418fda952f7e53d9cb9773d25fdd19a71ab9dcb933ee"
+        },
+        {
+          "path": "p4-question-mobile.png",
+          "sha256": "985b1706c6ea08791ebe3e9673ffd47aeec26b0bd4c6dddfb9816d83b4d1e05d"
+        },
+        {
+          "path": "p4-answered-mobile.png",
+          "sha256": "8c940dd0ec88a9b2e6775f880aa315fdb51911271a81ba96caf7ba90fea95c84"
+        }
+      ],
+      "addedAt": "2026-11-26T14:41:32.115Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "bdad1b4a6d43e49644cf7e77311fc0f0821257a2",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "48945a3b744e5df10e45bd209307547b67434fa1c85c8f46c022ceabeb03a943"
+        }
+      ],
+      "addedAt": "2026-11-26T14:41:32.174Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test daemon question && (cd ui && bun test) && (cd sidecar/yard-claude && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "bdad1b4a6d43e49644cf7e77311fc0f0821257a2",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "3dfe05ee88ad630b26fa404402774fd89879b6ca3cbe95631d72ee5d065ff74c"
+        }
+      ],
+      "addedAt": "2026-11-26T14:41:34.030Z",
+      "cmd": "verify/yv design-check --base 1c816f9feeed",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "note",
+      "at": "bdad1b4a6d43e49644cf7e77311fc0f0821257a2",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T14:41:34.159Z",
+      "text": "Head moved to a merge of origin/main (main had moved and the PR conflicted). Base proofs kept with --force: they were taken at this PR's test-only commit, which the merge does not change."
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "bdad1b4a6d43e49644cf7e77311fc0f0821257a2",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-approvals.json",
+          "sha256": "8493960edabea215d3263e3556660ae2250a45b95fd51295031a6e87e37148f7"
+        }
+      ],
+      "addedAt": "2026-11-26T14:43:44.974Z",
+      "cmd": "verify/yv map run approvals",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "approvals/pending-shows-card",
+        "approvals/allow-once",
+        "approvals/allow-then-follow-up",
+        "approvals/deny",
+        "approvals/waiting-then-denied-command-did-not-run",
+        "approvals/waiting-then-denied-edit-was-not-made",
+        "approvals/always-allow",
+        "approvals/double-click-allow-once",
+        "approvals/approval-wait-is-not-work",
+        "approvals/claude-question-answered",
+        "approvals/claude-question-something-else-and-skip",
+        "approvals/codex-question-answered"
+      ]
+    }
+  ]
+}
