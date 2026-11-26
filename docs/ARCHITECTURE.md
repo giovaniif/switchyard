@@ -51,7 +51,7 @@ saves the last five in `mobile.json` with when each was last seen, includes
 `mobile` in snapshots and broadcasts `mobile.status`. Remotes relay theirs to
 the hub (`host.snapshot.mobile`, `mobile.status` with `hostId`): a phone
 connects to the host it can reach, usually not the desktop.
-`YARD_TESTFLIGHT_URL` supplies the real beta invitation once available.
+The setup card offers the public TestFlight beta; `YARD_TESTFLIGHT_URL` replaces it (`none` removes it).
 The app sends the host's origin as `Origin`, so `YARD_ALLOW_ORIGIN` needs no
 new entry. Backgrounding stops speech; foregrounding reconnects the socket.
 Notifications are local, from the live socket: there is no APNs service.
