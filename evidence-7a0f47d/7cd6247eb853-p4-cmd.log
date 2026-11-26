@@ -1,0 +1,18 @@
+$ cd ui && bun test src/slackInbox.test.ts
+# exit 1 after 21 ms at f30e82d06470dabafde0c961af7c8b10a318217b
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/slackInbox.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+SyntaxError: Export named 'callableAgents' not found in module '/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-remote-call/ui/src/slackInbox.ts'.
+-------------------------------
+
+
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file. [16.00ms]

@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "slack:TEST-Stranger",
+  "build": {
+    "sha": "7a0f47db9743f0cff7ad64cff44f05df02826d40",
+    "short": "7a0f47d",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T20:52:19.388Z"
+  },
+  "dir": ".verify/evidence/slack-remote-call-head-offline",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4575,
+      "steps": 11,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-remote-call-head-offline/offline-suggest-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-remote-call-head-offline/offline-called-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

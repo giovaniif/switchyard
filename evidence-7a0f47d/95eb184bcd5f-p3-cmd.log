@@ -1,0 +1,30 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack the_owner_calls_agents_here_and_on_a_remote_host_from_his_reply_box
+# exit 101 after 2140 ms at f30e82d06470dabafde0c961af7c8b10a318217b
+
+
+running 1 test
+test the_owner_calls_agents_here_and_on_a_remote_host_from_his_reply_box ... FAILED
+
+failures:
+
+---- the_owner_calls_agents_here_and_on_a_remote_host_from_his_reply_box stdout ----
+
+thread 'the_owner_calls_agents_here_and_on_a_remote_host_from_his_reply_box' (2059980) panicked at crates/yardd/tests/slack.rs:1619:5:
+assertion `left == right` failed
+  left: String("<@UAGENT> and @Far, look")
+ right: "<@UAGENT> and <@UAGENT2>, look"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-2059979-slack-call-far-hub-1 for inspection
+kept /tmp/yardd-test-2059979-slack-call-far-remote-0 for inspection
+
+
+failures:
+    the_owner_calls_agents_here_and_on_a_remote_host_from_his_reply_box
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 21 filtered out; finished in 1.16s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-remote-call/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 0.93s
+     Running tests/slack.rs (target/debug/build/yardd/7070339f5020f7ad/out/slack-7070339f5020f7ad)
+error: test failed, to rerun pass `-p yardd --test slack`

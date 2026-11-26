@@ -1,0 +1,70 @@
+{
+  "ok": false,
+  "route": "slack:TEST-Stranger",
+  "build": {
+    "sha": "f30e82d06470dabafde0c961af7c8b10a318217b",
+    "short": "f30e82d",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T20:51:28.422Z"
+  },
+  "dir": ".verify/evidence/slack-remote-call-base",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 18371,
+      "steps": 17,
+      "failed": {
+        "step": 16,
+        "action": {
+          "expect": {
+            "css": ".slack-messages .slack-mention",
+            "hasText": "TEST-Far"
+          }
+        },
+        "reason": "for: Timeout 10000ms exceeded.",
+        "screenshot": ".verify/evidence/slack-remote-call-base/fail-desktop-step16.png",
+        "aria": "- navigation \"Sessions\":\n  - button \"Go to session or page\": Switchyard Ctrl K\n  - button \"Collapse sessions sidebar\" [expanded]\n  - button \"New session\"\n  - button \"Agents\"\n  - button \"Automations\"\n  - button \"Connectors\"\n  - button \"Import\"\n  - button \"Settings\"\n  - text: No sessions yet.\n  - group \"Slack\":\n    - text: Slack\n    - button \"TEST-Ana, TEST-Stranger\"\n    - button \"TEST-Ana 1 unread\": TEST-Ana 1\n  - group \"Agents\":\n    - text: Agents\n    - button \"TEST-Reviewer · Idle\"\n    - button \"TEST-Far · Idle · On TEST-slack-box\"\n  - button \"Subscription usage\": Usage 47% used 5-hour resets in 1 h 59 min\n  - button \"iso-host 5% · 36%\"\n  - button \"TEST-slack-box 5% · 36%\"\n- separator \"Resize the sessions sidebar\"\n- banner:\n  - heading \"TEST-Ana, TEST-Stranger\" [level=1]\n  - text: Group direct message\n- button \"Load older messages\"\n- separator: Saturday, November 21\n- strong: TEST-Stranger\n- text: 5:51 PM TEST-hello all\n- separator: Today\n- strong: TEST-Owner\n- text: 5:51 PM @test-far and @TEST-Reviewer look\n- textbox \"Message TEST-Ana, TEST-Stranger\"\n- text: Sends as you, in Slack · @ to call an agent\n- button \"Send\" [disabled]"
+      },
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-remote-call-base/suggest-both-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-remote-call-base/before-send-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-remote-call-base/sent-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "desktop: step 16 {\"expect\":{\"css\":\".slack-messages .slack-mention\",\"hasText\":\"TEST-Far\"}}: for: Timeout 10000ms exceeded.",
+      "hint": "see .verify/evidence/slack-remote-call-base/fail-desktop-step16.png and the aria snapshot"
+    }
+  ]
+}
