@@ -1,0 +1,310 @@
+{
+  "v": 1,
+  "claim": "In a Slack conversation in Switchyard, typing @reviewer posted plain text, so the agent never heard it; now @ offers the agents with an app in that workspace and the message carries a real mention of the agent's bot",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a",
+  "base": "810abe587610c193d6de87890b063191b53a1181",
+  "head": "7b200d4c5966c3b50fb33e6a7f6bd0d2bfbeaf81",
+  "changed": [
+    {
+      "status": "A",
+      "path": "crates/yardd/src/slack/handle-calls.json"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack/inbox.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slackInbox.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slackInbox.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T15:59:55.884Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "ccbd8ef80c94739da22f0b13abe81e1f02e1a588",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "14d3439900869dd571532d594acb50251487def3572f64cbd47bc09213c0f916"
+        },
+        {
+          "path": "p1-base-no-agents-desktop.png",
+          "sha256": "193e003e551cdc8eff79fb32c0049a5b75ff65dac7498638604dacea4c21307a"
+        }
+      ],
+      "addedAt": "2026-11-26T16:00:17.758Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "ccbd8ef80c94739da22f0b13abe81e1f02e1a588",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "5f89a13e932a1a8f11e27925d230bc6f0e7ce90200ceb3dfbcd7e4e90ebfb817"
+        }
+      ],
+      "addedAt": "2026-11-26T16:00:17.803Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack the_owner_calls_an_agent_from_his_reply_box",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "repro",
+      "at": "0e1292af01dbfe55c0b2114853ca01de1bfcc93b",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-2-drive.json",
+          "sha256": "0034cc54299a9271a84309d3dbbebc1f1397f973d66929aa32846dce3603a4d8"
+        },
+        {
+          "path": "p3-base-says-calls-desktop.png",
+          "sha256": "da2ea6b90343ddff7cae949eb4154f7a38f7b8ce6355f13a8dbb9793e38f3305"
+        },
+        {
+          "path": "p3-base-plain-text-desktop.png",
+          "sha256": "71bdeafa6dbf39fa348a28a94615251a42254245c0baa1764ee593cd712abe1c"
+        }
+      ],
+      "addedAt": "2026-11-26T16:29:07.139Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "note",
+      "at": "0e1292af01dbfe55c0b2114853ca01de1bfcc93b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T16:29:07.200Z",
+      "text": "case finding at 0e1292a: Slack (fake) received [\"@TEST-Reviewer typed base\"] for the box's \"Calls TEST-Reviewer\": plain text, no <@UAGENT>"
+    },
+    {
+      "id": 5,
+      "ref": "base",
+      "kind": "test",
+      "at": "0e1292af01dbfe55c0b2114853ca01de1bfcc93b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "ca567b0c24581ede2808b21adb2b4e85dd2468f5da45da30c8d3f30c37b9d02b"
+        }
+      ],
+      "addedAt": "2026-11-26T16:29:07.377Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack an_agent_called_in_another_case_still_hears_it",
+      "exit": 101
+    },
+    {
+      "id": 6,
+      "ref": "base",
+      "kind": "test",
+      "at": "0e1292af01dbfe55c0b2114853ca01de1bfcc93b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "adb86c59ee5211906ac800b0121558f518bad51d4d08500f10f9d3b8de2eceb9"
+        }
+      ],
+      "addedAt": "2026-11-26T16:29:09.139Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd the_reply_box_and_yardd_agree_on_what_calls_an_agent",
+      "exit": 101
+    },
+    {
+      "id": 7,
+      "ref": "base",
+      "kind": "test",
+      "at": "0e1292af01dbfe55c0b2114853ca01de1bfcc93b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-cmd.log",
+          "sha256": "a5a56de2a29eaeb4cd6a0c43568f962007362292eb82353ac7c0616e67654666"
+        }
+      ],
+      "addedAt": "2026-11-26T16:29:13.657Z",
+      "cmd": "verify/yv map run slack --recipe call-an-agent-from-slack",
+      "exit": 1
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "fix",
+      "at": "7b200d4c5966c3b50fb33e6a7f6bd0d2bfbeaf81",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p8-drive.json",
+          "sha256": "b58fd55f317e7200b97587a5a23a362371c49ce95f361af590a8b62b0573a99f"
+        },
+        {
+          "path": "p8-suggest-desktop.png",
+          "sha256": "565d2bcc92187ee0dbef541da437765a9f2547ae2547ba26d91a31e826480454"
+        },
+        {
+          "path": "p8-called-desktop.png",
+          "sha256": "c5d3f93525fc6a65d9e0d8310dd1b329872372c4f2dba03811b0d9a3f34bd88d"
+        }
+      ],
+      "addedAt": "2026-11-26T16:29:44.807Z",
+      "failedApi": []
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "fix",
+      "at": "7b200d4c5966c3b50fb33e6a7f6bd0d2bfbeaf81",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p9-drive.json",
+          "sha256": "c77f96a7d0833ccf671e76b239038181ecccc4b97776f296babb37a11392df47"
+        },
+        {
+          "path": "p9-suggest-mobile.png",
+          "sha256": "6b12bada5e56d7e81a7a0189b21cdcaf2900b24c8bfb4289326a68393792968f"
+        },
+        {
+          "path": "p9-called-mobile.png",
+          "sha256": "796a68fde195826aa0fbbdd230c1a2e7b92a284e72ebaf3ceafe28f4d3e5db6b"
+        }
+      ],
+      "addedAt": "2026-11-26T16:29:51.757Z",
+      "failedApi": []
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "note",
+      "at": "7b200d4c5966c3b50fb33e6a7f6bd0d2bfbeaf81",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T16:29:51.816Z",
+      "text": "at 7b200d4 Slack (fake) received [\"<@UAGENT> check the deploy desktop\",\"<@UAGENT> typed desktop, not @test-reviewers\",\"<@UAGENT> check the deploy mobile\",\"<@UAGENT> typed mobile, not @test-reviewers\"]"
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "test",
+      "at": "7b200d4c5966c3b50fb33e6a7f6bd0d2bfbeaf81",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-cmd.log",
+          "sha256": "423b198fae100c556a15eb08ab7fe283208f32b1b7b3a608770fbccf156e330a"
+        }
+      ],
+      "addedAt": "2026-11-26T16:29:51.988Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack && CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd inbox && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 12,
+      "ref": "head",
+      "kind": "design",
+      "at": "7b200d4c5966c3b50fb33e6a7f6bd0d2bfbeaf81",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p12-design.json",
+          "sha256": "c0fd698bf802360ebcf7b88a93c164615345951dd1e9b3f0d8b5fbb72cc26510"
+        }
+      ],
+      "addedAt": "2026-11-26T16:30:17.055Z",
+      "cmd": "verify/yv design-check --base 810abe587610",
+      "exit": 0
+    },
+    {
+      "id": 13,
+      "ref": "head",
+      "kind": "regression",
+      "at": "7b200d4c5966c3b50fb33e6a7f6bd0d2bfbeaf81",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p13-map-slack.json",
+          "sha256": "a3b2a5bb8f4c62093e8698751b5a8efd799e2991bb484c1dad537ca8d8e6b328"
+        }
+      ],
+      "addedAt": "2026-11-26T16:30:17.138Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/not-connected",
+        "slack/an-agents-own-slack-app",
+        "slack/allow-from-an-agents-app",
+        "slack/answer-in-the-slack-thread",
+        "slack/connect-your-slack",
+        "slack/tokens-stay-in-yardd",
+        "slack/your-direct-messages",
+        "slack/reply-react-and-read",
+        "slack/someone-new-writes",
+        "slack/import-a-channel",
+        "slack/call-an-agent-from-slack",
+        "slack/one-token-with-a-public-address",
+        "slack/a-watched-channel"
+      ]
+    }
+  ]
+}

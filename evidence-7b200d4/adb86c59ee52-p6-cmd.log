@@ -1,0 +1,28 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd the_reply_box_and_yardd_agree_on_what_calls_an_agent
+# exit 101 after 4473 ms at 0e1292af01dbfe55c0b2114853ca01de1bfcc93b
+
+
+running 1 test
+test slack::inbox::tests::the_reply_box_and_yardd_agree_on_what_calls_an_agent ... FAILED
+
+failures:
+
+---- slack::inbox::tests::the_reply_box_and_yardd_agree_on_what_calls_an_agent stdout ----
+
+thread 'slack::inbox::tests::the_reply_box_and_yardd_agree_on_what_calls_an_agent' (369511) panicked at crates/yardd/src/slack/inbox.rs:902:13:
+assertion `left == right` failed: "@Reviewer look" for @reviewer became "@Reviewer look"
+  left: false
+ right: true
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    slack::inbox::tests::the_reply_box_and_yardd_agree_on_what_calls_an_agent
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 107 filtered out; finished in 0.00s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 4.42s
+     Running unittests src/main.rs (target/debug/build/yardd/7902cb21fd3fec33/out/yardd-7902cb21fd3fec33)
+error: test failed, to rerun pass `-p yardd --bin yardd`

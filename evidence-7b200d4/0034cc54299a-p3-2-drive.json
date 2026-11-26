@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "slack:TEST-Stranger",
+  "build": {
+    "sha": "0e1292af01dbfe55c0b2114853ca01de1bfcc93b",
+    "short": "0e1292a",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T16:28:59.732Z"
+  },
+  "dir": ".verify/evidence/slack-call-agent-case-base",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4070,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-call-agent-case-base/base-says-calls-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-call-agent-case-base/base-plain-text-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

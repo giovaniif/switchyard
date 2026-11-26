@@ -1,0 +1,29 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack an_agent_called_in_another_case_still_hears_it
+# exit 101 after 1709 ms at 0e1292af01dbfe55c0b2114853ca01de1bfcc93b
+
+
+running 1 test
+test an_agent_called_in_another_case_still_hears_it ... FAILED
+
+failures:
+
+---- an_agent_called_in_another_case_still_hears_it stdout ----
+
+thread 'an_agent_called_in_another_case_still_hears_it' (365151) panicked at crates/yardd/tests/slack.rs:1578:5:
+assertion `left == right` failed
+  left: String("@Reviewer please, not @Reviewers")
+ right: "<@UAGENT> please, not @Reviewers"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-365150-slack-call-case-0 for inspection
+
+
+failures:
+    an_agent_called_in_another_case_still_hears_it
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.76s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 0.89s
+     Running tests/slack.rs (target/debug/build/yardd/7070339f5020f7ad/out/slack-7070339f5020f7ad)
+error: test failed, to rerun pass `-p yardd --test slack`

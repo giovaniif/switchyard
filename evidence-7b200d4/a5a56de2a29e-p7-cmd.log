@@ -1,0 +1,33 @@
+$ verify/yv map run slack --recipe call-an-agent-from-slack
+# exit 1 after 14816 ms at 0e1292af01dbfe55c0b2114853ca01de1bfcc93b
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "slack",
+      "at": "2026-11-26T16:29:28.471Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "call-an-agent-from-slack",
+          "status": "fail",
+          "ms": 14189,
+          "tail": "\"0e1292af01dbfe55c0b2114853ca01de1bfcc93b\",\n    \"short\": \"0e1292a\",\n    \"dirty\": false,\n    \"diffHash\": null,\n    \"at\": \"2026-11-26T16:28:59.732Z\"\n  },\n  \"dir\": \"/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/.verify/drives/2026-11-26T16-29-15-376Z\",\n  \"runs\": [\n    {\n      \"viewport\": \"desktop\",\n      \"ms\": 5789,\n      \"steps\": 14,\n      \"failed\": null,\n      \"captures\": [\n        {\n          \"viewport\": \"desktop\",\n          \"file\": \"/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/.verify/drives/2026-11-26T16-29-15-376Z/suggest-desktop.png\",\n          \"size\": {\n            \"width\": 2880,\n            \"height\": 1800\n          }\n        },\n        {\n          \"viewport\": \"desktop\",\n          \"file\": \"/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/.verify/drives/2026-11-26T16-29-15-376Z/called-desktop.png\",\n          \"size\": {\n            \"width\": 2880,\n            \"height\": 1800\n          }\n        }\n      ],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": []\n}\n{\n  \"command\": \"drive\",\n  \"ok\": true,\n  \"route\": \"slack:TEST-Stranger\",\n  \"build\": {\n    \"sha\": \"0e1292af01dbfe55c0b2114853ca01de1bfcc93b\",\n    \"short\": \"0e1292a\",\n    \"dirty\": false,\n    \"diffHash\": null,\n    \"at\": \"2026-11-26T16:28:59.732Z\"\n  },\n  \"dir\": \"/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/.verify/drives/2026-11-26T16-29-21-672Z\",\n  \"runs\": [\n    {\n      \"viewport\": \"mobile\",\n      \"ms\": 6373,\n      \"steps\": 14,\n      \"failed\": null,\n      \"captures\": [\n        {\n          \"viewport\": \"mobile\",\n          \"file\": \"/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/.verify/drives/2026-11-26T16-29-21-672Z/suggest-mobile.png\",\n          \"size\": {\n            \"width\": 780,\n            \"height\": 1688\n          }\n        },\n        {\n          \"viewport\": \"mobile\",\n          \"file\": \"/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/.verify/drives/2026-11-26T16-29-21-672Z/called-mobile.png\",\n          \"size\": {\n            \"width\": 780,\n            \"height\": 1688\n          }\n        }\n      ],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": []\n}\ntrue\nfalse\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "slack/call-an-agent-from-slack",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+
