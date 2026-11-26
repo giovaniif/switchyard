@@ -360,7 +360,8 @@ async fn the_owners_own_sessions_get_no_tools() {
     // A plain Codex session: no server in its thread, so the call has nowhere to go.
     let plain = c.create(&sb.folder("proj"), &note, json!({})).await;
     c.wait_turn_done(&plain, 0).await;
-    assert!(thread_starts(&sb)[0]["config"].is_null(), "{:?}", thread_starts(&sb));
+    // Its config sets only how it unloads (codex.rs `unload_when_released`): no tools server.
+    assert_eq!(thread_starts(&sb)[0]["config"], json!({ "thread_unload_delay_secs": 0 }), "{:?}", thread_starts(&sb));
     assert_eq!(results(&sb, "notify_owner")[0]["missing"], true);
     // Plain Claude and OpenCode sessions too.
     let claude = c.create(&sb.folder("proj2"), "hi", json!({ "engine": "claude", "model": "claude-haiku-5-5", "effort": "low" })).await;
@@ -538,7 +539,8 @@ async fn a_hosted_agent_gets_tools_only_from_a_hub_that_answers_them() {
     save_hosted(&mut c, hosted("g-old", "")).await;
     let sid = ask_hosted(&mut c, "g-old", "hello").await;
     c.wait_turn_done(&sid, 0).await;
-    assert!(thread_starts(&sb)[0]["config"].is_null(), "{:?}", thread_starts(&sb));
+    // Its config sets only how it unloads (codex.rs `unload_when_released`): no tools server.
+    assert_eq!(thread_starts(&sb)[0]["config"], json!({ "thread_unload_delay_secs": 0 }), "{:?}", thread_starts(&sb));
     assert!(!sb.turn_inputs()[0][0]["text"].as_str().unwrap().contains("message_agent"));
 
     // A hub that answers them, while it is not connected: the call says so.
