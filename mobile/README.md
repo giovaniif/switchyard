@@ -62,9 +62,17 @@ keep running on the host.
 1. Install the beta using the host page's TestFlight invitation.
 2. Join the same private network as the host (for example, Tailscale).
 3. On the desktop, open **Hosts**: the iPhone card shows a QR code. Point the
-   iPhone Camera at it; Switchyard opens with the address filled in
-   (`switchyard://connect?host=<encoded-origin>`), and you tap Connect. Or type
-   the host's **HTTPS origin**, such as `https://yard.example.ts.net`.
+   iPhone Camera at it and open the link. It is the host's own page with
+   `?phone` (`https://<host>/?phone`, plus `&testflight=<invitation>` when the
+   hub has one): Safari shows a small page whose **Open in Switchyard** button
+   hands `switchyard://connect?host=<encoded-origin>` to the app, and you tap
+   Connect. When the app is not installed yet, the same page explains how to
+   get it from TestFlight. Or type the host's **HTTPS origin**, such as
+   `https://yard.example.ts.net`, in the app.
+
+   The code is an https link on purpose: the Camera offers nothing at all for a
+   `switchyard://` code while the app is not installed, so the first scan used
+   to look broken.
 
 The card's address is each host's `YARD_ALLOW_ORIGIN` entries a phone can open
 (HTTPS, not loopback), reported in the host's `mobile` state; the desktop
@@ -83,9 +91,9 @@ gets `mobile.connected`, and the desktop's phone shortcut goes away.
 reachable from it. Use the existing privately reachable HTTPS deployment. Do
 not put an unauthenticated yardd on the public internet.
 
-Set `YARD_TESTFLIGHT_URL=https://testflight.apple.com/join/<8-character-code>`
-on the hub when Apple has issued the real public invitation. Until then, Hosts
-shows the beta's pending state instead of a fake download link.
+Hosts offers the public TestFlight beta (https://testflight.apple.com/join/BygX29JY)
+without configuration. `YARD_TESTFLIGHT_URL` on the hub replaces it, and `none`
+removes it. Only invitation URLs on `testflight.apple.com/join/` are linked.
 
 ## Build and test on a Mac
 

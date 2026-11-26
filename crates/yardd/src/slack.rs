@@ -147,6 +147,9 @@ struct AgentApp {
     icon_set: bool,
     /// Why the last update did not reach Slack.
     sync_error: String,
+    /// The only people its answers may @mention, chosen by the owner: an
+    /// agent's text is untrusted, so it never widens this list itself.
+    mentions: Vec<Person>,
 }
 
 impl AgentApp {
@@ -348,6 +351,7 @@ impl Slack {
                     "eventsUrl": a.events_url,
                     "syncError": Some(&a.sync_error).filter(|e| !e.is_empty()),
                     "iconKey": a.icon_key,
+                    "mentions": a.mentions,
                 });
                 if a.step() == "install" && !a.redirect.is_empty() {
                     v["authorizeUrl"] = json!(a.authorize_url);
@@ -501,6 +505,12 @@ impl Slack {
     /// The agent has a Slack app of its own (made, maybe not installed yet).
     pub fn has_app(&self, agent: &str) -> bool {
         self.cfg.lock().unwrap().apps.iter().any(|a| a.agent == agent)
+    }
+
+    /// Who the agent's answers may @mention, as it should write them.
+    pub fn mentions_note(&self, agent: &str) -> Option<String> {
+        let people = self.app_of(agent)?.mentions;
+        (!people.is_empty()).then(|| people.iter().map(|p| format!("{} (<@{}>)", p.name, p.id)).collect::<Vec<_>>().join(", "))
     }
 
     fn first_time(&self, key: String) -> bool {
@@ -666,6 +676,24 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
             start_app(app, &a.id);
         }
         "slack.app.remove" => remove_app(app, &agent()?.id).await,
+        "slack.app.mention" => {
+            let a = agent()?;
+            let user = msg["user"].as_str().unwrap_or("").trim().to_uppercase();
+            if !user_id_ok(&user) {
+                bail!("A Slack member ID looks like U0123ABCD. Find it in Slack under the person's profile, More, Copy member ID.");
+            }
+            let name = msg["name"].as_str().map(str::trim).filter(|n| !n.is_empty()).unwrap_or(&user).to_string();
+            slack.app_of(&a.id).context("Make its Slack app first.")?;
+            slack.update_app(&a.id, |r| {
+                r.mentions.retain(|p| p.id != user);
+                r.mentions.push(Person { id: user, name });
+            });
+        }
+        "slack.app.unmention" => {
+            let a = agent()?;
+            let user = msg["user"].as_str().context("missing `user`")?.to_string();
+            slack.update_app(&a.id, |r| r.mentions.retain(|p| p.id != user));
+        }
         "slack.tokens" => {
             let app_token = msg["appToken"].as_str().unwrap_or("").trim().to_string();
             let bot_token = msg["botToken"].as_str().unwrap_or("").trim().to_string();
@@ -1609,8 +1637,9 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
     let known = linked(slack, &key);
     if kind == "message" && !im {
         // A mention comes as app_mention too; a plain channel message counts
-        // only as a follow-up in a thread an agent already has.
-        if raw.contains(&mention) || known.is_none() || ev["thread_ts"].is_null() {
+        // only as a follow-up in a thread an agent already has, and not when
+        // it is addressed to someone else (a teammate, another agent's bot).
+        if raw.contains(&mention) || known.is_none() || ev["thread_ts"].is_null() || addressed_elsewhere(raw, &me.bot_user) {
             return Ok(());
         }
     }
@@ -1754,7 +1783,11 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
             eprintln!("yardd: {agent}: {text}");
         }
     };
-    let mut threads: Vec<(String, String, String, String)> = Vec::new();
+    let mentions_for = |o: &Value| match o["app"].as_str().filter(|a| !a.is_empty()) {
+        Some(agent) => slack.app_of(agent).map(|a| a.mentions.into_iter().map(|p| p.id).collect()).unwrap_or_default(),
+        None => Vec::new(),
+    };
+    let mut threads: Vec<(String, String, String, String, Vec<String>)> = Vec::new();
     for o in origins {
         let token = token_for(o);
         if token.is_empty() {
@@ -1763,7 +1796,7 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
             }
             continue;
         }
-        let t = (o["channel"].as_str().unwrap_or("").to_string(), o["threadTs"].as_str().unwrap_or("").to_string(), o["channelName"].as_str().unwrap_or("Slack").to_string(), token);
+        let t = (o["channel"].as_str().unwrap_or("").to_string(), o["threadTs"].as_str().unwrap_or("").to_string(), o["channelName"].as_str().unwrap_or("Slack").to_string(), token, mentions_for(o));
         if !t.0.is_empty() && !t.1.is_empty() && !threads.iter().any(|x| x.0 == t.0 && x.1 == t.1 && x.3 == t.3) {
             threads.push(t);
         }
@@ -1778,7 +1811,7 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
         "completed" => {
             let parts = match owed.text.trim() {
                 "" => vec![format!("{agent} finished without a written answer.")],
-                t => split(&to_mrkdwn(t), PART),
+                t => vec![t.to_string()],
             };
             (parts, Some("white_check_mark"))
         }
@@ -1787,7 +1820,10 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
         "failed" => (vec![why().map_or_else(|| format!("{agent} could not finish."), |w| format!("{agent} could not finish: {w}"))], Some("x")),
         _ => (vec![why().map_or_else(|| format!("Your message did not reach {agent}."), |w| format!("Your message did not reach {agent}: {w}"))], Some("x")),
     };
-    for (channel, thread, place, token) in &threads {
+    let answered = owed.status == "completed" && !owed.text.trim().is_empty();
+    for (channel, thread, place, token, mentions) in &threads {
+        // Each thread's app has its own people to mention.
+        let parts = if answered { split(&to_mrkdwn_with(&parts[0], mentions), PART) } else { parts.clone() };
         for part in &parts {
             if let Err(e) = slack.post(token, channel, thread, part).await {
                 note(format!("Could not post to Slack ({place}): {e:#}"));
@@ -1811,6 +1847,21 @@ fn clip_line(text: &str, max: usize) -> String {
         return line;
     }
     format!("{}…", line.chars().take(max - 1).collect::<String>())
+}
+
+/// The message @mentions a person, a user group or another bot, and not this
+/// bot: in a thread it shares, it is for them.
+pub fn addressed_elsewhere(text: &str, bot_user: &str) -> bool {
+    let others = text.match_indices("<@").any(|(i, _)| {
+        let id = &text[i + 2..];
+        let end = id.find(['>', '|']).unwrap_or(id.len());
+        id[..end] != *bot_user
+    });
+    let mentioned = text.match_indices("<@").any(|(i, _)| {
+        let id = &text[i + 2..];
+        id.strip_prefix(bot_user).is_some_and(|r| r.starts_with(['>', '|']))
+    });
+    (others || text.contains("<!subteam^")) && !mentioned
 }
 
 /// The text without the bot's leading @mention(s).
@@ -1904,6 +1955,11 @@ fn after_label<'a>(text: &'a str, label: &str) -> Option<&'a str> {
 /// bullets converted; `&`, `<` and `>` escaped everywhere, so an answer can
 /// never ping `<!channel>` or a user; code kept as code.
 pub fn to_mrkdwn(md: &str) -> String {
+    to_mrkdwn_with(md, &[])
+}
+
+/// `to_mrkdwn`, with `<@U…>` kept as a real mention for these users only.
+pub fn to_mrkdwn_with(md: &str, mentions: &[String]) -> String {
     let mut out = Vec::new();
     let mut fence = false;
     for line in md.lines() {
@@ -1922,11 +1978,11 @@ pub fn to_mrkdwn(md: &str) -> String {
         let indent = &line[..line.len() - line.trim_start().len()];
         let body = line.trim_start();
         let converted = if let Some(h) = heading(body) {
-            format!("*{}*", inline(h).replace('*', ""))
+            format!("*{}*", inline(h, mentions).replace('*', ""))
         } else if let Some(item) = ["- ", "* ", "+ "].iter().find_map(|b| body.strip_prefix(b)) {
-            format!("{indent}• {}", inline(item))
+            format!("{indent}• {}", inline(item, mentions))
         } else {
-            format!("{indent}{}", inline(body))
+            format!("{indent}{}", inline(body, mentions))
         };
         out.push(converted);
     }
@@ -1947,7 +2003,7 @@ fn heading(line: &str) -> Option<&str> {
 }
 
 /// Inline Markdown outside code spans.
-fn inline(line: &str) -> String {
+fn inline(line: &str, mentions: &[String]) -> String {
     let mut out = String::new();
     for (i, part) in line.split('`').enumerate() {
         if i > 0 {
@@ -1961,7 +2017,11 @@ fn inline(line: &str) -> String {
         let s = pairs(&s, "__", "\u{1}");
         let s = pairs(&s, "~~", "~");
         let s = pairs(&s, "*", "_");
-        out.push_str(&links(&s.replace('\u{1}', "*")));
+        let mut s = links(&s.replace('\u{1}', "*"));
+        for id in mentions {
+            s = s.replace(&format!("&lt;@{id}&gt;"), &format!("<@{id}>"));
+        }
+        out.push_str(&s);
     }
     out
 }
@@ -2091,6 +2151,13 @@ mod tests {
         assert_eq!(strip_mention("<@UBOT|switchyard>   <@UBOT> hi", "UBOT"), "hi");
         assert_eq!(strip_mention("hi <@UBOT>", "UBOT"), "hi <@UBOT>");
         assert_eq!(strip_mention("<@UBOTX> hi", "UBOT"), "<@UBOTX> hi");
+        assert!(addressed_elsewhere("<@U0MARC> please double check the PR", "UBOT"));
+        assert!(addressed_elsewhere("thanks <@U0MARC|marc>", "UBOT"));
+        assert!(addressed_elsewhere("<!subteam^S1|oncall> look", "UBOT"));
+        assert!(addressed_elsewhere("<@UBOTX> hi", "UBOT"));
+        assert!(!addressed_elsewhere("so? did we fix it?", "UBOT"));
+        assert!(!addressed_elsewhere("<@U0MARC> and <@UBOT> both look", "UBOT"));
+        assert!(!addressed_elsewhere("<@UBOT|on-call> hi", "UBOT"));
         assert_eq!(
             from_slack("see <https://x.dev/a?b=1&amp;c=2|the docs> and <https://y.dev>, ask <@U1> in <#C1|ops> &lt;now&gt; <!here>"),
             "see the docs (https://x.dev/a?b=1&c=2) and https://y.dev, ask @U1 in #ops <now> @here"
@@ -2107,6 +2174,16 @@ mod tests {
         // Code stays code: no conversion inside, the language dropped.
         assert_eq!(to_mrkdwn("run `a **b** c` then\n```rust\nlet x = **y** < 2;\n```"), "run `a **b** c` then\n```\nlet x = **y** &lt; 2;\n```");
         assert_eq!(to_mrkdwn("2 * 3 and a*b"), "2 * 3 and a*b");
+    }
+
+    #[test]
+    fn only_the_owners_chosen_people_can_be_mentioned() {
+        let ok = vec!["U1".to_string()];
+        assert_eq!(to_mrkdwn_with("cc <@U1> and <@U2>", &ok), "cc <@U1> and &lt;@U2&gt;");
+        assert_eq!(to_mrkdwn_with("<!channel> <!here> <@U1|x> <@U12>", &ok), "&lt;!channel&gt; &lt;!here&gt; &lt;@U1|x&gt; &lt;@U12&gt;");
+        assert_eq!(to_mrkdwn_with("- **ask** <@U1>, see [PR](https://x.dev/1)", &ok), "• *ask* <@U1>, see <https://x.dev/1|PR>");
+        assert_eq!(to_mrkdwn_with("code `<@U1>` stays", &ok), "code `&lt;@U1&gt;` stays");
+        assert_eq!(to_mrkdwn("<@U1>"), "&lt;@U1&gt;");
     }
 
     #[test]
