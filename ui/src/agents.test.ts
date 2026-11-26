@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Agent, SessionMeta } from "./protocol";
-import { AGENT_FACES, FACES, agentChoice, agentOf, blinkDelay, agentStatus, agentWhere, agentsAttention, cleanName, faceOf, handleBase, handleFor, handleOf, hostChange, initial, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, moveNote, nameProblem, originLabel, runsOn } from "./agents";
+import { AGENT_FACES, FACES, agentChoice, agentOf, blinkDelay, agentStatus, agentWhere, agentsAttention, cleanName, faceOf, handleBase, handleFor, handleOf, hostChange, initial, insertMention, isAgentConversation, isEarlierConversation, keptNote, leadingMention, matchAgents, mentionAt, moveNote, nameProblem, onHost, originLabel, relocated, runsOn } from "./agents";
 import { initial as empty, parseHash, reduce, routeHash } from "./store";
 
 const agent = (id: string, name: string, extra: Partial<Agent> = {}): Agent => ({
@@ -234,4 +234,43 @@ test("routes and the agents broadcast", () => {
   expect(s.agents.map((a) => a.id)).toEqual(["g0", "g1", "g2"]);
   // A remote host's own agents never replace the hub's.
   expect(reduce(s, { t: "server", msg: { op: "agents", hostId: "box", agents: [] } }).agents.length).toBe(3);
+});
+
+describe("agents that live on their host", () => {
+  const far = agent("h1~g7", "Far", { host: "h1", chat: "h1~s3" });
+  test("a host's agent's conversation is its own, by its prefixed id", () => {
+    expect(agentOf([far], session("h1~s3", { host: "h1" }))?.id).toBe("h1~g7");
+    expect(isAgentConversation(session("h1~s4", { host: "h1", agent: "g7" }), [far])).toBe(false);
+  });
+  test("names count per host", () => {
+    const both = [agent("g1", "Reviewer"), agent("h1~g2", "Reviewer", { host: "h1" })];
+    expect(onHost(both, "h1").map((a) => a.id)).toEqual(["h1~g2"]);
+    expect(nameProblem("Reviewer", onHost(both, "local"), "g9")).toContain("already called");
+    expect(nameProblem("Reviewer", onHost(both, "h2"), "g9")).toBeNull();
+  });
+  test("an agent's page follows it to its host, and back", () => {
+    expect(relocated([far], "h1~g7")).toBe("h1~g7");
+    expect(relocated([far], "g7")).toBe("h1~g7");
+    expect(relocated([agent("g7", "Far")], "h1~g7")).toBe("g7");
+    expect(relocated([far, agent("h2~g7", "Far", { host: "h2" })], "g7")).toBeNull();
+    expect(relocated([far], "g8")).toBeNull();
+    // The open page moves with it when the list changes, or when it is opened by its old id.
+    let s = reduce(empty, { t: "server", msg: { op: "agents", agents: [agent("g7", "Far")] } });
+    s = reduce(s, { t: "route", route: { page: "agent", id: "g7" } });
+    s = reduce(s, { t: "server", msg: { op: "agents", agents: [far] } });
+    expect(s.route).toEqual({ page: "agent", id: "h1~g7" });
+    expect(reduce(s, { t: "route", route: { page: "agentEdit", id: "g7" } }).route).toEqual({ page: "agentEdit", id: "h1~g7" });
+  });
+  test("an agent kept for an older host says to update it", () => {
+    const kept = agent("g5", "On-call", { host: "h1" });
+    const hosts = [{ id: "h1", name: "box", kind: "direct" as const, status: "connected" as const, ownAgents: false }];
+    expect(keptNote(kept, hosts)).toContain("Use Update Switchyard on box's card");
+    expect(keptNote(kept, [{ ...hosts[0], ownAgents: true }])).toBeNull();
+    expect(keptNote(kept, [{ ...hosts[0], ownAgents: undefined }])).toBeNull();
+    expect(keptNote(far, hosts)).toBeNull();
+    expect(keptNote(agent("g6", "Here"), hosts)).toBeNull();
+    // A host that refused it for good: why, whatever its version.
+    const refused = agent("g7", "On-call", { host: "h1", handOverError: "box runs On-call for another Mac, which keeps its record." });
+    expect(keptNote(refused, [{ ...hosts[0], ownAgents: true }])).toBe("On-call could not move to box: box runs On-call for another Mac, which keeps its record.");
+  });
 });

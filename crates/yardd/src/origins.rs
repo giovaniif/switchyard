@@ -26,6 +26,11 @@
 //! failed, to `reply`: one function with an arm per kind that wants an answer.
 //! Slack also hears, once per turn, that the turn waits on an approval
 //! (status `approval`, see `wants_approval_note`).
+//!
+//! A message a hub delivered to an agent another host owns carries the hub's
+//! id (`hub`): the agent that sent it, or the Slack bot it came in on, is on
+//! that hub, so the answer goes back there (`agent.hub.owed`) and the hub's
+//! own reply hook hands it out.
 
 use std::sync::Arc;
 
@@ -179,6 +184,25 @@ pub fn attr(text: &str) -> String {
 /// the kinds and fields yardd itself makes.
 pub fn from_hub(origin: &Value) -> Option<Value> {
     let text = |k: &str| origin[k].as_str().map(|s| clip(s, 200)).unwrap_or_default();
+    let mut o = from_hub_kind(origin, &text)?;
+    // Where its answer goes back to: the hub that delivered it.
+    if let Some(hub) = origin["hub"].as_str().filter(|h| hub_id_ok(h)) {
+        o["hub"] = json!(hub);
+    }
+    Some(o)
+}
+
+/// A hub's id as it names itself (`agent_tools::Tools::hub_id`).
+pub fn hub_id_ok(h: &str) -> bool {
+    !h.is_empty() && h.len() <= 64 && h.chars().all(|c| c.is_ascii_alphanumeric())
+}
+
+/// The hub an origin's answer goes back to, when it is not this yardd.
+fn answered_on(app: &App, origin: &Value) -> Option<String> {
+    origin["hub"].as_str().filter(|h| hub_id_ok(h) && *h != app.tools.hub_id()).map(str::to_string)
+}
+
+fn from_hub_kind(origin: &Value, text: &dyn Fn(&str) -> String) -> Option<Value> {
     match kind(origin) {
         "agent" | "agentReply" => {
             let mut o = json!({ "kind": kind(origin), "agentId": text("agentId"), "name": text("name"), "hops": hops(origin).min(MAX_HOPS + 1) });
@@ -228,11 +252,30 @@ pub async fn reply(app: &Arc<App>, owed: Owed) {
     let answerer = meta.as_ref().and_then(|m| m.agent.clone()).and_then(|id| app.agents.get(&id));
     if let Some(a) = answerer.as_ref().filter(|a| a.hosted) {
         if owed.origins.iter().any(reply_able) {
-            crate::agent_tools::owed_to_hub(app, a, &owed);
+            crate::agent_tools::owed_to_hub(app, &a.hub, a, &owed);
         }
         return;
     }
-    answer(app, answerer, owed).await;
+    // Messages a hub delivered here are answered on that hub.
+    let mut here = Vec::new();
+    let mut hubs: Vec<(String, Vec<Value>)> = Vec::new();
+    for o in owed.origins {
+        match answered_on(app, &o) {
+            Some(hub) if reply_able(&o) => match hubs.iter_mut().find(|(h, _)| *h == hub) {
+                Some((_, list)) => list.push(o),
+                None => hubs.push((hub, vec![o])),
+            },
+            Some(_) => {}
+            None => here.push(o),
+        }
+    }
+    if let Some(a) = &answerer {
+        for (hub, origins) in hubs {
+            let to_hub = Owed { sid: owed.sid.clone(), origins, status: owed.status.clone(), text: owed.text.clone() };
+            crate::agent_tools::owed_to_hub(app, &hub, a, &to_hub);
+        }
+    }
+    answer(app, answerer, Owed { origins: here, ..owed }).await;
 }
 
 /// One arm per kind. `answerer`: the agent whose turn it was, as this yardd

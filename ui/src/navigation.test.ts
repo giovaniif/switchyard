@@ -84,3 +84,13 @@ test("the highlight follows its entry when the list re-sorts", () => {
   expect(selectedIndex(after, "session-gone")).toBe(0);
   expect(selectedIndex([], "session-b")).toBe(0);
 });
+
+describe("a host's agents in Cmd-K", () => {
+  test("name their host and are found by it", () => {
+    const context = { localName: "This Mac", hosts: [{ id: "h1", name: "server" }], agents: [{ id: "h1~g1", name: "On-call", handle: "On-call", about: "Watches the pager", host: "h1" }, { id: "g2", name: "Scribe", about: "" }] };
+    const found = navigationEntries([], context, "server").filter((e) => e.group === "Agents");
+    expect(found.map((e) => e.id)).toEqual(["agent-h1~g1"]);
+    expect(found[0].detail).toBe("Watches the pager · server");
+    expect(navigationEntries([], context, "scribe").find((e) => e.group === "Agents")?.detail).toBe("Agent");
+  });
+});

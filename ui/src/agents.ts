@@ -1,6 +1,6 @@
 // Words and rules for agents (yardd's agents.rs): @mentions in a message,
 // the card's status line. Faces are in faces.ts. Pure, so bun test covers them.
-import type { Agent, AgentColor, MessageOrigin, Models, SessionMeta } from "./protocol";
+import type { Agent, AgentColor, HostEntry, MessageOrigin, Models, SessionMeta } from "./protocol";
 import { isSlack, slackFrom } from "./slack";
 import { ENGINE_NAME } from "./engines";
 
@@ -110,6 +110,35 @@ export function leadingMention(text: string, agents: Agent[]): { agent: Agent; r
 
 /** The host an agent runs on: `local`, or a remote host's id. */
 export const agentHost = (agent: Pick<Agent, "host">): string => agent.host || "local";
+
+/** The agents on one host: names are unique per host (yardd's agents.rs). */
+export const onHost = <A extends Pick<Agent, "host">>(agents: A[], host: string): A[] => agents.filter((a) => agentHost(a) === host);
+
+/** An agent's id without its host (`<hostId>~<id>` for a host's agent). */
+const bareId = (id: string) => id.slice(id.indexOf("~") + 1);
+
+/** Where an agent the page names went: itself, or the one agent with the
+ *  same id under another host, after it moved or its host took it over
+ *  from this Mac. Null when there is no such agent. */
+export function relocated(agents: Pick<Agent, "id">[], id: string): string | null {
+  if (agents.some((a) => a.id === id)) return id;
+  const same = agents.filter((a) => bareId(a.id) === bareId(id));
+  return same.length === 1 ? same[0].id : null;
+}
+
+/** An agent this Mac still keeps for a host whose Switchyard is too old to
+ *  own it (the older way: the record here, a hidden copy there). Its
+ *  Slack app and record stay on this Mac, so it stops while the Mac sleeps:
+ *  say what to do. Null for every other agent. */
+export function keptNote(agent: Pick<Agent, "id" | "host" | "name" | "handOverError">, hosts: HostEntry[]): string | null {
+  const host = agentHost(agent);
+  if (host === "local" || agent.id.includes("~")) return null;
+  const h = hosts.find((x) => x.id === host);
+  // Its host refused it for good (another Mac's copy there): yardd stopped trying.
+  if (agent.handOverError) return `${agent.name} could not move to ${h?.name ?? "its host"}: ${agent.handOverError}`;
+  if (!h || h.ownAgents !== false) return null;
+  return `${agent.name} still lives on this Mac because ${h.name} runs an older Switchyard. Use Update Switchyard on ${h.name}'s card in Hosts so it lives there and answers from any Mac.`;
+}
 
 /** The agent a session is a chat with: on this host by its tag; on a remote
  *  host only when one of the hub's agents names it as its conversation (or

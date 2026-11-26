@@ -133,6 +133,10 @@ export interface SlackView {
   publicCheck?: string | null;
   /** A new app's install can come back to Switchyard on its own (an https address). */
   canRedirect?: boolean;
+  /** Each remote host's side of it, for an agent there to get its own app
+   *  there: the host's workspaces and addresses. Its agents' apps are in
+   *  `agentApps` under their prefixed ids. */
+  hosts?: Record<string, { workspaces?: { teamId: string; teamName: string }[]; canRedirect?: boolean; publicUrl?: string }>;
 }
 
 /** The owner's own Slack app (yardd's slack.rs `me`): user scopes, his
@@ -286,6 +290,10 @@ export interface HostEntry {
   error?: string;
   /** SSH works but no yardd answered behind the tunnel: offer to install it. */
   noDaemon?: boolean;
+  /** Whether agents live on that host (yardd's agents.rs); false: its
+   *  Switchyard is older and needs Update Switchyard. Missing until it
+   *  connected once. */
+  ownAgents?: boolean;
 }
 
 export interface SessionUsage {
@@ -1058,7 +1066,9 @@ export interface AgentRequest {
   slack?: boolean;
 }
 
-/** A named agent, mentioned as `@handle`. Agents live on the hub (yardd's agents.rs). */
+/** A named agent, mentioned as `@handle`. An agent lives on the host it runs
+ *  on (yardd's agents.rs); this yardd lists its own and each host's, whose
+ *  ids are `<hostId>~<id>` like their sessions'. */
 export interface Agent {
   id: string;
   /** As people see it: any printable text, spaces and all, up to 40 characters. */
@@ -1084,7 +1094,7 @@ export interface Agent {
   instructions: string;
   /** What it keeps in mind across chats. */
   memory: string;
-  /** Its one conversation (a session id), made with its first message; every message to the agent goes there. */
+  /** Its one conversation (a session id), made with its first message; every message to the agent goes there. A host's agent's carries the host, like the agent's id. */
   chat?: string | null;
   /** Where its conversation runs: `local`, or a remote host's id (older yardds send none). */
   host?: string;
@@ -1097,6 +1107,9 @@ export interface Agent {
   /** The connectors (MCP servers) its sessions get; the owner's to set.
    *  Missing: every one but Metabase (a record saved before the list). */
   mcp?: string[] | null;
+  /** A record this Mac keeps for a host that refused to take it for good
+   *  (another Mac's copy is there): why, so its page can say so. */
+  handOverError?: string;
   createdAt: number;
   updatedAt: number;
 }

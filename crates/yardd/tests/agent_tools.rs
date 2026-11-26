@@ -429,7 +429,7 @@ fn saved_agent(sb: &Sandbox, id: &str) -> Value {
 }
 
 #[tokio::test]
-async fn a_remote_agents_tools_act_on_the_hub() {
+async fn an_agent_on_a_host_uses_its_tools_there_and_agents_reach_each_other_across_hosts() {
     let remote_sb = Sandbox::new("tools-far-remote");
     let remote = remote_sb.start();
     let hub_sb = Sandbox::new("tools-far-hub");
@@ -441,75 +441,93 @@ async fn a_remote_agents_tools_act_on_the_hub() {
     let from = c.mark();
     c.send(json!({ "op": "agent.save", "agent": { "name": "Far", "engine": "codex", "model": MODEL, "host": host, "memory": "TEST-old line" }, "ref": "far" })).await;
     let far = c.wait_after(from, "Far saved", |m| m["ref"] == "far").await["agent"]["id"].as_str().unwrap().to_string();
+    let far_own = far.split_once('~').unwrap().1.to_string();
+    // A neighbour on the same host.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "name": "Near", "engine": "codex", "model": MODEL, "host": host }, "ref": "near" })).await;
+    let near = c.wait_after(from, "Near saved", |m| m["ref"] == "near").await["agent"]["id"].as_str().unwrap().to_string();
 
-    // Far runs on the remote; its engine there gets the tools, and they act here.
+    // Far's tools act on its own host: its memory there, the agents there.
     let text = format!(
         "{} {} {}",
         marker("remember", json!({ "text": "TEST-deploys on Fridays" })),
-        marker("message_agent", json!({ "to": "Bea", "text": "TEST-what is 2+2?" })),
+        marker("message_agent", json!({ "to": "Near", "text": "TEST-what is 2+2?" })),
         marker("notify_owner", json!({ "message": "TEST-need the key" })),
     );
     let far_chat = ask(&mut c, &far, &text).await;
     assert!(far_chat.starts_with(&format!("{host}~")), "{far_chat}");
     c.wait_turn_done(&far_chat, 0).await;
-    let first = remote_sb.turn_inputs()[0][0]["text"].as_str().unwrap().to_string();
-    assert!(first.contains("message another agent") && first.contains("remember"), "the preamble names the tools: {first}");
-    assert!(results(&hub_sb, "remember").is_empty(), "the calls ran on the remote's engine");
-
-    // remember: the hub's record has it, every hub window hears, and the copy follows.
+    assert!(results(&hub_sb, "remember").is_empty(), "the calls ran on the remote");
     let r = &results(&remote_sb, "remember")[0];
-    assert_eq!(r["isError"], false, "{r}");
     assert_eq!(r["text"], "Saved. Your memory now:\nTEST-old line\nTEST-deploys on Fridays");
-    c.wait_for("Far's memory on the hub", |m| m["op"] == "agents" && m["agents"].as_array().unwrap().iter().any(|a| a["id"] == far.as_str() && a["memory"].as_str().is_some_and(|t| t.ends_with("TEST-deploys on Fridays")))).await;
-    assert_eq!(saved_agent(&hub_sb, &far)["memory"], "TEST-old line\nTEST-deploys on Fridays");
-    let copy = saved_agent(&remote_sb, &far);
-    assert_eq!(copy["hosted"], true);
-    assert_eq!(copy["memory"], "TEST-old line\nTEST-deploys on Fridays");
-    // ...without telling its engine of a change it made itself.
-    let seq = c.next_seq(&far_chat);
-    c.send(json!({ "op": "session.send", "sessionId": far_chat, "text": "TEST-next" })).await;
-    c.wait_turn_done(&far_chat, seq).await;
-    let inputs = remote_sb.turn_inputs();
-    assert!(inputs.iter().all(|i| !i[0]["text"].as_str().unwrap_or("").contains("<notes_changed>")), "{inputs:?}");
-
-    // The tools' description names the hub's agents, not the remote's.
-    let listed = calls(&remote_sb).into_iter().find(|r| r["listed"].is_array()).unwrap();
-    assert!(listed["messageAgent"].as_str().unwrap().contains("Agents: @Bea."), "{listed}");
-
-    // message_agent: Bea, on the hub, gets it from Far, and her answer goes back to Far's conversation there.
+    assert_eq!(saved_agent(&remote_sb, &far_own)["memory"], "TEST-old line\nTEST-deploys on Fridays");
+    c.wait_for("Far's memory listed on the hub", |m| m["op"] == "agents" && m["agents"].as_array().unwrap().iter().any(|a| a["id"] == far.as_str() && a["memory"].as_str().is_some_and(|t| t.ends_with("TEST-deploys on Fridays")))).await;
     let sent = &results(&remote_sb, "message_agent")[0];
-    assert!(sent["text"].as_str().unwrap().starts_with("Sent to @Bea (hop 1 of 3)."), "{sent}");
-    let bea_chat = chat_of(&mut c, &bea).await;
-    assert!(!bea_chat.contains('~'));
-    let got = from_kind(&mut c, &bea_chat, "agent").await;
-    assert_eq!(got["text"], "TEST-what is 2+2?");
-    assert_eq!(got["origin"], json!({ "kind": "agent", "agentId": far, "name": "Far", "handle": "Far", "hops": 1 }));
+    assert!(sent["text"].as_str().unwrap().starts_with("Sent to @Near (hop 1 of 3)."), "{sent}");
+    let near_chat = chat_of(&mut c, &near).await;
+    assert!(near_chat.starts_with(&format!("{host}~")));
     let back = from_kind(&mut c, &far_chat, "agentReply").await;
-    assert_eq!(back["origin"], json!({ "kind": "agentReply", "agentId": bea, "name": "Bea", "handle": "Bea", "hops": 1 }));
-    assert!(back["text"].as_str().unwrap().starts_with("Echo: <message from=\"@Far\">"), "{back}");
-    c.wait_turn_done(&far_chat, back["seq"].as_u64().unwrap()).await;
-    assert!(remote_sb.turn_inputs().iter().any(|i| i[0]["text"].as_str().unwrap_or("").starts_with("<reply from=\"@Bea\">")));
-
-    // notify_owner: the hub's windows get it, naming the conversation as they know it;
-    // the mark is on the conversation on the remote until a hub window opens it.
-    let note = c.log.iter().find(|m| m["op"] == "notify").cloned().expect("a notification on the hub");
+    assert_eq!(back["origin"]["name"], "Near");
+    // notify_owner reaches the hub's windows, naming the conversation as they know it.
+    let note = c.wait_for("a notification on the hub", |m| m["op"] == "notify").await;
     assert_eq!(note["title"], "Far needs you");
     assert_eq!(note["sessionId"], far_chat.as_str());
-    c.wait_for("needs you", |m| m["op"] == "session" && m["session"]["id"] == far_chat.as_str() && m["session"]["needsYou"]["message"] == "TEST-need the key").await;
     let from = c.mark();
     c.send(json!({ "op": "agent.seen", "agentId": far })).await;
     c.wait_after(from, "needs you cleared", |m| m["op"] == "session" && m["session"]["id"] == far_chat.as_str() && m["session"]["needsYou"].is_null()).await;
 
-    // The other way: Bea messages Far, and Far's answer, made on the remote, reaches Bea here.
-    let seq = c.next_seq(&bea_chat);
-    ask(&mut c, &bea, &marker("message_agent", json!({ "to": "far", "text": "TEST-ping far" }))).await;
-    c.wait_turn_done(&bea_chat, seq).await;
+    // An agent on the hub messages Far by its handle; Far's answer, made on
+    // the remote, comes back to it here.
+    let bea_chat = ask(&mut c, &bea, &marker("message_agent", json!({ "to": "Far", "text": "TEST-ping far" }))).await;
+    c.wait_turn_done(&bea_chat, 0).await;
+    let sent = &results(&hub_sb, "message_agent")[0];
+    assert!(sent["text"].as_str().unwrap().starts_with("Sent to @Far (hop 1 of 3)."), "{sent}");
     let got = c.wait_for("Bea's message at Far", |m| is_event(m, &far_chat) && m["event"]["origin"]["kind"] == "agent").await;
-    assert_eq!(got["event"]["origin"], json!({ "kind": "agent", "agentId": bea, "name": "Bea", "handle": "Bea", "hops": 1 }));
+    assert_eq!(got["event"]["origin"]["agentId"], bea.as_str());
+    assert_eq!(got["event"]["origin"]["name"], "Bea");
     let answer = c
         .wait_for("Far's answer at Bea", |m| is_event(m, &bea_chat) && m["event"]["origin"]["kind"] == "agentReply" && m["event"]["origin"]["agentId"] == far.as_str())
         .await;
     assert!(answer["event"]["text"].as_str().unwrap().contains("TEST-ping far"), "{answer}");
+    // list_agents on the hub names the host's agents too.
+    let listed = calls(&hub_sb).into_iter().find(|r| r["listed"].is_array()).unwrap();
+    assert!(listed["messageAgent"].as_str().unwrap().contains("@Far") && listed["messageAgent"].as_str().unwrap().contains("@Near"), "{listed}");
+}
+
+#[tokio::test]
+async fn a_kept_agents_tools_act_on_the_hub_while_its_host_is_older() {
+    // An older host: it runs the hub's copy, and passes its tool calls back.
+    let remote_sb = Sandbox::new("tools-kept-remote");
+    let remote = remote_sb.start_with(&[("YARD_TEST_HOSTED_ONLY", "1")]);
+    let hub_sb = Sandbox::new("tools-kept-hub");
+    let host = "hTEST3";
+    std::fs::write(hub_sb.data().join("hosts.json"), json!([{ "id": host, "name": "TEST-box", "kind": "direct", "url": remote.url() }]).to_string()).unwrap();
+    std::fs::write(
+        hub_sb.data().join("agents.json"),
+        json!([{ "id": "g-far", "name": "Far", "handle": "Far", "engine": "codex", "model": MODEL, "memory": "TEST-old line", "host": host, "createdAt": 1, "updatedAt": 1 }]).to_string(),
+    )
+    .unwrap();
+    let hub = hub_sb.start();
+    let mut c = hub.client().await;
+    ready(&mut c).await;
+    c.wait_for("the older host connected", |m| (m["op"] == "hosts" || m["op"] == "snapshot") && m["hosts"][0]["ownAgents"] == false).await;
+    let bea = codex_agent(&mut c, "Bea").await;
+    // Its first message hands the host the copy (`agent.hosted.save`).
+    let text = format!("{} {}", marker("remember", json!({ "text": "TEST-deploys on Fridays" })), marker("message_agent", json!({ "to": "Bea", "text": "TEST-what is 2+2?" })));
+    let far_chat = ask(&mut c, "g-far", &text).await;
+    assert!(far_chat.starts_with(&format!("{host}~")), "{far_chat}");
+    c.wait_turn_done(&far_chat, 0).await;
+    let r = &results(&remote_sb, "remember")[0];
+    assert_eq!(r["isError"], false, "{r}");
+    assert_eq!(saved_agent(&hub_sb, "g-far")["memory"], "TEST-old line\nTEST-deploys on Fridays");
+    let copy = saved_agent(&remote_sb, "g-far");
+    assert_eq!(copy["hosted"], true);
+    assert_eq!(copy["memory"], "TEST-old line\nTEST-deploys on Fridays");
+    let bea_chat = chat_of(&mut c, &bea).await;
+    let got = from_kind(&mut c, &bea_chat, "agent").await;
+    assert_eq!(got["origin"], json!({ "kind": "agent", "agentId": "g-far", "name": "Far", "handle": "Far", "hops": 1 }));
+    let back = from_kind(&mut c, &far_chat, "agentReply").await;
+    assert_eq!(back["origin"]["agentId"], bea.as_str());
 }
 
 /// What a hub sends a host that runs its agent, sent by hand.

@@ -29,8 +29,10 @@ saving the agent. An agent runs
 on this host or on a remote one, picked in its form with the host picker; the
 account picker shows when the engine has more than one account there. A
 remote agent's card and header name its host; while the host is offline they
-say so and nothing can be sent. Its tools (needs you, messaging another
-agent, its memory) act here on the hub, passed back by its host.
+say so and nothing can be sent. An agent belongs to the host it runs on: its
+record and its tools are there (its memory, the agents it messages), and any
+Mac that adds that host lists it, messages it and edits it; an agent here
+reaches it by its handle and gets its answer back.
 
 ## Setup
 
@@ -48,6 +50,7 @@ yv api '{"op":"account.add","engine":"codex","name":"TEST-Work","host":"{{box}}"
 ```sh
 yv iso down
 yv iso down --name map-agents-remote || true
+yv iso down --name map-agents-mac2 || true
 ```
 
 ## Recipes
@@ -327,20 +330,34 @@ takes a reply in the same thread.
 yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Remote\"] .agent-message"},{"expect":"css:.agent-bar","text":"TEST-agents-box"},{"fill":"label:Message","value":"TEST-from the phone"},{"press":"Enter"},{"expect":"css:.thread","text":"Echo: TEST-from the phone"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"remote-conversation"}]'
 ```
 
-### a-remote-agents-tools-act-on-the-hub
-An agent on a remote host has the same tools: they run on its host's engine
-and act here, where its record and the other agents are. Its `remember`
-lands in its form, its `message_agent` reaches an agent on this host and the
-answer comes back to its conversation there, and its `notify_owner` marks
-its card until the conversation is opened.
+### a-hosts-agents-tools-act-on-its-host
+An agent on a remote host belongs to it, and so do its tools: its
+`remember` lands in its record there (its form here shows it), and its
+`notify_owner` reaches this window and marks its card until the
+conversation is opened. An agent on this host messages it by its handle,
+and its answer, made on the remote, comes back here.
 
 ```sh
-yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --save far='agents[name=TEST-Remote].id'
-yv api '{"op":"agent.ask","agentId":"{{far}}","text":"[[tool remember {\"text\":\"TEST-the box builds nightly\"}]] [[tool message_agent {\"to\":\"TEST-Builder\",\"text\":\"TEST-is the build green?\"}]] [[tool notify_owner {\"message\":\"TEST-the box needs a reboot\"}]]"}' --wait '{"op":"notify","title":"TEST-Remote needs you","body":"TEST-the box needs a reboot"}'
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --save 'far=agents[name=TEST-Remote].id,builder=agents[name=TEST-Builder].id'
+yv api '{"op":"agent.ask","agentId":"{{far}}","text":"[[tool remember {\"text\":\"TEST-the box builds nightly\"}]] [[tool notify_owner {\"message\":\"TEST-the box needs a reboot\"}]]"}' --wait '{"op":"notify","title":"TEST-Remote needs you","body":"TEST-the box needs a reboot"}'
 yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"name":"TEST-Remote","memory":"TEST-the box builds nightly"}]}'
-yv drive new --viewport desktop --steps '[{"expect":"css:.nav-row .dot-needsYou"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Remote\"] .automation-status","hasText":"Needs you · TEST-the box needs a reboot"}},{"expect":"css:.agent-card[aria-label=\"TEST-Remote\"] .mark-approval .mark-bang"},{"shot":"remote-needs-you"},{"click":"css:.agent-card[aria-label=\"TEST-Remote\"] .agent-message"},{"expect":"css:.agent-bar","text":"TEST-agents-box"},{"expect":{"css":".origin-badge","hasText":"Reply from @TEST-Builder"}},{"expect":"css:.thread","text":"Sent to @TEST-Builder (hop 1 of 3)"},{"shot":"remote-reply"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Remote\"] .automation-status","hasText":"Needs you"},"count":0},{"click":"css:.agent-card[aria-label=\"TEST-Builder\"] .agent-message"},{"expect":{"css":".origin-badge","hasText":"From @TEST-Remote"}},{"expect":{"css":".user-message .bubble","hasText":"TEST-is the build green?"}},{"click":"role:button:Agents"},{"click":"role:button:Edit: TEST-Remote"},{"expect":"label:Memory","value":"TEST-the box builds nightly"},{"click":"role:button:Cancel"}]'
+yv api '{"op":"agent.ask","agentId":"{{builder}}","text":"[[tool message_agent {\"to\":\"TEST-Remote\",\"text\":\"TEST-is the build green?\"}]]"}' --wait '{"op":"event","event":{"type":"user_message","origin":{"kind":"agentReply","name":"TEST-Remote"}}}'
+yv drive new --viewport desktop --steps '[{"expect":"css:.nav-row .dot-needsYou"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Remote\"] .automation-status","hasText":"Needs you · TEST-the box needs a reboot"}},{"expect":"css:.agent-card[aria-label=\"TEST-Remote\"] .mark-approval .mark-bang"},{"shot":"remote-needs-you"},{"click":"css:.agent-card[aria-label=\"TEST-Remote\"] .agent-message"},{"expect":"css:.agent-bar","text":"TEST-agents-box"},{"expect":{"css":".origin-badge","hasText":"From @TEST-Builder"}},{"expect":{"css":".user-message .bubble","hasText":"TEST-is the build green?"}},{"shot":"remote-message"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Remote\"] .automation-status","hasText":"Needs you"},"count":0},{"click":"css:.agent-card[aria-label=\"TEST-Builder\"] .agent-message"},{"expect":{"css":".origin-badge","hasText":"Reply from @TEST-Remote"}},{"expect":"css:.thread","text":"Sent to @TEST-Remote (hop 1 of 3)"},{"shot":"reply-here"},{"click":"role:button:Agents"},{"click":"role:button:Edit: TEST-Remote"},{"expect":"label:Memory","value":"TEST-the box builds nightly"},{"click":"role:button:Cancel"}]'
 yv api '{"op":"agent.ask","agentId":"{{far}}","text":"[[tool notify_owner {\"message\":\"TEST-still needs that reboot\"}]]"}' --wait '{"op":"notify","title":"TEST-Remote needs you"}'
-yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":"css:.nav-row .dot-needsYou"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Remote\"] .automation-status","hasText":"Needs you · TEST-still needs that reboot"}},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"eval":"document.querySelector(\".agent-card[aria-label=\\\"TEST-Remote\\\"]\").scrollIntoView({block:\"center\"}) ?? true","equals":true},{"wait":700},{"shot":"remote-needs-you"},{"click":"css:.agent-card[aria-label=\"TEST-Remote\"] .agent-message"},{"expect":{"css":".origin-badge","hasText":"Reply from @TEST-Builder"}},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"remote-reply"},{"click":"role:button:Open sessions"},{"expect":"css:.nav-row .dot-needsYou","count":0}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":"css:.nav-row .dot-needsYou"},{"click":"role:button:Agents"},{"expect":{"css":".agent-card[aria-label=\"TEST-Remote\"] .automation-status","hasText":"Needs you · TEST-still needs that reboot"}},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"eval":"document.querySelector(\".agent-card[aria-label=\\\"TEST-Remote\\\"]\").scrollIntoView({block:\"center\"}) ?? true","equals":true},{"wait":700},{"shot":"remote-needs-you"},{"click":"css:.agent-card[aria-label=\"TEST-Remote\"] .agent-message"},{"expect":{"css":".origin-badge","hasText":"From @TEST-Builder"}},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"remote-message"},{"click":"role:button:Open sessions"},{"expect":"css:.nav-row .dot-needsYou","count":0}]'
+```
+
+### a-second-mac-lists-the-hosts-agents
+Another Mac (a second hub) that adds the same host lists that host's agents
+with its own, each naming the host, and opens and messages them: the agent
+lives on the host, not on the Mac that made it.
+
+```sh
+yv iso up --name map-agents-mac2 --host-name TEST-second-mac
+yv api '{"op":"host.add","name":"TEST-agents-box","kind":"direct","url":"ws://127.0.0.1:'"$(v remote_port)"'/ws"}' --iso map-agents-mac2 --wait '{"op":"hosts","hosts":[{"name":"TEST-agents-box","status":"connected"}]}'
+yv api '{"op":"agent.list"}' --iso map-agents-mac2 --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"name":"TEST-Remote","memory":"TEST-the box builds nightly"}]}' --save far2='agents[name=TEST-Remote].id'
+yv drive agents --iso map-agents-mac2 --viewport desktop --steps '[{"expect":{"css":".agent-card[aria-label=\"TEST-Remote\"] .agent-runs-remote","hasText":"TEST-agents-box"}},{"expect":{"css":".agent-card","hasText":"TEST-Reviewer"},"count":0},{"shot":"second-mac-agents"},{"click":"css:.agent-card[aria-label=\"TEST-Remote\"] .agent-message"},{"expect":"css:.agent-bar","text":"TEST-agents-box"},{"expect":{"css":".user-message .bubble","hasText":"TEST-is the build green?"}},{"fill":"label:Message","value":"TEST-from the second Mac"},{"press":"Enter"},{"expect":"css:.thread","text":"Echo: TEST-from the second Mac"},{"shot":"second-mac-conversation"}]'
+yv drive agents --iso map-agents-mac2 --viewport mobile --steps '[{"expect":{"css":".agent-card[aria-label=\"TEST-Remote\"] .agent-runs-remote","hasText":"TEST-agents-box"}},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"second-mac-agents"},{"click":"role:button:Open sessions"},{"expect":{"css":".agent-dms .session-row","hasText":"TEST-Remote"}},{"shot":"second-mac-sidebar"}]'
 ```
 
 ### moving-an-agent-says-what-happens-to-its-conversation
@@ -364,7 +381,7 @@ nothing.
 yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST Domain Desk\"] .agent-message"},{"click":{"css":".composer .chip"}},{"click":{"css":".picker-item","hasText":"TEST-agents-box"}},{"expect":"role:group:Move TEST Domain Desk","text":"Its conversation stays on"},{"expect":"role:button:Move to TEST-agents-box"},{"shot":"move-asks-first"},{"click":"role:button:Keep it here"},{"expect":"role:group:Move TEST Domain Desk","count":0}]'
 yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"id":"{{domains}}","host":"local"}]}'
 yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label=\"TEST Pickers\"] .agent-message"},{"click":{"css":".new-chips .chip"}},{"click":{"css":".picker-item","hasText":"TEST-agents-box"}},{"expect":{"css":".new-chips .chip","hasText":"TEST-agents-box"}},{"expect":"css:.agent-bar","text":"TEST-agents-box"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"moved"}]'
-yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"id":"{{pickers}}","host":"{{box}}"}]}'
+yv api '{"op":"agent.list"}' --wait '{"op":"agents"}' --expect '{"op":"agents","agents":[{"id":"{{box}}~{{pickers}}","host":"{{box}}"}]}'
 ```
 
 ### a-remote-agents-host-offline
@@ -388,8 +405,8 @@ agent shows the same badge as a working session. On a phone they are in the
 drawer, inside the window.
 
 ```sh
-yv drive new --viewport desktop --steps '[{"expect":"role:group:Agents"},{"expect":{"css":".agent-dms .session-row","hasText":"TEST-Reviewer"}},{"expect":{"css":".agent-dms .session-row .agent-avatar"}},{"eval":"document.querySelector(\".session-list\").lastElementChild.classList.contains(\"agent-dms\")","equals":true},{"click":{"css":".agent-dms .session-row","hasText":"TEST-Reviewer"}},{"expect":"css:.agent-bar","text":"TEST-Reviewer"},{"expect":{"css":".agent-dms .session-row.active","hasText":"TEST-Reviewer"}},{"shot":"sidebar"}]'
-yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"wait":500},{"expect":{"css":".agent-dms .session-row","hasText":"TEST-Reviewer"},"inViewport":true},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"drawer"}]'
+yv drive new --viewport desktop --steps '[{"expect":"role:group:Agents"},{"expect":{"css":".agent-dms .session-row","hasText":"TEST-Builder"}},{"expect":{"css":".agent-dms .session-row .agent-avatar"}},{"eval":"document.querySelector(\".session-list\").lastElementChild.classList.contains(\"agent-dms\")","equals":true},{"click":{"css":".agent-dms .session-row","hasText":"TEST-Builder"}},{"expect":"css:.agent-bar","text":"TEST-Builder"},{"expect":{"css":".agent-dms .session-row.active","hasText":"TEST-Builder"}},{"shot":"sidebar"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"wait":500},{"expect":{"css":".agent-dms .session-row","hasText":"TEST-Builder"},"inViewport":true},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"drawer"}]'
 ```
 
 Slack DMs and channel threads open from **Slack places** on the agent’s page.
@@ -409,10 +426,12 @@ Slack-origin badge in `answer-in-the-slack-thread`.
 - A fresh engine context (a full context, a lost thread, a new model) is
   covered by `tests/agents.rs`, not here: its only sign in the UI is a note
   line in the thread.
-- An agent's move between hosts (its old conversation left readable, the
-  next one seeded with the latest exchanges), the preamble, changed notes and
-  a fresh context on a remote are covered by `tests/agents.rs` against two
-  daemons; here only the form's note about a move is driven.
-- A remote agent's tools when its host cannot reach the hub (the call says
-  so), and a host copy from a hub that does not answer tools (no tools
-  offered), are covered by `tests/agent_tools.rs`, not here.
+- An agent's move between hosts (the record handed over, its old
+  conversation left as an ordinary session, the next one seeded with the
+  latest exchanges), the hand-over of records an older hub kept (and an older
+  host keeping its copy), the preamble, changed notes and a fresh context on
+  a remote are covered by `tests/agents.rs` against two or three daemons;
+  here the form's note about a move and a move from the box are driven.
+- A kept record's tools when its host is older (they act on the hub), and a
+  host copy from a hub that does not answer tools (no tools offered), are
+  covered by `tests/agent_tools.rs`, not here.

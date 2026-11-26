@@ -44,6 +44,7 @@ import { createNotifier } from "./notify";
 import { inMobileApp, type MobileStatus } from "./mobile";
 import { base64ToBlob, fileToBase64, Replies, tooLarge } from "./attach";
 import { fileError } from "./fileLinks";
+import { relocated } from "./agents";
 
 /** Where an upload goes: a host from the new-session page, or the host of a
  *  session from its reply box. Empty means this machine. */
@@ -161,7 +162,8 @@ export interface State {
   slackInbox: SlackConversation[];
   /** Loaded messages, by `pageKey` (a conversation, or a thread). */
   slackPages: Record<string, SlackPage>;
-  /** The hub's agents (agents live on this yardd only). */
+  /** Every agent this yardd lists: its own, then each host's (ids
+   *  `<hostId>~<id>`), merged by yardd (agents.rs `shown`). */
   agents: Agent[];
   connected: boolean;
   route: Route;
@@ -312,7 +314,15 @@ function releaseApprovals(threads: Record<string, Thread>): Record<string, Threa
 /** Opens a route; a session not listed yet waits in `restore`. */
 export function go(state: State, route: Route): State {
   if (route.page === "session" && !state.sessions[route.id]) return { ...state, route: { page: "new" }, restore: route.id };
-  return { ...state, route, restore: null };
+  return { ...state, route: followAgent(state.agents, route), restore: null };
+}
+
+/** An agent's page follows the agent when it moved to another host (its id
+ *  there carries the host) or its host took it over from this Mac. */
+function followAgent(agents: Agent[], route: Route): Route {
+  if (route.page !== "agent" && route.page !== "agentEdit") return route;
+  const id = relocated(agents, route.id);
+  return id && id !== route.id ? { ...route, id } : route;
 }
 
 function restored(state: State): State {
@@ -412,8 +422,11 @@ function reduceServer(state: State, msg: any): State {
   switch (msg.op) {
     case "mobile.status":
       return msg.hostId ? { ...state, hostMobile: { ...state.hostMobile, [msg.hostId]: msg.mobile } } : { ...state, mobile: msg.mobile };
-    case "agents":
-      return msg.hostId ? state : { ...state, agents: (msg.agents as Agent[] | undefined) ?? [] };
+    case "agents": {
+      if (msg.hostId) return state;
+      const agents = (msg.agents as Agent[] | undefined) ?? [];
+      return { ...state, agents, route: followAgent(agents, state.route) };
+    }
     case "slack":
       return msg.hostId ? state : { ...state, slack: msg.slack as SlackView };
     case "slack.inbox": {

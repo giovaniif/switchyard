@@ -6,7 +6,7 @@
 import { createElement, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Agent, AgentColor, AgentFace, AgentRequest, Attachment, Engine, Permission } from "./protocol";
 import { accountsOn, hostName, hostOf, hostOnline, homeOn, modelsOn, type Actions, type State, type UploadTarget } from "./store";
-import { AGENT_COLORS, AGENT_NAME_MAX, agentChoice, agentHost, agentStatus, agentWhere, cleanName, conversationOf, handleFor, handleOf, hostChange, leadingMention, moveNote, nameProblem, runsOn, type AgentTone } from "./agents";
+import { AGENT_COLORS, AGENT_NAME_MAX, agentChoice, agentHost, agentStatus, agentWhere, cleanName, conversationOf, handleFor, handleOf, hostChange, keptNote, leadingMention, moveNote, nameProblem, onHost, runsOn, type AgentTone } from "./agents";
 import { AGENT_FACES, blinkDelay, detailFor, faceOf, faceTree, type SvgNode } from "./faces";
 import { DEFAULT_ACCOUNT, accountChoices, accountLabel, accountName, choiceOnEngine } from "./accounts";
 import { pickerEngines, shownEffort } from "./engines";
@@ -407,7 +407,7 @@ export function AgentName({ state, actions, agent }: { state: State; actions: Ac
       value={agent.name}
       label="Rename"
       maxLength={AGENT_NAME_MAX + 8}
-      problem={(text) => nameProblem(text, state.agents, agent.id)}
+      problem={(text) => nameProblem(text, onHost(state.agents, agentHost(agent)), agent.id)}
       onSave={async (name) => (await actions.saveAgent({ id: agent.id, name: cleanName(name) })).error ?? null}
     />
   );
@@ -481,12 +481,22 @@ function RunsLine({ state, agent, className }: { state: State; agent: Agent; cla
 }
 
 /** A note per conversation the agent left on a host it moved away from,
- *  opening it (read-only there). Newest first. */
+ *  opening it (read-only there). Newest first. Above them, for an agent
+ *  this Mac still keeps for a host too old to own it, what to do. */
 export function EarlierConversations({ state, actions, agent }: { state: State; actions: Actions; agent: Agent }) {
   const earlier = [...(agent.previous ?? [])].reverse().filter((id) => state.sessions[id]);
-  if (!earlier.length) return null;
+  const kept = keptNote(agent, state.hosts);
+  if (!earlier.length && !kept) return null;
   return (
     <>
+      {kept && (
+        <div className="note agent-earlier agent-kept" role="status">
+          {kept}
+          <button className="btn-text note-link" onClick={() => actions.go({ page: "hosts" })}>
+            Open Hosts
+          </button>
+        </div>
+      )}
       {earlier.map((id) => (
         <div key={id} className="note agent-earlier">
           Earlier messages with {agent.name} are on {hostName(state, hostOf(state.sessions[id]))}.
@@ -929,8 +939,10 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
     if (next) setChoice(next);
   };
   // A typed name's problem shows by the field: the foot of the form is below the fold.
-  const nameIssue = name ? nameProblem(name, state.agents, existing?.id) : null;
-  const problem = nameProblem(name, state.agents, existing?.id) ?? (!choice.model ? "Pick a model." : null);
+  // Names and handles are unique per host.
+  const neighbours = onHost(state.agents, host);
+  const nameIssue = name ? nameProblem(name, neighbours, existing?.id) : null;
+  const problem = nameProblem(name, neighbours, existing?.id) ?? (!choice.model ? "Pick a model." : null);
   const save = async () => {
     setSaving(true);
     setError(null);
@@ -1007,7 +1019,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
                 </span>
               ) : (
                 <span className="muted small">
-                  {name.trim() ? `Mention it as @${handleFor(name, state.agents, existing?.id)} in any message.` : "A word or a few: it is @mentioned by a handle made from them."} Or tell it what to change in its conversation.
+                  {name.trim() ? `Mention it as @${handleFor(name, neighbours, existing?.id)} in any message.` : "A word or a few: it is @mentioned by a handle made from them."} Or tell it what to change in its conversation.
                 </span>
               )}
             </div>

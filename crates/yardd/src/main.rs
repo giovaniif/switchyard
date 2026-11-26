@@ -139,6 +139,7 @@ async fn main() -> anyhow::Result<()> {
 
     tokio::spawn(naming::run(app.clone(), app.take_naming()));
     tokio::spawn(agents::run_turn_ends(app.clone(), app.agents.take_turn_ends()));
+    tokio::spawn(agents::keep_settling(app.clone()));
     tokio::spawn(origins::run(app.clone(), app.take_replies()));
 
     // Start Codex in the background so the model list is ready early.

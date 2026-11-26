@@ -456,7 +456,7 @@ async fn an_agents_app_takes_human_messages_and_answers_in_the_thread() {
 async fn slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_the_thread() {
     let fake = FakeSlack::start();
     let remote_sb = Sandbox::new("slack-far-remote");
-    let remote = remote_sb.start();
+    let remote = remote_sb.start_with(&[("YARD_SLACK_API", &fake.api()), ("YARD_ALLOW_ORIGIN", ORIGIN)]);
     let sb = Sandbox::new("slack-far-hub");
     let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api()), ("YARD_ALLOW_ORIGIN", ORIGIN)]);
     let mut c = daemon.client().await;
@@ -468,8 +468,11 @@ async fn slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_th
     let from = c.mark();
     c.send(json!({ "op": "agent.save", "agent": { "name": "Far", "engine": "codex", "model": MODEL, "effort": EFFORT, "host": host }, "ref": "far" })).await;
     let far = c.wait_after(from, "Far saved", |m| m["ref"] == "far").await["agent"]["id"].as_str().unwrap().to_string();
-    // Its app lives on the hub, like Slack itself.
-    agent_app(&mut c, daemon.port, &far).await;
+    // Its app lives on its host, with the agent, made from the hub's window
+    // (Slack sends the browser back to the host).
+    agent_app(&mut c, remote.port, &far).await;
+    assert!(std::fs::read_to_string(remote_sb.data().join("slack.json")).unwrap().contains("xapp-1-agent-TEST"));
+    assert!(!std::fs::read_to_string(sb.data().join("slack.json")).unwrap_or_default().contains("xapp-1-agent-TEST"));
 
     // Its conversation on the remote gets the message with its Slack origin...
     let ts = fake.say(json!({ "app": "agent", "user": "UOWNER", "text": "TEST-how is the box?" }));
@@ -483,7 +486,7 @@ async fn slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_th
     assert_eq!(msgs[0]["origin"]["userName"], "TEST-Owner");
     let input = remote_sb.turn_inputs()[0][0]["text"].as_str().unwrap().to_string();
     assert!(input.contains("<slack from=\"TEST-Owner\" in=\"a direct message\">\nTEST-how is the box?\n</slack>"), "{input}");
-    // ...and the answer the remote's turn made is posted from the hub, in that thread.
+    // ...and the answer the remote's turn made is posted by its app, in that thread.
     let st = fake.wait("the answer in the thread", |s| !FakeSlack::posts(s, &ts).is_empty() && s["reactions"][&ts] == json!(["white_check_mark"])).await;
     let answer = FakeSlack::posts(&st, &ts);
     assert_eq!(answer.len(), 1);
@@ -1576,4 +1579,188 @@ async fn an_agent_called_in_another_case_still_hears_it() {
     let ts = sent["ts"].as_str().unwrap().to_string();
     let posted = fake.state()["posts"].as_array().unwrap().iter().find(|p| p["ts"] == ts.as_str()).cloned().unwrap();
     assert_eq!(posted["text"], "<@UAGENT> please, not @Reviewers");
+}
+
+#[tokio::test]
+async fn an_agents_own_slack_app_moves_with_it_and_answers_from_its_host_while_the_hub_sleeps() {
+    let fake = FakeSlack::start();
+    let api = fake.api();
+    let remote_sb = Sandbox::new("slack-move-remote");
+    let remote = remote_sb.start_with(&[("YARD_SLACK_API", api.as_str())]);
+    let sb = Sandbox::new("slack-move-hub");
+    let env = [("YARD_SLACK_API", api.as_str()), ("YARD_ALLOW_ORIGIN", "https://yard.test")];
+    let d = sb.start_with(&env);
+    let mut c = d.client().await;
+    ready(&mut c).await;
+    c.send(json!({ "op": "host.add", "name": "TEST-box", "kind": "direct", "url": remote.url() })).await;
+    let hosts = c.wait_for("the remote connected", |m| m["op"] == "hosts" && m["hosts"][0]["status"] == "connected" && m["hosts"][0]["ownAgents"] == true).await;
+    let host = hosts["hosts"][0]["id"].as_str().unwrap().to_string();
+    c.wait_for("the remote's models", |m| (m["op"] == "host.snapshot" || m["op"] == "models") && m["hostId"] == host.as_str() && m["models"]["codex"].as_array().is_some_and(|a| !a.is_empty())).await;
+    let id = reviewer(&mut c).await;
+
+    // Its own app, made and connected here.
+    let s = step(&mut c, json!({ "op": "slack.grant", "token": "xoxe-1-TEST-refresh", "agentId": id, "origin": "https://yard.test" })).await.unwrap();
+    let url = s["agentApps"][&id]["authorizeUrl"].as_str().unwrap().to_string();
+    let state = url.split("&state=").nth(1).unwrap().to_string();
+    let port = d.port;
+    let path = format!("/slack/oauth?code=TEST-code&state={state}");
+    assert!(tokio::task::spawn_blocking(move || http_get(port, &path).unwrap()).await.unwrap().contains("installed in Slack"));
+    step(&mut c, json!({ "op": "slack.app.appToken", "agentId": id, "token": "xapp-1-agent-TEST" })).await.unwrap();
+    slack_state(&mut c, "its app connected here", |s| s["agentApps"][&id]["state"] == "connected").await;
+
+    // It moves to the server: its app goes with it and connects from there.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "id": id, "host": host }, "ref": "move" })).await;
+    let moved = c.wait_after(from, "the move", |m| m["ref"] == "move").await;
+    assert_eq!(moved["op"], "agent.saved", "{moved}");
+    let far = moved["agent"]["id"].as_str().unwrap().to_string();
+    assert_eq!(far, format!("{host}~{id}"));
+    slack_state(&mut c, "its app connected from the server", |s| s["agentApps"][&far]["state"] == "connected" && s["agentApps"].get(&id).is_none()).await;
+    let here: Value = serde_json::from_str(&std::fs::read_to_string(sb.data().join("slack.json")).unwrap()).unwrap();
+    assert!(here["apps"].as_array().unwrap().is_empty(), "{here}");
+    let there = std::fs::read_to_string(remote_sb.data().join("slack.json")).unwrap();
+    assert!(there.contains("xapp-1-agent-TEST") && there.contains("UOWNER"));
+    // Nothing was deleted in Slack.
+    assert!(fake.state()["deleted"].as_array().map_or(true, |l| l.is_empty()));
+
+    // The Mac sleeps; a mention of its bot is still answered, from the server.
+    drop(c);
+    d.stop();
+    let ts = fake.say(json!({ "app": "agent", "user": "UOWNER", "channel": "C0OPS", "text": "<@UAGENT> TEST-are you there?" }));
+    let st = fake.wait("its answer from the server", |s| !FakeSlack::posts(s, &ts).is_empty() && s["reactions"][&ts] == json!(["white_check_mark"])).await;
+    assert!(FakeSlack::posts(&st, &ts)[0].contains("TEST-are you there?"));
+    let input = remote_sb.turn_inputs()[0][0]["text"].as_str().unwrap().to_string();
+    assert!(input.contains("TEST-are you there?"), "{input}");
+}
+
+#[tokio::test]
+async fn a_moved_agents_slack_places_and_approvals_stay_on_the_host_they_were_made_on() {
+    let fake = FakeSlack::start();
+    let api = fake.api();
+    let remote_sb = Sandbox::new("slack-places-move-remote");
+    let remote = remote_sb.start_with(&[("YARD_SLACK_API", api.as_str())]);
+    let sb = Sandbox::new("slack-places-move-hub");
+    let d = sb.start_with(&[("YARD_SLACK_API", api.as_str()), ("YARD_ALLOW_ORIGIN", ORIGIN)]);
+    let mut c = d.client().await;
+    ready(&mut c).await;
+    c.send(json!({ "op": "host.add", "name": "TEST-box", "kind": "direct", "url": remote.url() })).await;
+    let hosts = c.wait_for("the remote connected", |m| m["op"] == "hosts" && m["hosts"][0]["status"] == "connected" && m["hosts"][0]["ownAgents"] == true).await;
+    let host = hosts["hosts"][0]["id"].as_str().unwrap().to_string();
+    c.wait_for("the remote's models", |m| (m["op"] == "host.snapshot" || m["op"] == "models") && m["hostId"] == host.as_str() && m["models"]["codex"].as_array().is_some_and(|a| !a.is_empty())).await;
+    let id = reviewer(&mut c).await;
+    agent_app(&mut c, d.port, &id).await;
+    let histories = || fake.state()["calls"].as_array().unwrap().iter().filter(|c| c["method"] == "conversations.history").count();
+    let places_of = |s: &Value, agent: &str| -> Vec<Value> { s["places"].as_array().unwrap().iter().filter(|p| p["agentId"] == agent).cloned().collect() };
+    // The Slack view as it is after `from` (earlier ones may match too).
+    async fn slack_after(c: &mut Client, from: usize, what: &str, pred: impl Fn(&Value) -> bool) -> Value {
+        c.wait_after(from, what, |m| m["op"] == "slack" && pred(&m["slack"])).await["slack"].clone()
+    }
+
+    // Here: the owner's DM, and a guest whose request waits for him.
+    fake.say(json!({ "app": "agent", "user": "UOWNER", "text": "TEST-before the move" }));
+    let old_dm = place_of(&mut c, &id, "T0TEST/D0OWNER/").await;
+    c.wait_turn_done(&old_dm, 0).await;
+    fake.say(json!({ "app": "agent", "channel": "DSTRANGER", "user": "USTRANGER", "text": "TEST-guest before the move" }));
+    let guest = place_of(&mut c, &id, "T0TEST/DSTRANGER/").await;
+    let card = c.wait_event(&guest, "approval_request", 0).await;
+    let request = card["requestId"].clone();
+    approval_dm(&fake, request.as_str().unwrap()).await;
+
+    // It moves to the box. Its places and approvals are this host's and do
+    // not go with it; none of its old places is listed for it any more.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "id": id, "host": host }, "ref": "away" })).await;
+    let far = c.wait_after(from, "the move", |m| m["ref"] == "away").await["agent"]["id"].as_str().unwrap().to_string();
+    let s = slack_after(&mut c, from, "its app connected from the box", |s| s["agentApps"][&far]["state"] == "connected" && s["agentApps"].get(&id).is_none()).await;
+    assert!(places_of(&s, &id).is_empty() && places_of(&s, &far).is_empty(), "{s:#}");
+    let there: Value = serde_json::from_str(&std::fs::read_to_string(remote_sb.data().join("slack.json")).unwrap()).unwrap();
+    assert!(there["places"].as_array().map_or(true, |l| l.is_empty()) && there["approvals"].as_object().map_or(true, |m| m.is_empty()), "{there:#}");
+    // The guest's request from before can only be denied.
+    let allow = json!({ "op": "session.approve", "sessionId": guest, "requestId": request, "decision": "allow", "ref": "allow" });
+    async fn refusal(c: &mut Client, msg: Value) -> String {
+        let from = c.mark();
+        c.send(msg).await;
+        c.wait_after(from, "the approval refused", |m| m["op"] == "error" && m["ref"] == "allow").await["message"].as_str().unwrap().to_string()
+    }
+    assert!(refusal(&mut c, allow.clone()).await.contains("can still deny"));
+
+    // The owner writes again: a new conversation on the box, listed on the
+    // hub under the agent's id there.
+    let before = histories();
+    fake.say(json!({ "app": "agent", "user": "UOWNER", "text": "TEST-on the box" }));
+    let box_dm = place_of(&mut c, &far, "T0TEST/D0OWNER/").await;
+    assert!(box_dm.starts_with(&format!("{host}~")), "{box_dm}");
+    c.wait_turn_done(&box_dm, 0).await;
+    assert_eq!(histories(), before + 1, "a new place reads the conversation's history");
+    assert_eq!(remote_sb.turn_inputs().len(), 1);
+
+    // Back here: what this host kept from before the move routes nothing.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "id": far, "host": "local" }, "ref": "back" })).await;
+    assert_eq!(c.wait_after(from, "the move back", |m| m["ref"] == "back").await["agent"]["id"], id.as_str());
+    let s = slack_after(&mut c, from, "its app connected here again", |s| s["agentApps"][&id]["state"] == "connected" && s["agentApps"].get(&far).is_none()).await;
+    assert!(places_of(&s, &id).is_empty() && places_of(&s, &far).is_empty(), "{s:#}");
+    assert!(refusal(&mut c, allow).await.contains("can still deny"), "an approval from before a move came back to life");
+    let seq = c.next_seq(&guest);
+    c.send(json!({ "op": "session.approve", "sessionId": guest, "requestId": request, "decision": "deny" })).await;
+    c.wait_event(&guest, "approval_resolved", seq).await;
+    let before = histories();
+    let inputs = sb.turn_inputs().len();
+    let from = c.mark();
+    fake.say(json!({ "app": "agent", "user": "UOWNER", "text": "TEST-back here" }));
+    let s = slack_after(&mut c, from, "a new DM place here", |s| places_of(s, &id).iter().any(|p| p["key"] == "T0TEST/D0OWNER/")).await;
+    let here = places_of(&s, &id);
+    assert_eq!(here.len(), 1, "{here:?}");
+    let new_dm = here[0]["sessionId"].as_str().unwrap().to_string();
+    assert!(new_dm != old_dm && !new_dm.contains('~'), "{new_dm}");
+    c.wait_turn_done(&new_dm, 0).await;
+    assert_eq!(histories(), before + 1, "the old place counted as this conversation's");
+    assert_eq!(sb.turn_inputs().len(), inputs + 1);
+    assert!(sb.turn_inputs().last().unwrap()[0]["text"].as_str().unwrap().contains("TEST-back here"));
+}
+
+#[tokio::test]
+async fn an_app_being_handed_over_is_not_deleted_in_slack_until_its_old_host_let_go() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-handover-delete");
+    let d = sb.start_with(&[("YARD_SLACK_API", fake.api().as_str())]);
+    let mut c = d.client().await;
+    ready(&mut c).await;
+    let hub = "0123456789abcdef0123456789abcdef";
+    let workspace = json!({ "teamId": "T0TEST", "teamName": "TEST-workspace", "userId": "UOWNER", "refreshToken": "xoxe-1-TEST", "accessToken": "xoxe.xoxp-TEST", "expiresAt": 4_000_000_000_000u64 });
+    let step = |c: &mut Client, msg: Value| {
+        let r = format!("r{}", c.mark());
+        let mut msg = msg;
+        msg["ref"] = json!(r);
+        (msg, r)
+    };
+    async fn answer(c: &mut Client, (msg, r): (Value, String)) -> Value {
+        let from = c.mark();
+        c.send(msg).await;
+        c.wait_after(from, "the answer", |m| m["ref"] == r.as_str()).await
+    }
+    for (id, app_id) in [("g-moving", "A-TEST-moving"), ("g-settled", "A-TEST-settled"), ("g-stays", "A-TEST-stays")] {
+        let msg = json!({ "op": "agent.adopt", "hub": hub, "transfer": format!("t-{id}"),
+            "agent": { "id": id, "name": id, "engine": "codex", "model": MODEL, "createdAt": 1, "updatedAt": 1 },
+            "slack": { "app": { "agent": id, "teamId": "T0TEST", "appId": app_id, "botToken": "xoxb-TEST", "manifest": "{}" }, "workspace": workspace } });
+        let s = step(&mut c, msg);
+        assert_eq!(answer(&mut c, s).await["op"], "agent.adopted");
+    }
+    // The hosts they left let go of two; one settles with the wrong hand-over, which counts for nothing.
+    for (id, t) in [("g-settled", "t-g-settled"), ("g-stays", "t-g-stays"), ("g-moving", "t-some-other-move")] {
+        let s = step(&mut c, json!({ "op": "agent.settled", "id": id, "transfer": t }));
+        assert_eq!(answer(&mut c, s).await["op"], "agent.settled");
+    }
+    // One starts to leave, and the move is abandoned: it is this host's alone again.
+    let s = step(&mut c, json!({ "op": "agent.export", "id": "g-stays", "transfer": "t-away" }));
+    assert_eq!(answer(&mut c, s).await["op"], "agent.exported");
+    let s = step(&mut c, json!({ "op": "agent.abandon", "id": "g-stays", "transfer": "t-away" }));
+    assert_eq!(answer(&mut c, s).await["op"], "agent.abandoned");
+    // Deleting the one still being handed over leaves its app in Slack: the
+    // other host may run it. The others' apps are deleted as usual.
+    for id in ["g-moving", "g-settled", "g-stays"] {
+        let s = step(&mut c, json!({ "op": "agent.delete", "id": id }));
+        assert_eq!(answer(&mut c, s).await["op"], "agent.deleted");
+    }
+    assert_eq!(fake.state()["deleted"], json!(["A-TEST-settled", "A-TEST-stays"]));
 }

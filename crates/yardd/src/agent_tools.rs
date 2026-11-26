@@ -408,8 +408,10 @@ fn same(a: &str, b: &str) -> bool {
     a.to_lowercase() == b.to_lowercase()
 }
 
+/// The agents `me` can message: every agent this yardd lists, its hosts'
+/// included (`agents::everyone`).
 fn others(app: &App, me: &crate::agents::Agent) -> Vec<crate::agents::Agent> {
-    serde_json::from_value::<Vec<crate::agents::Agent>>(app.agents.list()).unwrap_or_default().into_iter().filter(|a| a.id != me.id).collect()
+    crate::agents::everyone(app).into_iter().filter(|a| a.id != me.id).collect()
 }
 
 pub fn at_clock(ms: u64) -> String {
@@ -682,7 +684,14 @@ pub async fn from_host(app: &Arc<App>, host: &str, msg: &Value) -> Option<Value>
             Some(answer)
         }
         Some("agent.hub.owed") => {
-            if let Some(me) = me {
+            // One of this hub's agents kept there, or one that host owns,
+            // answering messages this hub delivered (`origins::reply`).
+            let owned = || -> Option<crate::agents::Agent> {
+                let h = app.remotes.agents_of(host)?;
+                let a = h.agents.list.iter().find(|a| a["id"] == id)?;
+                serde_json::from_value(crate::remote::prefixed_agent(host, a)).ok()
+            };
+            if let Some(me) = me.or_else(owned) {
                 let owed = origins::Owed {
                     sid,
                     origins: origins_in(&msg["origins"]),
@@ -697,16 +706,18 @@ pub async fn from_host(app: &Arc<App>, host: &str, msg: &Value) -> Option<Value>
     }
 }
 
-/// On a remote: a hub's agent answered messages from agents, which are on
-/// the hub. Sent now, or when the hub connects again.
-pub fn owed_to_hub(app: &App, a: &crate::agents::Agent, owed: &origins::Owed) {
-    if a.hub.is_empty() {
+/// On a remote: an agent answered messages that came from `hub` (its
+/// agents, or Slack through it): a hub's agent kept here, or one of this
+/// host's own that the hub delivered a message to. Sent now, or when the hub
+/// connects again.
+pub fn owed_to_hub(app: &App, hub: &str, a: &crate::agents::Agent, owed: &origins::Owed) {
+    if hub.is_empty() {
         eprintln!("yardd: {}'s hub does not take answers back; dropped one", a.name);
         return;
     }
     let msg = json!({ "op": "agent.hub.owed", "agentId": a.id, "sessionId": owed.sid, "origins": owed.origins, "status": owed.status, "text": owed.text });
     let mut outbox = app.tools.outbox.lock().unwrap();
-    if let Some(conn) = app.tools.hub(&a.hub) {
+    if let Some(conn) = app.tools.hub(hub) {
         if conn.send(msg.to_string()).is_ok() {
             return;
         }
@@ -714,7 +725,7 @@ pub fn owed_to_hub(app: &App, a: &crate::agents::Agent, owed: &origins::Owed) {
     if outbox.len() >= OUTBOX_MAX {
         outbox.remove(0);
     }
-    outbox.push((a.hub.clone(), msg));
+    outbox.push((hub.to_string(), msg));
 }
 
 /// `yardd agent-tools`: the stdio MCP server an agent's engine launches.

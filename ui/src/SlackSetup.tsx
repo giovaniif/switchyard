@@ -11,7 +11,8 @@ import { useState } from "react";
 import type { Agent, SlackAgentApp } from "./protocol";
 import type { Actions, SlackAppOp, State } from "./store";
 import { Icon } from "./App";
-import { setupSteps, tokensNeeded } from "./slack";
+import { hostSlack, setupSteps, tokensNeeded } from "./slack";
+import { agentHost } from "./agents";
 
 /** Slack, drawn as the hash of its logo. */
 export const SLACK_MARK = "M9.5 4.5v15M14.5 4.5v15M4.5 9.5h15M4.5 14.5h15";
@@ -50,8 +51,10 @@ export function TokenField({ label, placeholder, busy, button, onSubmit }: { lab
 }
 
 export function SlackSetup({ state, actions, agent, onClose }: { state: State; actions: Actions; agent: Agent; onClose(): void }) {
-  const view = state.slack;
-  const s = view?.agentApps?.[agent.id];
+  // The app is made and runs on the agent's own host: that host's
+  // workspaces and addresses count (`hostSlack`).
+  const view = hostSlack(state.slack, agentHost(agent));
+  const s = state.slack?.agentApps?.[agent.id];
   const workspaces = view?.workspaces ?? [];
   const [addWorkspace, setAddWorkspace] = useState(false);
   const [busy, setBusy] = useState(false);
