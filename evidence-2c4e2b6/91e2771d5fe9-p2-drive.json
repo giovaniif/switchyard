@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "f88718f5a2ba518b2f58b0b5fd9bbe7151eb2e13",
+    "short": "f88718f",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T02:28:50.754Z"
+  },
+  "dir": ".verify/evidence/time-fields3-bd",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 3872,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/time-fields3-bd/window-row-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/time-fields3-bd/daily-time-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

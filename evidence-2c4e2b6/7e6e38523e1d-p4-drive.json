@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "2c4e2b659eabed001b62f957548b667ab6674d8b",
+    "short": "2c4e2b6",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T02:29:11.055Z"
+  },
+  "dir": ".verify/evidence/time-fields3-hm",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4489,
+      "steps": 11,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/time-fields3-hm/window-row-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/time-fields3-hm/daily-time-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "(() => { const s = document.querySelector(\"[aria-label='Window start']\").getBoundingClientRect(), e = document.querySelector(\"[aria-label='Window end']\").getBoundingClientRect(), n = document.querySelector(\"[aria-label='Repeat every']\").getBoundingClientRect(); return Math.abs(s.top - e.top) < 2 && s.width <= n.width + 0.5 && e.width <= n.width + 0.5 && e.right <= innerWidth; })()",
+          "value": true
+        },
+        {
+          "step": 9,
+          "eval": "document.querySelector(\"[aria-label='Time']\").getBoundingClientRect().width <= 80.5",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

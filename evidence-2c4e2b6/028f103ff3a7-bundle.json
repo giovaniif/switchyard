@@ -1,0 +1,216 @@
+{
+  "v": 1,
+  "claim": "Automation form at 390 px: the HH:MM fields (Window start/end, daily Time) took a text input's default width, so 'Only between 21:00 and 09:00' wrapped 09:00 onto its own line; they should fit five characters like Repeat every",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-fb24",
+  "base": "5551b1304d6e4d1408c38dc09e5e9f555c41e3f6",
+  "head": "2c4e2b659eabed001b62f957548b667ab6674d8b",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/automations.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T02:28:35.011Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "f88718f5a2ba518b2f58b0b5fd9bbe7151eb2e13",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "8e19ce248877dd83f3c90ceac4e2e1d11da325920570889abb16c1c22fc9f271"
+        },
+        {
+          "path": "p1-window-row-mobile.png",
+          "sha256": "1c29cb026693dc7e14b1de7551ca9d4d8d82febf94a744fe916eddfce25bf1a1"
+        },
+        {
+          "path": "p1-daily-time-mobile.png",
+          "sha256": "580d0e0df83927fb996a1805d8477d66d138f861e0efbfce772e4c28e9235d26"
+        }
+      ],
+      "addedAt": "2026-11-26T02:29:01.064Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "f88718f5a2ba518b2f58b0b5fd9bbe7151eb2e13",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "91e2771d5fe960297cc4121609f078fa6dc66fdcfc1bbf6a00a836754eb92e0b"
+        },
+        {
+          "path": "p2-window-row-desktop.png",
+          "sha256": "701d6a0cb6022947f883a6ecd4c9a664349359a8952b76b2d3445d6d51aa1b1b"
+        },
+        {
+          "path": "p2-daily-time-desktop.png",
+          "sha256": "f62766d22c724008fd492527a7e232557307e151d91522dc1cebccfd57fe3e1d"
+        }
+      ],
+      "addedAt": "2026-11-26T02:29:01.116Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "f88718f5a2ba518b2f58b0b5fd9bbe7151eb2e13",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "6a7c31bbd81fcda3b9177a26872798cebf7c72210470bee22cfa7d1b2e24106f"
+        }
+      ],
+      "addedAt": "2026-11-26T02:29:01.167Z",
+      "cmd": "verify/yv map run automations --recipe time-fields-fit-hh-mm",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "2c4e2b659eabed001b62f957548b667ab6674d8b",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "7e6e38523e1d61fe8162e0328461b89a5047b0c86f6fb0feaae444e04724bc5b"
+        },
+        {
+          "path": "p4-window-row-mobile.png",
+          "sha256": "03fb49682e4219b93e1ef30aab4c567d1afb54b6df1fb6fa90304fc24462e6c6"
+        },
+        {
+          "path": "p4-daily-time-mobile.png",
+          "sha256": "a17dce5440804c3966beeb1f12390bfc9048c41bc785a5d26b145219a6a02e7b"
+        }
+      ],
+      "addedAt": "2026-11-26T02:29:20.399Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "2c4e2b659eabed001b62f957548b667ab6674d8b",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "681b77de9715d6ae9e83bc7d246f76447ebee7375347fd9bc1363d703f8bc7b5"
+        },
+        {
+          "path": "p5-window-row-desktop.png",
+          "sha256": "bc40fda7c6005ad46dda9e2fa0a94cd56c03de5a5c4453e4d0e3a04a836dbbf5"
+        },
+        {
+          "path": "p5-daily-time-desktop.png",
+          "sha256": "b5d637e61ce7518d3a1b1579ee8dc1ea40d3c950c64f754efb93fee95233f538"
+        }
+      ],
+      "addedAt": "2026-11-26T02:29:20.444Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "2c4e2b659eabed001b62f957548b667ab6674d8b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "40716ca5ac56160f8a9efa044f9ec1cddf6171824176605627b1a209889950f5"
+        }
+      ],
+      "addedAt": "2026-11-26T02:29:20.491Z",
+      "cmd": "verify/yv design-check --base 5551b1304d6e",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "test",
+      "at": "2c4e2b659eabed001b62f957548b667ab6674d8b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-cmd.log",
+          "sha256": "4b0450efeb228cc65c0643796da5eed1223f9da3035006d5dc4534df1f16177e"
+        }
+      ],
+      "addedAt": "2026-11-26T02:29:20.579Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run automations --recipe time-fields-fit-hh-mm",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "2c4e2b659eabed001b62f957548b667ab6674d8b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-automations.json",
+          "sha256": "9be3acc769cf05a4cbb4db815b11da0c05bbc8a7354758d013e055214a486664"
+        }
+      ],
+      "addedAt": "2026-11-26T02:29:31.478Z",
+      "cmd": "verify/yv map run automations",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "automations/list-shows-schedule-next-and-last",
+        "automations/create-from-the-form",
+        "automations/run-now-archives-and-lists-the-run",
+        "automations/pinning-a-run-brings-it-back",
+        "automations/run-time-is-how-long-it-ran",
+        "automations/grid-of-cards-and-the-run-strip",
+        "automations/edit-changes-the-schedule",
+        "automations/edit-keeps-an-unlisted-model",
+        "automations/disable-stops-the-schedule",
+        "automations/reload-and-back-keep-the-page",
+        "automations/delete-removes-the-automation-and-frees-its-runs",
+        "automations/claude-usage-limit-skips",
+        "automations/run-now-failure-says-why-once",
+        "automations/interval-and-weekly-schedules-from-the-form",
+        "automations/a-working-run-dots-the-automations-button",
+        "automations/manual-run-with-its-own-prompt",
+        "automations/time-fields-fit-hh-mm",
+        "automations/interval-active-window",
+        "automations/a-run-waiting-for-approval-marks-the-button-amber",
+        "automations/next-run-stays-in-view-with-a-window"
+      ]
+    }
+  ]
+}
