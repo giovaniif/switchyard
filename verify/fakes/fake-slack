@@ -38,6 +38,18 @@
 // token. Its app-level token has "you" in it and opens the `you` socket. A
 // user token works for auth.test, users.info and conversations.info.
 //
+// The owner's own DMs (his user token): users.conversations lists D0ANA (a DM
+// with UANA "TEST-Ana": two messages 70-80 days old, three in the last days,
+// one with a thread reply; read up to two days ago, so one is unread),
+// G0TRIO (a group DM with Ana and the stranger, one unread message 5 days old) and
+// D0QUIET (a DM with UOLD whose only message is 100 days old).
+// conversations.history (oldest, latest, limit, cursor; top-level messages,
+// newest first), conversations.replies, conversations.members and
+// conversations.info (`last_read`) read them. A message sent to the `you`
+// socket (`app: "you"`) is added to its conversation (a new D… id becomes a DM
+// with its sender) with a real-time ts. POST /_fake/raw {app, event} sends one
+// event as it is (an edit, a deletion, a reaction).
+//
 // Control, for tests:
 //   POST /_fake/message {user, text, channel?, thread_ts?, bot_id?, subtype?, mention?,
 //                        username?, bot_profile?, attachments?, blocks?}
@@ -55,7 +67,9 @@
 //        Answers {ts, results: [{status, body}]}.
 //   POST /_fake/challenge {url, sign?}  Slack's url_verification of `url`
 //   POST /_fake/lapse                  the configuration tokens given so far stop working
-//   GET  /_fake/state                  {connections, opens, acks, calls, posts, ephemerals, reactions, manifests, updates, icons, deleted}
+//   GET  /_fake/state                  {connections, opens, acks, calls, posts, ephemerals, reactions, manifests, updates, icons, deleted, marks}
+// The owner's posts (his user token: chat.postMessage, reactions, conversations.mark)
+// are recorded too, posts with `app: "you"`.
 
 const args = process.argv.slice(2);
 const arg = (name) => {
@@ -65,7 +79,7 @@ const arg = (name) => {
 
 const BOT = "UBOT";
 const AGENT_BOT = "UAGENT";
-const USERS = { UOWNER: "TEST-Owner", USTRANGER: "TEST-Stranger" };
+const USERS = { UOWNER: "TEST-Owner", USTRANGER: "TEST-Stranger", UANA: "TEST-Ana", UOLD: "TEST-Old" };
 const CHANNELS = { C0GENERAL: "general", C0OPS: "ops", C0DEV: "dev", C0INCIDENT: "incidents" };
 
 let clock = 1_700_000_000;
@@ -85,6 +99,33 @@ const lapsed = (token) => {
   return n > 0 && n <= lapsedUpTo;
 };
 const sockets = new Set();
+
+// The owner's own conversations, with real-time timestamps.
+let realN = 0;
+const realTs = (secondsAgo = 0) => `${Math.floor(Date.now() / 1000) - secondsAgo}.${String(++realN).padStart(6, "0")}`;
+const DAY = 86400;
+const inbox = {
+  D0ANA: { kind: "im", user: "UANA", members: ["UOWNER", "UANA"], messages: [] },
+  G0TRIO: { kind: "mpim", name: "mpdm-test-ana--test-stranger--test-owner-1", members: ["UOWNER", "UANA", "USTRANGER"], messages: [] },
+  D0QUIET: { kind: "im", user: "UOLD", members: ["UOWNER", "UOLD"], messages: [] },
+};
+{
+  const ana = inbox.D0ANA.messages;
+  ana.push({ type: "message", user: "UANA", text: "TEST-old news", ts: realTs(80 * DAY) });
+  ana.push({ type: "message", user: "UANA", text: "TEST-older still", ts: realTs(70 * DAY) });
+  ana.push({ type: "message", user: "UANA", text: "TEST-are you around? *bold* <https://example.com|a link>", ts: realTs(3 * DAY) });
+  const yes = { type: "message", user: "UOWNER", text: "TEST-yes, <@UANA>", ts: realTs(2 * DAY) };
+  ana.push(yes);
+  inbox.D0ANA.last_read = yes.ts;
+  const lunch = { type: "message", user: "UANA", text: "TEST-lunch tomorrow?", ts: realTs(DAY), reply_count: 1, reactions: [{ name: "thumbsup", users: ["UOWNER"], count: 1 }] };
+  ana.push(lunch);
+  ana.push({ type: "message", user: "UOWNER", text: "TEST-sure, noon", ts: realTs(DAY - 60), thread_ts: lunch.ts });
+  lunch.thread_ts = lunch.ts;
+  inbox.G0TRIO.messages.push({ type: "message", user: "USTRANGER", text: "TEST-hello all", ts: realTs(5 * DAY) });
+  inbox.G0TRIO.last_read = "1000000000.000000";
+  inbox.D0QUIET.messages.push({ type: "message", user: "UOLD", text: "TEST-ancient", ts: realTs(100 * DAY) });
+}
+const topLevel = (m) => !m.thread_ts || m.thread_ts === m.ts || m.subtype === "thread_broadcast";
 
 const tokenKind = (auth) => {
   const token = (auth || "").replace(/^Bearer\s+/i, "");
@@ -171,6 +212,16 @@ function api(method, p, auth, port) {
       if (p.client_id === "C0YOU") return { ok: true, app_id: "A0YOU", team: { id: "T0TEST", name: "TEST-workspace" }, authed_user: { id: "UOWNER", scope: "im:history,im:read", access_token: "xoxp-you-TEST", token_type: "user" } };
       return { ok: true, access_token: "xoxb-agent-TEST", token_type: "bot", bot_user_id: AGENT_BOT, app_id: "A0AGENT", team: { id: "T0TEST", name: "TEST-workspace" }, authed_user: { id: "UOWNER" } };
     case "chat.postMessage": {
+      if (kind === "user" && !token.includes("bad")) {
+        const c = inbox[p.channel];
+        if (!c) return { ok: false, error: "channel_not_found" };
+        if (!p.text) return { ok: false, error: "no_text" };
+        const ts = realTs();
+        const message = { type: "message", user: "UOWNER", text: p.text, ts, ...(p.thread_ts ? { thread_ts: p.thread_ts } : {}) };
+        c.messages.push(message);
+        state.posts.push({ channel: p.channel, thread_ts: p.thread_ts ?? null, text: p.text, ts, app: "you" });
+        return { ok: true, channel: p.channel, ts, message };
+      }
       if (kind !== "bot") return refused;
       if (!p.channel) return { ok: false, error: "channel_not_found" };
       if (!p.text) return { ok: false, error: "no_text" };
@@ -183,9 +234,13 @@ function api(method, p, auth, port) {
       if (kind !== "bot") return refused;
       state.ephemerals.push({ channel: p.channel, user: p.user, text: p.text });
       return { ok: true, message_ts: nextTs() };
+    case "conversations.mark":
+      if (kind !== "user") return refused;
+      (state.marks ??= []).push({ channel: p.channel, ts: p.ts });
+      return { ok: true };
     case "reactions.add":
     case "reactions.remove": {
-      if (kind !== "bot") return refused;
+      if (kind !== "bot" && kind !== "user") return refused;
       const list = (state.reactions[p.timestamp] ??= []);
       if (method === "reactions.add") {
         if (list.includes(p.name)) return { ok: false, error: "already_reacted" };
@@ -201,7 +256,39 @@ function api(method, p, auth, port) {
       const name = USERS[p.user] ?? `TEST-${p.user}`;
       return { ok: true, user: { id: p.user, name: name.toLowerCase(), real_name: name, profile: { display_name: name, real_name: name } } };
     }
+    case "users.conversations": {
+      if (kind !== "user") return refused;
+      const channels = Object.entries(inbox).map(([id, c]) => (c.kind === "im" ? { id, is_im: true, user: c.user, is_user_deleted: false } : { id, is_mpim: true, name: c.name }));
+      return { ok: true, channels, response_metadata: { next_cursor: "" } };
+    }
+    case "conversations.history": {
+      if (kind !== "user") return refused;
+      const c = inbox[p.channel];
+      if (!c) return { ok: false, error: "channel_not_found" };
+      const limit = Number(p.limit ?? 100);
+      const from = Number(p.cursor ?? 0);
+      const all = c.messages.filter(topLevel).filter((m) => (!p.oldest || m.ts > p.oldest) && (!p.latest || m.ts < p.latest)).sort((a, b) => (a.ts < b.ts ? 1 : -1));
+      const page = all.slice(from, from + limit);
+      const more = from + limit < all.length;
+      return { ok: true, messages: page, has_more: more, response_metadata: { next_cursor: more ? String(from + limit) : "" } };
+    }
+    case "conversations.replies": {
+      if (kind !== "user") return refused;
+      const c = inbox[p.channel];
+      if (!c) return { ok: false, error: "channel_not_found" };
+      const messages = c.messages.filter((m) => m.ts === p.ts || m.thread_ts === p.ts).sort((a, b) => (a.ts < b.ts ? -1 : 1));
+      return { ok: true, messages, has_more: false };
+    }
+    case "conversations.members": {
+      if (kind !== "user") return refused;
+      const c = inbox[p.channel];
+      return c ? { ok: true, members: c.members, response_metadata: { next_cursor: "" } } : { ok: false, error: "channel_not_found" };
+    }
     case "conversations.info": {
+      if (kind === "user" && inbox[p.channel]) {
+        const c = inbox[p.channel];
+        return { ok: true, channel: c.kind === "im" ? { id: p.channel, is_im: true, user: c.user, last_read: c.last_read ?? "0000000000.000000" } : { id: p.channel, is_mpim: true, name: c.name, last_read: c.last_read ?? "0000000000.000000" } };
+      }
       if (kind !== "bot" && kind !== "user") return refused;
       const id = p.channel ?? "";
       if (id.startsWith("D")) return { ok: true, channel: { id, is_im: true, user: "UOWNER" } };
@@ -219,20 +306,25 @@ function send(envelope, app) {
 
 function eventsFor(p) {
   const channel = p.channel ?? "D0OWNER";
-  const ts = p.ts ?? nextTs();
+  const ts = p.ts ?? (p.app === "you" ? realTs() : nextTs());
   const im = channel.startsWith("D");
   const base = { user: p.user ?? "UOWNER", text: p.text ?? "", channel, ts, event_ts: ts, team: "T0TEST" };
   // An integration's post (`subtype: bot_message`) often has no user at all.
   if (p.user === null) delete base.user;
   if (p.thread_ts) base.thread_ts = p.thread_ts;
   for (const k of ["bot_id", "subtype", "username", "bot_profile", "attachments", "blocks"]) if (p[k]) base[k] = p[k];
-  const list = [{ ...base, type: "message", channel_type: im ? "im" : channel.startsWith("G") ? "group" : "channel" }];
+  const list = [{ ...base, type: "message", channel_type: p.channel_type ?? (im ? "im" : channel.startsWith("G") ? "group" : "channel") }];
   if (!im && (base.text.includes(`<@${BOT}>`) || base.text.includes(`<@${AGENT_BOT}>`))) list.unshift({ ...base, type: "app_mention" });
   return { ts, list };
 }
 
 function events(p) {
   const { ts, list } = eventsFor(p);
+  if (p.app === "you") {
+    const c = (inbox[list[0].channel] ??= { kind: "im", user: list[0].user, members: ["UOWNER", list[0].user], messages: [] });
+    const { type, channel_type, event_ts, team, ...m } = list[list.length - 1];
+    c.messages.push({ type: "message", ...m });
+  }
   const envelopes = list.map((event) => {
     const id = `TEST-env-${++envelopeN}`;
     send({ envelope_id: id, type: "events_api", accepts_response_payload: false, retry_attempt: 0, retry_reason: "", payload: { type: "event_callback", team_id: "T0TEST", api_app_id: "A0TEST", event, event_id: `Ev${envelopeN}`, event_time: clock } }, p.app);
@@ -290,6 +382,12 @@ const server = Bun.serve({
       return json(api(method, p, auth, server.port));
     }
     if (url.pathname === "/_fake/message" && req.method === "POST") return json(events(await req.json()));
+    if (url.pathname === "/_fake/raw" && req.method === "POST") {
+      const p = await req.json();
+      const id = `TEST-env-${++envelopeN}`;
+      send({ envelope_id: id, type: "events_api", accepts_response_payload: false, retry_attempt: 0, retry_reason: "", payload: { type: "event_callback", team_id: "T0TEST", api_app_id: "A0TEST", event: p.event, event_id: `Ev${envelopeN}`, event_time: clock } }, p.app);
+      return json({ envelope: id });
+    }
     if (url.pathname === "/_fake/event" && req.method === "POST") return json(await httpEvents(await req.json()));
     if (url.pathname === "/_fake/challenge" && req.method === "POST") {
       const p = await req.json();
