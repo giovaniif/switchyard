@@ -164,6 +164,9 @@ pub struct Session {
     /// The engine's own id for this conversation (Codex thread id, Claude Code
     /// session id). Saved so a session restored after a restart can resume.
     pub engine_ref: Option<String>,
+    /// When the session last did anything (an event, an engine attached), in
+    /// ms: an engine idle for long enough is let go (see `release`).
+    pub active_at: u64,
 }
 
 /// When queued messages reach the agent.
@@ -219,6 +222,8 @@ pub struct App {
     /// (see `origins::reply`); drained by a task in main.
     replies: mpsc::UnboundedSender<crate::origins::Owed>,
     replies_rx: Mutex<Option<mpsc::UnboundedReceiver<crate::origins::Owed>>>,
+    /// Wakes the idle-engine sweep early (see `release`).
+    pub release_now: tokio::sync::Notify,
     next: AtomicU64,
 }
 
@@ -278,6 +283,7 @@ impl App {
             naming_rx: Mutex::new(Some(naming_rx)),
             replies,
             replies_rx: Mutex::new(Some(replies_rx)),
+            release_now: tokio::sync::Notify::new(),
             next: AtomicU64::new(1),
         }
     }
@@ -366,6 +372,15 @@ impl App {
     /// The Codex client's slot for an account.
     pub fn codex_cell(&self, account: &str) -> Arc<OnceCell<Arc<crate::codex::Client>>> {
         self.codex.lock().unwrap().entry(account.to_string()).or_default().clone()
+    }
+
+    /// Forget an account's app-server that exited, so the next use starts a
+    /// new one. Only if the slot still holds that one.
+    pub fn codex_exited(&self, account: &str, client: &Arc<crate::codex::Client>) {
+        let mut map = self.codex.lock().unwrap();
+        if map.get(account).and_then(|c| c.get()).is_some_and(|c| Arc::ptr_eq(c, client)) {
+            map.remove(account);
+        }
     }
 
     /// The account's app-server, if one is running.
@@ -484,6 +499,7 @@ impl App {
                     events: Vec::new(),
                     backend: Backend::Pending,
                     engine_ref: None,
+                    active_at: now,
                 },
             );
         }
@@ -573,6 +589,7 @@ impl App {
             let background_moved = s.meta.background.len() != before;
             s.events.push(event);
             s.meta.updated_at = now_ms();
+            s.active_at = s.meta.updated_at;
             if turn_completed {
                 s.meta.turn_ended_at = Some(s.meta.updated_at);
                 s.meta.last_turn = turn_end.clone();
@@ -617,6 +634,10 @@ impl App {
             // What the agent asked to change in how it runs waits for this.
             if turn_completed && s.meta.agent.is_some() {
                 self.agents.turn_ended(sid);
+            }
+            // An automation's run lets go of its engine as soon as it ends.
+            if turn_completed && s.meta.automation.is_some() {
+                self.release_now.notify_one();
             }
             if completed {
                 let done = s.events.iter().filter(|e| e["type"] == "turn_completed" && e["status"] == "completed").count();
@@ -686,6 +707,7 @@ impl App {
                         events: l.events,
                         backend: Backend::Pending,
                         engine_ref: l.engine_ref,
+                        active_at: now_ms(),
                     },
                 );
             }

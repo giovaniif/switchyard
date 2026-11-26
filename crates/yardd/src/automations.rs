@@ -146,6 +146,10 @@ pub struct Automation {
     pub next_run: Option<u64>,
     #[serde(default)]
     pub last_run: Option<LastRun>,
+    /// The MCP servers (connectors) its runs get. Missing: the account's
+    /// servers but `scope::DENIED_BY_DEFAULT` (see `scope`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mcp: Option<Vec<String>>,
 }
 
 fn yes() -> bool {
@@ -396,7 +400,8 @@ fn save(app: &App, input: &Value) -> Result<Automation> {
                     bail!("missing `{key}`");
                 }
             }
-            json!({ "id": app.id("a"), "createdAt": now_ms() })
+            // A new automation gets no connectors until the owner picks some.
+            json!({ "id": app.id("a"), "createdAt": now_ms(), "mcp": [] })
         }
     };
     for (k, v) in obj {
@@ -427,6 +432,9 @@ fn save(app: &App, input: &Value) -> Result<Automation> {
         if !(0.0..=100.0).contains(&limit) {
             bail!("a usage limit is a percentage from 0 to 100");
         }
+    }
+    if let Some(list) = &mut a.mcp {
+        crate::scope::clean(list)?;
     }
     a.schedule.validate()?;
     if let Some(window) = &a.window {
@@ -721,6 +729,7 @@ mod tests {
             created_at: 0,
             next_run,
             last_run: None,
+            mcp: None,
         }
     }
 

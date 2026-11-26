@@ -12,6 +12,7 @@ import { DEFAULT_ACCOUNT, accountChoices, accountLabel, accountName, choiceOnEng
 import { pickerEngines, shownEffort } from "./engines";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { useSeen } from "./rowState";
+import { ConnectorPicker } from "./ConnectorPicker";
 import { SLACK_MARK, SlackSetup } from "./SlackSetup";
 import {
   AccountPicker,
@@ -853,6 +854,9 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
   // The account is the host's and the engine's: one that is not there runs on Default.
   const accounts = accountsOn(state, host);
   const account = accountChoices(accounts, choice.engine).some((a) => a.id === picked) ? picked : DEFAULT_ACCOUNT;
+  // Null: a record from before the list, which keeps the default until a pick.
+  const [mcp, setMcp] = useState<string[] | null>(existing ? existing.mcp ?? null : []);
+  const [mcpTouched, setMcpTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -910,6 +914,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
       cwd,
       permission,
       host,
+      ...(!existing || mcpTouched ? { mcp: mcp ?? [] } : {}),
     });
     setSaving(false);
     if (r.error) setError(r.error);
@@ -1047,6 +1052,13 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
                 <PermissionPicker engine={choice.engine} value={permission} onChange={setPermission} />
               </div>
             </div>
+          </section>
+          <section className="agent-form-card" aria-labelledby="agent-form-connectors">
+            <div className="agent-form-card-head">
+              <h2 id="agent-form-connectors">Connectors</h2>
+              <p className="muted small">The MCP servers of its account it may use. Only you can change them.</p>
+            </div>
+            <ConnectorPicker state={state} actions={actions} host={host} engine={choice.engine} account={account} value={mcp} who="It" onChange={(list) => { setMcp(list); setMcpTouched(true); }} />
           </section>
           {(error || (name && problem && !nameIssue)) && (
             <div className="small automation-reason" role="alert">

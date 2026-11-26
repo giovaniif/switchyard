@@ -14,6 +14,7 @@
 //   [stuck] streams one chunk, then never ends, whatever it is asked
 //   [context] fails as a thread whose context window is full
 //   [fail]  the turn fails with an error
+//   [crash] the app-server exits mid-turn, as a crashed or killed one does
 //   [think] a two-part reasoning summary, then a reply
 //   [tail]  one command, then 1 s of thinking before "Echo: <prompt>":
 //           a message sent in that second has no step left to join
@@ -41,8 +42,17 @@
 //
 // FAKE_CODEX_DIR (set by the tests) gets `codex.log`, one line per start and
 // per request, `turn-inputs.jsonl` with the input items of every turn/start,
-// and `threads.json`, so a restarted fake can resume a thread the previous
-// one started, and refuses one it never saw.
+// `thread-starts.jsonl` / `thread-resumes.jsonl` with their params (`config`
+// holds the MCP overrides), and `threads.json`, so a restarted fake can resume
+// a thread the previous one started, and refuses one it never saw.
+//
+// Loaded threads: thread/start and thread/resume load one; thread/unsubscribe
+// answers `unsubscribed` (`notLoaded` for one that is not) and, as the real
+// app-server does, unloads it at once (sending `thread/closed`) only when the
+// thread's config set `thread_unload_delay_secs` to 0; otherwise it stays
+// loaded. thread/loaded/list lists them. A turn on a thread that is
+// not loaded fails, as it would on a released one. Each change logs
+// `loaded=<n>` to codex.log.
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { CHART_URI, chartCall, rpc } from "./chart.mjs";
@@ -80,6 +90,13 @@ const threads = new Map(
 const saveThreads = () => {
   if (home) mkdirSync(home, { recursive: true });
   if (threadsFile) writeFileSync(threadsFile, JSON.stringify([...threads]));
+};
+
+// Threads loaded in this process (see the header).
+const loaded = new Map(); // thread id -> its thread_unload_delay_secs
+const load = (tid, config) => {
+  loaded.set(tid, config?.thread_unload_delay_secs);
+  log(`loaded=${loaded.size}`);
 };
 
 let counter = 0;
@@ -213,18 +230,34 @@ async function handle(msg) {
       const tid = newId("thread");
       threads.set(tid, { cwd: p.cwd ?? "", tools: p.config?.["mcp_servers.switchyard"] ?? null });
       saveThreads();
+      load(tid, p.config);
       return reply(threadResponse(tid, p));
     }
     case "thread/resume": {
       if (!threads.has(p.threadId)) return fail(`no such thread: ${p.threadId}`);
+      if (dir) appendFileSync(`${dir}/thread-resumes.jsonl`, `${JSON.stringify(p)}\n`);
+      load(p.threadId, p.config);
       // A resumed thread's servers are the ones it is resumed with.
       threads.get(p.threadId).tools = p.config?.["mcp_servers.switchyard"] ?? null;
       saveThreads();
       return reply(threadResponse(p.threadId, p));
     }
+    case "thread/unsubscribe": {
+      if (!loaded.has(p.threadId)) return reply({ status: "notLoaded" });
+      const unloadNow = loaded.get(p.threadId) === 0;
+      if (unloadNow) loaded.delete(p.threadId);
+      log(`loaded=${loaded.size}`);
+      reply({ status: "unsubscribed" });
+      if (unloadNow) notify("thread/closed", { threadId: p.threadId });
+      return;
+    }
+    case "thread/loaded/list":
+      log(`loaded=${loaded.size}`);
+      return reply({ data: [...loaded.keys()], nextCursor: null });
     case "turn/start": {
       const thread = threads.get(p.threadId);
       if (!thread) return fail(`no such thread: ${p.threadId}`);
+      if (!loaded.has(p.threadId)) return fail(`thread not loaded: ${p.threadId}`);
       // Every input item, so tests can check what reached the engine.
       if (dir) appendFileSync(`${dir}/turn-inputs.jsonl`, `${JSON.stringify({ threadId: p.threadId, input: p.input, home, serviceTierForTurn: p.serviceTierForTurn })}\n`);
       const text = (p.input ?? []).filter((i) => i.type === "text").map((i) => i.text).join("\n");
@@ -453,6 +486,13 @@ async function runTurn(threadId, cwd, turn, text) {
 
   if (behaviorText.includes("[context]")) {
     return finish("failed", { message: "Codex ran out of room in the model's context window. Start a new thread.", codexErrorInfo: "contextWindowExceeded", additionalDetails: null });
+  }
+
+  if (behaviorText.includes("[crash]")) {
+    notify("item/agentMessage/delta", { threadId, turnId, itemId: newId("msg"), delta: "Crashing" });
+    log(`crash pid=${process.pid}`);
+    setTimeout(() => process.exit(3), 50);
+    return;
   }
 
   if (behaviorText.includes("[fail]")) {

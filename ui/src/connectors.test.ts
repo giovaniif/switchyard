@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { actionFor, filterServers, CATALOG, displayName, missingFromCatalog, newServerProblem, removable, shortError, sortServers, summary } from "./connectors";
+import { actionFor, connectorOn, filterServers, CATALOG, displayName, missingFromCatalog, newServerProblem, pickableConnectors, removable, shortError, sortServers, summary, toggleConnector } from "./connectors";
 import type { McpServer } from "./protocol";
 
 const s = (name: string, status: string, extra: Partial<McpServer> = {}): McpServer => ({ name, status, source: "user", tools: 0, appTools: 0, ...extra });
@@ -67,4 +67,17 @@ test("search matches readable service names and source, case insensitively", () 
   expect(filterServers(list, "  SENTRY  engineering ", "available").map((x) => x.name)).toEqual(["plugin:engineering:sentry"]);
   expect(filterServers(list, "claude.ai", "connected").map((x) => x.name)).toEqual(["claude.ai Datadog"]);
   expect(filterServers(list, "sentry", "connected")).toEqual([]);
+});
+
+test("an agent's connectors: the default leaves Metabase out, a pick makes the list explicit", () => {
+  const servers = [s("metabase", "connected"), s("handoff", "connected"), s("claude.ai Metabase", "connected", { source: "claudeai" }), s("GitHub", "needs-auth", { app: true })];
+  const all = pickableConnectors(servers, null);
+  expect(all).toEqual(["metabase", "handoff", "claude.ai Metabase"]);
+  expect(all.filter((n) => connectorOn(null, n))).toEqual(["handoff"]);
+  expect(toggleConnector(null, all, "metabase")).toEqual(["handoff", "metabase"]);
+  expect(toggleConnector(null, all, "handoff")).toEqual([]);
+  expect(toggleConnector(["handoff"], all, "handoff")).toEqual([]);
+  // One the account no longer lists stays visible, so a save keeps it knowingly.
+  expect(pickableConnectors(servers, ["gone"])).toContain("gone");
+  expect(connectorOn([], "handoff")).toBe(false);
 });

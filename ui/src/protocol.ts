@@ -929,6 +929,9 @@ export interface Automation {
   /** Null while disabled, and always for a manual schedule. */
   nextRun: number | null;
   lastRun?: LastRun | null;
+  /** The connectors (MCP servers) its runs get. Missing: every one but
+   *  Metabase (a record saved before the list); new ones start empty. */
+  mcp?: string[] | null;
 }
 /** Hub setup discovery; `mobile.connected` records a successful iOS UI connection. */
 export type { MobileStatus } from "./mobile";
@@ -981,6 +984,9 @@ export interface Agent {
   setup?: boolean;
   /** What it asked for in its conversation and waits on the owner's click for. */
   request?: AgentRequest | null;
+  /** The connectors (MCP servers) its sessions get; the owner's to set.
+   *  Missing: every one but Metabase (a record saved before the list). */
+  mcp?: string[] | null;
   createdAt: number;
   updatedAt: number;
 }

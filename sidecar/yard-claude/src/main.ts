@@ -12,13 +12,17 @@
 // An MCP tool with a widget (MCP Apps) ends with `tool_completed` carrying
 // `app` (see apps.ts); yardd stores the widget and keeps an id in the log.
 //
+// `start` may carry `mcp`: the connectors an agent's or automation's
+// session may use (see scope.ts).
+//
 // `start` may carry `resume`: a Claude Code session id to continue after a
 // yardd restart. yardd learns that id from the `session` line.
 //
 // Events are already in yardd's normalized shape, so yardd only relays them.
 // Nothing else may write to stdout.
 import { readOnly, restrictedProfile } from "./restricted";
-import { agentToolsProfile, isOwnTool } from "./agentTools";
+import { agentToolsProfile, isOwnTool, SERVER } from "./agentTools";
+import { scopeProfile, type McpScope } from "./scope";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { createInterface } from "node:readline";
 import { userMessage } from "./message";
@@ -87,7 +91,7 @@ const PERMISSION_MODE: Record<string, string> = {
   full: "bypassPermissions",
 };
 
-async function run(start: { restricted?: boolean; cwd: string; model: string; effort?: string; permission?: string; resume?: string | null; tools?: Record<string, unknown> | null }) {
+async function run(start: { restricted?: boolean; cwd: string; model: string; effort?: string; permission?: string; resume?: string | null; tools?: Record<string, unknown> | null; mcp?: McpScope }) {
   cwd = start.cwd;
   const subagents = createSubagents(cwd);
 
@@ -135,6 +139,10 @@ async function run(start: { restricted?: boolean; cwd: string; model: string; ef
     },
   };
   Object.assign(options, agentToolsProfile(start));
+  // An agent's or automation's session: only its connectors (see scope.ts).
+  const scoped: ReturnType<typeof scopeProfile> = start.restricted ? {} : scopeProfile(start.mcp, start.tools ? SERVER : null);
+  if (scoped.managedSettings) options.managedSettings = scoped.managedSettings;
+  if (scoped.env) Object.assign(env, scoped.env);
   Object.assign(options, restrictedProfile(start));
   if (start.effort && efforts.includes(start.effort)) options.effort = start.effort;
   if (start.resume) options.resume = start.resume;

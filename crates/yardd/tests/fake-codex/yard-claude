@@ -21,6 +21,9 @@
 //   [background-agents] the owner's shape: a command, two background Agent
 //           calls, a message between steps, then the turn completes; the
 //           two keep taking steps (`parent`) and report 20 s later
+//   [wakeup] / [cron] / [cron-delete]  a ScheduleWakeup / CronCreate /
+//           CronDelete call, labelled by the real sidecar's toolStarted (so it
+//           carries `keepsAlive` / `endsCron`), then "Echo: <prompt>"
 //   [chart] an MCP call to `chart` (verify/fakes/mcp-chart) that ends with
 //           its widget on `tool_completed` (`app`), then "Here is the chart."
 //   [[tool NAME {json}]]  calls Switchyard's agent tool NAME through the
@@ -42,8 +45,9 @@
 // listed too, needing sign-in until a pasted address with `code=` arrives.
 // Each start also reports plan usage (47% of 5 hours, 17% of the week, Sonnet 8%;
 // 91% of 5 hours when CLAUDE_CONFIG_DIR names an extra account).
-// FAKE_CODEX_DIR gets `sidecar.log`: one line per start, with its resume id and
-// CLAUDE_CONFIG_DIR (`config=`, empty for the default account),
+// FAKE_CODEX_DIR gets `sidecar.log`: one line per start, with its resume id,
+// CLAUDE_CONFIG_DIR (`config=`, empty for the default account) and the
+// session's connector scope when it has one (`mcp=only:a,b` / `mcp=except:a`),
 // and one per one-shot `sessions` / `messages <id>` call.
 //
 // `usage` answers the plan limits the real one reads from Claude Code's usage
@@ -58,7 +62,10 @@
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { CHART_URI, chartCall, rpc } from "./chart.mjs";
 import { afterCalls, callTools, toolMarkers } from "./agent-tools.mjs";
-import { describe as describeTool } from "../../../../sidecar/yard-claude/src/tools.ts";
+import { describe as describeTool, toolStarted } from "../../../../sidecar/yard-claude/src/tools.ts";
+
+// The connector scope `start` gave (see sidecar/yard-claude/src/scope.ts), for the log.
+const mcpScope = (m) => (m?.only ? ` mcp=only:${m.only.join(",")}` : m?.except ? ` mcp=except:${m.except.join(",")}` : "");
 
 // An agent's session hands the engine a preamble, then the user's message.
 // Only what the user typed controls the scripted behaviour.
@@ -324,7 +331,7 @@ for await (const line of console) {
     continue;
   }
   if (msg.type === "start") {
-    log(`start pid=${process.pid} config=${process.env.CLAUDE_CONFIG_DIR ?? ""} resume=${msg.resume ?? ""}${msg.restricted ? " restricted=true" : ""}${msg.tools ? " tools=switchyard" : ""}`);
+    log(`start pid=${process.pid} config=${process.env.CLAUDE_CONFIG_DIR ?? ""} resume=${msg.resume ?? ""}${msg.restricted ? " restricted=true" : ""}${msg.tools ? " tools=switchyard" : ""}${mcpScope(msg.mcp)}`);
     tools = msg.tools ?? null;
     out({ type: "session", claudeSessionId: msg.resume ?? `fake-claude-${process.pid}` });
     // The shape the real sidecar sends (sidecar/yard-claude/src/usage.ts):
@@ -381,6 +388,19 @@ for await (const line of console) {
     }
     if (behaviorText.includes("[subagent]")) {
       runSubagent(text);
+      continue;
+    }
+    // A tool that leaves work in the process after the turn, flagged as the
+    // real sidecar flags it (`keepsAlive`, `endsCron`).
+    const keeper = { "[wakeup]": ["ScheduleWakeup", { delaySeconds: 600, prompt: "check again" }], "[cron]": ["CronCreate", { cron: "*/5 * * * *", prompt: "poll" }], "[cron-delete]": ["CronDelete", { id: "c1" }] };
+    const kept = Object.keys(keeper).find((k) => behaviorText.includes(k));
+    if (kept) {
+      const [name, input] = keeper[kept];
+      const id = `keep-${process.pid}-${++n}`;
+      emit(toolStarted({ id, name, input }, process.cwd()));
+      emit({ type: "tool_completed", itemId: id, ok: true, output: "scheduled" });
+      emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: `Echo: ${typed(text)}` });
+      emit({ type: "turn_completed", status: "completed" });
       continue;
     }
     if (behaviorText.includes("[die]")) process.exit(1);

@@ -165,7 +165,7 @@ async fn once(app: &Arc<App>, engine: &str, model: &str, transcript: &str) -> Re
         "cwd": cwd, "status": "running", "host": "local", "branch": null, "repo": null,
         "permission": "plan", "createdAt": now_ms(), "updatedAt": now_ms(),
     }))?;
-    app.sessions.lock().unwrap().insert(id.clone(), Session { meta, events: vec![], backend: Backend::Pending, engine_ref: None });
+    app.sessions.lock().unwrap().insert(id.clone(), Session { meta, events: vec![], backend: Backend::Pending, engine_ref: None, active_at: crate::state::now_ms() });
     let mut events = app.private.events.subscribe();
     let answer = async {
         let input = format!("{INSTRUCTIONS}\n\n{transcript}");
