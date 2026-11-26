@@ -21,6 +21,12 @@
 //   [background-agents] the owner's shape: a command, two background Agent
 //           calls, a message between steps, then the turn completes; the
 //           two keep taking steps (`parent`) and report 20 s later
+//   [question] Claude's AskUserQuestion: a tool call and its approval_request
+//           of kind "question" with two questions (one single choice, one
+//           multi-select), as the real sidecar sends them; the answer
+//           (`permission` with `answers`) ends it with "Answered: <question> →
+//           <answer> | …", "The user did not answer the questions." when
+//           allowed without answers, or a failed call when denied (Skip)
 //   [chart] an MCP call to `chart` (verify/fakes/mcp-chart) that ends with
 //           its widget on `tool_completed` (`app`), then "Here is the chart."
 //   [[tool NAME {json}]]  calls Switchyard's agent tool NAME through the
@@ -242,6 +248,52 @@ async function runSteps(text) {
   emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: `Echo: ${text}${also}` });
   emit({ type: "turn_completed", status: "completed" });
 }
+// A [question] waiting for its answer.
+let question = null;
+const QUESTIONS = [
+  {
+    question: "Which database should TEST-app use?",
+    header: "Database",
+    multiSelect: false,
+    options: [
+      { label: "Postgres", description: "Relational, what the app has now." },
+      { label: "SQLite", description: "One file, no server to run." },
+    ],
+  },
+  {
+    question: "Which checks should run before merging?",
+    header: "Checks",
+    multiSelect: true,
+    options: [
+      { label: "Unit tests", description: "Fast, on every push." },
+      { label: "Lint", description: "Style and obvious mistakes." },
+      { label: "End-to-end", description: "Slow, drives the real app." },
+    ],
+  },
+];
+function askQuestion() {
+  const itemId = `tool-${process.pid}-${++n}`;
+  const requestId = `claude-${process.pid}-${++n}`;
+  const input = { questions: QUESTIONS };
+  emit({ type: "tool_started", itemId, kind: "other", title: "AskUserQuestion", detail: JSON.stringify(input).slice(0, 120) });
+  emit({ type: "approval_request", requestId, kind: "question", itemId, title: QUESTIONS[0].question, detail: "", questions: QUESTIONS });
+  question = { requestId, itemId, input };
+}
+function answerQuestion(msg) {
+  const { itemId, input } = question;
+  question = null;
+  if (msg.decision === "deny") {
+    emit({ type: "tool_completed", itemId, ok: false, output: "The user chose not to answer these questions." });
+    emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: "Skipped the questions." });
+  } else {
+    const answers = msg.answers && typeof msg.answers === "object" ? msg.answers : {};
+    const got = input.questions.filter((q) => typeof answers[q.question] === "string");
+    const text = got.length ? `Answered: ${got.map((q) => `${q.question} → ${answers[q.question]}`).join(" | ")}` : "The user did not answer the questions.";
+    emit({ type: "tool_completed", itemId, ok: true, output: text });
+    emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text });
+  }
+  emit({ type: "turn_completed", status: "completed" });
+}
 let sleeper = null;
 async function runBackgroundAgent(text) {
   const id = `tool-${process.pid}-${++n}`;
@@ -383,6 +435,10 @@ for await (const line of console) {
       runSubagent(text);
       continue;
     }
+    if (behaviorText.includes("[question]")) {
+      askQuestion();
+      continue;
+    }
     if (behaviorText.includes("[die]")) process.exit(1);
     const itemId = `text-${process.pid}-${++n}`;
     if (behaviorText.includes("[stuck]")) {
@@ -401,6 +457,12 @@ for await (const line of console) {
     if (!tool) out({ type: "reply", ref: msg.ref, error: `${msg.server} has no tool ${msg.tool}` });
     else if (!tool.annotations?.readOnlyHint) out({ type: "reply", ref: msg.ref, error: `The tool did not run: Claude requested permissions to use ${msg.tool}, but you haven't granted it yet.` });
     else out({ type: "reply", ref: msg.ref, result: await rpc("tools/call", { name: msg.tool, arguments: msg.arguments ?? {} }) });
+  } else if (msg.type === "permission" && question?.requestId === msg.requestId) {
+    log(`answer ${JSON.stringify({ decision: msg.decision, answers: msg.answers ?? null })}`);
+    answerQuestion(msg);
+  } else if (msg.type === "interrupt" && question) {
+    question = null;
+    emit({ type: "turn_completed", status: "interrupted" });
   } else if (msg.type === "interrupt" && steps) {
     steps.interrupted = true;
   } else if (msg.type === "interrupt" && !stuck) {

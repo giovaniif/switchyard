@@ -2952,3 +2952,54 @@ async fn removing_an_account_in_use_names_its_sessions() {
     let two = refusal(&mut c, &id).await;
     assert_eq!(two, "2 sessions still use this account: \"fix the login page\" (archived) and \"write the docs\". Delete them first.");
 }
+
+/// Claude's AskUserQuestion reached the owner as "Allow this?" with the raw
+/// JSON, and allowing it told Claude "The user did not answer the questions."
+/// The questions come as a request of kind `question`; the owner's answers go
+/// to Claude with the decision and stay in the log for the card.
+#[tokio::test]
+async fn a_claude_question_takes_the_owners_answers() {
+    let sb = Sandbox::new("question");
+    let sidecar = fake_bin().join("yard-claude");
+    let d = sb.start_with(&[("YARD_SIDECAR", sidecar.to_str().unwrap())]);
+    let mut c = d.client().await;
+    let claude = json!({ "engine": "claude", "model": "claude-haiku-5-5", "effort": "medium" });
+    let sid = c.create(&sb.folder("proj"), "[question] TEST-pick", claude).await;
+    let req = c.wait_event(&sid, "approval_request", 0).await;
+    assert_eq!(req["kind"], "question");
+    assert_eq!(req["questions"].as_array().map(Vec::len), Some(2));
+    c.wait_status(&sid, "needs_approval").await;
+
+    let answers = json!({
+        "Which database should TEST-app use?": "SQLite",
+        "Which checks should run before merging?": "Unit tests, Lint",
+    });
+    c.send(json!({ "op": "session.approve", "sessionId": sid, "requestId": req["requestId"], "decision": "allow", "answers": answers })).await;
+    assert_eq!(c.wait_turn_done(&sid, 0).await["status"], "completed");
+    let answer = c.events(&sid).into_iter().rev().find(|e| e["type"] == "assistant_message").unwrap();
+    assert_eq!(
+        answer["text"],
+        "Answered: Which database should TEST-app use? → SQLite | Which checks should run before merging? → Unit tests, Lint"
+    );
+    // The card shows what was answered, after a reload too.
+    let resolved = c.events(&sid).into_iter().find(|e| e["type"] == "approval_resolved").unwrap();
+    assert_eq!(resolved["answers"], answers);
+
+    // Skip: Claude hears that the owner chose not to answer.
+    let next = c.next_seq(&sid);
+    c.send(json!({ "op": "session.send", "sessionId": sid, "text": "[question] TEST-again" })).await;
+    let req = c.wait_event(&sid, "approval_request", next).await;
+    c.send(json!({ "op": "session.approve", "sessionId": sid, "requestId": req["requestId"], "decision": "deny" })).await;
+    let done = c.wait_event(&sid, "tool_completed", next).await;
+    assert_eq!(done["ok"], false);
+    c.wait_turn_done(&sid, next).await;
+
+    // Answers are text: anything else is refused before Claude hears it.
+    let next = c.next_seq(&sid);
+    c.send(json!({ "op": "session.send", "sessionId": sid, "text": "[question] TEST-bad" })).await;
+    let req = c.wait_event(&sid, "approval_request", next).await;
+    let mark = c.mark();
+    c.send(json!({ "op": "session.approve", "sessionId": sid, "requestId": req["requestId"], "decision": "allow", "answers": { "Which database should TEST-app use?": 3 } })).await;
+    let refused = c.wait_after(mark, "the refusal", |m| m["op"] == "error" && m["for"] == "session.approve").await;
+    assert!(refused["message"].as_str().unwrap_or("").contains("answers"), "{refused}");
+}

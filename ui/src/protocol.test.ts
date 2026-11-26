@@ -134,6 +134,16 @@ describe("applyEvent", () => {
     expect(applyEvent(asked, { type: "approval_resolved", requestId: "r2", decision: "deny" }, 1)).toEqual(asked);
   });
 
+  test("a question keeps its questions, and its answers once given", () => {
+    const questions = [
+      { question: "Which database?", header: "Database", multiSelect: false, options: [{ label: "Postgres", description: "" }, { label: "SQLite", description: "One file." }] },
+    ];
+    const asked = fold([{ type: "approval_request", requestId: "q1", kind: "question", title: "Which database?", detail: "", questions }]);
+    expect(asked[0]).toMatchObject({ kind: "approval", approvalKind: "question", questions, decision: null });
+    const answered = applyEvent(asked, { type: "approval_resolved", requestId: "q1", decision: "allow", answers: { "Which database?": "SQLite" } }, 1);
+    expect(answered[0]).toMatchObject({ decision: "allow", answers: { "Which database?": "SQLite" } });
+  });
+
   test("turn end closes whatever is still live", () => {
     const live = fold([
       { type: "assistant_delta", itemId: "m", text: "part" },
