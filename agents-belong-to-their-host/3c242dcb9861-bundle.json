@@ -1,0 +1,218 @@
+{
+  "v": 1,
+  "claim": "Verifier FAIL on #478: a window could send hand-over ops (export with Slack tokens, release, deliver) to a host through the hub; the Mac backed up after its first change; a migration ran mid-turn; a lost answer on a move left two owners and deleting either could delete the shared Slack app; a failed save answered success; another Mac's record could be taken; the Mac's allowlist widened the host's.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224",
+  "base": "7a7985f24b6dbca59801c9d5440c79a8b2d3ebf2",
+  "head": "392d26fe650544a20c4f4c2b259f7bc2a196d7f3",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/origins.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/AgentsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackSetup.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/agents.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/agents.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/agents.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T03:50:57.482Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "eebfac059d35957912ddac1fe5dada5a51fdaddd",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T03:50:57.536Z",
+      "text": "no-repro: daemon-level security and data-safety findings with no screen of their own; each is reproduced by the regression tests run below at this commit"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "eebfac059d35957912ddac1fe5dada5a51fdaddd",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "63e58b0d5841e1796e4d92447e0e0d4fff5d68d5dbd319ae483f6a5a26f6e613"
+        }
+      ],
+      "addedAt": "2026-11-26T03:50:57.579Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents -- a_window_cannot_send_a_hand_over a_hand_over_waits_for_the_turn sending_an_agent_again a_hand_over_that_cannot_be_saved a_host_that_must_let_go a_hub_hands_the_agents_it_kept an_agent_moves_between_hosts && CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack an_app_being_handed_over",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "392d26fe650544a20c4f4c2b259f7bc2a196d7f3",
+      "dirty": false,
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "5e13ddcae9f26dfd4639a3a4caa5098a72bccc9031da1f420d990f71b4319fab"
+        },
+        {
+          "path": "p3-second-mac-agents-desktop.png",
+          "sha256": "7530c3b1557b849726f21aaed264254dec0ecc91c9af07cd6e8fe3ae1c8f66fb"
+        },
+        {
+          "path": "p3-second-mac-conversation-desktop.png",
+          "sha256": "7b645a636bf705b35213a2dacc457d3951ce1e81a6cf215fe137e646aa1a3c40"
+        },
+        {
+          "path": "p3-second-mac-sidebar-desktop.png",
+          "sha256": "1c765357e3d20fbf21a4105cf59a80dde0b4461e6ab8148dc2c370203e7cb696"
+        },
+        {
+          "path": "p3-2-drive.json",
+          "sha256": "4eea80ae86cadfe68dbfae9564ee13fcc5682cc978e92ed75965a2d490deddf0"
+        },
+        {
+          "path": "p3-second-mac-agents-mobile.png",
+          "sha256": "f124df05b11a47331c732693a13df117eef1e9d04bc1804c0ff83017c17f3024"
+        },
+        {
+          "path": "p3-second-mac-conversation-mobile.png",
+          "sha256": "b7652d14128babd25164cb99275452e327b54574d9dc5b50210fd81005dca567"
+        }
+      ],
+      "addedAt": "2026-11-26T03:51:30.903Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "392d26fe650544a20c4f4c2b259f7bc2a196d7f3",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "af93e70278e4d6adba5441dff99646e65e1eec4966baf566b022e8c89c7d224b"
+        }
+      ],
+      "addedAt": "2026-11-26T03:51:30.950Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents -- a_window_cannot_send_a_hand_over a_hand_over_waits_for_the_turn sending_an_agent_again a_hand_over_that_cannot_be_saved a_host_that_must_let_go a_hub_hands_the_agents_it_kept an_agent_moves_between_hosts && CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack an_app_being_handed_over",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "392d26fe650544a20c4f4c2b259f7bc2a196d7f3",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "71233fc0d83b2c3a899b113554bed1fef1082b1cf1ccb3951b8e95ea7a517d58"
+        }
+      ],
+      "addedAt": "2026-11-26T03:51:46.933Z",
+      "cmd": "verify/yv design-check --base 7a7985f24b6d",
+      "exit": 0
+    }
+  ]
+}

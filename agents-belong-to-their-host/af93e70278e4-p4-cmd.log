@@ -1,0 +1,28 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents -- a_window_cannot_send_a_hand_over a_hand_over_waits_for_the_turn sending_an_agent_again a_hand_over_that_cannot_be_saved a_host_that_must_let_go a_hub_hands_the_agents_it_kept an_agent_moves_between_hosts && CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack an_app_being_handed_over
+# exit 0 after 15940 ms at 392d26fe650544a20c4f4c2b259f7bc2a196d7f3
+
+
+running 7 tests
+test a_hand_over_that_cannot_be_saved_says_so_and_keeps_nothing ... ok
+test sending_an_agent_again_applies_a_newer_record_and_never_one_from_another_mac ... ok
+test a_window_cannot_send_a_hand_over_to_a_host_through_the_hub ... ok
+test a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely ... ok
+test an_agent_moves_between_hosts_and_its_next_conversation_starts_where_the_last_ended ... ok
+test a_host_that_must_let_go_of_an_agent_is_asked_until_it_does ... ok
+test a_hand_over_waits_for_the_turn_running_on_its_host ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 2.06s
+
+
+running 1 test
+test an_app_being_handed_over_is_not_deleted_in_slack_until_its_old_host_let_go ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.36s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 12.71s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 0.68s
+     Running tests/slack.rs (target/debug/build/yardd/7070339f5020f7ad/out/slack-7070339f5020f7ad)

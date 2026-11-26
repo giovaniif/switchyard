@@ -1,0 +1,86 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents -- a_window_cannot_send_a_hand_over a_hand_over_waits_for_the_turn sending_an_agent_again a_hand_over_that_cannot_be_saved a_host_that_must_let_go a_hub_hands_the_agents_it_kept an_agent_moves_between_hosts && CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack an_app_being_handed_over
+# exit 101 after 33257 ms at eebfac059d35957912ddac1fe5dada5a51fdaddd
+
+
+running 7 tests
+test a_hand_over_that_cannot_be_saved_says_so_and_keeps_nothing ... FAILED
+test sending_an_agent_again_applies_a_newer_record_and_never_one_from_another_mac ... FAILED
+test a_window_cannot_send_a_hand_over_to_a_host_through_the_hub ... FAILED
+test a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely ... FAILED
+test an_agent_moves_between_hosts_and_its_next_conversation_starts_where_the_last_ended ... FAILED
+test a_hand_over_waits_for_the_turn_running_on_its_host ... FAILED
+test a_host_that_must_let_go_of_an_agent_is_asked_until_it_does ... FAILED
+
+failures:
+
+---- a_hand_over_that_cannot_be_saved_says_so_and_keeps_nothing stdout ----
+
+thread 'a_hand_over_that_cannot_be_saved_says_so_and_keeps_nothing' (2579742) panicked at crates/yardd/tests/agents.rs:946:5:
+assertion `left == right` failed: {"agent":{"about":"","account":"default","chat":null,"color":"blue","createdAt":1,"cwd":"","effort":"","engine":"codex","face":"","handle":"Far","host":"local","id":"g-far","instructions":"","memory":"","model":"","name":"Far","permission":"ask","updatedAt":1},"op":"agent.adopted","ref":"a"}
+  left: String("agent.adopted")
+ right: "error"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-2579741-agents-adopt-unsaved-1 for inspection
+
+---- sending_an_agent_again_applies_a_newer_record_and_never_one_from_another_mac stdout ----
+
+thread 'sending_an_agent_again_applies_a_newer_record_and_never_one_from_another_mac' (2579748) panicked at crates/yardd/tests/agents.rs:915:5:
+assertion `left == right` failed: {"agent":{"about":"","account":"default","chat":null,"color":"blue","createdAt":1,"cwd":"","effort":"","engine":"codex","face":"","handle":"Far","host":"local","id":"g-far","instructions":"","memory":"TEST-first","model":"fake-fast","name":"Far","permission":"ask","updatedAt":10},"op":"agent.adopted","ref":"a2"}
+  left: String("TEST-first")
+ right: "TEST-newer"
+kept /tmp/yardd-test-2579741-agents-adopt-again-5 for inspection
+
+---- a_window_cannot_send_a_hand_over_to_a_host_through_the_hub stdout ----
+
+thread 'a_window_cannot_send_a_hand_over_to_a_host_through_the_hub' (2579746) panicked at crates/yardd/tests/agents.rs:861:9:
+{"for":"agent.export","message":"this host is not connected","op":"error","ref":"w0"}
+kept /tmp/yardd-test-2579741-agents-window-hub-8 for inspection
+kept /tmp/yardd-test-2579741-agents-window-remote-2 for inspection
+
+---- a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely stdout ----
+
+thread 'a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely' (2579745) panicked at crates/yardd/tests/agents.rs:640:5:
+assertion `left == right` failed
+  left: Array [Object {"id": String("UOWNER"), "name": String("TEST-Owner")}, Object {"id": String("UOTHER"), "name": String("TEST-Someone else")}]
+ right: Array [Object {"id": String("UOWNER"), "name": String("TEST-Owner")}]
+kept /tmp/yardd-test-2579741-agents-migrate-hub-11 for inspection
+kept /tmp/yardd-test-2579741-agents-migrate-remote-6 for inspection
+
+---- an_agent_moves_between_hosts_and_its_next_conversation_starts_where_the_last_ended stdout ----
+
+thread 'an_agent_moves_between_hosts_and_its_next_conversation_starts_where_the_last_ended' (2579747) panicked at crates/yardd/tests/agents.rs:580:49:
+no backup of slack.json
+kept /tmp/yardd-test-2579741-agents-move-hub-7 for inspection
+kept /tmp/yardd-test-2579741-agents-move-remote-4 for inspection
+
+---- a_hand_over_waits_for_the_turn_running_on_its_host stdout ----
+
+thread 'a_hand_over_waits_for_the_turn_running_on_its_host' (2579743) panicked at crates/yardd/tests/agents.rs:888:5:
+assertion failed: saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-oncall")
+kept /tmp/yardd-test-2579741-agents-busy-hub-10 for inspection
+kept /tmp/yardd-test-2579741-agents-busy-remote-0 for inspection
+
+---- a_host_that_must_let_go_of_an_agent_is_asked_until_it_does stdout ----
+
+thread 'a_host_that_must_let_go_of_an_agent_is_asked_until_it_does' (2579744) panicked at crates/yardd/tests/agents.rs:571:9:
+timed out waiting for the host let go
+kept /tmp/yardd-test-2579741-agents-release-hub-9 for inspection
+kept /tmp/yardd-test-2579741-agents-release-remote-3 for inspection
+
+
+failures:
+    a_hand_over_that_cannot_be_saved_says_so_and_keeps_nothing
+    a_hand_over_waits_for_the_turn_running_on_its_host
+    a_host_that_must_let_go_of_an_agent_is_asked_until_it_does
+    a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely
+    a_window_cannot_send_a_hand_over_to_a_host_through_the_hub
+    an_agent_moves_between_hosts_and_its_next_conversation_starts_where_the_last_ended
+    sending_an_agent_again_applies_a_newer_record_and_never_one_from_another_mac
+
+test result: FAILED. 0 passed; 7 failed; 0 ignored; 0 measured; 9 filtered out; finished in 20.52s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 12.68s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+error: test failed, to rerun pass `-p yardd --test agents`
