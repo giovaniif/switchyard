@@ -789,6 +789,16 @@ async fn folders_are_listed_for_the_picker() {
     let missing = c.wait_for("fs.dirs missing", |m| m["op"] == "fs.dirs" && m["path"] == deep.as_str()).await;
     assert_eq!(missing["missing"], gone.to_str().unwrap(), "{missing}");
     assert!(missing["error"].is_null(), "{missing}");
+
+    // A path through a file names that file, typed with or without the
+    // trailing slash, not "Not a directory (os error 20)".
+    let file = Path::new(&parent).join("a-file.txt");
+    for through in [format!("{}/", file.to_str().unwrap()), file.join("deeper").to_str().unwrap().to_string()] {
+        c.send(json!({ "op": "fs.dirs", "path": through })).await;
+        let reply = c.wait_for("fs.dirs file", |m| m["op"] == "fs.dirs" && m["path"] == through.as_str()).await;
+        assert_eq!(reply["file"], file.to_str().unwrap(), "{reply}");
+        assert!(reply["error"].is_null(), "{reply}");
+    }
 }
 
 #[tokio::test]
