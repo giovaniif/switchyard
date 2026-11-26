@@ -20,12 +20,20 @@ function write(key: string, value: string) {
 }
 
 export const loadHost = () => loadDefaults("sessions")?.host || read("yard.host") || "local";
-export const loadFolder = (host: string) => read(cwdKey(host)) || "";
+/** An agent's own folder (`<data dir>/agents/<id>`): its conversation's,
+ *  never a project to start a session in. */
+export const isAgentHome = (path: string) => /\/\.yard[^/]*\/agents\/[^/]+\/?$/.test(path);
+
+export const loadFolder = (host: string) => {
+  const folder = read(cwdKey(host)) || "";
+  // Remembered by an older build from a reply to an agent.
+  return isAgentHome(folder) ? "" : folder;
+};
 
 export function readRecent(host: string): string[] {
   try {
     const list = JSON.parse(read(recentKey(host)) ?? "[]");
-    return Array.isArray(list) ? list.filter((p) => typeof p === "string") : [];
+    return Array.isArray(list) ? list.filter((p) => typeof p === "string" && !isAgentHome(p)) : [];
   } catch { return []; }
 }
 
@@ -54,8 +62,11 @@ export function loadChoice(models: Models, host = "local", wanted = host): Choic
   return validChoice(models, { engine: "claude", model: "", effort: "medium" });
 }
 
-/** The project is the source repository, never a session's generated worktree. */
-export function rememberSession(s: Pick<SessionMeta, "engine" | "model" | "effort" | "cwd"> & { host?: string; repo?: string }) {
+/** The project is the source repository, never a session's generated worktree.
+ *  An agent's conversation is not a session started here: its folder and
+ *  model are the agent's, and New session does not learn from them. */
+export function rememberSession(s: Pick<SessionMeta, "engine" | "model" | "effort" | "cwd"> & { host?: string; repo?: string; agent?: string | null }) {
+  if (s.agent || isAgentHome(s.cwd)) return;
   const host = s.host || "local";
   const folder = s.repo || s.cwd;
   const choice = JSON.stringify({ engine: s.engine, model: s.model, effort: s.effort });

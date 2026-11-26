@@ -2,10 +2,11 @@
 // this page lists them all as a grid of small cards, with the runs of each
 // (ordinary sessions whose metadata names the automation, kept out of the
 // sidebar) as a strip of marks.
+import { SelectPicker } from "./SelectPicker";
 import { useEffect, useMemo, useState } from "react";
 import type { Automation, AutomationWindow, Engine, Permission, Schedule, SessionMeta } from "./protocol";
 import { branchKey, homeOn, hostName, hostOf, hostOnline, modelsOn, usageOn, type Actions, type State } from "./store";
-import { cardStatus, describeSchedule, runLabel, runOutcome, runsOf, runSummary, runTook, RUN_LABEL, scheduleLine, scheduleProblem, stripRuns, type CardStatus, type RunOutcome } from "./automations";
+import { cardStatus, describeSchedule, runLabel, runOutcome, runsOf, runSummary, runTook, RUN_LABEL, scheduleParts, scheduleProblem, stripRuns, type CardStatus, type RunOutcome } from "./automations";
 import { duration } from "./thread";
 import { ENGINE_NAME, pickerEngines } from "./engines";
 import { metersFor } from "./usage";
@@ -24,6 +25,7 @@ import {
   PLUS,
   effortFor,
   loadChoice,
+  isAgentHome,
   readRecent,
 } from "./App";
 
@@ -115,6 +117,7 @@ function AutomationCard({ state, actions, host, a, now }: { state: State; action
       <span className="automation-status-text">{status.text}</span>
     </>
   );
+  const [schedule, next] = scheduleParts(a, now);
   return (
     <section className="automation" aria-label={a.name}>
       <div className="automation-head">
@@ -135,7 +138,10 @@ function AutomationCard({ state, actions, host, a, now }: { state: State; action
           <span className="switch-knob" />
         </button>
       </div>
-      <div className="automation-when muted small">{scheduleLine(a, now)}</div>
+      <div className="automation-when automation-when-split muted small" title={`${schedule} · ${next}`}>
+        <span className="automation-when-schedule">{schedule}</span>
+        <span className="automation-when-next">{` · ${next}`}</span>
+      </div>
       {status.runId ? (
         <button className={`btn-quiet ${statusClass}`} title={`${status.title}. Open it`} onClick={() => actions.go({ page: "session", id: status.runId! })}>
           {statusBody}
@@ -285,7 +291,8 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
 
   const recent = useMemo(() => {
     const fromSessions = Object.values(state.sessions)
-      .filter((s) => hostOf(s) === target)
+      // Agents' conversations run in the agents' own folders, not projects.
+      .filter((s) => hostOf(s) === target && !s.agent && !isAgentHome(s.cwd))
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .map((s) => s.repo || s.cwd);
     return [...new Set([...readRecent(target), ...fromSessions])].slice(0, 12);
@@ -374,31 +381,25 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
           <div className="automation-field">
             <span className="automation-label">Schedule</span>
             <div className="row automation-schedule">
-              <select aria-label="Schedule type" className="field" value={kind} onChange={(e) => setKind(e.target.value as Schedule["kind"])}>
-                <option value="interval">Every few minutes or hours</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="manual">Manual: only when started</option>
-              </select>
+              <SelectPicker<Schedule["kind"]> label="Schedule type" value={kind} onChange={setKind} options={[
+                { value: "interval", label: "Every few minutes or hours" },
+                { value: "daily", label: "Daily" },
+                { value: "weekly", label: "Weekly" },
+                { value: "manual", label: "Manual: only when started" },
+              ]} />
               {kind === "interval" && (
                 <>
                   <input aria-label="Repeat every" className="field" type="number" min={1} value={every} onChange={(e) => setEvery(e.target.value)} />
-                  <select aria-label="Repeat unit" className="field" value={unit} onChange={(e) => setUnit(e.target.value as "minutes" | "hours")}>
-                    <option value="minutes">minutes</option>
-                    <option value="hours">hours</option>
-                  </select>
+                  <SelectPicker<"minutes" | "hours"> label="Repeat unit" value={unit} onChange={setUnit} options={[
+                    { value: "minutes", label: "minutes" },
+                    { value: "hours", label: "hours" },
+                  ]} />
                 </>
               )}
               {kind === "weekly" && (
-                <select aria-label="Day of the week" className="field" value={day} onChange={(e) => setDay(Number(e.target.value))}>
-                  {DAYS.map((d, i) => (
-                    <option key={d} value={i}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
+                <SelectPicker label="Day of the week" value={day} onChange={setDay} options={DAYS.map((label, value) => ({ value, label }))} />
               )}
-              {(kind === "daily" || kind === "weekly") && <input aria-label="Time" className="field" type="time" value={time} onChange={(e) => setTime(e.target.value)} />}
+              {(kind === "daily" || kind === "weekly") && <input aria-label="Time" className="field" type="text" placeholder="HH:MM" maxLength={5} value={time} onChange={(e) => setTime(e.target.value)} />}
             </div>
             {kind === "interval" && (
               <>
@@ -408,9 +409,9 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
                     Only between
                   </label>
                   {limited && <div className="row">
-                    <input aria-label="Window start" className="field" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+                    <input aria-label="Window start" className="field" type="text" placeholder="HH:MM" maxLength={5} value={start} onChange={(e) => setStart(e.target.value)} />
                     <span className="muted">and</span>
-                    <input aria-label="Window end" className="field" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+                    <input aria-label="Window end" className="field" type="text" placeholder="HH:MM" maxLength={5} value={end} onChange={(e) => setEnd(e.target.value)} />
                   </div>}
                 </div>
                 {limited && <>

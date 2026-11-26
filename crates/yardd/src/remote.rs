@@ -74,6 +74,9 @@ struct Entry {
     /// The running `ssh` process, so a stop can kill it: `process::exit`
     /// skips the drops that would.
     ssh_pid: Arc<Mutex<Option<u32>>>,
+    /// The host's last snapshot, kept current by its session updates, so a
+    /// page opened while the host is down still lists its sessions (offline).
+    last: Arc<Mutex<Option<Value>>>,
 }
 
 impl Drop for Entry {
@@ -129,10 +132,10 @@ impl Remotes {
         Value::Array(hosts)
     }
 
-    fn lookup(&self, id: &str) -> Option<(watch::Receiver<Conn>, String)> {
+    fn lookup(&self, id: &str) -> Option<(watch::Receiver<Conn>, String, Arc<Mutex<Option<Value>>>)> {
         let entries = self.entries.lock().unwrap();
         let e = entries.iter().find(|e| e.config.id == id)?;
-        Some((e.conn.subscribe(), e.config.name.clone()))
+        Some((e.conn.subscribe(), e.config.name.clone(), e.last.clone()))
     }
 
     fn publish_ids(&self, entries: &[Entry]) {
@@ -208,8 +211,8 @@ fn spawn_host(app: &Arc<App>, config: HostConfig) -> Entry {
         let port = config.remote_port.unwrap_or(DEFAULT_REMOTE_PORT);
         tasks.push(tokio::spawn(tunnel(app.clone(), conn.clone(), destination, port, ssh_pid.clone())));
     }
-    tasks.push(tokio::spawn(monitor(app.clone(), conn.clone())));
-    Entry { config, conn, tasks, ssh_pid }
+    tasks.push(tokio::spawn(monitor(app.clone(), conn.clone(), config.id.clone())));
+    Entry { config, conn, tasks, ssh_pid, last: Default::default() }
 }
 
 /// `host.add`: check the fields, save, and start connecting.
@@ -432,9 +435,11 @@ async fn connect(
     Ok(ws)
 }
 
-/// The hub's own connection to a host. It only decides the status the UI
-/// shows; clients get their own connections in `pipe`.
-async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>) {
+/// The hub's own connection to a host. It decides the status the UI shows
+/// (clients get their own connections in `pipe`), and it is the way back
+/// for this hub's agents that run there: it says which hub it is, and the
+/// host passes their tool calls and owed answers to it (`agent_tools`).
+async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>, host: String) {
     let mut rx = conn.subscribe();
     let mut backoff = Backoff::new(Duration::from_secs(10));
     loop {
@@ -443,14 +448,14 @@ async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>) {
             Err(_) => return,
         };
         match connect(&url).await {
-            Ok(mut ws) => {
+            Ok(ws) => {
                 set(&app, &conn, |c| {
                     c.status = "connected";
                     c.error = None;
                     c.no_daemon = false;
                 });
                 backoff.reset();
-                while let Some(Ok(_)) = ws.next().await {}
+                serve_host(&app, ws, &host).await;
                 set(&app, &conn, |c| {
                     c.status = "error";
                     c.error = Some("Connection lost. Retrying.".into());
@@ -464,6 +469,47 @@ async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>) {
             }),
         }
         backoff.wait().await;
+    }
+}
+
+/// Until the connection drops: say which hub this is, and answer what the
+/// host passes back for this hub's agents. A host from before remote agents
+/// answers the hello with an error, which is ignored like everything else.
+async fn serve_host(app: &Arc<App>, ws: tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>, host: &str) {
+    let (mut sink, mut stream) = ws.split();
+    let hello = json!({ "op": "agent.hosted.hub", "hub": app.tools.hub_id() });
+    if sink.send(Message::Text(hello.to_string())).await.is_err() {
+        return;
+    }
+    let (answers, mut answers_rx) = mpsc::unbounded_channel::<Value>();
+    loop {
+        tokio::select! {
+            incoming = stream.next() => match incoming {
+                Some(Ok(Message::Text(text))) => {
+                    // Everything the host broadcasts comes here too: parse only what is ours.
+                    if !text.contains("\"agent.hub.") {
+                        continue;
+                    }
+                    let Ok(msg) = serde_json::from_str::<Value>(&text) else { continue };
+                    if !msg["op"].as_str().is_some_and(|op| op.starts_with("agent.hub.")) {
+                        continue;
+                    }
+                    let (app, host, answers) = (app.clone(), host.to_string(), answers.clone());
+                    tokio::spawn(async move {
+                        if let Some(answer) = crate::agent_tools::from_host(&app, &host, &msg).await {
+                            let _ = answers.send(answer);
+                        }
+                    });
+                }
+                Some(Ok(_)) => {}
+                _ => return,
+            },
+            Some(answer) = answers_rx.recv() => {
+                if sink.send(Message::Text(answer.to_string())).await.is_err() {
+                    return;
+                }
+            }
+        }
     }
 }
 
@@ -608,11 +654,19 @@ impl Pipe {
 /// Open (and keep reopening) a client's connection to a host. Everything the
 /// host sends goes to `direct`, with ids rewritten.
 pub fn pipe(app: &Arc<App>, host_id: &str, direct: mpsc::UnboundedSender<String>) -> Option<Pipe> {
-    let (mut conn, name) = app.remotes.lookup(host_id)?;
+    let (mut conn, name, last) = app.remotes.lookup(host_id)?;
     let (tx, mut rx) = mpsc::unbounded_channel::<Value>();
     let up = Arc::new(AtomicBool::new(false));
     let host = host_id.to_string();
     let flag = up.clone();
+    if conn.borrow().status != "connected" {
+        if let Some(mut snapshot) = last.lock().unwrap().clone() {
+            // Its stats are stale; the host's row says it is offline instead.
+            snapshot["host"] = Value::Null;
+            let _ = direct.send(snapshot.to_string());
+            let _ = direct.send(json!({ "op": "host.down", "hostId": host }).to_string());
+        }
+    }
     let task = tokio::spawn(async move {
         let mut backoff = Backoff::new(Duration::from_secs(10));
         loop {
@@ -628,8 +682,9 @@ pub fn pipe(app: &Arc<App>, host_id: &str, direct: mpsc::UnboundedSender<String>
                     tokio::select! {
                         incoming = stream.next() => match incoming {
                             Some(Ok(Message::Text(text))) => {
-                                if let Some(out) = rewrite_incoming(&host, &name, &text) {
-                                    if direct.send(out).is_err() { return; }
+                                if let Some(out) = rewrite(&host, &name, &text) {
+                                    remember(&last, &out);
+                                    if direct.send(out.to_string()).is_err() { return; }
                                 }
                             }
                             Some(Ok(_)) => {}
@@ -720,9 +775,32 @@ fn rewrite_stats(host: &str, name: &str, stats: &mut Value) {
     }
 }
 
+/// Keep a host's last snapshot in step with the session updates after it.
+fn remember(last: &Mutex<Option<Value>>, msg: &Value) {
+    let mut last = last.lock().unwrap();
+    if msg["op"] == "host.snapshot" {
+        *last = Some(msg.clone());
+        return;
+    }
+    let Some(list) = last.as_mut().and_then(|s| s["sessions"].as_array_mut()) else { return };
+    match msg["op"].as_str() {
+        Some("session") => match list.iter_mut().find(|s| s["id"] == msg["session"]["id"]) {
+            Some(slot) => *slot = msg["session"].clone(),
+            None => list.push(msg["session"].clone()),
+        },
+        Some("session.deleted") => list.retain(|s| s["id"] != msg["sessionId"]),
+        _ => {}
+    }
+}
+
 /// Turn a message from a remote yardd into what the UI expects from a host.
 /// `None` drops it.
-pub fn rewrite_incoming(host: &str, name: &str, text: &str) -> Option<String> {
+#[cfg(test)]
+fn rewrite_incoming(host: &str, name: &str, text: &str) -> Option<String> {
+    rewrite(host, name, text).map(|msg| msg.to_string())
+}
+
+fn rewrite(host: &str, name: &str, text: &str) -> Option<Value> {
     let mut msg: Value = serde_json::from_str(text).ok()?;
     let op = msg["op"].as_str().unwrap_or("").to_string();
     match op.as_str() {
@@ -746,17 +824,24 @@ pub fn rewrite_incoming(host: &str, name: &str, text: &str) -> Option<String> {
                 "home": msg["home"].take(),
                 "workspace": msg["workspace"].take(),
                 "automations": msg["automations"].take(),
+                // A phone connects to the host it can reach: the hub shows each one's.
+                "mobile": msg["mobile"].take(),
             });
         }
         // A remote's own remotes are not ours to show.
-        "hosts" | "host.snapshot" | "host.down" | "switchy.state" => return None,
+        // Agents live on the hub: a remote's own are not offered here.
+        // So does Slack: only the hub's connection is shown.
+        "hosts" | "host.snapshot" | "host.down" | "switchy.state" | "agents" | "slack" => return None,
         "session" => rewrite_session(host, &mut msg["session"]),
         "host" => {
             rewrite_stats(host, name, &mut msg["host"]);
             msg["hostId"] = json!(host);
         }
-        "models" | "usage" | "accounts" | "error" | "git.branches" | "fs.dirs" | "attach.stored" | "engines" | "login" | "claude.sessions" | "automations" | "mcp" | "mcp.auth" | "mcp.change" => {
-            msg["hostId"] = json!(host)
+        "models" | "usage" | "accounts" | "mobile.status" | "error" | "git.branches" | "fs.dirs" | "attach.stored" | "engines" | "login" | "claude.sessions" | "automations" | "mcp" | "mcp.auth" | "mcp.change" => {
+            msg["hostId"] = json!(host);
+            if op == "error" {
+                prefix(host, &mut msg, "sessionId");
+            }
         }
         "term.list" => {
             prefix(host, &mut msg, "sessionId");
@@ -778,7 +863,7 @@ pub fn rewrite_incoming(host: &str, name: &str, text: &str) -> Option<String> {
             }
         }
     }
-    Some(msg.to_string())
+    Some(msg)
 }
 
 /// Open pipes for hosts a client does not have yet and drop the ones removed.
@@ -830,6 +915,13 @@ mod tests {
         assert_eq!(serde_json::from_str::<Value>(&stored).unwrap()["hostId"], "h1");
         let data = rewrite_incoming("h1", "box", r#"{"op":"attach.data","sessionId":"s9","id":"a1","data":""}"#).unwrap();
         assert_eq!(serde_json::from_str::<Value>(&data).unwrap()["sessionId"], "h1~s9");
+        // A file link in a remote session reads the file on that host.
+        let get = json!({ "op": "file.get", "sessionId": "h1~s9", "path": "report.csv", "ref": "r2" });
+        assert_eq!(route(&get).as_deref(), Some("h1"));
+        assert_eq!(outgoing(get)["sessionId"], "s9");
+        let file = rewrite_incoming("h1", "box", r#"{"op":"file.data","ref":"r2","sessionId":"s9","name":"report.csv","data":""}"#).unwrap();
+        let file: Value = serde_json::from_str(&file).unwrap();
+        assert_eq!((file["sessionId"].as_str(), file["ref"].as_str()), (Some("h1~s9"), Some("r2")));
     }
 
     #[test]
@@ -849,9 +941,13 @@ mod tests {
 
     #[test]
     fn a_snapshot_becomes_a_host_snapshot() {
-        let text = r#"{"op":"snapshot","sessions":[{"id":"s1","parent":"s0","host":"local"}],"models":{},"usage":{},"host":{"id":"local","name":"This Mac","sessions":[{"id":"s1"}]},"home":"/home/me"}"#;
+        let text = r#"{"op":"snapshot","sessions":[{"id":"s1","parent":"s0","host":"local"}],"models":{},"usage":{},"host":{"id":"local","name":"This Mac","sessions":[{"id":"s1"}]},"home":"/home/me","mobile":{"configured":true,"origins":["https://box.ts.net"]}}"#;
         let v: Value = serde_json::from_str(&rewrite_incoming("h1", "box", text).unwrap()).unwrap();
         assert_eq!(v["op"], "host.snapshot");
+        // The phone connects to the box; the hub shows where to point it and whether one has.
+        assert_eq!(v["mobile"]["origins"][0], "https://box.ts.net");
+        let status: Value = serde_json::from_str(&rewrite_incoming("h1", "box", r#"{"op":"mobile.status","mobile":{"configured":true}}"#).unwrap()).unwrap();
+        assert_eq!(status["hostId"], "h1");
         assert_eq!(v["sessions"][0]["id"], "h1~s1");
         assert_eq!(v["sessions"][0]["parent"], "h1~s0");
         assert_eq!(v["sessions"][0]["host"], "h1");
@@ -867,14 +963,16 @@ mod tests {
     }
 }
 
-/// A daemon-owned read request, independent of any browser connection. Switchy
-/// must keep collecting if the user closes its tab. Never accepts arbitrary URLs.
+/// A daemon-owned request, independent of any browser connection: the host
+/// agent keeps collecting if the user closes its tab, and a remote agent's
+/// message reaches its host whoever sent it. Answered by the first reply with
+/// its `ref`. Never accepts arbitrary URLs.
 pub async fn request(app: &Arc<App>, host: &str, mut msg: Value) -> Result<Value> {
-    let (conn, _) = app.remotes.lookup(host).context("unknown host")?;
+    let (conn, _, _) = app.remotes.lookup(host).context("unknown host")?;
     let connection = conn.borrow().clone();
     anyhow::ensure!(connection.status == "connected", "host is offline");
     let url = connection.url.context("host has no connection")?;
-    let reference = app.id("switchy-read-");
+    let reference = app.id("context-read-");
     msg["ref"] = json!(reference);
     tokio::time::timeout(Duration::from_secs(20), async {
         let (mut socket, _) = tokio_tungstenite::connect_async(url).await?;
@@ -888,6 +986,6 @@ pub async fn request(app: &Arc<App>, host: &str, mut msg: Value) -> Result<Value
                 }
             }
         }
-        bail!("host disconnected during context collection")
-    }).await.context("host context request timed out")?
+        bail!("the host disconnected before it answered")
+    }).await.context("the host did not answer in time")?
 }

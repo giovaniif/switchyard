@@ -11,7 +11,6 @@ import {
   type Choice,
 } from "./sessionDefaults";
 import { pickerEngines } from "./engines";
-import type { Models } from "./protocol";
 // Settings: what this browser keeps for itself (notifications, which hosts
 // the sidebar lists). Nothing here goes to yardd.
 import { useNotifySetting } from "./notify";
@@ -57,39 +56,15 @@ function DefaultPreferences({
   actions: Actions;
 }) {
   const [saved, setSaved] = useState(() => loadDefaults(target));
-  const [host, setHost] = useState(
-    () =>
-      saved?.host ??
-      (target === "sessions" ? loadHost() : (state.switchy?.scope ?? "all")),
-  );
+  const [host, setHost] = useState(() => saved?.host ?? loadHost());
   const knownHost =
     host === "local" ||
-    (target === "switchy" && host === "all") ||
     !state.connected ||
     state.hosts.some((h) => h.id === host);
-  const selectedHost = knownHost
-    ? host
-    : target === "switchy"
-      ? "all"
-      : "local";
-  const allModels = modelsOn(
-    state,
-    target === "switchy" ? "local" : selectedHost,
-  );
-  const models: Models =
-    target === "switchy"
-      ? { codex: allModels.codex, claude: allModels.claude }
-      : allModels;
+  const selectedHost = knownHost ? host : "local";
+  const models = modelsOn(state, selectedHost);
   const [chosen, setChosen] = useState<Choice>(
-    () =>
-      saved?.choice ??
-      (target === "switchy"
-        ? {
-            engine: (state.switchy?.engine ?? "codex") as Choice["engine"],
-            model: state.switchy?.model ?? "",
-            effort: state.switchy?.effort ?? "low",
-          }
-        : loadChoice(models, selectedHost)),
+    () => saved?.choice ?? loadChoice(models, selectedHost),
   );
   const choice = validChoice(models, chosen);
   const available = !!models[choice.engine]?.some((m) => m.id === choice.model);
@@ -97,8 +72,7 @@ function DefaultPreferences({
   const changeHost = (next: string) => {
     setHost(next);
     setNotice("");
-    if (target === "sessions")
-      setChosen(loadChoice(modelsOn(state, next), next));
+    setChosen(loadChoice(modelsOn(state, next), next));
   };
   const save = () => {
     const next = { host: selectedHost, choice };
@@ -115,18 +89,9 @@ function DefaultPreferences({
       return;
     }
     setSaved(null);
-    const nextHost =
-      target === "sessions" ? loadHost() : (state.switchy?.scope ?? "all");
+    const nextHost = loadHost();
     setHost(nextHost);
-    setChosen(
-      target === "sessions"
-        ? loadChoice(modelsOn(state, nextHost), nextHost)
-        : {
-            engine: (state.switchy?.engine ?? "codex") as Choice["engine"],
-            model: state.switchy?.model ?? "",
-            effort: state.switchy?.effort ?? "low",
-          },
-    );
+    setChosen(loadChoice(modelsOn(state, nextHost), nextHost));
     setNotice("Defaults reset. Last-used selections will be used.");
   };
   return (
@@ -135,26 +100,22 @@ function DefaultPreferences({
       aria-labelledby={`defaults-${target}`}
     >
       <div className="settings-text">
-        <h2 id={`defaults-${target}`}>
-          {target === "sessions" ? "New session defaults" : "Switchy defaults"}
-        </h2>
+        <h2 id={`defaults-${target}`}>New session defaults</h2>
         <span className="muted small">
-          {target === "sessions"
-            ? "Start new sessions on this host with this model. Existing sessions keep their settings."
-            : "Use this model and context host when you open Switchy. Inference runs on the local host."}
+          Start new sessions on this host with this model. Existing sessions
+          keep their settings. Agents keep their own, set on the Agents page.
         </span>
       </div>
       <div
         className="row"
         role="group"
-        aria-label={`${target === "sessions" ? "New session" : "Switchy"} defaults`}
+        aria-label="New session defaults"
       >
         <HostPicker
           state={state}
           value={selectedHost}
           onChange={changeHost}
           onAddHost={() => actions.go({ page: "hosts" })}
-          contextScope={target === "switchy"}
           allowOffline
         />
         {available && (
@@ -223,11 +184,6 @@ export function SettingsPage({
         <div className="hosts-inner">
           <DefaultPreferences
             target="sessions"
-            state={state}
-            actions={actions}
-          />
-          <DefaultPreferences
-            target="switchy"
             state={state}
             actions={actions}
           />

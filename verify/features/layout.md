@@ -1,7 +1,7 @@
 # Layout
 
 Switchyard is laid out for a desktop window: sessions sidebar, the session in
-the middle, and the workspace pane (Changes, Terminal, Pull request) on the
+the middle, and the workspace pane (Terminal, Subagents and Processes) on the
 right, hidden below 1100 px. The web version is also opened from phones over
 the tailnet, so the main column must stay usable at 390 px: below 700 px the
 sidebar is a drawer over the page, opened by the menu button ("Open sessions")
@@ -37,6 +37,78 @@ Below 1100 px the workspace pane is hidden and the composer stays on screen.
 
 ```sh
 yv drive 'session:{{sid_edit}}' --viewport mobile --steps '[{"expect":"role:region:Workspace","visible":false},{"expect":"label:Message","inViewport":true}]'
+```
+
+### desktop-sidebars-collapse-independently
+Viewports: desktop
+Each sidebar can give its space to the conversation independently. The open
+Workspace tab and panel widths survive a toggle. The collapse preferences
+survive reloads and do not prevent opening a panel on a narrower screen.
+
+```sh
+yv drive 'session:{{sid_echo}}' --viewport desktop --steps '[
+  {"eval":"localStorage.setItem(\"yard.sidebarWidth\", \"296\"); localStorage.setItem(\"yard.paneWidth\", \"360\"); true"},
+  {"reload":true},
+  {"click":"role:button:Processes"},
+  {"click":"role:button:Collapse sessions sidebar"},
+  {"expect":"role:navigation:Sessions","visible":false},
+  {"expect":"role:separator:Resize the sessions sidebar","visible":false},
+  {"expect":"role:region:Workspace","inViewport":true},
+  {"click":"role:button:Collapse workspace"},
+  {"expect":"role:region:Workspace","visible":false},
+  {"expect":"role:button:Expand sessions sidebar","inViewport":true},
+  {"expect":"role:button:Expand workspace","inViewport":true},
+  {"eval":"document.querySelector(\".thread\").clientWidth >= innerWidth - 48","equals":true},
+  {"shot":"sidebars-collapsed"},
+  {"click":"role:button:Expand workspace"},
+  {"expect":"css:.workspace-tabs .tab[aria-pressed=true]","text":"Processes"},
+  {"expect":"role:navigation:Sessions","visible":false},
+  {"eval":"document.querySelector(\".pane\").getBoundingClientRect().width","equals":360},
+  {"click":"role:button:Collapse workspace"},
+  {"reload":true},
+  {"expect":"role:navigation:Sessions","visible":false},
+  {"expect":"role:region:Workspace","visible":false},
+  {"resize":{"width":390,"height":844}},
+  {"click":"role:button:Open sessions"},
+  {"click":"role:button:Close sessions"},
+  {"click":{"role":"button","name":"Workspace","exact":true}},
+  {"expect":"role:region:Workspace","inViewport":true},
+  {"resize":{"width":1440,"height":900}},
+  {"expect":"role:region:Workspace","visible":false},
+  {"expect":"role:navigation:Sessions","visible":false},
+  {"click":"role:button:Expand sessions sidebar"},
+  {"expect":"role:region:Workspace","visible":false},
+  {"expect":"css:button[aria-label=\"Collapse sessions sidebar\"]:focus"},
+  {"eval":"document.querySelector(\".sidebar\").getBoundingClientRect().width","equals":296},
+  {"click":"role:button:Expand workspace"},
+  {"expect":"role:region:Workspace","inViewport":true},
+  {"shot":"sidebars-expanded"}
+]'
+```
+
+### mobile-panels-have-close-controls
+Viewports: mobile
+Close buttons return to the conversation, with focus back on the panel's opener.
+
+```sh
+yv drive 'session:{{sid_echo}}' --viewport mobile --steps '[
+  {"click":"role:button:Open sessions"},
+  {"wait":240},
+  {"expect":"role:button:Close sessions","inViewport":true},
+  {"shot":"sessions-drawer-close"},
+  {"click":"role:button:Close sessions"},
+  {"expect":"role:navigation:Sessions","visible":false},
+  {"expect":"css:button[aria-label=\"Open sessions\"]:focus"},
+  {"click":{"role":"button","name":"Workspace","exact":true}},
+  {"click":"role:button:Processes"},
+  {"expect":"role:button:Back to conversation","inViewport":true},
+  {"shot":"workspace-close"},
+  {"click":"role:button:Back to conversation"},
+  {"expect":"role:region:Workspace","visible":false},
+  {"expect":"css:button.workspace-toggle:focus","text":"Workspace"},
+  {"click":{"role":"button","name":"Workspace","exact":true}},
+  {"expect":"css:.workspace-tabs .tab[aria-pressed=true]","text":"Processes"}
+]'
 ```
 
 ### mobile-main-column-usable
@@ -78,10 +150,12 @@ yv drive new --viewport mobile --steps '[{"expect":"role:button:Open sessions","
 Viewports: mobile
 At 390 px, Delete on a session with its own worktree arms two choices in the
 bar. Each stays on one line inside the bar (nothing spills over the thread or
-off the screen), and the first click still only arms them.
+off the screen), and the first click still only arms them. The bar is the
+measure, not `innerWidth`: in mobile emulation `innerWidth` grows with the
+overflow, so "Delete + worktree" at x 342-475 passed against it (#310).
 
 ```sh
-yv drive 'session:{{sid_edit}}' --viewport mobile --steps '[{"click":{"role":"button","name":"Delete","exact":true}},{"expect":{"css":".main header.bar .btn-text"},"count":2},{"eval":"(() => { const bar = document.querySelector(\".main header.bar\").getBoundingClientRect(); return [...document.querySelectorAll(\".main header.bar button\")].filter((b) => b.getClientRects().length > 0).every((b) => { const r = document.createRange(); r.selectNodeContents(b); const box = r.getBoundingClientRect(); return new Set([...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top))).size === 1 && box.bottom <= bar.bottom && box.right <= window.innerWidth; }); })()","equals":true},{"shot":"delete-armed"}]'
+yv drive 'session:{{sid_edit}}' --viewport mobile --steps '[{"click":{"role":"button","name":"Delete","exact":true}},{"expect":"role:button:Delete + worktree"},{"expect":{"css":".main header.bar .bar-choice"},"count":2},{"eval":"(() => { const bar = document.querySelector(\".main header.bar\").getBoundingClientRect(); return document.documentElement.scrollWidth <= Math.round(bar.right) && [...document.querySelectorAll(\".main header.bar button\")].filter((b) => b.getClientRects().length > 0).every((b) => { const r = document.createRange(); r.selectNodeContents(b); const box = r.getBoundingClientRect(); const pill = b.getBoundingClientRect(); return new Set([...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top))).size === 1 && box.bottom <= bar.bottom && pill.right <= bar.right; }); })()","equals":true},{"shot":"delete-armed"}]'
 yv state --expect '{"sessions":[{"id":"{{sid_edit}}"}]}'
 ```
 
@@ -108,6 +182,14 @@ yv drive 'session:{{sid_echo}}' --viewport desktop --steps '[{"expect":"label:Me
 yv drive new --steps '[{"expect":"label:Message"},{"eval":"(() => { const row = document.querySelector(\".composer-row\").getBoundingClientRect(); const send = document.querySelector(\".composer-row .send\").getBoundingClientRect(); return Math.round(row.right - send.right); })()","equals":0}]'
 ```
 
+### new-session-send-shares-controls-row
+Viewports: desktop
+Send stays next to the composer controls as the New session box narrows.
+
+```sh
+yv drive new --viewport desktop --steps '[{"expect":"label:Message"},{"expect":"role:button:Send"},{"eval":"(async () => { const inner = document.querySelector(\".new-inner\"); const row = inner.querySelector(\".composer-row\"); const send = row.querySelector(\".send\"); for (let width = 300; width <= 580; width += 2) { inner.style.maxWidth = width + \"px\"; await new Promise(requestAnimationFrame); const lastControl = Math.max(...[...row.querySelectorAll(\"button:not(.send)\")].filter(b => b.getClientRects().length).map(b => b.getBoundingClientRect().bottom)); if (send.getBoundingClientRect().top >= lastControl) return {width}; } return true; })()","equals":true},{"shot":"composer-controls"}]'
+```
+
 ### desktop-sidebar-is-a-column
 Viewports: desktop
 At 1440 px nothing changes: no menu button, and the sidebar is a 248 px column
@@ -120,13 +202,16 @@ yv drive 'session:{{sid_echo}}' --viewport desktop --steps '[{"expect":"role:but
 ### workspace-tabs-fit-minimum-width
 Viewports: desktop
 At the minimum 300 px pane width, the header stays one row tall, its labels
-stay on one line, and every control stays inside the pane. A compact view
-selector keeps all four views available.
+stay on one line, and every control stays inside the pane. Both views
+are directly selectable.
 
 ```sh
-yv drive 'session:{{sid_edit}}' --viewport desktop --steps '[{"eval":"localStorage.setItem(\"yard.paneWidth\",\"300\") ?? true"},{"reload":true},{"expect":"role:region:Workspace"},{"shot":"minimum-pane"},{"eval":"(() => { const bar=document.querySelector(\".pane .tabs\").getBoundingClientRect(); const buttons=[...document.querySelectorAll(\".pane .tabs button\")].filter(b=>b.getClientRects().length); return Math.round(bar.height)===52 && buttons.every(b=>{const box=b.getBoundingClientRect();const r=document.createRange();r.selectNodeContents(b);return new Set([...r.getClientRects()].filter(x=>x.width>0).map(x=>Math.round(x.top))).size<=1 && box.left>=bar.left && box.right<=bar.right && box.bottom<=bar.bottom;}); })()","equals":true},{"expect":"label:Workspace view"},{"expect":"role:button:Refresh changes","inViewport":true}]'
+yv drive 'session:{{sid_edit}}' --viewport desktop --steps '[{"eval":"localStorage.setItem(\"yard.paneWidth\",\"300\") ?? true"},{"reload":true},{"expect":"role:region:Workspace"},{"shot":"minimum-pane"},{"eval":"(() => { const bar=document.querySelector(\".pane .tabs\").getBoundingClientRect(); const buttons=[...document.querySelectorAll(\".pane .tabs button\")].filter(b=>b.getClientRects().length); return Math.round(bar.height)===52 && buttons.every(b=>{const box=b.getBoundingClientRect();const r=document.createRange();r.selectNodeContents(b);return new Set([...r.getClientRects()].filter(x=>x.width>0).map(x=>Math.round(x.top))).size<=1 && box.left>=bar.left && box.right<=bar.right && box.bottom<=bar.bottom;}); })()","equals":true},{"expect":"role:button:Terminal","inViewport":true},{"expect":"role:button:Subagents","inViewport":true},{"expect":"role:button:Processes","inViewport":true},{"click":"role:button:Processes"},{"expect":"role:button:Refresh processes","inViewport":true}]'
 ```
 
 ## Gotchas
 - Below 700 px the sidebar is a closed drawer, so a recipe that clicks or reads something in it at mobile opens it first (`{"click":"role:button:Open sessions"}`); `yv drive`'s routes do that themselves. At both viewports with one step list, split the recipe per viewport: the menu button is hidden on desktop.
+- On desktop, `yv drive`'s routes and `goto` steps reach a page by clicking the sidebar, and they do not expand a collapsed one: after `{"click":"role:button:Collapse sessions sidebar"}` a `goto` times out (`goto hosts` waited 30 s on `.host-row`, 2026-11-20). Expand it first (`{"click":"role:button:Expand sessions sidebar"}`), or change pages with `{"eval":"(location.hash=\"#/hosts\", true)"}`. The collapse is kept in `localStorage` (`yard.sidebarCollapsed`), so a recipe that collapses it expands it again before it ends.
 - Fixed 2026-11-16 (#8): there was no layout below ~700 px; the 248 px sidebar left the session column about 140 px wide at 390 px.
+- The sidebar and drawer toggles move focus in a `requestAnimationFrame` after the click. An `eval` of `document.activeElement` straight after a step that is already satisfied (such as `{"expect":"role:region:Workspace","visible":false}` while it is hidden) can run before that frame. `desktop-sidebars-collapse-independently` failed 2 of 3 map runs that way on 2026-11-21, and `mobile-panels-have-close-controls` once (`activeElement` was not yet the button), while focus did land in every probe. Wait for focus instead: `{"expect":"css:button[aria-label=\"…\"]:focus"}`.
+- Open 2026-11-22 (#249, owner call): at 390 px the session header's branch chip shrinks to "ya…" (the shared `yard/` prefix) because `.bar code` may shrink with no minimum width. No recipe yet: the fix (hide the chip on phones, a minimum width, or show the end of the branch) is the owner's choice, and the recipe follows that choice.

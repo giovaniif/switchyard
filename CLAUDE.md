@@ -25,7 +25,7 @@ One UI for Claude Code, Codex, OpenCode and Grok sessions. Read [docs/ARCHITECTU
 - Ports 4510-4559 belong to LocalStack. Stay out of them.
 - Live agent turns spend the user's subscriptions. Tests and verification use the scripted engines; a real-engine check uses Codex on `gpt-5.6-luna`, effort `low`, with tiny prompts. The agent loops run on Claude (`verify/loops.json`), capped by usage; no other Claude turns unless the task says so.
 - You own this repo end to end: commit and push your work, including CI changes. Leave other repositories alone.
-- Releases are numbered: write the CHANGELOG.md section, then `scripts/release.sh X.Y.Z` (see CONTRIBUTING.md). Pushes to `main` build but don't publish.
+- Releases are numbered: write the CHANGELOG.md section, then `scripts/release.sh X.Y.Z` (see CONTRIBUTING.md): it opens the version PR with auto-merge, and its merge publishes. Other pushes to `main` build but don't publish.
 - yardd binds loopback by default and always checks the WebSocket `Origin`. Keep both. Leaving loopback is opt-in through `YARD_BIND` (the container image uses `0.0.0.0`; a server behind a proxy lists loopback plus one proxy-facing address), always with `YARD_ALLOW_ORIGIN` naming the page's URL. Never match `Origin` against the `Host` header: that reopens DNS rebinding.
 
 ## Code

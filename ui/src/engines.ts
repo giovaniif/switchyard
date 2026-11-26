@@ -59,3 +59,11 @@ export function reviewEngine(engine: Engine, models: Models): Engine | null {
   if (preferred !== engine && (models[preferred]?.length ?? 0) > 0) return preferred;
   return ENGINES.find((e) => e !== engine && (models[e]?.length ?? 0) > 0) ?? null;
 }
+
+/** The effort a session shows: none when its model takes no effort (some
+ *  OpenCode, Grok and Gemini ones), whatever the choice still carries from
+ *  the model picked before. Matches EffortPicker, which then has no chip. */
+export function shownEffort(models: Models, engine: Engine, model: string, effort: string): string {
+  const efforts = models[engine]?.find((m) => m.id === model)?.efforts ?? [];
+  return efforts.length > 0 ? effort : "";
+}

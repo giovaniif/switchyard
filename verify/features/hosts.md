@@ -15,6 +15,8 @@ yv var set remote_work "$(yv var get work --iso map-hosts-remote | jq -er .value
 
 ```sh
 yv iso down --name map-hosts-remote
+# Recipes that fail stop before their own teardown; a remote left up breaks the next run.
+yv iso down --name map-hosts-signin
 yv iso down
 ```
 
@@ -66,8 +68,22 @@ Compact host rows share one full width. Selecting another host replaces the sing
 
 ```sh
 yv api '{"op":"host.add","name":"TEST-grid","kind":"direct","url":"ws://127.0.0.1:{{remote_port}}/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-grid","status":"connected"}]}' --save grid_id='hosts[name=TEST-grid].id'
-yv drive 'hosts' --steps '[{"expect":"role:button:Select TEST-grid"},{"eval":"(() => { const rows=[...document.querySelectorAll(\".host-summary\")]; const a=rows[0].getBoundingClientRect(), b=rows.at(-1).getBoundingClientRect(); return b.top>=a.bottom && Math.round(a.width)===Math.round(b.width); })()","equals":true},{"click":"role:button:Select TEST-grid"},{"expect":"css:.host-inspector","count":1},{"expect":"css:.host-inspector-heading","text":"TEST-grid"},{"shot":"selected-remote"},{"click":"role:tab:Engine logins"},{"expect":"css:.engine-row","text":"Claude Code"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true}]'
+yv drive 'hosts' --steps '[{"expect":"role:button:Select TEST-grid"},{"eval":"(() => { const rows=[...document.querySelectorAll(\".host-summary\")]; const a=rows[0].getBoundingClientRect(), b=rows.at(-1).getBoundingClientRect(); return b.top>=a.bottom && Math.round(a.width)===Math.round(b.width); })()","equals":true},{"click":"role:button:Select TEST-grid"},{"expect":"css:.host-inspector","count":1},{"expect":"css:.host-inspector-heading","text":"TEST-grid"},{"shot":"selected-remote"},{"click":"role:tab:Engine logins"},{"expect":"css:.engine-row","text":"Claude Code"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true}]'
 yv api '{"op":"host.remove","hostId":"{{grid_id}}"}' --wait '{"op":"hosts"}'
+```
+
+### selecting-a-host-shows-its-details
+Viewports: both
+On a phone the iPhone setup card and the host rows fill the screen, so the
+inspector starts below the fold. Selecting a host brings its details into view;
+otherwise the tap only moves the row's border. When the details are already in
+view (desktop), the page stays where it is. The click goes through
+`element.click()` so Playwright's own scroll-into-view doesn't hide either case.
+
+```sh
+yv api '{"op":"host.add","name":"TEST-reveal","kind":"direct","url":"ws://127.0.0.1:{{remote_port}}/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-reveal","status":"connected"}]}' --save reveal_id='hosts[name=TEST-reveal].id'
+yv drive 'hosts' --steps '[{"expect":"role:button:Select TEST-reveal"},{"eval":"(() => { const h = document.querySelector(\".host-inspector-heading\").getBoundingClientRect(); window.__wasVisible = h.top >= 0 && h.bottom <= innerHeight; window.__top = document.querySelector(\".hosts .scroll\").scrollTop; document.querySelector(\"[aria-label=\\\"Select TEST-reveal\\\"]\").click(); return true; })()","equals":true},{"expect":"css:.host-inspector-heading","text":"TEST-reveal"},{"wait":800},{"eval":"(() => { const r = document.querySelector(\".host-inspector-heading\").getBoundingClientRect(); const still = !window.__wasVisible || document.querySelector(\".hosts .scroll\").scrollTop === window.__top; return r.top >= 0 && r.bottom <= innerHeight && still; })()","equals":true},{"shot":"selected-in-view"}]'
+yv api '{"op":"host.remove","hostId":"{{reveal_id}}"}' --wait '{"op":"hosts"}'
 ```
 
 ### ssh-host-unreachable
@@ -133,6 +149,21 @@ yv drive hosts --viewport mobile --steps '[{"click":"role:button:Add host"},{"fi
 yv drive hosts --viewport desktop --steps '[{"click":"role:button:Add host"},{"fill":"label:SSH destination","value":"test@100.64.0.7"},{"click":"role:button:Add 100.64.0.7"},{"expect":"role:button:Select 100.64.0.7"},{"click":"role:button:Add host"},{"fill":"label:SSH destination","value":"test@100.64.0.8"},{"click":"role:button:Add 100.64.0.8"},{"expect":"role:button:Select 100.64.0.8"},{"expect":{"css":".host-row","hasText":"100.64.0.8"}},{"expect":"css:.banner-error","count":0},{"shot":"two-ip-hosts"}]'
 ```
 
+### long-name-fits-the-add-button
+Viewports: both
+A long host name keeps the Add button on one line inside the card, with
+Cancel beside it: on a phone the label ends in an ellipsis, and the button's
+accessible name stays whole. A Tailscale IPv6 destination names the host by
+the whole 39-character address; at 390 px that label wrapped inside the 32 px
+button, its second line cut off, and Cancel and Options dropped to their own
+line. A custom name at the 40-character limit (Options → Name) with no spaces
+ran past the card. On desktop the label still shows the whole name.
+
+```sh
+yv drive hosts --viewport mobile --steps '[{"click":"role:button:Add host"},{"fill":"label:SSH destination","value":"test@fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"},{"expect":"role:button:Add fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"},{"eval":"(() => { const card = document.querySelector(\".add-host\").getBoundingClientRect(); const b = document.querySelector(\".add-host .btn-primary\"); const r = b.getBoundingClientRect(); const cancel = [...document.querySelectorAll(\".add-host button\")].find(x => x.textContent.trim() === \"Cancel\").getBoundingClientRect(); return b.scrollHeight <= b.clientHeight + 1 && r.right <= card.right && cancel.right <= card.right && Math.abs(cancel.top - r.top) < 1 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()","equals":true},{"shot":"ipv6-label"},{"click":"role:button:Options"},{"fill":"css:#host-name","value":"TEST-a-long-host-name-without-any-spaces"},{"eval":"(() => { const card = document.querySelector(\".add-host\").getBoundingClientRect(); const b = document.querySelector(\".add-host .btn-primary\"); const r = b.getBoundingClientRect(); const cancel = [...document.querySelectorAll(\".add-host button\")].find(x => x.textContent.trim() === \"Cancel\").getBoundingClientRect(); return b.scrollHeight <= b.clientHeight + 1 && r.right <= card.right && cancel.right <= card.right && Math.abs(cancel.top - r.top) < 1 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()","equals":true},{"shot":"long-name-label"},{"click":"role:button:Add TEST-a-long-host-name-without-any-spaces"},{"expect":"role:button:Select TEST-a-long-host-name-without-any-spaces"}]'
+yv drive hosts --viewport desktop --steps '[{"click":"role:button:Add host"},{"fill":"label:SSH destination","value":"test@fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"},{"eval":"(() => { const b = document.querySelector(\".add-host .btn-primary\"); return b.scrollWidth <= b.clientWidth && b.scrollHeight <= b.clientHeight + 1; })()","equals":true},{"shot":"ipv6-label-whole"},{"click":"role:button:Add fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"},{"expect":"role:button:Select fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"}]'
+```
+
 ### install-on-host (manual: needs a real SSH server)
 "Install Switchyard" runs scripts/remote-install.sh over ssh; the daemon suite
 covers it with a fake ssh and a file:// release.
@@ -142,7 +173,7 @@ Viewports: both
 Long login details cannot change summary row height or create horizontal overflow.
 
 ```sh
-yv drive 'hosts' --steps '[{"click":"role:tab:Engine logins"},{"eval":"window.__summaryHeight=document.querySelector(\".host-summary\").getBoundingClientRect().height; document.querySelector(\".engine-row .muted\").textContent=\"logged in as TEST-a-very-long-account-name@a-very-long-domain.example · not logged in\"; true","equals":true},{"eval":"document.querySelector(\".host-summary\").getBoundingClientRect().height === window.__summaryHeight && document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"long-login"}]'
+yv drive 'hosts' --steps '[{"click":"role:tab:Engine logins"},{"eval":"window.__summaryHeight=document.querySelector(\".host-summary\").getBoundingClientRect().height; document.querySelector(\".engine-row .muted\").textContent=\"logged in as TEST-a-very-long-account-name@a-very-long-domain.example · not logged in\"; true","equals":true},{"eval":"document.querySelector(\".host-summary\").getBoundingClientRect().height === window.__summaryHeight && document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"long-login"}]'
 ```
 
 ### processes-say-the-host-is-offline
@@ -151,7 +182,9 @@ A remote session's Processes tab, open when its host goes away, says the list
 comes back when the host reconnects. Once, it kept saying "Nothing is running
 for this session." (or kept a stale list, with Stop buttons that could only
 fail), and a tab first opened offline said "Loading…" forever. Uses its own
-remote so the area's TEST-remote stays up.
+remote so the area's TEST-remote stays up. While the host is up the tab lists
+the shell of the terminal the workspace opens by default (terminal-first,
+#290), so it is a live table, not "Nothing is running", that must go away.
 
 ```sh
 gone_port="$(yv iso up --name map-hosts-gone --host-name TEST-gone | jq -r .iso.port)"
@@ -159,8 +192,58 @@ gone_work="$(yv var get work --iso map-hosts-gone | jq -er .value)"
 yv api '{"op":"host.add","name":"TEST-gone","kind":"direct","url":"ws://127.0.0.1:'"$gone_port"'/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-gone","status":"connected"}]}' --save gone_id='hosts[name=TEST-gone].id'
 yv api '{"op":"session.create","host":"{{gone_id}}","engine":"codex","model":"fake-fast","effort":"low","cwd":"'"$gone_work"'","text":"TEST-procs on a host that goes"}' --wait '{"op":"created"}' --save gone_sid=sessionId
 (sleep 8; yv iso down --name map-hosts-gone >/dev/null) &
-yv drive 'session:{{gone_sid}}' --viewport desktop --allow-errors --steps '[{"expect":"css:.thread","text":"Echo: TEST-procs on a host that goes","timeout":15000},{"select":"label:Workspace view","value":"procs"},{"expect":{"role":"region","name":"Workspace"},"text":"Nothing is running for this session.","timeout":10000},{"expect":"css:.bar-host","text":"offline","timeout":20000},{"expect":{"role":"region","name":"Workspace"},"text":"Processes are available when this host reconnects.","timeout":5000},{"expect":"css:.proc-table","count":0},{"shot":"procs-offline"}]'
+yv drive 'session:{{gone_sid}}' --viewport desktop --allow-errors --steps '[{"expect":"css:.thread","text":"Echo: TEST-procs on a host that goes","timeout":15000},{"click":"role:button:Processes"},{"expect":"css:.proc-table","timeout":10000},{"expect":"css:.bar-host","text":"offline","timeout":20000},{"expect":{"role":"region","name":"Workspace"},"text":"Processes are available when this host reconnects.","timeout":5000},{"expect":"css:.proc-table","count":0},{"shot":"procs-offline"}]'
 wait
+```
+
+### new-session-says-the-remembered-host-is-offline
+Viewports: both
+New session keeps a remembered remote host selected while it is offline, with
+Send disabled, and says why next to the chips. Until 2026-11-21 Send was just
+grey: the message could be typed but nothing said the host was offline. Uses
+its own remote, taken down before the page opens.
+
+```sh
+later_port="$(yv iso up --name map-hosts-later --host-name TEST-later | jq -r .iso.port)"
+yv api '{"op":"host.add","name":"TEST-later","kind":"direct","url":"ws://127.0.0.1:'"$later_port"'/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-later","status":"connected"}]}' --save later_id='hosts[name=TEST-later].id'
+yv iso down --name map-hosts-later
+yv drive new --steps '[{"eval":"(localStorage.setItem(\"yard.host\", \"{{later_id}}\"), true)","equals":true},{"reload":true},{"expect":{"css":".new-chips button","hasText":"TEST-later"}},{"fill":"label:Message","value":"TEST-wait for the host"},{"expect":{"role":"button","name":"Send","exact":true},"enabled":false},{"expect":"css:.new-chips","text":"TEST-later is offline"},{"shot":"remembered-host-offline"}]'
+```
+
+### sessions-stay-listed-while-their-host-is-down
+Viewports: both
+A page opened (a reload, another window) while a remote host is down still
+lists that host's sessions, marked Offline, and opening one says the host is
+offline. Until 2026-11-21 the sessions vanished from the sidebar until the
+host came back: yardd only relayed a remote's sessions over a live link.
+Uses its own remote so the area's TEST-remote stays up. Only a hub that saw
+the host since it started knows its sessions.
+
+```sh
+away_port="$(yv iso up --name map-hosts-away --host-name TEST-away | jq -r .iso.port)"
+away_work="$(yv var get work --iso map-hosts-away | jq -er .value)"
+yv api '{"op":"host.add","name":"TEST-away","kind":"direct","url":"ws://127.0.0.1:'"$away_port"'/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-away","status":"connected"}]}' --save away_id='hosts[name=TEST-away].id'
+yv api '{"op":"session.create","host":"{{away_id}}","engine":"codex","model":"fake-fast","effort":"low","cwd":"'"$away_work"'","text":"TEST-listed while away"}' --wait '{"op":"event","event":{"type":"turn_completed"}}'
+yv iso down --name map-hosts-away
+yv drive new --viewport desktop --steps '[{"expect":{"css":".session-row","hasText":"TEST-listed while away"},"text":"Offline","timeout":20000},{"click":{"css":".session-row","hasText":"TEST-listed while away"}},{"expect":"css:.offline-note","text":"is offline"},{"shot":"listed-while-away"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":{"css":".session-row","hasText":"TEST-listed while away"},"text":"Offline","timeout":20000},{"shot":"listed-while-away"},{"click":{"css":".session-row","hasText":"TEST-listed while away"}},{"expect":"css:.offline-note","text":"is offline"}]'
+```
+
+### subscriptions-sign-in-opens-the-accounts-host
+Viewports: both
+Sign in on a signed-out account's Subscriptions row opens Engine logins on
+the host that account lives on, as the sidebar usage popover does. Until
+2026-11-25 it opened the host the Hosts page had selected (this machine), so
+the account to sign in was not on screen (#430). Uses its own remote so the
+account is on that host only.
+
+```sh
+signin_port="$(yv iso up --name map-hosts-signin --host-name TEST-signin | jq -r .iso.port)"
+yv api '{"op":"host.add","name":"TEST-signin","kind":"direct","url":"ws://127.0.0.1:'"$signin_port"'/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-signin","status":"connected"}]}' --save signin_id='hosts[name=TEST-signin].id'
+yv api '{"op":"account.add","host":"{{signin_id}}","engine":"claude","name":"TEST-Faraway"}' --wait '{"op":"accounts"}'
+yv drive 'subscriptions' --steps '[{"expect":"role:region:Claude · TEST-Faraway","text":"Sign in to see usage"},{"click":"role:button:Sign in — Claude · TEST-Faraway"},{"expect":"css:.host-inspector-heading","text":"TEST-signin"},{"expect":"css:[role=tab][aria-selected=true]","text":"Engine logins"},{"expect":{"css":".account-row","hasText":"TEST-Faraway"},"text":"not logged in"},{"shot":"signin-on-its-host"}]'
+yv api '{"op":"host.remove","hostId":"{{signin_id}}"}' --wait '{"op":"hosts"}'
+yv iso down --name map-hosts-signin
 ```
 
 ## Gotchas

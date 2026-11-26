@@ -165,10 +165,16 @@ export const runSummary = (s: SessionMeta, now: number, name = ""): string =>
 export const stripRuns = (runs: SessionMeta[], max: number): SessionMeta[] => runs.slice(0, max).reverse();
 
 export function scheduleLine(a: Automation, now: number): string {
+  return scheduleParts(a, now).join(" · ");
+}
+
+/** The line's two halves: the schedule, and when it runs next. A card cuts the
+ *  first when the line is too long, never the second: the next run is what changes. */
+export function scheduleParts(a: Automation, now: number): [string, string] {
   // A manual automation has no next run: it runs when someone (or a script) starts it.
-  if (a.schedule.kind === "manual") return `Manual · ${a.enabled ? "runs when started" : "off"}`;
+  if (a.schedule.kind === "manual") return ["Manual", a.enabled ? "runs when started" : "off"];
   const next = a.enabled && a.nextRun != null ? `next ${describeNext(a.nextRun, true, now)}` : "off";
-  return `${describeSchedule(a.schedule, a.window)} · ${next}`;
+  return [describeSchedule(a.schedule, a.window), next];
 }
 
 /** yardd's skip reasons, cut to what fits a card's line; the tooltip keeps the whole one. */
@@ -226,6 +232,15 @@ export function runsOf(sessions: Record<string, SessionMeta>, host: string, auto
   return Object.values(sessions)
     .filter((s) => s.automation === automation && (s.host || "local") === host)
     .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** The sidebar Automations button's dot. Runs stay out of the sidebar, so a
+ *  run waiting for approval must outrank one that is only working: this dot is
+ *  the only sign there that it waits for the user. */
+export function runsAttention(runs: SessionMeta[]): "approval" | "working" | null {
+  if (runs.some((s) => s.status === "needs_approval")) return "approval";
+  if (runs.some((s) => s.status === "running")) return "working";
+  return null;
 }
 
 /** Runs live on the Automations page; pinning one brings it back to the list. */

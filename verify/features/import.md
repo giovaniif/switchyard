@@ -108,7 +108,7 @@ yv iso down --name map-import-remote >/dev/null
 P=$(yv iso up --name map-import-remote --host-name TEST-remote | jq -er .iso.port)
 yv api '{"op":"host.add","name":"TEST-remote","kind":"direct","url":"ws://127.0.0.1:'"$P"'/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-remote","status":"connected"}]}' --save rhost='hosts[name=TEST-remote].id'
 yv api '{"op":"claude.sessions","host":"{{rhost}}"}' --wait '{"op":"claude.sessions","hostId":"{{rhost}}"}' --expect '{"sessions":[{"title":"TEST-write the release notes"}]}'
-yv drive new --viewport desktop --steps '[{"click":{"role":"button","name":"Import","exact":true}},{"click":{"within":"role:dialog","css":".chip"}},{"click":{"within":"role:dialog","role":"button","name":"TEST-remote"}},{"expect":"role:dialog","text":"on TEST-remote"},{"click":"role:button:Import TEST-old refactor of the parser"},{"expect":"css:.thread","text":"TEST-answer to: TEST-old refactor of the parser"}]'
+yv drive new --viewport desktop --steps '[{"click":{"role":"button","name":"Import","exact":true}},{"click":{"within":"role:dialog","css":".chip"}},{"click":{"within":"role:dialog:Hosts","role":"button","name":"TEST-remote"}},{"expect":"role:dialog","text":"on TEST-remote"},{"click":"role:button:Import TEST-old refactor of the parser"},{"expect":"css:.thread","text":"TEST-answer to: TEST-old refactor of the parser"}]'
 yv state --iso map-import-remote --expect '{"sessions":[{"title":"TEST-old refactor of the parser","engine":"claude","cwd":"~yv-map-import-remote"}]}'
 yv iso down --name map-import-remote
 ```
@@ -118,3 +118,4 @@ yv iso down --name map-import-remote
 - The map and the daemon suite use the fake sidecar, which only logs the resume id it was given. A real resume was checked by hand on 2026-11-15: a throwaway `claude -p --model claude-haiku-5-5` session in a temp folder told to remember PELICAN, imported into a `--engines real` isolated yardd (it kept Haiku 5.5), answered "PELICAN" to "What word did I ask you to remember?". Repeat that by hand after changing the resume path; never import the owner's real sessions to test.
 - `claude -p` and SDK sessions are not listed (the SDK's `includeProgrammatic: false`, like Claude Code's own `/resume`); `session.import` still takes their id.
 - Titles come from the SDK: the custom title (`/rename`), else the summary, else the first prompt.
+- The dialog's host chip opens its menu as a separate `Hosts` popover (portalled, #297), not inside the Import dialog: target its rows `within` `role:dialog:Hosts`.

@@ -17,7 +17,8 @@
 //
 // Events are already in yardd's normalized shape, so yardd only relays them.
 // Nothing else may write to stdout.
-import { readOnlySwitchy, switchyProfile } from "./switchy";
+import { readOnly, restrictedProfile } from "./restricted";
+import { agentToolsProfile, isOwnTool } from "./agentTools";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { createInterface } from "node:readline";
 import { userMessage } from "./message";
@@ -86,7 +87,7 @@ const PERMISSION_MODE: Record<string, string> = {
   full: "bypassPermissions",
 };
 
-async function run(start: { switchy?: boolean; cwd: string; model: string; effort?: string; permission?: string; resume?: string | null }) {
+async function run(start: { restricted?: boolean; cwd: string; model: string; effort?: string; permission?: string; resume?: string | null; tools?: Record<string, unknown> | null }) {
   cwd = start.cwd;
   const subagents = createSubagents(cwd);
 
@@ -109,7 +110,9 @@ async function run(start: { switchy?: boolean; cwd: string; model: string; effor
     // itself while the mode is another one.
     allowDangerouslySkipPermissions: true,
     canUseTool: async (toolName: string, toolInput: any, ctx: { signal?: AbortSignal; suggestions?: unknown[] }) => {
-      if (readOnlySwitchy(start)) return { behavior: "deny", message: "Switchy uses daemon-provided evidence only." };
+      if (readOnly(start)) return { behavior: "deny", message: "This session answers from the evidence yardd supplies, without tools." };
+      // Switchyard's own tools (allowedTools covers them; this is the fallback).
+      if (start.tools && isOwnTool(toolName)) return { behavior: "allow", updatedInput: toolInput };
       const requestId = nextId("claude");
       const d = describeTool(toolName, toolInput, cwd);
       emit({
@@ -131,7 +134,8 @@ async function run(start: { switchy?: boolean; cwd: string; model: string; effor
       return { behavior: "allow", updatedInput: toolInput };
     },
   };
-  Object.assign(options, switchyProfile(start));
+  Object.assign(options, agentToolsProfile(start));
+  Object.assign(options, restrictedProfile(start));
   if (start.effort && efforts.includes(start.effort)) options.effort = start.effort;
   if (start.resume) options.resume = start.resume;
   // Recent models omit thinking text unless asked; summarized is what Claude Code shows.

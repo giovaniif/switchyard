@@ -34,7 +34,7 @@ session page with the prompt as the heading and the fake's reply "Echo: …".
 Read back: the daemon lists the session as idle, with a `yard/` branch.
 
 ```sh
-yv drive new --viewport desktop --steps '[{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · Default"}},{"press":"Escape"},{"click":"role:button:work"},{"fill":"label:Folder","value":"{{repo}}"},{"press":"Enter"},{"fill":"label:Message","value":"TEST-new from the page"},{"click":"role:button:Send"},{"expect":"role:heading:TEST-new from the page"},{"expect":"css:.thread","text":"Echo: TEST-new from the page"}]'
+yv drive new --viewport desktop --steps '[{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · Default"}},{"press":"Escape"},{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{repo}}"},{"press":"Enter"},{"fill":"label:Message","value":"TEST-new from the page"},{"click":"role:button:Send"},{"expect":"role:heading:TEST-new from the page"},{"expect":"css:.thread","text":"Echo: TEST-new from the page"}]'
 yv state --expect '{"sessions":[{"title":"TEST-new from the page","status":"idle","engine":"codex","branch":"~yard/"}]}'
 ```
 
@@ -77,7 +77,7 @@ The note under the prompt says what happens to the folder: in a repository a
 new worktree, in a plain folder "Works in the folder itself".
 
 ```sh
-yv drive new --viewport desktop --steps '[{"click":"role:button:work"},{"fill":"label:Folder","value":"{{plain}}"},{"press":"Enter"},{"expect":"text:Works in the folder itself"}]'
+yv drive new --viewport desktop --steps '[{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{plain}}"},{"press":"Enter"},{"expect":"text:Works in the folder itself"}]'
 ```
 
 ### base-branch-picker
@@ -96,7 +96,7 @@ git -C "$R-TEST-base-wt" add TEST-base-only.txt
 git -C "$R-TEST-base-wt" -c user.name=TEST -c user.email=test@example.com commit -q -m "TEST-base only"
 git -C "$R" worktree remove --force "$R-TEST-base-wt"
 CUR="$(git -C "$R" branch --show-current)"
-yv drive new --viewport desktop --steps '[{"click":"role:button:work"},{"fill":"label:Folder","value":"{{repo}}"},{"press":"Enter"},{"expect":"css:button[title=\"Branch the worktree starts from\"]","text":"'"$CUR"'"},{"click":"css:button[title=\"Branch the worktree starts from\"]"},{"expect":{"css":".menu-item","hasText":"'"$CUR"'"},"text":"current"},{"fill":"label:Base branch","value":"TEST-ba"},{"expect":"css:.menu-item","count":1},{"click":{"css":".menu-item","hasText":"TEST-base"}},{"expect":"css:button[title=\"Branch the worktree starts from\"]","text":"TEST-base"},{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · Default"}},{"press":"Escape"},{"fill":"label:Message","value":"TEST-from the base branch"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Echo: TEST-from the base branch"}]'
+yv drive new --viewport desktop --steps '[{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{repo}}"},{"press":"Enter"},{"expect":"css:button[title=\"Branch the worktree starts from\"]","text":"'"$CUR"'"},{"click":"css:button[title=\"Branch the worktree starts from\"]"},{"expect":{"css":".menu-item","hasText":"'"$CUR"'"},"text":"current"},{"fill":"role:textbox:Base branch","value":"TEST-ba"},{"expect":"css:.menu-item","count":1},{"click":{"css":".menu-item","hasText":"TEST-base"}},{"expect":"css:button[title=\"Branch the worktree starts from\"]","text":"TEST-base"},{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · Default"}},{"press":"Escape"},{"fill":"label:Message","value":"TEST-from the base branch"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Echo: TEST-from the base branch"}]'
 yv state --expect '{"sessions":[{"title":"TEST-from the base branch","status":"idle","branch":"~yard/"}]}'
 WT="$(yv state | jq -er '.sessions[] | select(.title=="TEST-from the base branch") | .cwd')"
 test -f "$WT/TEST-base-only.txt"
@@ -109,7 +109,19 @@ not exist yet) says so under the field instead of leaving the list blank, and
 Enter does not take it: the chip keeps the folder it had.
 
 ```sh
-yv drive new --steps '[{"click":"role:button:work"},{"fill":"label:Folder","value":"{{work}}/TEST-no-such-folder"},{"expect":"css:.picker-empty","text":"No folder in"},{"expect":"css:.picker-empty","text":"TEST-no-such-folder"},{"shot":"no-match"},{"press":"Enter"},{"expect":"css:.picker-empty","text":"TEST-no-such-folder"},{"press":"Escape"},{"expect":{"role":"button","name":"work","exact":true}}]'
+yv drive new --steps '[{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{work}}/TEST-no-such-folder"},{"expect":"css:.picker-empty","text":"No folder in"},{"expect":"css:.picker-empty","text":"TEST-no-such-folder"},{"shot":"no-match"},{"press":"Enter"},{"expect":"css:.picker-empty","text":"TEST-no-such-folder"},{"press":"Escape"},{"expect":{"role":"button","name":"work","exact":true}}]'
+```
+
+### typed-path-under-a-missing-folder-names-it
+Viewports: both
+A typed path whose parent folder does not exist (a typo higher up, or a
+folder deleted since) names the first folder that is not there, in words,
+and offers no "Use" row for it: Enter keeps the folder the chip had.
+(Before #462 the list showed yardd's raw "cannot read …: No such file or
+directory (os error 2)" and offered "Use <the missing folder>".)
+
+```sh
+yv drive new --steps '[{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{work}}/TEST-gone/TEST-deeper/b"},{"expect":"css:.picker-empty","text":"TEST-gone doesn’t exist."},{"expect":"text:os error","count":0},{"shot":"missing-parent"},{"fill":"role:textbox:Folder","value":"{{work}}/TEST-gone/"},{"expect":"css:.picker-empty","text":"TEST-gone doesn’t exist."},{"expect":"role:option","count":0},{"press":"Enter"},{"press":"Escape"},{"expect":{"role":"button","name":"work","exact":true}}]'
 ```
 
 ### remembered-folder-that-is-gone-says-so
@@ -144,7 +156,20 @@ edge and focusing its search box scrolled the whole page left: "at should we
 work on?".)
 
 ```sh
-yv drive new --steps '[{"click":{"role":"button","name":"work","exact":true}},{"expect":"placeholder:Search folders, or type a path"},{"wait":300},{"shot":"folder-menu"},{"eval":"(() => { const pop = document.querySelector(\".new-chips .popover\").getBoundingClientRect(); const chip = document.querySelector(\".new-chips .chip[aria-expanded=true]\").getBoundingClientRect(); const scrolled = [...document.querySelectorAll(\"*\")].filter((e) => e.scrollLeft > 0).length; const underChip = innerWidth <= 700 || Math.abs(pop.left - chip.left) < 1; return pop.left >= 0 && pop.right <= innerWidth && scrolled === 0 && underChip; })()","equals":true}]'
+yv drive new --steps '[{"click":{"role":"button","name":"work","exact":true}},{"expect":"placeholder:Search folders, or type a path"},{"wait":300},{"shot":"folder-menu"},{"eval":"(() => { const pop = document.querySelector(\".chip-popover-wide\").getBoundingClientRect(); const chip = document.querySelector(\".new-chips .chip[aria-expanded=true]\").getBoundingClientRect(); const scrolled = [...document.querySelectorAll(\"*\")].filter((e) => e.scrollLeft > 0).length; const underChip = innerWidth <= 700 || Math.abs(pop.left - chip.left) < 1; return pop.left >= 0 && pop.right <= innerWidth && scrolled === 0 && underChip; })()","equals":true}]'
+```
+
+### recent-folder-opens-with-tab
+Viewports: both
+A Recent folder is a folder like the ones listed under it: it has its open
+(›) button, a repository wears the branch icon, and Tab on it (the key the ›
+button names) lists the folders inside while the search box keeps focus.
+(Recent rows had no › and no git flag, so Tab on the highlighted one did
+nothing and moved focus to another row's › button: typing stopped filtering.
+Patrol finding #369.)
+
+```sh
+yv drive new --steps '[{"click":{"role":"button","name":"work","exact":true}},{"fill":"placeholder:Search folders, or type a path","value":"TEST-demo"},{"expect":"css:.picker-head","text":"Recent"},{"expect":"css:.folder-row.cursor","text":"TEST-demo-app"},{"expect":"role:button:Open TEST-demo-app"},{"eval":"document.querySelector(\".folder-row.cursor svg path\").getAttribute(\"d\").startsWith(\"M6 3v12\")","equals":true},{"press":"Tab"},{"expect":"placeholder:Search folders, or type a path","value":"{{repo}}/"},{"eval":"document.activeElement === document.querySelector(\".menu-search\")","equals":true},{"expect":"css:.folder-row","text":"Use "},{"shot":"recent-tab"}]'
 ```
 
 ### refused-send-names-the-session-in-the-way
@@ -168,7 +193,7 @@ through New session. Once that task has started a session, the box is empty
 again.
 
 ```sh
-yv drive new --viewport desktop --steps '[{"fill":"label:Message","value":"TEST-half a task"},{"click":{"css":".session-row","hasText":"TEST-say hello"}},{"expect":"css:.thread","text":"Echo:"},{"click":{"css":".nav-row","hasText":"New session"}},{"expect":"label:Message","value":"TEST-half a task"},{"shot":"task-kept"},{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · Default"}},{"press":"Escape"},{"click":"role:button:work"},{"fill":"label:Folder","value":"{{repo}}"},{"press":"Enter"},{"click":"role:button:Send"},{"expect":"role:heading:TEST-half a task"},{"click":{"css":".nav-row","hasText":"New session"}},{"expect":"label:Message","value":""}]'
+yv drive new --viewport desktop --steps '[{"fill":"label:Message","value":"TEST-half a task"},{"click":{"css":".session-row","hasText":"TEST-say hello"}},{"expect":"css:.thread","text":"Echo:"},{"click":{"css":".nav-row","hasText":"New session"}},{"expect":"label:Message","value":"TEST-half a task"},{"shot":"task-kept"},{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · Default"}},{"press":"Escape"},{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{repo}}"},{"press":"Enter"},{"click":"role:button:Send"},{"expect":"role:heading:TEST-half a task"},{"click":{"css":".nav-row","hasText":"New session"}},{"expect":"label:Message","value":""}]'
 yv drive new --viewport mobile --steps '[{"press":"Escape"},{"fill":"label:Message","value":"TEST-task on the phone"},{"click":"role:button:Open sessions"},{"click":{"css":".session-row","hasText":"TEST-say hello"}},{"expect":"css:.thread","text":"Echo:"},{"click":"role:button:Open sessions"},{"click":{"css":".nav-row","hasText":"New session"}},{"expect":"label:Message","value":"TEST-task on the phone"},{"shot":"task-kept-mobile"}]'
 ```
 

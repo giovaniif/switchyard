@@ -6,6 +6,7 @@ import type { TermInfo } from "./protocol";
 import type { Actions } from "./store";
 import { SELECTION_CAP, snippetInComposer } from "./compose";
 import { joinRows, pickRows, type RowPick } from "./termRows";
+import { AnchoredPopover } from "./AnchoredPopover";
 
 // ANSI colors that stay readable on a white ground.
 const THEME = {
@@ -58,6 +59,13 @@ export function TerminalPane(props: { sessionId: string; connected: boolean; vis
   const [tabs, setTabs] = useState<TermInfo[] | null>(null);
   const [active, setActive] = useState<string | null>(null);
   const [selection, setSelection] = useState("");
+  const [openError, setOpenError] = useState("");
+  // With no terminal on screen nothing has measured the pane, and a shell
+  // started at 80x24 prints its prompt for that width; the resize that
+  // follows makes readline redraw and leaves a cut-off copy above the real
+  // prompt. So a placeholder view fits the pane first and sends this op
+  // with its size.
+  const [pending, setPending] = useState<"term.open" | "term.new" | null>(null);
   // Terminal 1 starts by itself once; after that an empty list stays empty.
   const started = useRef(false);
   const dims = useRef({ cols: 80, rows: 24 });
@@ -68,31 +76,22 @@ export function TerminalPane(props: { sessionId: string; connected: boolean; vis
   const awaiting = useRef<Set<string> | null>(null);
   const readers = useRef(new Map<string, RowReader>());
   const [menu, setMenu] = useState(false);
-  const menuBox = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!menu) return;
-    const outside = (e: PointerEvent) => menuBox.current?.contains(e.target as Node) || setMenu(false);
-    const escape = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", escape);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("keydown", escape);
-    };
-  }, [menu]);
+  const menuAnchor = useRef<HTMLButtonElement>(null);
   const expectNew = () => (awaiting.current = new Set(shown.current.map((t) => t.termId)));
 
   useEffect(() => {
     if (!connected) return;
     const stop = actions.onTerm((msg) => {
       if (msg.sessionId !== sessionId) return;
-      if (msg.op === "term.list") {
+      if (msg.op === "term.error") {
+        awaiting.current = null;
+        setOpenError(msg.message || "Unable to open a terminal.");
+      } else if (msg.op === "term.list") {
         const list: TermInfo[] = msg.terms ?? [];
         setTabs(list);
         if (list.length === 0 && !started.current) {
           started.current = true;
-          expectNew();
-          actions.post({ op: "term.open", sessionId, ...dims.current });
+          setPending("term.open");
         }
         if (list.length > 0) started.current = true;
       } else if (msg.op === "term.listChanged") {
@@ -117,8 +116,19 @@ export function TerminalPane(props: { sessionId: string; connected: boolean; vis
   }, [tabs, active]);
 
   const newTerminal = () => {
+    setOpenError("");
+    if (!shown.current.length) {
+      setPending("term.new");
+      return;
+    }
     expectNew();
     actions.post({ op: "term.new", sessionId, ...dims.current });
+  };
+  const openFitted = (cols: number, rows: number) => {
+    if (!pending) return;
+    expectNew();
+    actions.post({ op: pending, sessionId, cols, rows });
+    setPending(null);
   };
   const closeTerminal = (termId: string) => {
     const list = tabs ?? [];
@@ -163,33 +173,35 @@ export function TerminalPane(props: { sessionId: string; connected: boolean; vis
         </button>
         <span className="spacer" />
         {active && (
-          <span className="term-attach" ref={menuBox}>
-            <button className="btn-text" aria-haspopup="menu" aria-expanded={menu} title="Attach terminal output to your reply" onClick={() => setMenu(!menu)}>
+          <span className="term-attach">
+            <button ref={menuAnchor} className="btn-text" aria-haspopup="dialog" aria-expanded={menu} title="Attach terminal output to your reply" onClick={() => setMenu(!menu)}>
               Attach
               <Glyph d={CHEVRON} size={11} />
             </button>
             {menu && (
-              <div className="row-menu term-attach-menu" role="menu">
-                {selection.trim() && (
-                  <button
-                    className="picker-item menu-item"
-                    role="menuitem"
-                    title={cut ? `The selection is ${selection.length.toLocaleString()} characters; only the first ${SELECTION_CAP.toLocaleString()} are attached.` : undefined}
-                    onClick={() => attach(selection)}
-                  >
-                    Selection
+              <AnchoredPopover anchor={menuAnchor} label="Attach terminal output" variant="select-panel" onClose={() => setMenu(false)}>
+                <div role="menu">
+                  {selection.trim() && (
+                    <button
+                      className="picker-item menu-item"
+                      role="menuitem"
+                      title={cut ? `The selection is ${selection.length.toLocaleString()} characters; only the first ${SELECTION_CAP.toLocaleString()} are attached.` : undefined}
+                      onClick={() => attach(selection)}
+                    >
+                      Selection
+                    </button>
+                  )}
+                  <button className="picker-item menu-item" role="menuitem" onClick={() => attachRows({ kind: "screen" })}>
+                    Rows on screen
                   </button>
-                )}
-                <button className="picker-item menu-item" role="menuitem" onClick={() => attachRows({ kind: "screen" })}>
-                  Rows on screen
-                </button>
-                <button className="picker-item menu-item" role="menuitem" onClick={() => attachRows({ kind: "last", n: 100 })}>
-                  Last 100 lines
-                </button>
-                <button className="picker-item menu-item" role="menuitem" onClick={() => attachRows({ kind: "last", n: 500 })}>
-                  Last 500 lines
-                </button>
-              </div>
+                  <button className="picker-item menu-item" role="menuitem" onClick={() => attachRows({ kind: "last", n: 100 })}>
+                    Last 100 lines
+                  </button>
+                  <button className="picker-item menu-item" role="menuitem" onClick={() => attachRows({ kind: "last", n: 500 })}>
+                    Last 500 lines
+                  </button>
+                </div>
+              </AnchoredPopover>
             )}
           </span>
         )}
@@ -197,7 +209,14 @@ export function TerminalPane(props: { sessionId: string; connected: boolean; vis
       {/* Closing the last tab leaves no terminal; a blank pane with only the
           small `+` read as broken. Not while one is on its way (the first
           list of a new session is empty too). */}
-      {tabs?.length === 0 && !awaiting.current && (
+      {openError && (
+        <div className="pane-body terminal-error" role="status">
+          <strong>Terminal unavailable</strong>
+          <p className="muted">{openError}</p>
+          <div><button className="btn" disabled={!connected} onClick={newTerminal}>Try again</button></div>
+        </div>
+      )}
+      {tabs?.length === 0 && !awaiting.current && !pending && !openError && (
         <div className="pane-body">
           <div className="muted">No terminal is open.</div>
           <div>
@@ -206,6 +225,18 @@ export function TerminalPane(props: { sessionId: string; connected: boolean; vis
             </button>
           </div>
         </div>
+      )}
+      {pending && (
+        <TermView
+          key="pending"
+          termId=""
+          connected={connected}
+          visible={visible}
+          actions={actions}
+          onSize={() => {}}
+          onReader={() => {}}
+          onOpen={openFitted}
+        />
       )}
       {(tabs ?? []).map((t) => (
         <TermView
@@ -232,6 +263,8 @@ function TermView(props: {
   onSelection?: (text: string) => void;
   onSize(cols: number, rows: number): void;
   onReader(read: RowReader | null): void;
+  /** A placeholder with no PTY yet: its first fit opens one at that size. */
+  onOpen?(cols: number, rows: number): void;
 }) {
   const { termId, connected, visible, actions } = props;
   const host = useRef<HTMLDivElement>(null);
@@ -272,7 +305,8 @@ function TermView(props: {
     let waiting = false;
     let gone = false;
     const attach = () => {
-      if (live.current.connected) live.current.actions.post({ op: "term.attach", termId, cols: term.cols, rows: term.rows });
+      if (live.current.onOpen) live.current.onOpen(term.cols, term.rows);
+      else if (live.current.connected) live.current.actions.post({ op: "term.attach", termId, cols: term.cols, rows: term.rows });
     };
     const refit = () => {
       if (gone) return;
@@ -302,12 +336,20 @@ function TermView(props: {
     };
     refit();
 
-    let early: any[] = [];
-    const write = (msg: { offset: number; data: string }) => {
+    let early: { offset: number; data: string }[] = [];
+    const write = (msg: { offset: number; data: string }, replay = false) => {
       const bytes = decode(msg.data);
       const end = msg.offset + bytes.length;
       if (end <= written.current) return;
-      term.write(msg.offset < written.current ? bytes.subarray(written.current - msg.offset) : bytes);
+      const unread = msg.offset < written.current ? bytes.subarray(written.current - msg.offset) : bytes;
+      if (replay) {
+        // xterm can answer queries while parsing history. Keep those replies
+        // out of the shell without suppressing adjacent live output.
+        term.write("", () => { term.options.disableStdin = true; });
+        term.write(unread, () => { term.options.disableStdin = false; });
+      } else {
+        term.write(unread);
+      }
       written.current = end;
     };
     const markExited = () => {
@@ -320,8 +362,8 @@ function TermView(props: {
       if (msg.termId !== termId) return;
       if (msg.op === "term.opened") {
         if (written.current < 0) written.current = msg.offset;
-        write(msg);
-        early.forEach(write);
+        write(msg, true);
+        early.forEach((chunk) => write(chunk));
         early = [];
         if (msg.exited) markExited();
         else live.current.actions.post({ op: "term.resize", termId, cols: term.cols, rows: term.rows });
@@ -334,11 +376,11 @@ function TermView(props: {
     });
 
     const onData = term.onData((data) => {
-      if (!exited.current) live.current.actions.post({ op: "term.input", termId, data });
+      if (!exited.current && !live.current.onOpen) live.current.actions.post({ op: "term.input", termId, data });
     });
     const onResize = term.onResize(({ cols, rows }) => {
       live.current.onSize(cols, rows);
-      if (!exited.current) live.current.actions.post({ op: "term.resize", termId, cols, rows });
+      if (!exited.current && !live.current.onOpen) live.current.actions.post({ op: "term.resize", termId, cols, rows });
     });
     const onSelect = term.onSelectionChange(() => live.current.onSelection?.(term.getSelection()));
     live.current.onReader((pick) => {
@@ -376,7 +418,7 @@ function TermView(props: {
     const back = connected && !wasConnected.current;
     wasConnected.current = connected;
     const term = termRef.current;
-    if (back && term && sized.current) actions.post({ op: "term.attach", termId, cols: term.cols, rows: term.rows });
+    if (back && term && sized.current && !props.onOpen) actions.post({ op: "term.attach", termId, cols: term.cols, rows: term.rows });
   }, [termId, connected]);
 
   useEffect(() => {

@@ -181,7 +181,7 @@ async function openDrawer(page: Page): Promise<boolean> {
   return true;
 }
 
-/** Opens a route: new, hosts, settings, connectors, or session:<id | title text>. */
+/** Opens a route: new, hosts, settings, connectors, agents, automations, or session:<id | title text>. */
 async function goRoute(page: Page, iso: Iso, route: string, w: Watch) {
   if (!page.url().startsWith(iso.url)) {
     await page.goto(iso.url, { waitUntil: "domcontentloaded" });
@@ -201,11 +201,14 @@ async function goRoute(page: Page, iso: Iso, route: string, w: Watch) {
       await page.getByRole("button", { name: "Manage hosts" }).click();
     }
   } else if (route === "subscriptions" || route === "sessions") {
-    await page.getByRole("button", { name: route === "subscriptions" ? "Subscriptions" : "Sessions", exact: true }).first().click();
+    await page.getByRole("button", { name: "Go to session or page" }).click();
+    const search = page.getByRole("combobox", { name: "Search sessions and pages" });
+    await search.fill(route);
+    await search.press("Enter");
   } else if (route === "settings") {
     await page.getByRole("button", { name: "Settings", exact: true }).first().click();
-  } else if (route === "switchy") {
-    await page.getByRole("button", { name: "Switchy", exact: true }).first().click();
+  } else if (route === "agents" || route === "automations") {
+    await page.getByRole("button", { name: route === "agents" ? "Agents" : "Automations", exact: true }).first().click();
   } else if (route === "connectors") {
     await page.getByRole("button", { name: "Connectors" }).first().click();
   } else if (route.startsWith("session:")) {
@@ -303,8 +306,8 @@ async function snap(page: Page, dir: string, label: string, vp: ViewportName, pr
   return { viewport: vp, file, size };
 }
 
-async function withBrowser<T>(fn: (b: Browser) => Promise<T>): Promise<T> {
-  const browser = await chromium.launch();
+async function withBrowser<T>(fn: (b: Browser) => Promise<T>, showScrollbars = false): Promise<T> {
+  const browser = await chromium.launch({ ignoreDefaultArgs: showScrollbars ? ["--hide-scrollbars"] : undefined });
   try {
     return await fn(browser);
   } finally {
@@ -358,6 +361,14 @@ export type Step = Record<string, any>;
 async function runStep(page: Page, iso: Iso, step: Step, w: Watch, ctx: { dir: string; vp: ViewportName; captures: Capture[]; notes: any[]; problems: NonNullable<Result["problems"]>; idx: number }) {
   const timeout = step.timeout ?? 10000;
   if (step.goto !== undefined) return goRoute(page, iso, step.goto, w);
+  if (step.resize) {
+    const { width, height } = step.resize;
+    if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0) {
+      throw new Usage("resize needs positive integer width and height");
+    }
+    await page.setViewportSize({ width, height });
+    return settle(page, w);
+  }
   if (step.click) {
     await locate(page, step.click).click({ timeout, button: step.button ?? "left" });
     return settle(page, w);
@@ -570,7 +581,7 @@ export async function drive(a: Args): Promise<Result> {
         runs.push({ viewport: vp, ms: Date.now() - t0, steps: steps.length, failed, captures: st.captures, notes: st.notes, video: videoFile, ...summary(w) });
       }
     }
-  });
+  }, !!a.flags["show-scrollbars"]);
   const result: Result = { ok: problems.length === 0, route, build: iso.build, dir, runs, problems };
   writeFileSync(join(dir, "drive.json"), JSON.stringify(result, null, 2));
   return result;

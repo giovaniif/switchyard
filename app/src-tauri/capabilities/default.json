@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The window loads yardd's page over loopback; that page may open the folder dialog and show notifications (ask permission, show one, hear a click) and nothing else.",
+  "description": "The window loads yardd's page over loopback; that page may open the folder dialog, show notifications (ask permission, show one, hear a click) and emit events (its update notice asks the app for the release notes or a restart, which the app confirms in its own dialog), and nothing else.",
   "windows": ["main"],
   "remote": { "urls": ["http://127.0.0.1:*"] },
   "permissions": [
@@ -10,6 +10,7 @@
     "notification:allow-request-permission",
     "notification:allow-notify",
     "notification:allow-register-listener",
-    "notification:allow-remove-listener"
+    "notification:allow-remove-listener",
+    "core:event:allow-emit"
   ]
 }

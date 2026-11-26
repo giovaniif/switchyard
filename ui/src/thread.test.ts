@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { applyEvent, type AgentEvent, type Item } from "./protocol";
 import type { SessionMeta } from "./protocol";
-import { duration, handoffLinks, layout, summarize, thoughtLine, type ToolItem, type WorkItem } from "./thread";
+import { duration, handoffLinks, layout, stillPinned, summarize, thoughtLine, type ToolItem, type WorkItem } from "./thread";
+import * as thread from "./thread";
 
 const fold = (events: AgentEvent[]): Item[] => events.reduce((acc, ev, i) => applyEvent(acc, ev, i), [] as Item[]);
 const shape = (rows: ReturnType<typeof layout>) =>
@@ -89,13 +90,22 @@ describe("layout", () => {
     expect(shape(layout(items, true))).toEqual(["user", "work(2)", "assistant", "work(2,live)"]);
   });
 
-  test("a finished turn folds its work above the answer, with its duration", () => {
+  test("a finished turn with messages between its steps keeps them in view, under a line that says how long", () => {
     const items = fold([...turn, { type: "turn_completed", status: "completed", at: 73_000 }]);
     const rows = layout(items, false);
-    expect(shape(rows)).toEqual(["user", "fold(Read 2 files, ran 1 command · 1 failed)", "assistant"]);
+    expect(shape(rows)).toEqual(["user", "fold(Read 2 files, ran 1 command · 1 failed)", "work(2)", "assistant", "work(2)", "assistant"]);
     const f = rows[1];
     expect(f.type === "fold" && f.ms).toBe(72_000);
-    expect(f.type === "fold" && shape(f.rows)).toEqual(["work(2)", "assistant", "work(2)"]);
+    expect(f.type === "fold" && f.inline).toBe(true);
+    expect(f.type === "fold" && f.rows).toEqual([]);
+  });
+
+  test("a finished turn whose only message is its answer folds its work above it", () => {
+    const steps = turn.filter((ev) => ev.type !== "assistant_message" || ev === turn.filter((e) => e.type === "assistant_message").pop());
+    const rows = layout(fold([...steps, { type: "turn_completed", status: "completed", at: 73_000 }]), false);
+    expect(shape(rows)).toEqual(["user", "fold(Read 2 files, ran 1 command · 1 failed)", "assistant"]);
+    const f = rows[1];
+    expect(f.type === "fold" && !f.inline && shape(f.rows)).toEqual(["work(4)"]);
   });
 
   test("a widget shows under its call while live, and stays in view when the turn folds", () => {
@@ -177,6 +187,13 @@ describe("labels", () => {
     expect(summarize([{ kind: "reasoning", key: "r", itemId: "r", text: "", streaming: false }])).toBe("Thought");
   });
 
+  test("a subagent counts as a subagent, not as an other step", () => {
+    const agent = (n: number): WorkItem => ({ kind: "tool", key: `a${n}`, itemId: `a${n}`, toolKind: "other", title: "Agent", detail: "survey", agent: "general-purpose", state: "ok" });
+    const other: WorkItem = { kind: "tool", key: "o", itemId: "o", toolKind: "other", title: "TodoWrite", detail: "", state: "ok" };
+    expect(summarize([agent(1)])).toBe("Ran 1 subagent");
+    expect(summarize([agent(1), agent(2), other])).toBe("Ran 2 subagents, 1 other step");
+  });
+
   test("durations", () => {
     expect(duration(45_000)).toBe("45s");
     expect(duration(72_000)).toBe("1m 12s");
@@ -234,7 +251,7 @@ describe("subagents", () => {
   test("steps do not count as work in the summary", () => {
     const rows = layout(fold([...agentTurn, { type: "tool_completed", itemId: AGENT, ok: true, output: "done", ms: 2_000 }, { type: "turn_completed", status: "completed", at: 5_000 }]), false);
     const row = rows.find((r) => r.type === "fold");
-    expect(row?.type === "fold" && row.summary).toBe("1 other step");
+    expect(row?.type === "fold" && row.summary).toBe("Ran 1 subagent");
   });
 
   test("an agent still running when the turn ends stays out of the fold, running", () => {
@@ -306,5 +323,56 @@ describe("summarize, with calls that never ran", () => {
     const entries = [call("a", "read"), call("b", "read"), call("c", "command", { state: "failed", asked: "unanswered" }), call("d", "command", { state: "failed" })];
     expect(summarize(entries)).toBe("Read 2 files, ran 1 command · 1 failed · 1 command not run");
   });
+
+  test("a denied edit was not made: the file was not edited, not \"not run\"", () => {
+    expect(summarize([call("e", "edit", { title: "Edited", state: "failed", asked: "denied" })])).toBe("1 file not edited");
+    expect(summarize([call("e", "edit", { state: "failed", asked: "unanswered" }), call("f", "edit", { state: "failed", asked: "denied" })])).toBe("2 files not edited");
+  });
+
+  test("each kind says what did not happen, in its own words", () => {
+    expect(summarize([call("r", "read", { state: "failed", asked: "denied" })])).toBe("1 file not read");
+    expect(summarize([call("s", "search", { state: "failed", asked: "denied" })])).toBe("1 search not run");
+    expect(summarize([call("c", "command", { state: "failed", asked: "denied" }), call("e", "edit", { state: "failed", asked: "denied" })])).toBe("2 steps not run");
+  });
 });
 
+describe("toolLabel", () => {
+  const call = (title: string, extra: Partial<ToolItem> = {}): ToolItem => ({
+    kind: "tool", key: "k", itemId: "k", toolKind: title === "Ran" ? "command" : "edit", title, detail: "notes.txt", state: "ok", ...extra,
+  });
+
+  test("an edit is not \"Edited\" until it is allowed and done", () => {
+    expect(thread.toolLabel(call("Edited", { state: "running", asked: "waiting" }))).toBe("Waiting to edit");
+    expect(thread.toolLabel(call("Edited", { state: "failed", asked: "denied" }))).toBe("Did not edit");
+    expect(thread.toolLabel(call("Edited", { state: "failed", asked: "unanswered" }))).toBe("Did not edit");
+    expect(thread.toolLabel(call("Edited", { state: "running" }))).toBe("Editing");
+    expect(thread.toolLabel(call("Edited"))).toBe("Edited");
+  });
+
+  test("a command keeps its words", () => {
+    expect(thread.toolLabel(call("Ran", { state: "running", asked: "waiting" }))).toBe("Waiting to run");
+    expect(thread.toolLabel(call("Ran", { state: "failed", asked: "denied" }))).toBe("Did not run");
+    expect(thread.toolLabel(call("Ran", { state: "running" }))).toBe("Running");
+    expect(thread.toolLabel(call("Ran"))).toBe("Ran");
+  });
+
+  test("other titles are the engine's own", () => {
+    expect(thread.toolLabel({ ...call("Read"), toolKind: "read" })).toBe("Read");
+  });
+});
+
+
+describe("stillPinned", () => {
+  test("a scroll the browser makes for growing content keeps the thread pinned", () => {
+    // A diagram image got its height: scrollTop moved down, 366 px from the bottom.
+    expect(stillPinned(true, 183, 286, 366)).toBe(true);
+  });
+  test("scrolling up unpins, and reaching the bottom pins again", () => {
+    expect(stillPinned(true, 900, 600, 300)).toBe(false);
+    expect(stillPinned(false, 600, 700, 200)).toBe(false);
+    expect(stillPinned(false, 700, 880, 20)).toBe(true);
+  });
+  test("a move up that stays near the bottom keeps it pinned", () => {
+    expect(stillPinned(true, 286, 183, 0)).toBe(true);
+  });
+});

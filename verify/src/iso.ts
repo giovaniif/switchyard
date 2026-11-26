@@ -179,8 +179,11 @@ export async function isoUp(a: Args): Promise<Result> {
     env.YARD_SIDECAR = join(TEST_FAKES, "yard-claude");
     env.YARD_SSH = join(OUR_FAKES, "ssh");
     env.YARD_WORKSPACE = dirs.work;
-    env.YARD_CONTEXT_COMMAND_DIR = join(TEST_FAKES, "host-context");
     env.GH_CONFIG_DIR = join(dirs.home, ".config/gh");
+    // Run from inside a Switchyard session, these name that session's real account folders.
+    for (const k of ["CLAUDE_CONFIG_DIR", "CODEX_HOME", "GROK_HOME"]) delete env[k];
+    // Session naming adds engine turns; recipes that check it pass --env YARD_SESSION_NAMES=on.
+    env.YARD_SESSION_NAMES = "off";
     if (!a.flags["logged-out"]) {
       writeFileSync(join(dirs.fake, "codex-logged-in"), "");
       writeFileSync(join(dirs.fake, "claude-logged-in"), "");
