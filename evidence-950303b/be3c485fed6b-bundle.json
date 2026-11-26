@@ -1,0 +1,156 @@
+{
+  "v": 1,
+  "claim": "On a phone, a refused action picked in the sessions drawer (a row's Delete… on a dirty worktree) showed its refusal behind the still-open drawer: only Dismiss peeked out past the scrim and the drawer said nothing. A refusal now closes the drawer so the banner shows over the session.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-e353",
+  "base": "fba8f8b80c833996dcb00aedf5e9da8eeceb0265",
+  "head": "950303bfe1ad5d68497996e884ffbfeae7a0d57e",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/worktrees.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T08:02:39.488Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "fba8f8b80c833996dcb00aedf5e9da8eeceb0265",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "d966f6ef9f96f81d65af7380dddfee2d617fdf3af7eda2319130cf1b7ed0ee82"
+        },
+        {
+          "path": "p1-refused-mobile.png",
+          "sha256": "239ad049f2f2d73cd56effedea1d1cd344507dc23fb470b433337ea43fc55948"
+        },
+        {
+          "path": "p1-fail-mobile-step6.png",
+          "sha256": "5ddb6ba1af38c046aef6429432e2639e595fd3dd9424d71571928cfdbc2d69cf"
+        }
+      ],
+      "addedAt": "2026-11-26T08:02:39.530Z",
+      "failedApi": [
+        "session.delete: \"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted or untracked changes (1 file). Commit or discard them first."
+      ]
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "e26c04cbaa89efeb1ec7f9e3236b6c1501c6870d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "4ae09d9cb3b38cd9d3e72341bf6f13d2e6eac316cbf30ab79237d6896664920e"
+        }
+      ],
+      "addedAt": "2026-11-26T08:02:43.204Z",
+      "cmd": "verify/yv map run worktrees --recipe sidebar-delete-refusal-names-the-session",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "950303bfe1ad5d68497996e884ffbfeae7a0d57e",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "e636346272bf65c41a4ebc32bd2199abc45a1fd131d56777e5c2f43794cf5b60"
+        },
+        {
+          "path": "p3-refused-mobile.png",
+          "sha256": "cbb31b96eb4532d02f9220e6d77940bb659ff2b28ba539b607e387846f8f7290"
+        },
+        {
+          "path": "p3-refused-desktop.png",
+          "sha256": "f1ee565fd50994995bf1ae9d17875b9e0418743d22ad2b005253ee13215b6fa1"
+        }
+      ],
+      "addedAt": "2026-11-26T08:03:45.389Z",
+      "failedApi": [
+        "session.delete: \"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted or untracked changes (1 file). Commit or discard them first.",
+        "session.delete: \"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted or untracked changes (1 file). Commit or discard them first."
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "950303bfe1ad5d68497996e884ffbfeae7a0d57e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "7398b1d4e0c85645d1a3c8895f3572080c5677a9780df9d9028ac00d843e3a53"
+        }
+      ],
+      "addedAt": "2026-11-26T08:03:45.432Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run worktrees --recipe sidebar-delete-refusal-names-the-session",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "950303bfe1ad5d68497996e884ffbfeae7a0d57e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "cf8286059a041c098754af5d6b4a06a16cb3dd649c4e6a9f046a521b17f1b910"
+        }
+      ],
+      "addedAt": "2026-11-26T08:03:56.711Z",
+      "cmd": "verify/yv design-check --base fba8f8b80c83",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "950303bfe1ad5d68497996e884ffbfeae7a0d57e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-worktrees.json",
+          "sha256": "292ad0974efdb5f6fbd94b47b18e7c425ec5328dd606d565874c71025ae25b9b"
+        }
+      ],
+      "addedAt": "2026-11-26T08:04:00.397Z",
+      "cmd": "verify/yv map run worktrees",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "worktrees/session-gets-worktree",
+        "worktrees/plain-folder-in-place",
+        "worktrees/one-writer-per-folder",
+        "worktrees/delete-removes-clean-worktree",
+        "worktrees/sidebar-delete-refusal-names-the-session",
+        "worktrees/dirty-worktree-is-kept"
+      ]
+    }
+  ]
+}

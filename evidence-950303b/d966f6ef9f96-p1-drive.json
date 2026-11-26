@@ -1,0 +1,58 @@
+{
+  "ok": false,
+  "route": "session:s1a216dfbcbf6",
+  "build": {
+    "sha": "fba8f8b80c833996dcb00aedf5e9da8eeceb0265",
+    "short": "fba8f8b",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T08:01:30.966Z"
+  },
+  "dir": ".verify/evidence/drawer-refusal-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 16816,
+      "steps": 8,
+      "failed": {
+        "step": 6,
+        "action": {
+          "expect": "role:button:Close sessions",
+          "visible": false
+        },
+        "reason": "expected \"role:button:Close sessions\" to be absent or hidden",
+        "screenshot": ".verify/evidence/drawer-refusal-base/fail-mobile-step6.png",
+        "aria": "- navigation \"Sessions\":\n  - button \"Go to session or page\": Switchyard Ctrl K\n  - button \"Close sessions\" [expanded]\n  - button \"New session\"\n  - button \"Agents\"\n  - button \"Automations\"\n  - button \"Connectors\"\n  - button \"Import\"\n  - button \"Settings\"\n  - button \"[cmd] TEST-run the migration · Fake Fast · Needs approval\"\n  - button \"Actions for [cmd] TEST-run the migration\"\n  - button \"TEST-hello from Claude · Haiku 5.5 · Idle\"\n  - button \"Actions for TEST-hello from Claude\"\n  - button \"[edit] TEST-fix the greeting · Fake Fast · Idle\"\n  - button \"Actions for [edit] TEST-fix the greeting\"\n  - button \"TEST-say hello · Fake Fast · Idle\"\n  - button \"Actions for TEST-say hello\"\n  - button \"[think] TEST-plan the refactor · Fake Fast · Idle\"\n  - button \"Actions for [think] TEST-plan the refactor\"\n  - button \"[fail] TEST-failing turn · Fake Fast · Idle\"\n  - button \"Actions for [fail] TEST-failing turn\"\n  - button \"Subscription usage\": Usage 47% used\n  - button \"iso-host 5% · 59%\"\n- text: \"\\\"[edit] TEST-fix the greeting\\\" was not deleted: the worktree has uncommitted or untracked changes (1 file). Commit or discard them first.\"\n- button \"Dismiss\"\n- main:\n  - button \"Open sessions\" [expanded]\n  - heading \"TEST-say hello\" [level=1]\n  - code: yard/test-say-hello-ca85\n  - button \"Set up iPhone app\"\n  - button \"Workspace\"\n  - button \"Delete\"\n  - text: TEST-say hello\n  - paragraph: \"Echo: TEST-say hello\"\n  - textbox \"Message\":\n    - /placeholder: Reply\n  - button \"Attach files\"\n  - button \"Dictate\"\n  - button \"Voice mode\"\n  - 'button \"Session setup: Fake Fast, Default, Low, Ask first\"': Fake Fast · Low\n  - button \"Send\" [disabled]"
+      },
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/drawer-refusal-base/refused-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "session.delete",
+          "message": "\"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted or untracked changes (1 file). Commit or discard them first."
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 6 {\"expect\":\"role:button:Close sessions\",\"visible\":false}: expected \"role:button:Close sessions\" to be absent or hidden",
+      "hint": "see .verify/evidence/drawer-refusal-base/fail-mobile-step6.png and the aria snapshot"
+    }
+  ]
+}

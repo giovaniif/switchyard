@@ -1,0 +1,32 @@
+$ (cd ui && bun test) && verify/yv map run worktrees --recipe sidebar-delete-refusal-names-the-session
+# exit 0 after 11235 ms at 950303bfe1ad5d68497996e884ffbfeae7a0d57e
+
+bun test v1.4.4 (38afee6c8)
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "worktrees",
+      "at": "2026-11-26T08:03:56.664Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "sidebar-delete-refusal-names-the-session",
+          "status": "pass",
+          "ms": 9974
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
+
+ 486 pass
+ 0 fail
+ 4955 expect() calls
+Ran 486 tests across 35 files. [386.00ms]

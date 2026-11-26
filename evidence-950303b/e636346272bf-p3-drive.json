@@ -1,0 +1,83 @@
+{
+  "ok": true,
+  "route": "session:s1a216dfbcbf6",
+  "build": {
+    "sha": "950303bfe1ad5d68497996e884ffbfeae7a0d57e",
+    "short": "950303b",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T08:03:21.649Z"
+  },
+  "dir": ".verify/evidence/phone-drawer-refusal-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4914,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/phone-drawer-refusal-head/refused-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 0,
+          "eval": "window.innerWidth < 700 && document.querySelector(\".menu-button\")?.click(); true",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "session.delete",
+          "message": "\"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted or untracked changes (1 file). Commit or discard them first."
+        }
+      ],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 5269,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/phone-drawer-refusal-head/refused-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 0,
+          "eval": "window.innerWidth < 700 && document.querySelector(\".menu-button\")?.click(); true",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "session.delete",
+          "message": "\"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted or untracked changes (1 file). Commit or discard them first."
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
