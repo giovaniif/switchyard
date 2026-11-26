@@ -1,0 +1,19 @@
+{
+  "command": "api",
+  "ok": true,
+  "sent": {
+    "op": "automation.run",
+    "id": "a1a219c0a625e",
+    "force": false
+  },
+  "reply": {
+    "id": "a1a219c0a625e",
+    "op": "automation.ran",
+    "outcome": "started",
+    "reason": null,
+    "sessionId": "s1a219c544182"
+  },
+  "saved": {},
+  "received": 14,
+  "problems": []
+}

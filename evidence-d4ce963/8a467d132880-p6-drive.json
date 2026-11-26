@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "d4ce963e5fab1a888533627da69b8a578dd263aa",
+    "short": "d4ce963",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T21:31:54.698Z"
+  },
+  "dir": ".verify/evidence/usage-followups-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4229,
+      "steps": 12,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/usage-followups-head-desktop/opencode-limits-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/usage-followups-head-desktop/grok-limits-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

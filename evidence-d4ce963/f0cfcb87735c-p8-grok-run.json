@@ -1,0 +1,19 @@
+{
+  "command": "api",
+  "ok": true,
+  "sent": {
+    "op": "automation.run",
+    "id": "a1a219c0a625e",
+    "force": false
+  },
+  "reply": {
+    "id": "a1a219c0a625e",
+    "op": "automation.ran",
+    "outcome": "skipped",
+    "reason": "Grok weekly usage 23% is above 20%",
+    "sessionId": null
+  },
+  "saved": {},
+  "received": 1,
+  "problems": []
+}

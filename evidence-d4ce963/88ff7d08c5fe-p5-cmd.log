@@ -1,0 +1,66 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd -- automations::tests
+# exit 101 after 5168 ms at 8358baf035cb3b5fffb0f91b225dabd2dd75fc0c
+
+
+running 17 tests
+test automations::tests::a_codex_window_counts_by_its_length ... FAILED
+test automations::tests::a_manual_schedule_has_no_next_run ... ok
+test automations::tests::a_backlog_fires_once_and_moves_past_now ... ok
+test automations::tests::claude_limits_read_the_sidecars_windows ... ok
+test automations::tests::daily_is_the_next_time_strictly_after_now ... ok
+test automations::tests::engines_without_limits_never_skip_on_usage ... FAILED
+test automations::tests::grok_limits_read_its_credit_allowance ... FAILED
+test automations::tests::friday_owns_its_saturday_morning_and_ninety_minutes_stay_aligned ... ok
+test automations::tests::intervals_count_from_the_given_moment ... ok
+test automations::tests::schedules_are_validated ... ok
+test automations::tests::the_time_zone_decides_what_9_30_means ... ok
+test automations::tests::usage_limits_read_each_engines_figures ... ok
+test automations::tests::weekly_waits_for_its_day ... ok
+test automations::tests::missed_window_runs_fire_once_inside_but_only_reschedule_outside ... ok
+test automations::tests::windows_align_slots_inside_and_outside_and_exclude_the_end ... ok
+test automations::tests::windows_validate_times_days_and_schedule ... ok
+
+running 1 test
+test automations::tests::window_dst_uses_local_gap_and_fold_policy ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 118 filtered out; finished in 0.00s
+
+test automations::tests::window_dst_uses_local_gap_and_fold_policy ... ok
+
+failures:
+
+---- automations::tests::a_codex_window_counts_by_its_length stdout ----
+
+thread 'automations::tests::a_codex_window_counts_by_its_length' (2329966) panicked at crates/yardd/src/automations.rs:935:9:
+assertion `left == right` failed
+  left: Some("Codex 5-hour usage 52% is above 10%")
+ right: None
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- automations::tests::engines_without_limits_never_skip_on_usage stdout ----
+
+thread 'automations::tests::engines_without_limits_never_skip_on_usage' (2329970) panicked at crates/yardd/src/automations.rs:926:13:
+assertion `left == right` failed: opencode
+  left: Some("Claude 5-hour usage 90% is above 1%")
+ right: None
+
+---- automations::tests::grok_limits_read_its_credit_allowance stdout ----
+
+thread 'automations::tests::grok_limits_read_its_credit_allowance' (2329972) panicked at crates/yardd/src/automations.rs:904:9:
+assertion `left == right` failed
+  left: Some("Claude 5-hour usage 90% is above 50%")
+ right: None
+
+
+failures:
+    automations::tests::a_codex_window_counts_by_its_length
+    automations::tests::engines_without_limits_never_skip_on_usage
+    automations::tests::grok_limits_read_its_credit_allowance
+
+test result: FAILED. 14 passed; 3 failed; 0 ignored; 0 measured; 102 filtered out; finished in 0.01s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/usage-followups/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 5.09s
+     Running unittests src/main.rs (target/debug/build/yardd/7902cb21fd3fec33/out/yardd-7902cb21fd3fec33)
+error: test failed, to rerun pass `-p yardd --bin yardd`

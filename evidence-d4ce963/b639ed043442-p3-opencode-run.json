@@ -1,0 +1,19 @@
+{
+  "command": "api",
+  "ok": true,
+  "sent": {
+    "op": "automation.run",
+    "id": "a1a219c0a53ed",
+    "force": false
+  },
+  "reply": {
+    "id": "a1a219c0a53ed",
+    "op": "automation.ran",
+    "outcome": "skipped",
+    "reason": "Claude 5-hour usage 47% is above 10%",
+    "sessionId": null
+  },
+  "saved": {},
+  "received": 2,
+  "problems": []
+}

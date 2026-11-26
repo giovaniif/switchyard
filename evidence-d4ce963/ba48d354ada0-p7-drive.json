@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "d4ce963e5fab1a888533627da69b8a578dd263aa",
+    "short": "d4ce963",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T21:31:54.698Z"
+  },
+  "dir": ".verify/evidence/usage-followups-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4686,
+      "steps": 13,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/usage-followups-head-mobile/opencode-limits-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/usage-followups-head-mobile/grok-limits-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

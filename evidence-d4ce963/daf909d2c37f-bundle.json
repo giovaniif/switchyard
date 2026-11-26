@@ -1,0 +1,348 @@
+{
+  "v": 1,
+  "claim": "Automations' usage limits read Claude's figures for every engine but Codex: an OpenCode run skipped because Claude was at 47%, and a Grok run started though Grok's credits were above its limit; the form said OpenCode's limits 'never skip a run'. A Codex Pro account's weekly main window was read as the 5-hour one. Codex's 'Full reset' count was the length of the credit list, so it showed nothing when Codex sends only availableCount and too few when the list is capped.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/usage-followups",
+  "base": "eedc2cd8990b608f94a188eff009cbc5238fd3fb",
+  "head": "d4ce963e5fab1a888533627da69b8a578dd263aa",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/automations.rs"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/AutomationsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/automations.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/automations.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/usage.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/usageResets.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/automations.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T21:30:54.184Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "8358baf035cb3b5fffb0f91b225dabd2dd75fc0c",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "c6ba55cc93e235a0413859887eee5a69be40345d4251fa13073d3ed581447429"
+        },
+        {
+          "path": "p1-opencode-limits-desktop.png",
+          "sha256": "80e05bdbb86c55ae3437b29cd76c07f563331b915bff851f2748a74b80abe9a6"
+        },
+        {
+          "path": "p1-grok-limits-desktop.png",
+          "sha256": "fa6d9bd408484d459aae42bf579fb8f0e1c2f79cfc9e4ac5b4879f62d64b6ef8"
+        }
+      ],
+      "addedAt": "2026-11-26T21:31:28.250Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "8358baf035cb3b5fffb0f91b225dabd2dd75fc0c",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "a3da0e99caa517178ba5d13f43918318d324c13b4d254493c8b681a29f4b0b0e"
+        },
+        {
+          "path": "p2-opencode-limits-mobile.png",
+          "sha256": "67c102c9e25c5649b2e2a30626d49e74cd83a50f41804d70ff194da66db368eb"
+        },
+        {
+          "path": "p2-grok-limits-mobile.png",
+          "sha256": "67f0f174abe79acec4cd4d1b455da5db5110890384437ee784fe82242b47b0bf"
+        }
+      ],
+      "addedAt": "2026-11-26T21:31:28.303Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "repro",
+      "at": "8358baf035cb3b5fffb0f91b225dabd2dd75fc0c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-opencode-run.json",
+          "sha256": "b639ed0434428da705a8b970a34dd04d6223cb7480ff8b46902f992e30f920cb"
+        },
+        {
+          "path": "p3-grok-run.json",
+          "sha256": "e5dddd84467cfa9393fd40a17791fa4f5eac1cc0e9fae2d91fe036744128b122"
+        }
+      ],
+      "addedAt": "2026-11-26T21:31:28.354Z",
+      "text": "Daemon: the OpenCode automation (limits 10%) skips with 'Claude 5-hour usage 47% is above 10%'; the Grok one (credit limit 20%, Grok at 23%) starts.",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "test",
+      "at": "8358baf035cb3b5fffb0f91b225dabd2dd75fc0c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "cf692877a90fec7a8edfc9d81a8c083f5922b47851a840f92f11d20f6d3ec2f9"
+        }
+      ],
+      "addedAt": "2026-11-26T21:31:32.398Z",
+      "cmd": "cd ui && bun test src/usageResets.test.tsx src/automations.test.ts",
+      "exit": 1
+    },
+    {
+      "id": 5,
+      "ref": "base",
+      "kind": "test",
+      "at": "8358baf035cb3b5fffb0f91b225dabd2dd75fc0c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "88ff7d08c5feeb8bbc9e24acc9fdec1e6e7c9ad4b52a74ec34272e2ef5fd86d6"
+        }
+      ],
+      "addedAt": "2026-11-26T21:31:32.663Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd -- automations::tests",
+      "exit": 101
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "d4ce963e5fab1a888533627da69b8a578dd263aa",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p6-drive.json",
+          "sha256": "8a467d132880d345dd69aa061eaa4331ee845ce774d404bfb4bf7b210cf02a4b"
+        },
+        {
+          "path": "p6-opencode-limits-desktop.png",
+          "sha256": "97e0f7f8a5f11014f210e1f5a03be6964721d66005e5ae158bd347fd12193763"
+        },
+        {
+          "path": "p6-grok-limits-desktop.png",
+          "sha256": "6a876cb35e4221f6dc6fd8284b690faea94046fcf6e5b76d0fa6f46857e238f3"
+        }
+      ],
+      "addedAt": "2026-11-26T21:32:20.637Z",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "fix",
+      "at": "d4ce963e5fab1a888533627da69b8a578dd263aa",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p7-drive.json",
+          "sha256": "ba48d354ada025fbb7fc8abc1ef9600de19e4d83ca54669a37cb33539177cf77"
+        },
+        {
+          "path": "p7-opencode-limits-mobile.png",
+          "sha256": "148cc85837e284a2622de40d4fbbd4c39f6e23a692d32a3168bf86c27f6f69e0"
+        },
+        {
+          "path": "p7-grok-limits-mobile.png",
+          "sha256": "ff589853c6c9f6aa6fd80fcd1aec6b6303e989310f0e3b6481297cfd7d0c88f7"
+        }
+      ],
+      "addedAt": "2026-11-26T21:32:20.685Z",
+      "failedApi": []
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "fix",
+      "at": "d4ce963e5fab1a888533627da69b8a578dd263aa",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-opencode-run.json",
+          "sha256": "aa7372b9d63d0a93004ae8f70c3eed1d14d85aeb26dd844ec6e127c91d49abe4"
+        },
+        {
+          "path": "p8-grok-run.json",
+          "sha256": "f0cfcb87735ca627c45d71d2ce7918573112ce08e9e25f4012791cc726582110"
+        }
+      ],
+      "addedAt": "2026-11-26T21:32:20.732Z",
+      "text": "Daemon: the same OpenCode automation now starts; the Grok one skips with 'Grok weekly usage 23% is above 20%'.",
+      "failedApi": []
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "design",
+      "at": "d4ce963e5fab1a888533627da69b8a578dd263aa",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-design.json",
+          "sha256": "b5217e7f53fe973597ea8da85ed3206a60e7d8746bddc3cbe3f0b1e00550595d"
+        }
+      ],
+      "addedAt": "2026-11-26T21:32:20.778Z",
+      "cmd": "verify/yv design-check --base eedc2cd8990b",
+      "exit": 0
+    },
+    {
+      "id": 10,
+      "ref": "base",
+      "kind": "note",
+      "at": "d4ce963e5fab1a888533627da69b8a578dd263aa",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T21:32:20.872Z",
+      "text": "no-repro-ui: Codex full-reset count. The scripted Codex always sends availableCount 2 with 2 credit rows, so the null/capped list cannot be shown in the running app without changing the fake (needs the owner's sign-off). Proven by ui/src/usageResets.test.tsx (3 tests fail on base)."
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "test",
+      "at": "d4ce963e5fab1a888533627da69b8a578dd263aa",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-cmd.log",
+          "sha256": "79c975076360ef80f0417f8615ccda1133f96da7f46b6bce12f02f1e318ecf30"
+        }
+      ],
+      "addedAt": "2026-11-26T21:32:25.522Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --no-fail-fast && (cd ui && bun test) && (cd sidecar/yard-claude && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 12,
+      "ref": "head",
+      "kind": "regression",
+      "at": "d4ce963e5fab1a888533627da69b8a578dd263aa",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p12-map-automations.json",
+          "sha256": "8cf9553ef63f60d793999f7f40aecd4b3c019dffeade75d0924edba3f0f647cd"
+        }
+      ],
+      "addedAt": "2026-11-26T21:35:46.235Z",
+      "cmd": "verify/yv map run automations",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "automations/list-shows-schedule-next-and-last",
+        "automations/create-from-the-form",
+        "automations/run-now-archives-and-lists-the-run",
+        "automations/pinning-a-run-brings-it-back",
+        "automations/run-time-is-how-long-it-ran",
+        "automations/grid-of-cards-and-the-run-strip",
+        "automations/edit-changes-the-schedule",
+        "automations/edit-keeps-an-unlisted-model",
+        "automations/disable-stops-the-schedule",
+        "automations/reload-and-back-keep-the-page",
+        "automations/delete-removes-the-automation-and-frees-its-runs",
+        "automations/claude-usage-limit-skips",
+        "automations/usage-limits-read-the-engines-own-figures",
+        "automations/usage-limits-say-when-they-cannot-apply",
+        "automations/run-now-failure-says-why-once",
+        "automations/interval-and-weekly-schedules-from-the-form",
+        "automations/a-working-run-dots-the-automations-button",
+        "automations/manual-run-with-its-own-prompt",
+        "automations/time-fields-fit-hh-mm",
+        "automations/interval-active-window",
+        "automations/a-run-waiting-for-approval-marks-the-button-amber",
+        "automations/next-run-stays-in-view-with-a-window"
+      ]
+    },
+    {
+      "id": 13,
+      "ref": "head",
+      "kind": "regression",
+      "at": "d4ce963e5fab1a888533627da69b8a578dd263aa",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p13-map-usage.json",
+          "sha256": "f7dc5d657a64867b749d357818d237c0fd9f6e3d137420b52165a9c3a7f0e84b"
+        }
+      ],
+      "addedAt": "2026-11-26T21:38:55.064Z",
+      "cmd": "verify/yv map run usage",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "usage/usage-strip-in-sidebar",
+        "usage/usage-strip-claude",
+        "usage/picker-has-no-meters",
+        "usage/picker-other-engine-collapsed",
+        "usage/picker-current-model-marked",
+        "usage/meters-zero-after-reset",
+        "usage/claude-usage-after-restart",
+        "usage/strip-names-every-account",
+        "usage/picker-names-the-account",
+        "usage/subscriptions-note-names-every-silent-engine",
+        "usage/every-window-reset-at-a-glance",
+        "usage/sign-in-from-usage-while-on-hosts"
+      ]
+    }
+  ]
+}
