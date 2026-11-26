@@ -157,6 +157,22 @@ mkdir -p "$(v work)/TEST-a-really-long-project-folder-name-for-the-mobile-chips"
 yv drive new --steps '[{"eval":"(()=>{localStorage.setItem(\"yard.cwd\",\"{{work}}/TEST-a-really-long-project-folder-name-for-the-mobile-chips\");return 1})()","equals":1},{"reload":true},{"goto":"new"},{"expect":{"css":".new-chips .chip","hasText":"TEST-a-really-long"}},{"eval":"(() => { const icons = [...document.querySelectorAll(\".new-chips .chip svg\")]; return icons.length >= 2 && icons.every((i) => i.getBoundingClientRect().width === Number(i.getAttribute(\"width\"))); })()","equals":true},{"shot":"long-folder-chip"}]'
 ```
 
+### long-host-name-keeps-the-host-sheet-row
+Viewports: both
+In the host picker, a long host name (a Tailscale IPv6 address, which names
+the host whole, or a 40-character custom name) is cut with "…" on one line.
+Its cloud icon keeps its full size and "unreachable" stays inside the row.
+At 390 px the icon was squeezed to nothing, the name wrapped, and the aside
+ran past the row's edge (#443).
+
+```sh
+yv iso up --name map-ns-hostsheet >/dev/null
+yv api --iso map-ns-hostsheet '{"op":"host.add","name":"fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c","kind":"ssh","destination":"test@fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c","remotePort":47717}' --wait '{"op":"hosts","hosts":[{"name":"fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"}]}' >/dev/null
+yv api --iso map-ns-hostsheet '{"op":"host.add","name":"TEST-a-long-host-name-without-any-spaces","kind":"ssh","destination":"test@TEST-longbox","remotePort":47717}' --wait '{"op":"hosts","hosts":[{"name":"TEST-a-long-host-name-without-any-spaces"}]}' >/dev/null
+yv drive new --iso map-ns-hostsheet --steps '[{"click":{"css":".main button","hasText":"iso-host"}},{"expect":{"css":".picker-item","hasText":"TEST-a-long-host-name-without-any-spaces"}},{"wait":"css:.menu-aside"},{"eval":"(() => { const items = [...document.querySelectorAll(\".picker-item\")].filter(x => x.textContent.includes(\"fd7a\") || x.textContent.includes(\"TEST-a-long\")); return items.length === 2 && items.every((b) => { const r = b.getBoundingClientRect(); const svg = b.querySelector(\"svg\").getBoundingClientRect(); const aside = b.querySelector(\".menu-aside\").getBoundingClientRect(); return svg.width === Number(b.querySelector(\"svg\").getAttribute(\"width\")) && aside.right <= r.right && aside.left >= svg.right && r.height <= 44; }); })()","equals":true},{"shot":"host-sheet"}]'
+yv iso down --name map-ns-hostsheet
+```
+
 ### folder-menu-stays-on-screen
 Viewports: both
 The folder menu opens fully on screen and the page stays put: the heading

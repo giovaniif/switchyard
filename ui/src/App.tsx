@@ -2737,14 +2737,14 @@ export function HostPicker(props: { state: State; value: string; onChange(host: 
     >
       <button className={`picker-item menu-item ${value === "local" ? "active" : ""}`} onClick={() => pick("local")}>
         <Icon d={LAPTOP} />
-        <span>{hostName(state, "local")}</span>
+        <span className="menu-label">{hostName(state, "local")}</span>
       </button>
       {state.hosts.map((h) => {
         const online = hostOnline(state, h.id);
         return (
           <button key={h.id} className={`picker-item menu-item ${value === h.id ? "active" : ""}`} disabled={!online && !props.allowOffline} onClick={() => pick(h.id)}>
             <Icon d={CLOUD} />
-            <span>{h.name}</span>
+            <span className="menu-label">{h.name}</span>
             {!online && <span className="muted small menu-aside">{h.status === "error" ? "unreachable" : h.status}</span>}
           </button>
         );
