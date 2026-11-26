@@ -1,0 +1,51 @@
+$ verify/yv map run queue
+# exit 0 after 30385 ms at 57e2a3d42df3b91c2eaece98f5f6561158d6cc1d
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "queue",
+      "at": "2026-11-26T11:16:16.548Z",
+      "counts": {
+        "pass": 6
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "new-session-queues",
+          "status": "pass",
+          "ms": 6379
+        },
+        {
+          "label": "start-anyway",
+          "status": "pass",
+          "ms": 4701
+        },
+        {
+          "label": "double-click-start-anyway",
+          "status": "pass",
+          "ms": 3826
+        },
+        {
+          "label": "agent-queues-and-starts-anyway",
+          "status": "pass",
+          "ms": 4016
+        },
+        {
+          "label": "queued-session-composer-says-start-first",
+          "status": "pass",
+          "ms": 6816
+        },
+        {
+          "label": "hosts-page-shows-pressure",
+          "status": "pass",
+          "ms": 4276
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+

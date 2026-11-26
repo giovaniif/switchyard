@@ -1,0 +1,81 @@
+{
+  "v": 1,
+  "claim": "The queue map has no Gotcha for a two-viewport drive that starts a queued session: the second viewport sees a started session and its .queued-line step times out (it cost a re-record in #491).",
+  "repo": "/home/giovani/.yard/wt/switchyard/patrol-gotcha-875781",
+  "base": "40468b2d41faa594e026369780980c5e6bab5de8",
+  "head": "57e2a3d42df3b91c2eaece98f5f6561158d6cc1d",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/features/queue.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-26T11:15:46.001Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "57e2a3d42df3b91c2eaece98f5f6561158d6cc1d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T11:15:46.042Z",
+      "text": "no-repro: map-only change, a Gotcha in verify/features/queue.md"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "57e2a3d42df3b91c2eaece98f5f6561158d6cc1d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T11:15:46.084Z",
+      "text": "no-failing-test: the recipe is the test; this adds a Gotcha, no recipe change"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "57e2a3d42df3b91c2eaece98f5f6561158d6cc1d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-gotcha-map2.json",
+          "sha256": "acd1ce6662170ce482add5765cbd66c02c8673079bfc5407be2c9b5ed12dee3a"
+        }
+      ],
+      "addedAt": "2026-11-26T11:15:46.125Z",
+      "failedApi": [],
+      "failingRecipes": [],
+      "passingRecipes": [
+        "queue/new-session-queues",
+        "queue/start-anyway",
+        "queue/double-click-start-anyway",
+        "queue/agent-queues-and-starts-anyway",
+        "queue/queued-session-composer-says-start-first",
+        "queue/hosts-page-shows-pressure"
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "57e2a3d42df3b91c2eaece98f5f6561158d6cc1d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "b6354fc2428d6f2466e95f9be5da108e25eb714df80ba9589b2888a072d7f90b"
+        }
+      ],
+      "addedAt": "2026-11-26T11:15:46.166Z",
+      "cmd": "verify/yv map run queue",
+      "exit": 0
+    }
+  ]
+}
