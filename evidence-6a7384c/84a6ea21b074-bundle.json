@@ -1,0 +1,219 @@
+{
+  "v": 1,
+  "claim": "An archived session waiting for approval left no sign on the collapsed Archived dock (it showed only 'Archived 1'), though archived sessions still run; the collapsed dock now carries the amber dot a collapsed group carries.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-4f14",
+  "base": "90a60ef376074dcfa8c8f4508a5cb3d87a7793ae",
+  "head": "6a7384cd2827147643b0e8a218e88aaa50b3027a",
+  "changed": [
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/sidebar.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T00:09:31.389Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "a4ad74934b9e86ef0a1b39faa5b695292cdb25c3",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "d772ea136e4ccf6e33dd7d41858d8a03f7f690a9700c6806b5514e2a833b16bc"
+        },
+        {
+          "path": "p1-archived-dock-desktop.png",
+          "sha256": "f4bad927e1fef91e27bcc89164b1d264a2b9e43362811bc90e911717695e1168"
+        }
+      ],
+      "addedAt": "2026-11-26T00:09:40.480Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "a4ad74934b9e86ef0a1b39faa5b695292cdb25c3",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "440eb497de67b0ee1574b7e43e012c63161795e6be7e141e4a43e16b69b7bc52"
+        },
+        {
+          "path": "p2-archived-dock-mobile.png",
+          "sha256": "d5466d81e03f870368feeb4dccd66a6ab6ca5e5dd405944c46e156cc67aee77b"
+        }
+      ],
+      "addedAt": "2026-11-26T00:09:43.832Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "a4ad74934b9e86ef0a1b39faa5b695292cdb25c3",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "a7715db549ed6a3b5fd5da775fed7df54c5fdfa23c441cb9ba309132168f7083"
+        }
+      ],
+      "addedAt": "2026-11-26T00:09:43.874Z",
+      "cmd": "verify/yv map run sidebar --recipe collapsed-archived-dock-shows-a-waiting-approval",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "6a7384cd2827147643b0e8a218e88aaa50b3027a",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "a9d865949c71f56a536387c3083f92f592be9af7db385e330853fbd82a85b384"
+        },
+        {
+          "path": "p4-archived-dock-desktop.png",
+          "sha256": "b289f452b05b2ce2a8103f93b8c5d767eb4d603db96e5f6656b0c7ad4ad7fea3"
+        },
+        {
+          "path": "p4-archived-dock-open-desktop.png",
+          "sha256": "cf92ab902691f12cb410db35a8a9ff461d125e4efbe73ae17ade89ea5694d10f"
+        }
+      ],
+      "addedAt": "2026-11-26T00:10:06.610Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "6a7384cd2827147643b0e8a218e88aaa50b3027a",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "5b3e06efcd2e357862fd26c102635fbf6cb81823b0038ab40c7018244f34a5a5"
+        },
+        {
+          "path": "p5-archived-dock-mobile.png",
+          "sha256": "bb441580971be50c6b63097358a3e3a7e6d3928280ec1233be1b1cb148b2cfab"
+        },
+        {
+          "path": "p5-archived-dock-open-mobile.png",
+          "sha256": "0bf8d02389e293b88659f13e62884c770134bf0ab13be7c7d1df03421b6b296e"
+        }
+      ],
+      "addedAt": "2026-11-26T00:10:10.454Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "6a7384cd2827147643b0e8a218e88aaa50b3027a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "53fe9a0db589cf63a5b69bf225bbf348372b5713bcbe773ef8ec0a3cdf710064"
+        }
+      ],
+      "addedAt": "2026-11-26T00:10:19.387Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "6a7384cd2827147643b0e8a218e88aaa50b3027a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "2f182b1011eb3dcc83486f2e69f61fa7880ba0f32bb8fa058e0b760c1cd4f87c"
+        }
+      ],
+      "addedAt": "2026-11-26T00:10:19.818Z",
+      "cmd": "verify/yv design-check --base 90a60ef37607",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "6a7384cd2827147643b0e8a218e88aaa50b3027a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-sidebar.json",
+          "sha256": "fbcb9d99543ffc1b7e1c7180d727c4127eb24aefe14041078bc04519f7555317"
+        }
+      ],
+      "addedAt": "2026-11-26T00:10:19.901Z",
+      "cmd": "verify/yv map run sidebar",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "sidebar/rows-show-status",
+        "sidebar/compact-rows-with-engine-marks",
+        "sidebar/hover-shows-archive",
+        "sidebar/rows-mark-what-needs-you",
+        "sidebar/mark-chat-unread",
+        "sidebar/rename-session",
+        "sidebar/pin-and-unpin",
+        "sidebar/archive-and-restore",
+        "sidebar/archiving-the-open-session-keeps-the-list-closed",
+        "sidebar/delete-keeps-worktree",
+        "sidebar/group-new",
+        "sidebar/group-move-to-existing",
+        "sidebar/group-drag-out-to-ungrouped",
+        "sidebar/group-drag-into-group",
+        "sidebar/group-drag-noop",
+        "sidebar/group-collapse-persists",
+        "sidebar/group-rename",
+        "sidebar/group-remove-from-group",
+        "sidebar/group-ungroup",
+        "sidebar/group-count-clear-of-the-menu-button",
+        "sidebar/collapsed-group-shows-a-waiting-approval",
+        "sidebar/collapsed-archived-dock-shows-a-waiting-approval",
+        "sidebar/archived-header-stays-at-bottom",
+        "sidebar/hand-off-keeps-the-group",
+        "sidebar/hand-off-from-a-pinned-session-stays-in-its-group",
+        "sidebar/menu-on-a-row-below-the-fold",
+        "sidebar/session-named-from-the-conversation"
+      ]
+    }
+  ]
+}

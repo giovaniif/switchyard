@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "6a7384cd2827147643b0e8a218e88aaa50b3027a",
+    "short": "6a7384c",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T00:10:01.938Z"
+  },
+  "dir": ".verify/evidence/archived-dock-approval-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3283,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/archived-dock-approval-head-mobile/archived-dock-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/archived-dock-approval-head-mobile/archived-dock-open-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

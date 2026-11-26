@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "a4ad74934b9e86ef0a1b39faa5b695292cdb25c3",
+    "short": "a4ad749",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T00:09:36.146Z"
+  },
+  "dir": ".verify/evidence/archived-dock-approval-base-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2320,
+      "steps": 3,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/archived-dock-approval-base-desktop/archived-dock-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 1,
+          "eval": "document.querySelectorAll(\".archived-dock .list-toggle .dot\").length",
+          "value": 0
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
