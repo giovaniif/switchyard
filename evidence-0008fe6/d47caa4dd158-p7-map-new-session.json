@@ -1,0 +1,103 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "new-session",
+      "at": "2026-11-26T02:19:19.460Z",
+      "counts": {
+        "pass": 16,
+        "manual": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "page-renders",
+          "status": "pass",
+          "ms": 3974
+        },
+        {
+          "label": "send-creates-session",
+          "status": "pass",
+          "ms": 5810
+        },
+        {
+          "label": "long-prompt-titled-at-a-word",
+          "status": "pass",
+          "ms": 6988
+        },
+        {
+          "label": "long-second-word-is-cut-not-dropped",
+          "status": "pass",
+          "ms": 6206
+        },
+        {
+          "label": "empty-prompt-cannot-send",
+          "status": "pass",
+          "ms": 3659
+        },
+        {
+          "label": "worktree-note",
+          "status": "pass",
+          "ms": 3969
+        },
+        {
+          "label": "base-branch-picker",
+          "status": "pass",
+          "ms": 5847
+        },
+        {
+          "label": "typed-path-with-no-match-says-so",
+          "status": "pass",
+          "ms": 7088
+        },
+        {
+          "label": "typed-path-under-a-missing-folder-names-it",
+          "status": "pass",
+          "ms": 9404
+        },
+        {
+          "label": "typed-path-through-a-file-names-the-file",
+          "status": "pass",
+          "ms": 9913
+        },
+        {
+          "label": "remembered-folder-that-is-gone-says-so",
+          "status": "pass",
+          "ms": 7458
+        },
+        {
+          "label": "long-folder-keeps-its-chip-icon",
+          "status": "pass",
+          "ms": 7104
+        },
+        {
+          "label": "folder-menu-stays-on-screen",
+          "status": "pass",
+          "ms": 6106
+        },
+        {
+          "label": "recent-folder-opens-with-tab",
+          "status": "pass",
+          "ms": 5861
+        },
+        {
+          "label": "refused-send-names-the-session-in-the-way",
+          "status": "pass",
+          "ms": 9414
+        },
+        {
+          "label": "task-draft-survives-opening-a-session",
+          "status": "pass",
+          "ms": 13658
+        },
+        {
+          "label": "folder-picker-lists-folders",
+          "status": "manual",
+          "why": "the Finder dialog only exists in the desktop app"
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
