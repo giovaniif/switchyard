@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mobileHost, mobileLink, phoneState, phoneTargets, testFlightLink } from "./mobile";
+import { mobileHost, mobileLink, phonePage, phonePageLink, phoneState, phoneTargets, testFlightLink } from "./mobile";
 import { initial, reduce } from "./store";
 
 test("phone setup accepts only private-network HTTPS page origins", () => {
@@ -48,4 +48,24 @@ test("a host's phones read as connected now, last seen, or none yet", () => {
   // An older yardd only knows that one connected.
   expect(phoneState({ configured: true }, now)).toEqual({ kind: "seen", text: "An iPhone has connected" });
   expect(phoneState(undefined, now).kind).toBe("never");
+});
+
+test("the QR code opens the host's page, which any iPhone Camera opens even without the app", () => {
+  // A switchyard:// code gives the Camera nothing to offer until the app is installed.
+  expect(phonePageLink("https://yard.test")).toBe("https://yard.test/?phone");
+  const withInvite = phonePageLink("https://yard.test:8443", "https://testflight.apple.com/join/AbCd1234")!;
+  expect(new URL(withInvite).searchParams.get("testflight")).toBe("https://testflight.apple.com/join/AbCd1234");
+  expect(phonePageLink("https://yard.test", "https://evil.test/join/AbCd1234")).toBe("https://yard.test/?phone");
+  expect(phonePageLink("http://localhost:47717")).toBeNull();
+
+  expect(phonePage(withInvite)).toEqual({
+    app: "switchyard://connect?host=https%3A%2F%2Fyard.test%3A8443",
+    invite: "https://testflight.apple.com/join/AbCd1234",
+    browser: "https://yard.test:8443/",
+  });
+  // A forged invitation in the address is dropped, and plain pages are not the phone page.
+  expect(phonePage("https://yard.test/?phone&testflight=javascript:alert(1)")?.invite).toBeNull();
+  expect(phonePage("https://yard.test/")).toBeNull();
+  // Served over plain http there is nothing the app could connect to.
+  expect(phonePage("http://100.64.0.1:47717/?phone")?.app).toBeNull();
 });
