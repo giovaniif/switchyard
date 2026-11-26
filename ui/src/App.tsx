@@ -3861,7 +3861,7 @@ function QuestionCard({ item, questions, onDecide, asker }: {
             </div>
             {open ? (
               <>
-                <div className="question-options" role={q.multiSelect ? "group" : "radiogroup"} aria-label={q.question}>
+                {q.options.length > 0 && <div className="question-options" role={q.multiSelect ? "group" : "radiogroup"} aria-label={q.question}>
                   {q.options.map((o) => (
                     <button
                       key={o.label}
@@ -3879,13 +3879,13 @@ function QuestionCard({ item, questions, onDecide, asker }: {
                       </span>
                     </button>
                   ))}
-                </div>
+                </div>}
                 {q.other !== false && <input
                   className="field question-other"
                   type={q.secret ? "password" : "text"}
                   autoComplete="off"
                   placeholder={!q.options.length ? "Your answer" : q.multiSelect ? "Something else (optional)" : "Something else"}
-                  aria-label={q.options.length ? `Something else: ${q.question}` : q.question}
+                  aria-label={q.options.length ? `Something else: ${q.question}` : `Answer: ${q.question}`}
                   value={pick.other}
                   disabled={item.sending}
                   onChange={(e) => set(q, typeOther(q, pick, e.target.value))}
