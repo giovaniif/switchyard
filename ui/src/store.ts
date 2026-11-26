@@ -36,6 +36,7 @@ import {
   type SlackConversation,
   type SlackMessage,
   type SlackPage,
+  type SlackChannel,
 } from "./protocol";
 import { applyMessage, mergePage, pageKey } from "./slackInbox";
 import type { WidgetRecord } from "./widget";
@@ -799,6 +800,10 @@ export interface Actions {
   slackSend(team: string, channel: string, text: string, thread?: string): Promise<{ error?: string }>;
   /** His reaction on a message, on or off. */
   slackReact(team: string, channel: string, ts: string, name: string, add: boolean): Promise<{ error?: string }>;
+  /** The channels he is in, and which are imported. */
+  slackChannels(): Promise<{ channels?: SlackChannel[]; error?: string }>;
+  /** A channel into his inbox (60 days, then live), or out of it. */
+  slackImport(channel: string, on: boolean): Promise<{ error?: string }>;
   /** A tool call's widget: its HTML, CSP, input and result. */
   widget(sessionId: string, id: string): Promise<{ widget?: WidgetRecord; error?: string }>;
   /** A call a widget makes to its own server. */
@@ -1154,6 +1159,14 @@ export function useYard(): { state: State; actions: Actions } {
       slackRead: (team, channel, ts) => post({ op: "slack.inbox.read", team, channel, ts }),
       slackSend: async (team, channel, text, thread) => {
         const reply = await ask({ op: "slack.inbox.send", team, channel, text, ...(thread ? { thread } : {}) }, 30_000);
+        return reply.error ? { error: reply.error as string } : {};
+      },
+      slackChannels: async () => {
+        const reply = await ask({ op: "slack.inbox.channels" }, 60_000);
+        return reply.error ? { error: reply.error as string } : { channels: reply.channels as SlackChannel[] };
+      },
+      slackImport: async (channel, on) => {
+        const reply = await ask({ op: "slack.inbox.import", channel, on }, 30_000);
         return reply.error ? { error: reply.error as string } : {};
       },
       slackReact: async (team, channel, ts, name, add) => {

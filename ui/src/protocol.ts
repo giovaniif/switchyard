@@ -167,6 +167,15 @@ export interface SlackConversation {
   previewFrom?: string;
 }
 
+/** A channel the owner is in (`slack.inbox.channels`). */
+export interface SlackChannel {
+  id: string;
+  /** `#name`. */
+  name: string;
+  private: boolean;
+  imported: boolean;
+}
+
 /** A Slack message as kept: its text is Slack's markup (see slackText.ts). */
 export interface SlackMessage {
   ts: string;
