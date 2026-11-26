@@ -81,6 +81,9 @@ verify/yv state --expect '{"sessions":[{"id":"{{sid_echo}}","status":"idle"}]}'
 - Every run collects console errors, page errors, failed API calls (yardd
   `error` replies) and HTTP failures; any of them fails the run unless you pass
   `--allow-errors` (do that only when the error is the thing you are proving).
+- Each `drive` (and each viewport in it) starts a fresh browser profile:
+  localStorage set in one drive is gone in the next. Seed browser state with
+  an `eval` step and check its effect in the same drive.
 - On a failed step you get a screenshot, an aria snapshot and the reason.
   `--video` records the drive (mp4 with ffmpeg).
 - Learn the UI's names with `{"aria":true}` before guessing selectors.

@@ -111,3 +111,60 @@ async fn a_worktree_with_a_running_session_or_process_stays() {
     }
     assert!(!Path::new(&shell_wt).exists(), "{}", d.log_text());
 }
+
+/// A session in its own worktree, left as created (HEAD on the base branch).
+async fn worktree_session(c: &mut Client, repo: &str, text: &str) -> (String, String, String) {
+    let sid = c.create(repo, text, json!({ "worktree": true })).await;
+    c.wait_turn_done(&sid, 0).await;
+    c.wait_status(&sid, "idle").await;
+    let meta = c.wait_for("the worktree session", |m| m["op"] == "session" && m["session"]["id"] == sid).await["session"].clone();
+    (sid, meta["cwd"].as_str().unwrap().to_string(), meta["branch"].as_str().unwrap().to_string())
+}
+
+/// Automation runs that end without a PR leave their worktree behind; once
+/// every session there is archived and its HEAD is already on another
+/// branch, nothing is lost by removing it. Unpushed commits, uncommitted
+/// files and a session still in the list keep it.
+#[tokio::test]
+async fn an_archived_worktree_with_nothing_of_its_own_is_removed() {
+    let sb = Sandbox::new("sweeparch");
+    let bin = sb.root.join("bin");
+    fs::create_dir_all(&bin).unwrap();
+    symlink(repo_root().join("verify/fakes/gh"), bin.join("gh")).unwrap();
+    let path = format!("{}:{}:{}", bin.display(), fake_bin().display(), std::env::var("PATH").unwrap_or_default());
+    let repo = make_repo(&sb, "repo");
+    let d = sb.start_with(&[("PATH", &path), ("YARD_WORKTREE_SWEEP_SECS", "1")]);
+    let mut c = d.client().await;
+    let home = sb.home();
+    fs::write(sb.fake_state().join("gh-pr.json"), json!({ "merged": [] }).to_string()).unwrap();
+
+    let (spent, spent_wt, spent_branch) = worktree_session(&mut c, &repo, "spent").await;
+    // Its commit is also on another branch, as after a push.
+    let (pushed, pushed_wt, _, _) = worktree_with_commit(&mut c, &sb, &repo, "pushed").await;
+    git(&pushed_wt, &["branch", "elsewhere"], &home);
+    let (own, own_wt, _, _) = worktree_with_commit(&mut c, &sb, &repo, "own").await;
+    let (dirty, dirty_wt, _) = worktree_session(&mut c, &repo, "dirty").await;
+    fs::write(Path::new(&dirty_wt).join("unsaved.txt"), "unsaved\n").unwrap();
+    let (_, listed_wt, _) = worktree_session(&mut c, &repo, "listed").await;
+    for sid in [&spent, &pushed, &own, &dirty] {
+        c.send(json!({ "op": "session.update", "sessionId": sid, "archived": true })).await;
+    }
+
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while (Path::new(&spent_wt).exists() || Path::new(&pushed_wt).exists()) && Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+    assert!(!Path::new(&spent_wt).exists(), "an archived worktree on its base is removed\n{}", d.log_text());
+    assert!(!Path::new(&pushed_wt).exists(), "so is one whose commits are on another branch");
+    assert_eq!(git(&repo, &["branch", "--list", &spent_branch], &home), "", "its branch goes too");
+    let note = c.wait_event(&spent, "note", 0).await;
+    assert_eq!(
+        note["text"],
+        format!("Worktree and branch {spent_branch} removed: its sessions are archived and its commits are on another branch.")
+    );
+
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    assert!(Path::new(&own_wt).is_dir(), "commits on no other branch stay");
+    assert!(Path::new(&dirty_wt).join("unsaved.txt").is_file(), "uncommitted work stays");
+    assert!(Path::new(&listed_wt).is_dir(), "a session still in the list keeps it");
+}
