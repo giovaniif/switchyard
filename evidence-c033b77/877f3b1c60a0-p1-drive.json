@@ -1,0 +1,69 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "2339c718a5300f3fe0c9eacc8a7e1ded5f3a1399",
+    "short": "2339c71",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T02:02:09.319Z"
+  },
+  "dir": ".verify/evidence/picker-file-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4871,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/picker-file-base/base-through-a-file-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "fs.dirs",
+          "message": "cannot read /tmp/yv-default-1219512-mwwwq4o8/work/TEST-demo-app/README.md: Not a directory (os error 20)"
+        }
+      ],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3161,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/picker-file-base/base-through-a-file-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "fs.dirs",
+          "message": "cannot read /tmp/yv-default-1219512-mwwwq4o8/work/TEST-demo-app/README.md: Not a directory (os error 20)"
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

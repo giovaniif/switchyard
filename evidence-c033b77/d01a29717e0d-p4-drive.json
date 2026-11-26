@@ -1,0 +1,91 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "c033b77d55d987a0b2732a89b43b1f46ace9ce47",
+    "short": "c033b77",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T02:05:36.555Z"
+  },
+  "dir": ".verify/evidence/picker-file-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 6598,
+      "steps": 18,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/picker-file-head/head-through-a-file-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/picker-file-head/head-through-a-file-deeper-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/picker-file-head/head-real-folder-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 7125,
+      "steps": 18,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/picker-file-head/head-through-a-file-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/picker-file-head/head-through-a-file-deeper-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/picker-file-head/head-real-folder-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

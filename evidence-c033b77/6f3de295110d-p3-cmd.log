@@ -1,0 +1,29 @@
+$ CARGO_BUILD_JOBS=4 cargo test -p yardd --test daemon folders_are_listed_for_the_picker
+# exit 101 after 4648 ms at 1ee20533403421e93f1cc1dbd7709bbb0986c99d
+
+
+running 1 test
+test folders_are_listed_for_the_picker ... FAILED
+
+failures:
+
+---- folders_are_listed_for_the_picker stdout ----
+
+thread 'folders_are_listed_for_the_picker' (1251958) panicked at crates/yardd/tests/daemon.rs:799:9:
+assertion `left == right` failed: {"error":"cannot read /tmp/yardd-test-1251957-dirs-0/work/a-file.txt/: Not a directory (os error 20)","op":"fs.dirs","path":"/tmp/yardd-test-1251957-dirs-0/work/a-file.txt/"}
+  left: Null
+ right: "/tmp/yardd-test-1251957-dirs-0/work/a-file.txt"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1251957-dirs-0 for inspection
+
+
+failures:
+    folders_are_listed_for_the_picker
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 87 filtered out; finished in 0.14s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-2617/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 4.45s
+     Running tests/daemon.rs (target/debug/build/yardd/bc3e500ead7d3ac6/out/daemon-bc3e500ead7d3ac6)
+error: test failed, to rerun pass `-p yardd --test daemon`

@@ -1,0 +1,53 @@
+$ verify/yv map run new-session --recipe typed-path-through-a-file-names-the-file
+# exit 1 after 34069 ms at 1ee20533403421e93f1cc1dbd7709bbb0986c99d
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "new-session",
+      "at": "2026-11-26T02:05:06.142Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "typed-path-through-a-file-names-the-file",
+          "status": "fail",
+          "ms": 26681,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 2 {\"expect\":\"css:.picker-empty\",\"text\":\"README.md is a file, not a folder.\"}: expected \"css:.picker-empty\" to contain \"README.md is a file, not a folder.\", got \"cannot read /tmp/yv-map-new-session-1244596-mwwwtbwz/work/TEST-demo-app/README.md: Not a directory (os error 20)\"",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-2617/.verify/drives/2026-11-26T02-04-39-679Z/fail-mobile-step2.png and the aria snapshot"
+            },
+            {
+              "code": "errors",
+              "msg": "mobile: 0 console, 0 page, 1 API, 0 HTTP errors"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 2 {\"expect\":\"css:.picker-empty\",\"text\":\"README.md is a file, not a folder.\"}: expected \"css:.picker-empty\" to contain \"README.md is a file, not a folder.\", got \"cannot read /tmp/yv-map-new-session-1244596-mwwwtbwz/work/TEST-demo-app/README.md: Not a directory (os error 20)\"",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-2617/.verify/drives/2026-11-26T02-04-39-679Z/fail-desktop-step2.png and the aria snapshot"
+            },
+            {
+              "code": "errors",
+              "msg": "desktop: 0 console, 0 page, 1 API, 0 HTTP errors"
+            }
+          ],
+          "tail": " separator \\\"Resize the sessions sidebar\\\"\\n- banner:\\n  - button \\\"Set up iPhone app\\\"\\n- heading \\\"What should we work on?\\\" [level=1]\\n- textbox \\\"Message\\\":\\n  - /placeholder: Describe the task\\n- button \\\"Attach files\\\"\\n- button \\\"Dictate\\\"\\n- button \\\"Voice mode\\\"\\n- button \\\"Model Opus 5.5\\\": Opus 5.5\\n- 'button \\\"Account: Claude, Default\\\"'\\n- button \\\"Effort High\\\": High\\n- button \\\"Ask first\\\"\\n- button \\\"Send\\\" [disabled]\\n- button \\\"iso-host\\\"\\n- button \\\"work\\\" [expanded]\\n- text: Works in the folder itself\\n- dialog \\\"Folders\\\":\\n  - textbox \\\"Folder\\\":\\n    - /placeholder: Search folders, or type a path\\n    - text: /tmp/yv-map-new-session-1244596-mwwwtbwz/work/TEST-demo-app/README.md/\\n  - listbox: \\\"cannot read /tmp/yv-map-new-session-1244596-mwwwtbwz/work/TEST-demo-app/README.md: Not a directory (os error 20)\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [\n        {\n          \"op\": \"fs.dirs\",\n          \"message\": \"cannot read /tmp/yv-map-new-session-1244596-mwwwtbwz/work/TEST-demo-app/README.md: Not a directory (os error 20)\"\n        }\n      ],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 2 {\\\"expect\\\":\\\"css:.picker-empty\\\",\\\"text\\\":\\\"README.md is a file, not a folder.\\\"}: expected \\\"css:.picker-empty\\\" to contain \\\"README.md is a file, not a folder.\\\", got \\\"cannot read /tmp/yv-map-new-session-1244596-mwwwtbwz/work/TEST-demo-app/README.md: Not a directory (os error 20)\\\"\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-2617/.verify/drives/2026-11-26T02-04-39-679Z/fail-mobile-step2.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"errors\",\n      \"msg\": \"mobile: 0 console, 0 page, 1 API, 0 HTTP errors\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 2 {\\\"expect\\\":\\\"css:.picker-empty\\\",\\\"text\\\":\\\"README.md is a file, not a folder.\\\"}: expected \\\"css:.picker-empty\\\" to contain \\\"README.md is a file, not a folder.\\\", got \\\"cannot read /tmp/yv-map-new-session-1244596-mwwwtbwz/work/TEST-demo-app/README.md: Not a directory (os error 20)\\\"\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-2617/.verify/drives/2026-11-26T02-04-39-679Z/fail-desktop-step2.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"errors\",\n      \"msg\": \"desktop: 0 console, 0 page, 1 API, 0 HTTP errors\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "new-session/typed-path-through-a-file-names-the-file",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+
