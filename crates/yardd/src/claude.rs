@@ -39,9 +39,9 @@ pub fn sidecar_command(app: &App) -> Result<Command> {
     Ok(cmd)
 }
 
-/// How often each Claude account's plan limits are read without a turn.
-/// `YARD_CLAUDE_USAGE_EVERY_MS=0` turns it off (the tests do, but one).
-fn usage_every() -> Option<std::time::Duration> {
+/// How often each Claude and Grok account's plan limits are read without a
+/// turn. `YARD_CLAUDE_USAGE_EVERY_MS=0` turns it off (the tests do, but one).
+pub fn usage_every() -> Option<std::time::Duration> {
     match std::env::var("YARD_CLAUDE_USAGE_EVERY_MS").ok().and_then(|v| v.trim().parse::<u64>().ok()) {
         Some(0) => None,
         Some(ms) => Some(std::time::Duration::from_millis(ms)),
@@ -190,7 +190,8 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
                 Some("event") => reader_app.emit(&reader_sid, msg["event"].clone()),
                 Some("usage") => {
                     if let Some(account) = reader_app.meta(&reader_sid).map(|m| m.account) {
-                        reader_app.set_usage("claude", &account, msg["usage"].clone());
+                        // A turn names only the windows it touched.
+                        reader_app.update_usage("claude", &account, |kept| crate::usage::merge_claude_turn(kept, &msg["usage"]));
                     }
                 }
                 Some("reply") => reader_app.mcp.reply(&msg),

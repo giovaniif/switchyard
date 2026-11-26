@@ -64,6 +64,8 @@ test("the usage report's limits become the same windows as rate_limit_event", ()
       five_hour: { utilization: 0.92, resetsAt: Date.parse("2026-11-17T17:00:01.002829+00:00") / 1000 },
       seven_day: { utilization: 0.64, resetsAt: Date.parse("2026-11-20T04:00:01+00:00") / 1000 },
       seven_day_opus: { utilization: 0.07, resetsAt: Date.parse("2026-11-20T04:00:00+00:00") / 1000 },
+      // The server's rows are shown as sent, so a new meter needs no release.
+      something_new: { utilization: 0.5, resetsAt: null, label: "Something new" },
     },
   });
   expect(fromUsageReport({ rate_limits: { limits: [] } })).toBeNull();

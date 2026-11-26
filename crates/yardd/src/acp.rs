@@ -821,6 +821,15 @@ pub async fn send(app: &Arc<App>, sid: &str, text: &str, files: &[Value]) -> Res
             _ => false,
         };
         c.flush(&app, &sid);
+        // A turn spends Grok's credits: read what is left, on the agent at hand.
+        if c.engine == "grok" {
+            let (c, app) = (c.clone(), app.clone());
+            tokio::spawn(async move {
+                if let Ok(answer) = c.request(crate::grok::BILLING, json!({})).await {
+                    let _ = crate::grok::store_usage(&app, &c.account, &answer);
+                }
+            });
+        }
         if !ours {
             return;
         }

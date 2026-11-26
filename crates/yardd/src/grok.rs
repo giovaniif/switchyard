@@ -180,10 +180,120 @@ pub fn start(app: &Arc<App>, account: &str) -> Result<()> {
             if account == DEFAULT {
                 let _ = load_models(&app).await;
             }
+            if ok && shown {
+                refresh_usage_soon(&app, &account);
+            }
             app.broadcast(crate::login::status(&app).await)
         });
     });
     Ok(())
+}
+
+/// The method Grok's agent answers its own /usage with (its "Usage limit"
+/// tab): the plan's credit allowance, no turn. ACP extension methods start
+/// with an underscore; without it the agent answers "Method not found".
+pub const BILLING: &str = "_x.ai/billing";
+
+/// Read an account's credit allowance from a Grok agent of its own, started
+/// for this and stopped after, like Claude's usage report: a running agent
+/// may hold a login from before the last sign-in.
+pub async fn refresh_usage(app: &Arc<App>, account: &str) -> Result<()> {
+    let mut cmd = crate::acp::agent_command("grok")?;
+    if let Some(dir) = app.accounts.config_dir("grok", account)? {
+        cmd.env(crate::accounts::env_var("grok"), dir);
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        cmd.current_dir(home);
+    }
+    let answer = tokio::time::timeout(Duration::from_secs(30), ask_once(cmd, BILLING))
+        .await
+        .map_err(|_| anyhow::anyhow!("Grok did not answer within 30 s"))??;
+    store_usage(app, account, &answer)
+}
+
+/// Keep what `_x.ai/billing` answered, if it holds an allowance.
+pub fn store_usage(app: &App, account: &str, answer: &Value) -> Result<()> {
+    let usage = crate::usage::grok_from_billing(answer).context("Grok reported no usage limit")?;
+    app.set_usage("grok", account, usage);
+    Ok(())
+}
+
+/// What an ACP error about the login means to the person reading it.
+pub fn usage_error(message: &str) -> anyhow::Error {
+    if message.contains("Authentication required") {
+        anyhow::anyhow!("Grok needs you to sign in before it reports its usage limit")
+    } else {
+        anyhow::anyhow!("{message}")
+    }
+}
+
+/// `initialize`, then one request; the agent is killed when this returns.
+async fn ask_once(mut cmd: Command, method: &str) -> Result<Value> {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    let mut child = cmd.spawn().context("could not start Grok: is it installed here?")?;
+    let mut stdin = child.stdin.take().context("agent stdin")?;
+    let mut lines = BufReader::new(child.stdout.take().context("agent stdout")?).lines();
+    let init = json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+        "protocolVersion": 1,
+        "clientCapabilities": { "fs": { "readTextFile": false, "writeTextFile": false }, "terminal": false },
+        "clientInfo": { "name": "switchyard", "title": "Switchyard", "version": env!("CARGO_PKG_VERSION") },
+    } });
+    stdin.write_all(format!("{init}\n").as_bytes()).await?;
+    stdin.flush().await?;
+    while let Some(line) = lines.next_line().await? {
+        let Ok(msg) = serde_json::from_str::<Value>(&line) else { continue };
+        if msg["method"].is_string() {
+            continue;
+        }
+        if msg["id"] == 1 {
+            if !msg["error"].is_null() {
+                anyhow::bail!("Grok initialize: {}", msg["error"]["message"].as_str().unwrap_or("failed"));
+            }
+            let ask = json!({ "jsonrpc": "2.0", "id": 2, "method": method, "params": {} });
+            stdin.write_all(format!("{ask}\n").as_bytes()).await?;
+            stdin.flush().await?;
+        } else if msg["id"] == 2 {
+            let _ = child.kill().await;
+            if msg["error"].is_null() {
+                return Ok(msg["result"].clone());
+            }
+            let e = &msg["error"];
+            let text = [e["message"].as_str(), e["data"].as_str()].into_iter().flatten().collect::<Vec<_>>().join(": ");
+            return Err(usage_error(&text));
+        }
+    }
+    anyhow::bail!("Grok stopped before answering {method}")
+}
+
+/// Every Grok account's allowance at start and every few minutes, like
+/// Claude's (`YARD_CLAUDE_USAGE_EVERY_MS`). Not installed or not signed in
+/// is normal here and says nothing.
+pub async fn run_usage_refresh(app: Arc<App>) {
+    let Some(every) = crate::claude::usage_every() else { return };
+    loop {
+        let mut accounts = vec![DEFAULT.to_string()];
+        accounts.extend(app.accounts.all().into_iter().filter(|a| a.engine == "grok").map(|a| a.id));
+        for account in accounts {
+            if let Err(e) = refresh_usage(&app, &account).await {
+                let e = format!("{e:#}");
+                if !e.contains("installed") && !e.contains("sign in") {
+                    eprintln!("yardd: grok usage for {account}: {e}");
+                }
+            }
+        }
+        tokio::time::sleep(every).await;
+    }
+}
+
+/// After a sign-in or a new account, unless the refresh is turned off.
+pub fn refresh_usage_soon(app: &Arc<App>, account: &str) {
+    if crate::claude::usage_every().is_none() {
+        return;
+    }
+    let (app, account) = (app.clone(), account.to_string());
+    tokio::spawn(async move {
+        let _ = refresh_usage(&app, &account).await;
+    });
 }
 
 pub fn cancel(app: &App, account: &str) {

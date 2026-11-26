@@ -311,17 +311,46 @@ export interface RateWindow {
 }
 
 /** What each engine says about the plan limits; see ui/src/usage.ts. */
+/** A limit window in Claude's shape (Grok's allowance uses it too). */
+export interface LimitWindow {
+  /** Fraction used, 0 to 1. */
+  utilization: number | null;
+  /** Epoch seconds. */
+  resetsAt: number | null;
+  /** The meter's name, for a window the UI has no name of its own for. */
+  label?: string;
+}
+
+/** One Codex limit: primary is the short window (5 hours), secondary the week. */
+export interface CodexLimit {
+  limitId?: string | null;
+  limitName?: string | null;
+  normalModelSlug?: string | null;
+  primary?: RateWindow | null;
+  secondary?: RateWindow | null;
+}
+
+/** A free reset Codex grants (`title` "Full reset"); epoch seconds. */
+export interface CodexResetCredit {
+  id?: string;
+  status?: string;
+  title?: string | null;
+  expiresAt?: number | null;
+}
+
 export interface Usage {
   claude?: {
     status?: string;
     /** By the SDK's window name (five_hour, seven_day, seven_day_sonnet, ...). */
-    windows?: Record<string, { utilization: number | null; resetsAt: number | null }>;
+    windows?: Record<string, LimitWindow>;
     /** Fractions, from a yardd older than `windows`. */
     fiveHour?: number | null;
     sevenDay?: number | null;
   };
-  /** Codex: primary is the short window (5 hours), secondary the week. */
-  codex?: { primary?: RateWindow | null; secondary?: RateWindow | null };
+  /** Codex's main limit, every limit by id (the main one included) and its free resets. */
+  codex?: CodexLimit & { byLimitId?: Record<string, CodexLimit> | null; resetCredits?: { availableCount?: number; credits?: CodexResetCredit[] } | null };
+  /** Grok's credit allowance for its billing period, one window ("week", "month" or "period"). */
+  grok?: { windows?: Record<string, LimitWindow> };
   /** Added accounts' limits by account id, in the same shape as their engine's above. */
   accounts?: Record<string, any>;
 }

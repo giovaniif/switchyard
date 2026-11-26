@@ -1,8 +1,8 @@
 import { EngineIcon } from "./EngineIcon";
 import { useEffect, useRef, useState } from "react";
 import { AnchoredPopover } from "./AnchoredPopover";
-import type { Engine, EngineStates } from "./protocol";
-import { formatReset, metersFor, noLimitsNote, percentText, reportsLimits, stripGroups, type Meter, type UsageSource } from "./usage";
+import type { Engine, EngineStates, Usage } from "./protocol";
+import { formatReset, fullResets, fullResetsText, metersFor, noLimitsNote, percentText, reportsLimits, resetText, stripGroups, type Meter, type UsageSource } from "./usage";
 import { Icon } from "./App";
 import { DEFAULT_ACCOUNT } from "./accounts";
 import { ENGINES, ENGINE_LABEL, ENGINE_NAME } from "./engines";
@@ -15,17 +15,32 @@ const CLOCK = "M12 8v4l2 2m6-2a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z";
 const ALERT = "M12 7v6m0 3v.1m9-4.1a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z";
 const LIMIT_ENGINES = ENGINES.filter(reportsLimits);
 const timeOfDay = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
-const dateAndTime = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const day = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
 
-function usageReset(resetsAt: number | null, now: number) {
-  if (resetsAt === null) return "Reset time not reported";
-  return `Resets ${(new Date(resetsAt).toDateString() === new Date(now).toDateString() ? timeOfDay : dateAndTime).format(resetsAt)} · ${formatReset(resetsAt, now).replace(/^resets /, "")}`;
+function usageWindow(m: Meter) {
+  if (m.title) return m.title;
+  if (m.label === "Week") return "Weekly · all models";
+  if (m.label.startsWith("Week ·")) return `Weekly${m.label.slice(4)}`;
+  return `${m.label} window`;
 }
 
-function usageWindow(label: string) {
-  if (label === "Week") return "Weekly · all models";
-  if (label.startsWith("Week ·")) return `Weekly${label.slice(4)}`;
-  return `${label} window`;
+/** "5-hour resets in 1 h 35 min": the sidebar row's second line. */
+const shortReset = (m: Meter, now: number) => (m.resetsAt == null ? "" : `${m.label} ${formatReset(m.resetsAt, now)}`);
+
+/** Every account's windows and resets, one line each, for the row's tooltip. */
+function resetSummary(rows: ReturnType<typeof subscriptionRows>, now: number) {
+  return rows
+    .filter((r) => r.loggedIn !== false && r.meters.length)
+    .flatMap((r) => [r.name, ...r.meters.map((m) => `  ${m.label}: ${percentText(m.percent)} · ${resetText(m.resetsAt, now)}`)])
+    .join("\n");
+}
+
+/** "2 full resets available · first expires Dec 5 (in 9 d)", for Codex. */
+function FullResets({ engine, usage, now }: { engine: Engine; usage: Usage; now: number }) {
+  const r = fullResets(engine, usage, now);
+  if (!r) return null;
+  const expiry = r.expiresAt == null ? "" : `${r.count === 1 ? "Expires" : "First expires"} ${day.format(r.expiresAt)} · ${formatReset(r.expiresAt, now).replace(/^resets /, "")}`;
+  return <div className="usage-full-resets"><span>{fullResetsText(r)}</span>{expiry && <span className="muted">{expiry}</span>}</div>;
 }
 
 function UsageAvatar({ engine, small }: { engine: Engine; small?: boolean }) {
@@ -70,7 +85,7 @@ export function subscriptionRows(sources: SubscriptionSource[], now: number) {
   return groups.map((g) => {
     const available = sources.filter((s) =>
       g.account === null
-        ? !!s.engines?.[g.engine]?.installed || !!(g.engine === "claude" ? s.usage.claude : s.usage.codex)
+        ? !!s.engines?.[g.engine]?.installed || !!(s.usage as Record<string, unknown>)[g.engine]
         : s.accounts.some((a) => a.engine === g.engine && a.name.toLowerCase() === g.account!.toLowerCase()),
     );
     const reportSource = sources.find((s) => s.host === g.host);
@@ -110,6 +125,29 @@ export function leadRow(rows: ReturnType<typeof subscriptionRows>) {
   return fullest(rows)?.row ?? rows[0];
 }
 
+/** An account under Other accounts: every window it reports, each with its
+ *  reset, so the folded accounts are as readable as the one shown first. */
+export function OtherAccountRow({ row, now, onSignIn }: { row: ReturnType<typeof subscriptionRows>[number]; now: number; onSignIn(): void }) {
+  return (
+    <section className="usage-other-account" aria-label={row.name}>
+      <div className="usage-other-name">
+        <UsageAvatar engine={row.engine} small />
+        <strong>{row.name}</strong>
+        {row.loggedIn === false
+          ? <button className="btn-text usage-link" aria-label={`Sign in — ${row.name}`} onClick={onSignIn}>Sign in</button>
+          : !row.meters.length && <span className="muted">Not reported</span>}
+      </div>
+      {row.loggedIn !== false && row.meters.map((m) => (
+        <div key={m.key} className={`usage-other-meter level-${m.level}`}>
+          <span>{percentText(m.percent)} of {m.label}</span>
+          <span className="muted">{resetText(m.resetsAt, now)}</span>
+        </div>
+      ))}
+      {row.loggedIn !== false && <FullResets engine={row.engine} usage={row.usage} now={now} />}
+    </section>
+  );
+}
+
 export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRefresh, compact = false }: {
   sources: SubscriptionSource[];
   selected?: UsageAccount;
@@ -142,6 +180,7 @@ export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRe
   const [lastRefresh, setLastRefresh] = useState<{ host: string; engine: Engine; account: string; at: number }>();
   const anchor = useRef<HTMLButtonElement>(null);
   const highest = triggerMeter(rows);
+  const silent = silentEngines(sources);
   const close = () => { setOpen(false); setShowOthers(false); setFailure(""); };
   const refresh = async () => {
     if (!canRefresh || refreshing || !activeHost || !activeEngine || !accountId) return;
@@ -162,6 +201,7 @@ export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRe
         ref={anchor}
         className={`btn-quiet ${compact ? "mobile-usage-trigger" : "usage-trigger"}`}
         aria-label="Subscription usage"
+        title={resetSummary(rows, now) || undefined}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => open ? close() : setOpen(true)}
@@ -170,8 +210,17 @@ export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRe
           <><span className="usage-chip-track" aria-hidden="true"><span style={{ width: `${highest.percent}%` }} /></span><span>{percentText(highest.percent)}</span></>
         ) : (
           <>
-            <Icon d={CLOCK} size={14} /><span>Usage</span>
-            {!compact && <><span className="spacer" /><span className={highest?.level === "high" ? "bad" : highest?.level === "warn" ? "warn" : "muted"}>{highest ? `${percentText(highest.percent)} used` : "View limits"}</span><Icon d={RIGHT} size={12} /></>}
+            <Icon d={CLOCK} size={14} />
+            {compact ? <span>Usage</span> : (
+              <span className="usage-trigger-text">
+                <span className="usage-trigger-top">
+                  <span>Usage</span><span className="spacer" />
+                  <span className={highest?.level === "high" ? "bad" : highest?.level === "warn" ? "warn" : "muted"}>{highest ? `${percentText(highest.percent)} used` : "View limits"}</span>
+                </span>
+                {highest && shortReset(highest, now) && <span className="muted usage-trigger-reset">{shortReset(highest, now)}</span>}
+              </span>
+            )}
+            {!compact && <Icon d={RIGHT} size={12} />}
           </>
         )}
       </button>
@@ -214,16 +263,17 @@ export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRe
                 ) : active?.meters.length ? (
                   <div className="usage-limits" aria-busy={refreshing}>
                     {active.meters.map((m) => {
-                      const label = usageWindow(m.label);
+                      const label = usageWindow(m);
                       return <div key={m.key} className={`compact-meter${m.percent >= 80 ? " usage-meter-near" : ""}`}>
                         <span className="usage-window">{label}</span><strong className="usage-percent">{percentText(m.percent)} used</strong>
                         <Bar meter={{ ...m, label }} />
                         <div className="usage-meter-meta">
-                          <span className="muted usage-reset">{usageReset(m.resetsAt, now)}</span>
+                          <span className="muted usage-reset">{resetText(m.resetsAt, now)}</span>
                           {m.percent >= 80 && <span className="usage-near-limit">Near limit</span>}
                         </div>
                       </div>;
                     })}
+                    <FullResets engine={active.engine} usage={active.usage} now={now} />
                   </div>
                 ) : (
                   <div className="usage-explanation">
@@ -240,17 +290,10 @@ export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRe
                   <span className="muted">{signIns ? `${signIns} need sign-in` : others.length}</span>
                   <Icon d={DOWN} size={14} />
                 </button>
-                {showOthers && others.map((row) => (
-                  <section key={row.key} className="usage-other-account" aria-label={row.name}>
-                    <UsageAvatar engine={row.engine} small />
-                    <strong>{row.name}</strong>
-                    {row.loggedIn === false
-                      ? <button className="btn-text usage-link" aria-label={`Sign in — ${row.name}`} onClick={() => manage(row.host)}>Sign in</button>
-                      : <span className="muted">{row.meters[0] ? `${percentText(row.meters[0].percent)} of ${row.meters[0].label}` : "Not reported"}</span>}
-                  </section>
-                ))}
+                {showOthers && others.map((row) => <OtherAccountRow key={row.key} row={row} now={now} onSignIn={() => manage(row.host)} />)}
               </div>
             )}
+            {silent.length > 0 && <p className="muted small usage-silent">{noLimitsNote(silent).replace(" subscription limits", " limits")}</p>}
           </div>
           <div className="popover-footer">
             <span role="status">{refreshing ? "Refreshing…" : refreshTime ? `Updated at ${timeOfDay.format(refreshTime)}` : "Shared across hosts"}</span>
@@ -260,6 +303,11 @@ export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRe
       )}
     </div>
   );
+}
+
+/** Engines installed on a shown host that report no limits at all. */
+function silentEngines(sources: SubscriptionSource[]): Engine[] {
+  return ENGINES.filter((e) => !reportsLimits(e) && sources.some((s) => s.engines?.[e]?.installed));
 }
 
 export function Subscriptions({ sources, onManage }: { sources: SubscriptionSource[]; onManage(host?: string): void }) {
@@ -298,9 +346,10 @@ export function Subscriptions({ sources, onManage }: { sources: SubscriptionSour
                   <span className="muted small">{m.label}</span>
                   <strong className="usage-percent">{percentText(m.percent)} used</strong>
                   <Bar meter={m} />
-                  <span className="muted small">{formatReset(m.resetsAt, now) || "Reset time not reported"}</span>
+                  <span className="muted small usage-reset">{resetText(m.resetsAt, now)}</span>
                 </div>
               ))}
+              <FullResets engine={r.engine} usage={r.usage} now={now} />
             </div>
           ) : (
             <p className="muted small">No limits reported yet</p>
@@ -310,7 +359,7 @@ export function Subscriptions({ sources, onManage }: { sources: SubscriptionSour
       {!rows.length && (
         <div className="focused-empty">
           <strong>No subscription limits reported yet</strong>
-          <p className="muted">Usage appears here when Claude or Codex reports it.</p>
+          <p className="muted">Usage appears here when Claude, Codex or Grok reports it.</p>
         </div>
       )}
       <p className="muted small subscription-note">One limit per account, shared across its hosts. {noLimitsNote()}</p>
