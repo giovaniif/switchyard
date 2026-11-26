@@ -204,6 +204,9 @@ pub struct Agents {
     pending_file: PathBuf,
     pending: Mutex<Vec<Step>>,
     retry: Mutex<std::collections::HashMap<String, Retry>>,
+    /// Hand-overs that ended here with the agent deleted: never taken again.
+    ended_file: PathBuf,
+    ended: Mutex<Vec<String>>,
 }
 
 /// One step of a hand-over that has not happened yet: `agent.release` on
@@ -218,6 +221,10 @@ pub struct Step {
     pub id: String,
     #[serde(default)]
     pub transfer: String,
+    /// `agent.abandon` after a move whose new host may have taken the agent
+    /// after all (its answer was lost): its app stays undeletable in Slack.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub unsure: bool,
 }
 
 /// When a hand-over to its host is tried next, for a record kept here.
@@ -228,6 +235,8 @@ struct Retry {
     /// A refusal that will not change by waiting (another Mac's agent):
     /// tried again only on the next connection, and shown on its page.
     refused: Option<String>,
+    /// The hand-over already backed up for: its next tries take no backup.
+    backed: String,
 }
 
 impl Agents {
@@ -262,6 +271,8 @@ impl Agents {
             pending_file,
             pending: Mutex::new(pending),
             retry: Mutex::default(),
+            ended: Mutex::new(std::fs::read_to_string(dir.join("agents-ended.json")).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()),
+            ended_file: dir.join("agents-ended.json"),
         };
         if handled || listed || agents.list.lock().unwrap().len() != before {
             agents.persist(&agents.list.lock().unwrap());
@@ -321,6 +332,28 @@ impl Agents {
             *list = before;
             bail!("could not save {}: {e}", self.file.display());
         }
+        Ok(())
+    }
+
+    /// The agent is being deleted here: the hand-overs that brought it, or
+    /// were taking it away, are over, and are refused if sent again. Saved
+    /// before the delete goes on, or a restart would take it back.
+    fn end(&self, a: &Agent) -> Result<()> {
+        let mut ended = self.ended.lock().unwrap();
+        let mut next = ended.clone();
+        for t in [&a.transfer, &a.leaving] {
+            if !t.is_empty() && !next.contains(t) {
+                next.push(t.clone());
+            }
+        }
+        if next.len() == ended.len() {
+            return Ok(());
+        }
+        let extra = next.len().saturating_sub(500);
+        next.drain(..extra);
+        let tmp = self.ended_file.with_extension("json.tmp");
+        std::fs::write(&tmp, serde_json::to_vec(&next)?).and_then(|_| std::fs::rename(&tmp, &self.ended_file)).with_context(|| format!("cannot save {}", self.ended_file.display()))?;
+        *ended = next;
         Ok(())
     }
 
@@ -432,18 +465,29 @@ pub fn shown(app: &App) -> Value {
             }
             a
         })
+        // A record kept here for a host that owns that agent now (not leaving
+        // it again) is that host's copy: listed once, there. Otherwise this
+        // one is listed, so an agent mid-move is never missing.
         .filter(|a| {
             let host = a["host"].as_str().unwrap_or(LOCAL);
-            host == LOCAL || !hosts.iter().any(|h| h.id == host && h.agents.list.iter().any(|x| x["id"] == a["id"]))
+            host == LOCAL || !hosts.iter().any(|h| h.id == host && h.agents.list.iter().any(|x| x["id"] == a["id"] && x["leaving"].as_str().is_none_or(str::is_empty)))
         })
         .collect();
+    let mut ids: Vec<String> = list.iter().filter_map(|a| a["id"].as_str().map(str::to_string)).collect();
     let mut taken: Vec<String> = list.iter().filter_map(|a| a["handle"].as_str().or(a["name"].as_str())).map(str::to_lowercase).collect();
     // A host that has yet to let go of an agent that moved away from it.
     let leaving = app.agents.pending();
     for h in &hosts {
         for a in &h.agents.list {
-            if leaving.iter().any(|s| s.op == "agent.release" && s.host == h.id && a["id"] == s.id.as_str()) {
+            // A host that still has to let go of an agent listed elsewhere.
+            let owed = leaving.iter().any(|s| s.op == "agent.release" && s.host == h.id && a["id"] == s.id.as_str());
+            let elsewhere = a["id"].as_str().is_some_and(|id| ids.iter().any(|x| x == id || x.split_once(crate::remote::SEP).is_some_and(|(_, y)| y == id)))
+                || hosts.iter().any(|o| o.id != h.id && o.agents.list.iter().any(|x| x["id"] == a["id"] && x["leaving"].as_str().is_none_or(str::is_empty)));
+            if owed && elsewhere {
                 continue;
+            }
+            if let Some(id) = a["id"].as_str() {
+                ids.push(format!("{}{}{id}", h.id, crate::remote::SEP));
             }
             let mut v = crate::remote::prefixed_agent(&h.id, a);
             let handle = v["handle"].as_str().filter(|x| !x.is_empty()).or(v["name"].as_str()).unwrap_or("agent").to_string();
@@ -625,6 +669,10 @@ async fn save(app: &Arc<App>, input: &Value) -> Result<Agent> {
         Some(id) => Some(app.agents.get(id).filter(|a| !a.hosted).context("no such agent")?),
         None => None,
     };
+    // Its record is on its way to another host, which owns it from now on.
+    if let Some(o) = existing.as_ref().filter(|o| moving_now(app, o)) {
+        bail!("{} is moving to another host. Change it once it gets there.", o.name);
+    }
     let mut merged = match &existing {
         Some(a) => json!(a),
         None => {
@@ -988,6 +1036,9 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
         "agent.delete" => {
             let id = msg["id"].as_str().context("missing `id`")?;
             let a = app.agents.get(id).filter(|a| !a.hosted).context("no such agent")?;
+            if moving_now(app, &a) {
+                bail!("{} is moving to another host. Delete it once it gets there.", a.name);
+            }
             // Conversations on other hosts go first. One on a host that is
             // offline cannot: then nothing is deleted yet.
             let mut hosts: Vec<String> = Vec::new();
@@ -1011,6 +1062,10 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
                     call(app, h, &n, json!({ "op": "agent.hosted.delete", "id": id })).await?;
                 }
             }
+            // From here on it is deleted: the hand-over that brought it is
+            // over, and refused if a hub sends it again (`adopt`).
+            let _one = app.agents.moving.lock().await;
+            app.agents.end(&a)?;
             let removed = {
                 let mut list = app.agents.list.lock().unwrap();
                 let before = list.len();
@@ -1103,7 +1158,7 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
         "agent.abandon" => {
             let id = msg["id"].as_str().context("missing `id`")?;
             let _one = app.agents.moving.lock().await;
-            abandon(app, id, transfer_of(msg)?)?;
+            abandon(app, id, transfer_of(msg)?, msg["unsure"] == true)?;
             reply(json!({ "op": "agent.abandoned", "id": id }));
         }
         // From a hub whose agent runs here.
@@ -1718,6 +1773,9 @@ fn setup_rules(a: &Agent, tools: bool) -> String {
 /// window hears of it. Its engine already knows, so this is no notes change.
 pub fn edit_memory(app: &App, id: &str, sid: &str, text: &str, append: bool) -> Result<String> {
     let text = text.trim();
+    if app.agents.get(id).is_some_and(|a| moving_now(app, &a)) {
+        bail!("Not saved: you are moving to another host right now. Try again in a moment.");
+    }
     if append && text.is_empty() {
         bail!("Nothing to remember: the text is empty.");
     }
@@ -1785,7 +1843,7 @@ async fn send_remote(app: &Arc<App>, a: &Agent, text: &str, attachments: &Value,
     }
     // Its host took it over and this hub has yet to let go: the host's own
     // agent of this hand-over answers.
-    let owned = app.remotes.agents_of(&a.host).is_some_and(|h| h.agents.list.iter().any(|x| x["id"] == a.id.as_str() && x["transfer"] == kept_transfer(app, a).as_str()));
+    let owned = app.remotes.agents_of(&a.host).is_some_and(|h| h.agents.list.iter().any(|x| x["id"] == a.id.as_str() && x["transfer"] == (if a.leaving.is_empty() { kept_transfer(app, a) } else { a.leaving.clone() }).as_str()));
     if owned {
         let msg = match origin {
             Some(o) => json!({ "op": "agent.deliver", "agentId": a.id, "text": text, "origin": with_hub(app, o) }),
@@ -2029,11 +2087,21 @@ pub fn window_may_send(op: &str) -> bool {
 const BUSY: &str = "is in the middle of a turn";
 /// Said by a host still letting go of an earlier copy: tried again.
 const LETTING_GO: &str = "is still letting go of";
+/// Said for a hand-over whose agent was deleted on the new host since.
+const DELETED: &str = "was deleted on";
 /// Said for an agent that is someone else's: waiting changes nothing.
 const NOT_YOURS: [&str; 2] = ["for another Mac", "already has an agent of its own"];
 
 fn busy_now(app: &App, a: &Agent) -> bool {
     a.chat.as_deref().and_then(|sid| app.meta(sid)).is_some_and(|m| busy(&m.status))
+}
+
+/// Whether the record is mid-hand-over (`leaving`): a change to it would be
+/// lost, and a delete or another move could leave a copy the user thought
+/// gone, so all three wait. Not when the host it was leaving for has been
+/// removed from here: nothing will finish that hand-over.
+fn moving_now(app: &App, a: &Agent) -> bool {
+    !a.leaving.is_empty() && !(a.host != LOCAL && matches!(reach(app, &a.host), Reach::Gone))
 }
 
 /// A hand-over op's `transfer`, which every one of them names.
@@ -2079,6 +2147,9 @@ fn adopt(app: &Arc<App>, input: &Value, slack: &Value, sender: &str, transfer: &
         bail!("invalid agent id");
     }
     let here = crate::hosts::local_name();
+    if app.agents.ended.lock().unwrap().iter().any(|t| t == transfer) {
+        bail!("{} {DELETED} {here}. Nothing was changed.", a.name);
+    }
     let old = app.agents.get(&a.id);
     if let Some(o) = &old {
         if !o.hosted && o.transfer == transfer {
@@ -2137,7 +2208,22 @@ fn adopt(app: &Arc<App>, input: &Value, slack: &Value, sender: &str, transfer: &
         None => list.push(a.clone()),
     })?;
     if !slack.is_null() && !app.slack.has_app(&a.id) {
-        crate::slack::adopt_app(app, &a.id, slack)?;
+        if let Err(e) = crate::slack::adopt_app(app, &a.id, slack) {
+            // Not taken after all: the record goes back to what it was, so a
+            // hub that finds this hand-over here (`took`) finds its app too.
+            let undo = app.agents.try_change(|list| match &old {
+                Some(o) => {
+                    if let Some(slot) = list.iter_mut().find(|x| x.id == o.id) {
+                        *slot = o.clone();
+                    }
+                }
+                None => list.retain(|x| x.id != a.id),
+            });
+            if let Err(u) = undo {
+                eprintln!("yardd: {} stays half taken: {u:#}", a.name);
+            }
+            return Err(e);
+        }
     }
     Ok(a)
 }
@@ -2152,6 +2238,11 @@ fn export(app: &Arc<App>, id: &str, transfer: &str) -> Result<Value> {
     let a = app.agents.get(id).filter(|a| !a.hosted).context("no such agent")?;
     if busy_now(app, &a) {
         bail!("{} {BUSY}. Move it once the turn ends.", a.name);
+    }
+    // Leaving by another hand-over: that one finishes or is abandoned first,
+    // or its release (or abandon) would no longer find the copy it names.
+    if !a.leaving.is_empty() && a.leaving != transfer {
+        bail!("{} is still moving to another host. Try again in a moment.", a.name);
     }
     let recap_text = a.chat.as_deref().map(|sid| recap_of(app, sid)).unwrap_or_default();
     if a.leaving != transfer {
@@ -2175,14 +2266,13 @@ fn export(app: &Arc<App>, id: &str, transfer: &str) -> Result<Value> {
 /// again.
 fn release(app: &Arc<App>, id: &str, transfer: &str) -> Result<()> {
     let Some(a) = app.agents.get(id).filter(|a| !a.hosted) else { return Ok(()) };
-    let ours = a.leaving == transfer || (a.host != LOCAL && kept_transfer(app, &a) == transfer);
-    if !ours {
+    if a.leaving != transfer {
         return Ok(());
     }
     if busy_now(app, &a) {
         bail!("{} {BUSY}. It lets go once the turn ends.", a.name);
     }
-    backup_all(app)?;
+    // Backed up when it started leaving (`export`, `transfer`, `migrate`).
     crate::slack::release_app(app, id)?;
     app.agents.try_change(|list| list.retain(|a| a.id != id))?;
     app.agents.later.lock().unwrap().remove(id);
@@ -2199,14 +2289,19 @@ fn release(app: &Arc<App>, id: &str, transfer: &str) -> Result<()> {
 
 /// The hand-over `transfer` failed after the export: the agent stays, no
 /// longer leaving, and deleting it deletes its app in Slack again.
-fn abandon(app: &Arc<App>, id: &str, transfer: &str) -> Result<()> {
+fn abandon(app: &Arc<App>, id: &str, transfer: &str, unsure: bool) -> Result<()> {
     if app.agents.get(id).is_some_and(|a| a.leaving == transfer) {
-        backup_all(app)?;
+        // `unsure`: the new host may have taken it after all and may run its
+        // app, so the app stays undeletable in Slack from here.
+        if unsure {
+            crate::slack::protect(app, id)?;
+        }
         app.agents.try_change(|list| {
             if let Some(x) = list.iter_mut().find(|x| x.id == id) {
                 x.leaving.clear();
             }
         })?;
+        broadcast(app);
     }
     Ok(())
 }
@@ -2249,7 +2344,26 @@ pub async fn migrate(app: &Arc<App>, host: &str, now: bool) {
         if !now && (due.refused.is_some() || due.next > now_ms()) {
             continue;
         }
-        let transfer = kept_transfer(app, &a);
+        // The record is marked as leaving by this transfer while it is sent,
+        // so no edit can change which hand-over it is or land on a record
+        // the host may own already. Backed up once per hand-over, not per try.
+        let transfer = if a.leaving.is_empty() { kept_transfer(app, &a) } else { a.leaving.clone() };
+        if a.leaving.is_empty() {
+            let fresh = due.backed != transfer;
+            let stamped = (if fresh { backup_all(app) } else { Ok(()) }).and_then(|_| {
+                app.agents.try_change(|list| {
+                    if let Some(x) = list.iter_mut().find(|x| x.id == a.id) {
+                        x.leaving = transfer.clone();
+                    }
+                })
+            });
+            if let Err(e) = stamped {
+                eprintln!("yardd: {} waits to go to its host {host}: {e:#}", a.name);
+                continue;
+            }
+            app.agents.retry.lock().unwrap().entry(a.id.clone()).or_default().backed = transfer.clone();
+        }
+        let a = app.agents.get(&a.id).unwrap_or(a);
         let result = hand_over(app, host, &a, &transfer).await;
         let mut retry = app.agents.retry.lock().unwrap();
         match result {
@@ -2257,8 +2371,29 @@ pub async fn migrate(app: &Arc<App>, host: &str, now: bool) {
                 retry.remove(&a.id);
                 eprintln!("yardd: {} now lives on its host {host}", a.name);
             }
+            Err(e) if format!("{e:#}").contains(DELETED) => {
+                // The host deleted the agent this record was handed to: this
+                // stale copy goes too.
+                drop(retry);
+                if let Err(e) = forget(app, &a.id).await {
+                    eprintln!("yardd: could not forget {}: {e:#}", a.name);
+                }
+                continue;
+            }
             Err(e) => {
                 let why = format!("{e:#}");
+                // The host said no, so it surely did not take it: the record
+                // is this yardd's alone until the next try, editable and
+                // deletable (a turn its hidden copy runs saves its memory
+                // here). A lost answer, or a step after the adopt, keeps it
+                // leaving.
+                if [BUSY, LETTING_GO].iter().chain(NOT_YOURS.iter()).any(|k| why.contains(k)) {
+                    let _ = app.agents.try_change(|list| {
+                        if let Some(x) = list.iter_mut().find(|x| x.id == a.id && x.leaving == transfer) {
+                            x.leaving.clear();
+                        }
+                    });
+                }
                 let r = retry.entry(a.id.clone()).or_default();
                 if NOT_YOURS.iter().any(|k| why.contains(k)) {
                     r.refused = Some(why.clone());
@@ -2273,6 +2408,23 @@ pub async fn migrate(app: &Arc<App>, host: &str, now: bool) {
         drop(retry);
         broadcast(app);
     }
+}
+
+/// A record kept here for a host that has since deleted the agent it took:
+/// it goes, its owed steps dropped, its conversations here left as ordinary
+/// sessions, and its Slack app, which nobody runs any more, deleted in
+/// Slack (the host left it there: it was still being handed over).
+async fn forget(app: &Arc<App>, id: &str) -> Result<()> {
+    app.agents.try_change(|list| list.retain(|a| a.id != id))?;
+    app.agents.change_pending(|list| list.retain(|s| s.id != id));
+    crate::slack::remove_app(app, id).await;
+    app.agents.retry.lock().unwrap().remove(id);
+    let tagged: Vec<String> = app.sessions.lock().unwrap().values().filter(|s| s.meta.agent.as_deref() == Some(id)).map(|s| s.meta.id.clone()).collect();
+    for sid in tagged {
+        app.update_meta(&sid, |m| m.agent = None);
+    }
+    broadcast(app);
+    Ok(())
 }
 
 /// Why a record kept here could not be handed to its host, for its page.
@@ -2300,14 +2452,31 @@ async fn hand_over(app: &Arc<App>, host: &str, a: &Agent, transfer: &str) -> Res
     let reply = call(app, host, &name, json!({ "op": "agent.adopt", "agent": record, "slack": slack, "hub": app.tools.hub_id(), "transfer": transfer })).await?;
     anyhow::ensure!(reply["op"] == "agent.adopted", "the host did not take it");
     let new_id = format!("{host}{}{}", crate::remote::SEP, a.id);
-    backup_all(app)?;
     crate::slack::moved(app, &a.id, &new_id)?;
     settle(app, vec![step(LOCAL, "agent.release", &a.id, transfer), step(host, "agent.settled", &a.id, transfer)]).await;
     Ok(crate::remote::prefixed_agent(host, &reply["agent"]))
 }
 
 fn step(host: &str, op: &str, id: &str, transfer: &str) -> Step {
-    Step { host: host.to_string(), op: op.to_string(), id: id.to_string(), transfer: transfer.to_string() }
+    Step { host: host.to_string(), op: op.to_string(), id: id.to_string(), transfer: transfer.to_string(), unsure: false }
+}
+
+/// Whether `to` took the agent by `transfer` though its answer was lost:
+/// the agent as the windows name it, `Some(None)` when it surely did not,
+/// `None` when `to` cannot be asked. A host that has the record has its app
+/// too (`adopt` takes both or neither).
+async fn took(app: &Arc<App>, to: &str, id: &str, transfer: &str, slack: &Value) -> Option<Option<Value>> {
+    if to == LOCAL {
+        let a = app.agents.get(id).filter(|a| a.transfer == transfer);
+        if a.is_some() && !slack["app"].is_null() && !app.slack.has_app(id) {
+            return None;
+        }
+        return Some(a.map(|a| public(&a)));
+    }
+    let name = host_name(app, to);
+    let listed = call(app, to, &name, json!({ "op": "agent.list" })).await.ok()?;
+    let found = listed["agents"].as_array()?.iter().find(|a| a["id"] == id && a["transfer"] == transfer).cloned();
+    Some(found.map(|a| crate::remote::prefixed_agent(to, &a)))
 }
 
 /// Queue hand-over steps still owed and try them now.
@@ -2335,12 +2504,12 @@ pub async fn run_pending(app: &Arc<App>) {
         let done = if s.host == LOCAL {
             match s.op.as_str() {
                 "agent.release" => release(app, &s.id, &s.transfer),
-                "agent.abandon" => abandon(app, &s.id, &s.transfer),
+                "agent.abandon" => abandon(app, &s.id, &s.transfer, s.unsure),
                 _ => settled(app, &s.id, &s.transfer),
             }
         } else {
             match reach(app, &s.host) {
-                Reach::Online(n) => call(app, &s.host, &n, json!({ "op": s.op, "id": s.id, "transfer": s.transfer })).await.map(|_| ()),
+                Reach::Online(n) => call(app, &s.host, &n, json!({ "op": s.op, "id": s.id, "transfer": s.transfer, "unsure": s.unsure })).await.map(|_| ()),
                 Reach::Offline(n) => Err(anyhow::anyhow!("{n} is offline")),
                 // A host removed from here: nothing left to tell it.
                 Reach::Gone => Ok(()),
@@ -2463,6 +2632,9 @@ async fn transfer(app: &Arc<App>, input: &Value) -> Result<Option<Value>> {
             if busy_now(app, a) {
                 bail!("{} {BUSY}. Move it once the turn ends.", a.name);
             }
+            if moving_now(app, a) {
+                bail!("{} is moving to another host. Move it again once it gets there.", a.name);
+            }
             // What leaves: the latest exchanges (a kept record's hidden copy
             // lets go and says where its conversation ended).
             let (recap_text, had_chat) = match &from {
@@ -2499,7 +2671,14 @@ async fn transfer(app: &Arc<App>, input: &Value) -> Result<Option<Value>> {
                 bail!("{} is on {}, which is offline. Move it once {} is back.", f.name, f.host_name, f.host_name);
             }
             let transfer = new_transfer(app, &f.id);
-            let out = call(app, &f.host, &f.host_name, json!({ "op": "agent.export", "id": f.id, "transfer": transfer })).await?;
+            let out = match call(app, &f.host, &f.host_name, json!({ "op": "agent.export", "id": f.id, "transfer": transfer })).await {
+                Ok(out) => out,
+                Err(e) => {
+                    // It may have started leaving before the answer was lost.
+                    settle(app, vec![step(&f.host, "agent.abandon", &f.id, &transfer)]).await;
+                    return Err(e);
+                }
+            };
             let out = &out["export"];
             let mut record = out["agent"].clone();
             apply(&mut record);
@@ -2523,20 +2702,28 @@ async fn transfer(app: &Arc<App>, input: &Value) -> Result<Option<Value>> {
             };
             let moved = match adopted {
                 Ok(m) => m,
-                Err(e) => {
-                    // It stays where it was. (If the answer alone was lost and
-                    // the new host has it, that copy waits for its release:
-                    // nothing is released, so moving it again converges.)
-                    settle(app, vec![step(&f.host, "agent.abandon", &f.id, &transfer)]).await;
-                    return Err(e);
-                }
+                Err(e) => match took(app, to, &f.id, &transfer, &slack).await {
+                    // The answer alone was lost: it is there.
+                    Some(Some(m)) => m,
+                    taken => {
+                        // It stays where it was. When the new host could not be
+                        // asked, it may have it after all: its app stays
+                        // undeletable in Slack on the old host.
+                        let mut abandon = step(&f.host, "agent.abandon", &f.id, &transfer);
+                        abandon.unsure = taken.is_none() && to != LOCAL;
+                        settle(app, vec![abandon]).await;
+                        return Err(e);
+                    }
+                },
             };
-            let new_id = moved["id"].as_str().unwrap_or_default().to_string();
-            backup_all(app)?;
-            crate::slack::moved(app, id, &new_id)?;
-            // The old host lets go, then the new one hears its app is its own;
-            // both are asked again until they answer.
+            // Owed first, so nothing below can leave two owners: the old host
+            // lets go, then the new one hears its app is its own; both are
+            // asked again until they answer.
             settle(app, vec![step(&f.host, "agent.release", &f.id, &transfer), step(to, "agent.settled", &f.id, &transfer)]).await;
+            let new_id = moved["id"].as_str().unwrap_or_default().to_string();
+            if let Err(e) = backup_all(app).and_then(|_| crate::slack::moved(app, id, &new_id)) {
+                eprintln!("yardd: the shared bot still names {id} for {name}: {e:#}");
+            }
             Ok(Some(moved))
         }
     }

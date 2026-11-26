@@ -700,13 +700,40 @@ the composer and session view in `App.tsx`.
     it until `agent.settled` (`handOver`): another yardd may run it. Both
     sides may hold its Socket Mode connection between the adopt and the
     release.
+  - **Taken whole.** `agent.adopt` takes the record and its app or neither:
+    an app it cannot keep puts the record back as it was, so a record found
+    on a host by its transfer always has its app.
+  - **A record that is leaving holds still.** While a record is `leaving` it
+    takes no edit, memory write, delete or other move ("… is moving to
+    another host"): the change would be lost with the copy that goes, or
+    would leave a copy the user thought gone. A record leaving for a host
+    since removed from this yardd is exempt (`moving_now`). An
+    `agent.export` by another transfer waits until the first is released or
+    abandoned.
+  - **A deleted agent stays deleted.** A yardd that deletes an agent
+    remembers the transfer that brought it (`agents-ended.json`, the newest
+    500) and refuses it if a hub sends it again ("… was deleted on box"). The
+    hub then drops its own record of that hand-over and the steps it still
+    owed, and deletes the app in Slack, which nobody runs any more
+    (`agents::forget`).
+  - **Listed once meanwhile.** A record a hub keeps for a host that lists
+    the agent (not leaving) is that host's copy, shown there. Otherwise the
+    hub's record is shown, and a host's copy that still owes its release is
+    hidden while the agent is listed elsewhere. An agent mid-move is never
+    missing from the list, nor listed twice.
 - **Handed over to its host (migration).** A hub from before this kept every
   agent's record itself, even one that ran on the server (a hidden copy
   there, `hosted: true`). When a hub that holds records with `host` set to a
   host sees that host connect and say `ownAgents`, it hands each over
   (`agents::migrate`, one at a time). The transfer is named from the hub,
-  the agent and the record's last change (`kept_transfer`), so every try is
-  the same one. It sends `agent.adopt` with the whole record (fields this
+  the agent and the record's last change (`kept_transfer`), and the record
+  is marked `leaving` by it while it is sent (backed up once per hand-over,
+  not per try), so every try is the same one and no edit lands on a record
+  the host may own already. A refusal from the host (a turn going, still
+  letting go, someone else's) clears the mark: the host surely did not take
+  it, so the record is the hub's meanwhile, and a turn its hidden copy runs
+  saves its memory there. A lost answer, or a step after the adopt that
+  failed, keeps it. It sends `agent.adopt` with the whole record (fields this
   build does not know included, `Agent::extra`; `chat` and `previous` the
   host's own ids; others dropped), its own id (`hub`) and its Slack app
   (`slack::export_app`: the whole `AgentApp` record, fields this build does
@@ -720,7 +747,7 @@ the composer and session view in `App.tsx`.
   there. Only whoever installed the app joins the host's allowlist, as at an
   install there: the Mac's other allowed people are its shared bot's and
   stay on the Mac. Only after the host answers `agent.adopted` does the hub
-  back up, point the shared bot's default agent, channel defaults and routed
+  point the shared bot's default agent, channel defaults and routed
   threads at the new id (`slack::moved`), and let go (its record removed,
   the app's connection closed, never deleting the app in Slack, the agent's
   old conversations here ordinary sessions), then send `agent.settled`.
@@ -750,7 +777,15 @@ the composer and session view in `App.tsx`.
   follows it (`relocated`). Refused while either host is offline or cannot
   own agents. A record leaving this yardd is first saved here pointing at
   its new host, so a lost answer is finished like a migration, by the same
-  transfer; one from another host whose adopt failed gets `agent.abandon`.
+  transfer. A move from another host: an export whose answer is lost gets
+  `agent.abandon` (the old host may have marked it); an adopt whose answer
+  is lost is looked for on the new host (`took`: listed there by that
+  transfer) and finished if it is there, abandoned if not; when the new
+  host cannot be asked the abandon is `unsure`, and the old host's app
+  stays undeletable in Slack (`slack::protect`), since the new host may run
+  it too. The release and `agent.settled` are owed before the hub points the
+  shared bot at the new id, so a failed note there (logged) never leaves
+  two owners.
   A record an older hub kept is moved the old way to this yardd or to an
   older host (`move_host`), and handed over like this to a host that owns
   agents. The form says what will happen before saving.
@@ -1080,7 +1115,13 @@ the composer and session view in `App.tsx`.
   back before its old host let go ending up in one place, a release
   refused mid-turn, a message to a kept record reaching its host's own, a
   window refused the hand-over ops even through the hub, fields this build
-  does not know kept through saves and moves, and an app being handed over
+  does not know kept through saves and moves, an agent deleted on its host
+  mid-hand-over staying deleted (release failing, or the adopt answer
+  lost), a lost export answer abandoned, a failed note of the shared bot
+  still letting the old host go, a lost adopt answer between hosts found
+  and finished, one backup per hand-over however often it is tried, an
+  adopt whose app cannot be kept keeping nothing, a second export refused
+  while the first is under way, and an app being handed over
   left in Slack on delete until it settles or the move is abandoned
   (`tests/slack.rs`),
   the queue, and Scout retired with its conversation. `tests/naming.rs`

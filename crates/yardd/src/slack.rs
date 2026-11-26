@@ -854,6 +854,19 @@ pub fn adopt_app(app: &Arc<App>, agent: &str, v: &Value) -> Result<()> {
     Ok(())
 }
 
+/// Another yardd may run this app (a move whose answer was lost): deleting
+/// the agent here leaves the app in Slack.
+pub fn protect(app: &App, agent: &str) -> Result<()> {
+    if app.slack.app_of(agent).is_some_and(|a| !a.hand_over) {
+        app.slack.try_change(|c| {
+            if let Some(a) = c.apps.iter_mut().find(|a| a.agent == agent) {
+                a.hand_over = true;
+            }
+        })?;
+    }
+    Ok(())
+}
+
 /// The host the agent left has let go: its app is this yardd's alone, and
 /// deleting the agent here deletes it in Slack again.
 pub fn settled(app: &App, agent: &str) -> Result<()> {

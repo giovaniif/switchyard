@@ -614,6 +614,11 @@ fn hear_agents(app: &Arc<App>, host: &str, agents: &Mutex<HostAgents>, msg: &Val
     };
     if agents_changed {
         crate::agents::broadcast(app);
+        // An agent it took, or deleted, may finish a hand-over kept here.
+        if msg["op"] == "agents" {
+            let (app, host) = (app.clone(), host.to_string());
+            tokio::spawn(async move { crate::agents::migrate(&app, &host, false).await });
+        }
     }
     if slack_changed {
         crate::slack::broadcast(app);
