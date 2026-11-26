@@ -5231,6 +5231,20 @@ function Hosts({ state, actions }: { state: State; actions: Actions }) {
     const heading = page.current?.querySelector<HTMLElement>(".host-inspector-heading");
     if (heading && heading.getBoundingClientRect().bottom > window.innerHeight) heading.scrollIntoView({ block: "start" });
   }, [reveal]);
+  // Sign in in the usage popover and the sidebar's host rows navigate here
+  // while Hosts may already be open; the state above only read the first
+  // route, so the URL changed and the page did not. `go` makes a new route
+  // object on every navigation, so this runs once per arrival.
+  const [arrival, setArrival] = useState(0);
+  const firstRoute = useRef(route);
+  useEffect(() => {
+    if (!route || route === firstRoute.current) return;
+    if (route.host) setSelected(route.host);
+    if (route.host || route.tab) {
+      setArrival((n) => n + 1);
+      setReveal((n) => n + 1);
+    }
+  }, [route]);
   const accountActions: AccountActions = {
     login: (engine, account) => setLogin({ host: id, engine, account }),
     add: (engine, name) => actions.addAccount(id, engine, name),
@@ -5277,7 +5291,7 @@ function Hosts({ state, actions }: { state: State; actions: Actions }) {
             ))}
           </div>
           <HostInspector
-            key={id}
+            key={`${id}:${arrival}`}
             initialTab={route?.host === undefined || route.host === id ? route?.tab : undefined}
             state={state}
             actions={actions}
