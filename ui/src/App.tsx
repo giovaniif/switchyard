@@ -2820,8 +2820,8 @@ export function FolderPicker(props: {
         .filter((d) => d.name.toLowerCase().startsWith(lower) && (lower.startsWith(".") || !d.name.startsWith(".")))
         .slice(0, 200)
         .map((d) => ({ path: joinPath(dir, d.name), name: d.name, detail: "", git: d.git, browse: true }));
-      // The folder typed so far is itself a choice.
-      const self = !stem && dir ? [{ path: dir, name: `Use ${tilde(dir, home)}`, detail: "" }] : [];
+      // The folder typed so far is itself a choice, unless yardd says it is not there.
+      const self = !stem && dir && !listing?.missing && !listing?.error ? [{ path: dir, name: `Use ${tilde(dir, home)}`, detail: "" }] : [];
       return [...self, ...children];
     }
     const lower = query.toLowerCase();
@@ -2925,9 +2925,10 @@ export function FolderPicker(props: {
             )}
           </div>,
         ])}
+        {browsing && listing?.missing && <div className="picker-empty">{tilde(listing.missing, home)} doesn’t exist.</div>}
         {browsing && listing?.error && <div className="picker-empty">{listing.error}</div>}
         {/* Only a typed last segment can leave this list empty ("Use <dir>" is offered otherwise); say why Enter does nothing. */}
-        {browsing && listing && !listing.error && rows.length === 0 && (
+        {browsing && listing && !listing.error && !listing.missing && rows.length === 0 && (
           <div className="picker-empty">
             No folder in {tilde(dir, home)} starts with “{stem}”.
           </div>
@@ -5348,7 +5349,8 @@ function SessionRows({
             </span>
             <span className={`focused-session-state ${s.status === "needs_approval" ? "warn" : "muted"}`}>
               <span className={`dot dot-${s.status}`} />
-              {!hostOnline(state, host) ? "Offline" : s.archived ? "Archived" : STATUS_LABEL[s.status]}
+              {/* Archived sessions still run: past idle, the status is what the row is for. */}
+              {!hostOnline(state, host) ? "Offline" : !s.archived ? STATUS_LABEL[s.status] : s.status === "idle" ? "Archived" : `Archived · ${STATUS_LABEL[s.status]}`}
             </span>
             <span className="focused-session-resources muted small">
               {usage ? (

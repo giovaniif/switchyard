@@ -780,6 +780,15 @@ async fn folders_are_listed_for_the_picker() {
     c.send(json!({ "op": "fs.dirs", "path": "relative/path" })).await;
     let refused = c.wait_for("fs.dirs refusal", |m| m["op"] == "fs.dirs" && m["path"] == "relative/path").await;
     assert!(refused["error"].as_str().unwrap().contains("absolute"), "{refused}");
+
+    // A typo higher up the path names the first folder that is not there,
+    // not the io error of the folder the picker asked for.
+    let gone = Path::new(&parent).join("TEST-gone");
+    let deep = gone.join("deeper").to_str().unwrap().to_string();
+    c.send(json!({ "op": "fs.dirs", "path": deep })).await;
+    let missing = c.wait_for("fs.dirs missing", |m| m["op"] == "fs.dirs" && m["path"] == deep.as_str()).await;
+    assert_eq!(missing["missing"], gone.to_str().unwrap(), "{missing}");
+    assert!(missing["error"].is_null(), "{missing}");
 }
 
 #[tokio::test]
