@@ -3,6 +3,12 @@
 //! the head of a merged pull request is removed with its branch. Each build
 //! leaves gigabytes in a worktree, so keeping merged ones fills the disk.
 //!
+//! So is a spent one: every session that ran there is archived and its HEAD
+//! is already on another branch, local or remote. Automation runs that end
+//! without a PR (a patrol that found nothing, a verifier) leave one of these
+//! every hour, and no merge ever claims them. A repository without a GitHub
+//! remote gets this rule too.
+//!
 //! A worktree is left alone while anything could still need it: a session
 //! working, waiting for approval or queued in it, any process (a terminal, a
 //! dev server) whose folder is inside it, or uncommitted or untracked files.
@@ -56,12 +62,19 @@ async fn sweep(app: &Arc<App>) {
             continue;
         }
         let Some(path) = wt.to_str() else { continue };
-        let Some(pr) = merged_pr(path).await else { continue };
+        // The local check first: it needs no network.
+        let why = if archived_only(app, path) && spent(path).await {
+            Why::Spent
+        } else if let Some(pr) = merged_pr(path).await {
+            Why::Merged(pr)
+        } else {
+            continue;
+        };
         // gh took a while: a turn may have started there since.
         if busy_folders(app).iter().any(|b| b.starts_with(&wt)) {
             continue;
         }
-        remove(app, path, pr).await;
+        remove(app, path, why).await;
     }
 }
 
@@ -118,6 +131,39 @@ fn at_rest(status: &str) -> bool {
     !matches!(status, "running" | "needs_approval" | "queued")
 }
 
+enum Why {
+    Merged(u64),
+    Spent,
+}
+
+/// At least one session ran here and every one of them is archived: the
+/// owner put them away. A worktree no session knows stays.
+fn archived_only(app: &App, wt: &str) -> bool {
+    let root = Path::new(wt);
+    let map = app.sessions.lock().unwrap();
+    let mut here = map.values().filter(|s| canon(Path::new(&s.meta.cwd)).starts_with(root)).peekable();
+    here.peek().is_some() && here.all(|s| s.meta.archived)
+}
+
+/// Clean, and HEAD is on some branch besides the worktree's own, so removing
+/// the worktree and its branch loses no commit.
+async fn spent(wt: &str) -> bool {
+    let Some((true, status)) = git(wt, &["status", "--porcelain"]).await else { return false };
+    if !status.trim().is_empty() {
+        return false;
+    }
+    let own = match git(wt, &["symbolic-ref", "-q", "HEAD"]).await {
+        Some((true, r)) => r.trim().to_string(),
+        _ => String::new(),
+    };
+    let Some((true, refs)) =
+        git(wt, &["for-each-ref", "--contains", "HEAD", "--format=%(refname)", "refs/heads", "refs/remotes"]).await
+    else {
+        return false;
+    };
+    refs.lines().map(str::trim).any(|r| !r.is_empty() && r != own && !r.ends_with("/HEAD"))
+}
+
 /// The number of the merged PR whose head is this worktree's HEAD, when the
 /// worktree is clean. `None` for anything else, including gh missing,
 /// logged out or slow: the next sweep asks again.
@@ -151,7 +197,7 @@ fn pick_merged(list: &Value, head: &str) -> Option<u64> {
     list.as_array()?.iter().find(|pr| pr["headRefOid"] == head).and_then(|pr| pr["number"].as_u64())
 }
 
-async fn remove(app: &Arc<App>, wt: &str, pr: u64) {
+async fn remove(app: &Arc<App>, wt: &str, why: Why) {
     // The main checkout, which owns the worktree: first in the list.
     let Some((true, list)) = git(wt, &["worktree", "list", "--porcelain"]).await else { return };
     let Some(main) = list.lines().next().and_then(|l| l.strip_prefix("worktree ")).map(str::to_string) else { return };
@@ -164,15 +210,20 @@ async fn remove(app: &Arc<App>, wt: &str, pr: u64) {
     }
     // Never forced: git itself refuses if a file changed since the check.
     if let Err(e) = git_err(&main, &["worktree", "remove", "--", wt]).await {
-        eprintln!("yardd: kept merged worktree {wt}: {e}");
+        eprintln!("yardd: kept worktree {wt}: {e}");
         return;
     }
-    let mut text = format!("Worktree removed: pull request #{pr} was merged.");
+    let reason = match why {
+        Why::Merged(pr) => format!("pull request #{pr} was merged"),
+        Why::Spent => "its sessions are archived and its commits are on another branch".to_string(),
+    };
+    let mut text = format!("Worktree removed: {reason}.");
     if !branch.is_empty() {
         // `-D`: after a squash merge git calls the branch unmerged; its tip is the PR head GitHub keeps.
+        // A spent worktree's tip is on another branch already.
         match git_err(&main, &["branch", "-D", "--", &branch]).await {
-            Ok(()) => text = format!("Worktree and branch {branch} removed: pull request #{pr} was merged."),
-            Err(e) => eprintln!("yardd: removed merged worktree {wt}, kept branch {branch}: {e}"),
+            Ok(()) => text = format!("Worktree and branch {branch} removed: {reason}."),
+            Err(e) => eprintln!("yardd: removed worktree {wt}, kept branch {branch}: {e}"),
         }
     }
     eprintln!("yardd: {text} ({wt})");

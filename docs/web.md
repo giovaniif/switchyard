@@ -31,10 +31,9 @@ Update the container by redeploying it; the app's **Update Switchyard** button r
 ## iPhone app
 
 The iOS app connects to this same private HTTPS origin and uses the existing
-WebSocket Origin check. Open **Hosts → Switchyard for iPhone** for setup. Once
-the TestFlight beta has an invitation, set `YARD_TESTFLIGHT_URL` to its real
-`https://testflight.apple.com/join/<code>` URL and redeploy to show Install with
-TestFlight. The phone must have network access to the origin (for example,
+WebSocket Origin check. Open **Hosts → Switchyard for iPhone** for setup. It offers
+Install with TestFlight for the public beta; `YARD_TESTFLIGHT_URL` replaces that
+link (`none` removes it). The phone must have network access to the origin (for example,
 through Tailscale); the desktop's SSH forward cannot be used from the phone.
 See [mobile/README.md](../mobile/README.md) for the native app and signing setup.
 

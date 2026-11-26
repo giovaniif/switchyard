@@ -91,9 +91,9 @@ gets `mobile.connected`, and the desktop's phone shortcut goes away.
 reachable from it. Use the existing privately reachable HTTPS deployment. Do
 not put an unauthenticated yardd on the public internet.
 
-Set `YARD_TESTFLIGHT_URL=https://testflight.apple.com/join/<8-character-code>`
-on the hub when Apple has issued the real public invitation. Until then, Hosts
-shows the beta's pending state instead of a fake download link.
+Hosts offers the public TestFlight beta (https://testflight.apple.com/join/BygX29JY)
+without configuration. `YARD_TESTFLIGHT_URL` on the hub replaces it, and `none`
+removes it. Only invitation URLs on `testflight.apple.com/join/` are linked.
 
 ## Build and test on a Mac
 
