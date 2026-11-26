@@ -1,15 +1,16 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { State } from "./store";
-import { navigationEntries, type NavigationEntry } from "./navigation";
+import { navigationEntries, selectedIndex, type NavigationEntry } from "./navigation";
 
 export function NavigationPalette({ state, onPick, onClose }: { state: State; onPick(entry: NavigationEntry): void; onClose(): void }) {
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
+  // By id: sessions re-sort by recency while the palette is open.
+  const [active, setActive] = useState<string | null>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const listId = useId();
   const rows = navigationEntries(Object.values(state.sessions), state, query);
-  const selected = Math.min(active, Math.max(0, rows.length - 1));
+  const selected = selectedIndex(rows, active);
   const optionId = (i: number) => `${listId}-${i}`;
 
   useLayoutEffect(() => {
@@ -27,7 +28,7 @@ export function NavigationPalette({ state, onPick, onClose }: { state: State; on
       onClose();
     } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      if (rows.length) setActive((selected + (e.key === "ArrowDown" ? 1 : -1) + rows.length) % rows.length);
+      if (rows.length) setActive(rows[(selected + (e.key === "ArrowDown" ? 1 : -1) + rows.length) % rows.length].id);
     } else if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
       e.preventDefault();
       if (rows[selected]) onPick(rows[selected]);
@@ -57,7 +58,7 @@ export function NavigationPalette({ state, onPick, onClose }: { state: State; on
             placeholder="Search sessions and pages…"
             spellCheck={false}
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setActive(0); }}
+            onChange={(e) => { setQuery(e.target.value); setActive(null); }}
           />
           <button type="button" className="btn-text" aria-label="Close" onClick={onClose}>Esc</button>
         </header>
@@ -73,7 +74,7 @@ export function NavigationPalette({ state, onPick, onClose }: { state: State; on
                 aria-selected={selected === i}
                 tabIndex={-1}
                 onMouseDown={(e) => e.preventDefault()}
-                onMouseMove={() => setActive(i)}
+                onMouseMove={() => setActive(entry.id)}
                 onClick={() => onPick(entry)}
               >
                 <span className="navigation-title">{entry.title}</span>

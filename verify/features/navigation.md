@@ -60,6 +60,24 @@ yv state --expect '{"sessions":[{"title":"~TEST-Nav runs · ","archived":true}]}
 yv drive new --steps '[{"press":"Meta+k"},{"expect":"role:dialog:Go to session or page"},{"expect":{"css":".navigation-option","hasText":"TEST-say hello"}},{"expect":{"css":".navigation-option","hasText":"TEST-hello from Claude"}},{"expect":{"css":".navigation-option","hasText":"TEST-Nav runs"},"visible":false},{"shot":"recent"},{"fill":"role:combobox:Search sessions and pages","value":"TEST-Nav runs"},{"expect":{"css":".navigation-option","hasText":"TEST-Nav runs"}},{"shot":"search-finds-runs"}]'
 ```
 
+### selection-survives-a-re-sort
+Viewports: both
+The empty palette lists sessions by recency, so a turn starting elsewhere
+re-sorts it while it is open. The highlighted session must stay highlighted,
+and Enter must open it, not whichever session slid into its row (#485). Each
+viewport messages a session listed below the highlighted second row (checked
+before the message), which moves it to the top.
+
+```sh
+for vp in desktop:sid_fail mobile:sid_think; do
+  sid=$(v ${vp#*:}); vp=${vp%%:*}
+  title=$(yv state | python3 -c 'import json,sys; print(next(s["title"] for s in json.load(sys.stdin)["sessions"] if s["id"]==sys.argv[1]))' "$sid")
+  (sleep 8; yv api '{"op":"session.send","sessionId":"'$sid'","text":"TEST-nav re-sort '$vp'"}' --wait '{"op":"event","event":{"type":"turn_completed"}}') &
+  yv drive new --viewport $vp --steps '[{"press":"Meta+k"},{"expect":"role:dialog:Go to session or page"},{"press":"ArrowDown"},{"eval":"window.__picked = document.querySelector(\"[role=option][aria-selected=true] .navigation-title\").textContent; const t = [...document.querySelectorAll(\".navigation-option .navigation-title\")].map((e) => e.textContent); t.indexOf(\"'"$title"'\") > 1","equals":true},{"shot":"picked"},{"wait":12000},{"eval":"document.querySelector(\".navigation-option .navigation-title\").textContent","equals":"'"$title"'"},{"shot":"after-re-sort"},{"eval":"document.querySelector(\"[role=option][aria-selected=true] .navigation-title\").textContent === window.__picked","equals":true},{"press":"Enter"},{"wait":"css:.thread"},{"eval":"document.querySelector(\".session-row.active .session-title\").textContent === window.__picked","equals":true}]'
+  wait
+done
+```
+
 ### native-app-menu
 Viewports: both
 Model the Mac shell capability and its DOM events. The Settings and Import
