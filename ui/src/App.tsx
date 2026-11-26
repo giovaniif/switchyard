@@ -1,5 +1,5 @@
 import { loadDefaults } from "./launchDefaults";
-import { createContext, Fragment, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { createContext, Fragment, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { LoginProvider, LoginState } from "./protocol";
 import type { AccountEntry, Agent, Attachment, PendingMessage, ChangedFile, Engine, EngineState, EngineStates, Host, HostEntry, Item, ModelInfo, Models, SessionMeta, Status, ToolItem, Usage } from "./protocol";
@@ -7,7 +7,7 @@ import { ROW_LABEL, type RowState, rowState, useSeen } from "./rowState";
 import { Subscriptions, UsageStrip, type UsageAccount } from "./UsageMeters";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
-import { nameFromDestination } from "./addHost";
+import { HOST_NAME_LIMIT, nameFromDestination } from "./addHost";
 import { AgentAvatar, AgentBar, AgentForm, AgentRequests, AgentRunPickers, AgentsPage, AgentStart, EarlierConversations, NewAgentRedirect, agentSettings, useAgentMove, useAgentSave } from "./AgentsPage";
 import { SlackIcons } from "./SlackIcon";
 import { agentHost, agentOf, agentsAttention, agentStatus, conversationOf, handleOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
@@ -5113,7 +5113,15 @@ function AddHost(props: { actions: Actions; hosts: HostEntry[]; errorCount: numb
     if (sent && hosts.some((h) => !sent.includes(h.id))) onDone();
   }, [sent, hosts]);
   const finalName = (name.trim() || (direct ? "" : nameFromDestination(destination))).trim();
-  const ready = finalName && (direct ? url.trim() : destination.trim());
+  // A DNS label may be up to 63 characters, so a derived name can be one yardd
+  // refuses. Say so next to the Name field, opening Options to show it, rather
+  // than send it and get a banner about a field the user never saw.
+  const tooLong = Array.from(finalName).length > HOST_NAME_LIMIT;
+  useEffect(() => {
+    if (tooLong) setMore(true);
+  }, [tooLong]);
+  const nameNote = useId();
+  const ready = finalName && !tooLong && (direct ? url.trim() : destination.trim());
   const submit = () => {
     if (!ready || sent) return;
     actions.addHost(
@@ -5151,8 +5159,18 @@ function AddHost(props: { actions: Actions; hosts: HostEntry[]; errorCount: numb
             placeholder={nameFromDestination(destination) || "devbox"}
             value={name}
             onChange={(e) => setName(e.target.value)}
+            aria-invalid={tooLong || undefined}
+            aria-describedby={tooLong ? nameNote : undefined}
             spellCheck={false}
           />
+          {tooLong && (
+            <>
+              <span />
+              <span id={nameNote} className="bad small">
+                {name.trim() ? "" : "The name from the destination is too long. "}Use {HOST_NAME_LIMIT} characters or fewer.
+              </span>
+            </>
+          )}
           {direct ? (
             <>
               <label htmlFor="host-url">URL</label>
