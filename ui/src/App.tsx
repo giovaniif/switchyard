@@ -3315,7 +3315,9 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
             </div>
           )}
           <Composer
-            placeholder={!online ? "Offline" : busy ? "Queue a message for the agent" : agent ? `Reply to ${agent.name}` : "Reply"}
+            // yardd refuses a message to a queued session, so Send stays disabled:
+            // say why instead of a "Reply" that silently does nothing.
+            placeholder={!online ? "Offline" : meta.status === "queued" ? "Queued: Start anyway to reply" : busy ? "Queue a message for the agent" : agent ? `Reply to ${agent.name}` : "Reply"}
             mentions={mentionable ? state.agents : undefined}
             mentionHint={toAgent}
             rows={1}
