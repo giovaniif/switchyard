@@ -906,6 +906,44 @@ async fn a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_
 }
 
 #[tokio::test]
+async fn a_refusal_is_told_by_its_code_never_by_the_agents_name() {
+    // An agent whose name reads like another refusal ("… was deleted on …"),
+    // refused because its host's copy is mid-turn.
+    let name = "TEST-was deleted on box";
+    let remote_sb = Sandbox::new("agents-named-remote");
+    let remote = remote_sb.start();
+    let mut r = remote.client().await;
+    ready(&mut r).await;
+    let hub_id = "0123456789abcdef0123456789abcdef";
+    save_hosted(&mut r, json!({ "id": "g-oncall", "name": name, "engine": "codex", "model": MODEL, "effort": EFFORT, "createdAt": 1, "updatedAt": 1, "hub": hub_id })).await;
+    let chat = ask_hosted(&mut r, "g-oncall", "[slow] TEST-a long answer").await;
+    r.wait_event(&chat, "assistant_delta", 0).await;
+
+    let host = "hTEST4n";
+    let hub_sb = Sandbox::new("agents-named-hub");
+    seed_old_hub(&hub_sb, &remote, host, &chat);
+    let mut kept: Value = serde_json::from_str(&std::fs::read_to_string(hub_sb.data().join("agents.json")).unwrap()).unwrap();
+    kept[0]["name"] = json!(name);
+    std::fs::write(hub_sb.data().join("agents.json"), kept.to_string()).unwrap();
+    let hub = hub_sb.start_with(&[("YARD_SLACK_API", "http://127.0.0.1:9/api/"), ("YARD_SETTLE_MS", "200")]);
+    let mut c = hub.client().await;
+    c.wait_for("the host can own agents", |m| (m["op"] == "hosts" || m["op"] == "snapshot") && m["hosts"][0]["ownAgents"] == true).await;
+    eventually("the host refused it", || hub.log_text().contains("waits to go to its host") || !saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-oncall")).await;
+    c.drain_for(std::time::Duration::from_millis(1000)).await;
+    // Busy, not deleted: the Mac keeps its record and its Slack app, and the
+    // host keeps its copy.
+    assert!(saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-oncall"), "the Mac dropped its record");
+    assert!(saved_slack(&hub_sb)["apps"].as_array().unwrap().iter().any(|a| a["agent"] == "g-oncall"), "the Mac dropped its Slack app");
+    assert!(saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-oncall" && a["hosted"] == true));
+    // Once the turn ends, it moves.
+    let seq = r.next_seq(&chat);
+    r.send(json!({ "op": "session.interrupt", "sessionId": chat })).await;
+    r.wait_turn_done(&chat, seq.saturating_sub(1)).await;
+    eventually("the host owns it", || saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-oncall" && a["hosted"].is_null())).await;
+    eventually("the Mac let go", || saved_agents(&hub_sb).is_empty()).await;
+}
+
+#[tokio::test]
 async fn a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why() {
     let remote_sb = Sandbox::new("agents-theirs-remote");
     let remote = remote_sb.start();
