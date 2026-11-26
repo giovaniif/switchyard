@@ -468,6 +468,9 @@ impl Slack {
                     "teamId": a.team_id,
                     "teamName": a.team_name,
                     "handle": a.handle,
+                    // Its bot's user id (not a secret): a hub calls an agent
+                    // on another host by it (`callable_apps`).
+                    "botUser": a.bot_user,
                     "ownerName": a.owner_name,
                     "canRedirect": !a.redirects.is_empty(),
                     "eventsUrl": a.events_url,
@@ -759,6 +762,36 @@ pub fn view(app: &App) -> Value {
     v["places"] = Value::Array(places);
     v["hosts"] = Value::Object(hosts);
     v
+}
+
+/// An agent's own app the owner can call from his reply box: its bot, to
+/// mention. Apps here and, on a hub, each host's (from what the hub last
+/// heard of it, under the prefixed id): the mention goes through Slack to
+/// the app, so a host the hub cannot reach right now still hears it.
+pub struct CallableApp {
+    pub agent: String,
+    pub name: String,
+    pub team: String,
+    pub handle: String,
+    pub bot_user: String,
+}
+
+pub fn callable_apps(app: &App) -> Vec<CallableApp> {
+    let mine: Vec<AgentApp> = app.slack.cfg.lock().unwrap().apps.clone();
+    let mut out: Vec<CallableApp> = mine
+        .into_iter()
+        .map(|a| CallableApp { name: app.agents.get(&a.agent).map(|x| x.name).unwrap_or_default(), agent: a.agent, team: a.team_id, handle: a.handle, bot_user: a.bot_user })
+        .collect();
+    let sep = crate::remote::SEP;
+    for h in app.remotes.host_agents() {
+        let s = |v: &Value| v.as_str().unwrap_or_default().to_string();
+        for (id, a) in h.agents.slack["agentApps"].as_object().into_iter().flatten().filter(|(id, _)| !id.contains(sep)) {
+            let name = h.agents.list.iter().find(|x| x["id"] == id.as_str()).map(|x| s(&x["name"])).unwrap_or_default();
+            out.push(CallableApp { agent: format!("{}{sep}{id}", h.id), name, team: s(&a["teamId"]), handle: s(&a["handle"]), bot_user: s(&a["botUser"]) });
+        }
+    }
+    out.retain(|c| !c.team.is_empty() && !c.handle.is_empty() && !c.bot_user.is_empty());
+    out
 }
 
 /// A host's Slack view as the hub shows it: its agents' apps and Slack

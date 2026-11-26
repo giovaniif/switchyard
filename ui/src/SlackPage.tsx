@@ -10,7 +10,7 @@ import type { Actions, Route, State } from "./store";
 import { Icon, MenuButton } from "./App";
 import { SLACK_MARK } from "./SlackSetup";
 import { parseSlack, emojiChar, type SlackNode } from "./slackText";
-import { calledAgents, initials, mentionQuery, pageKey, shownConversations, startsGroup, topLevel, type CallableAgent } from "./slackInbox";
+import { callableAgents, calledAgents, initials, mentionQuery, pageKey, shownConversations, startsGroup, topLevel, type CallableAgent } from "./slackInbox";
 
 const CLOSE = "M6 6l12 12M18 6L6 18";
 const ARROW_UP = "M12 19V5M5 12l7-7 7 7";
@@ -68,7 +68,7 @@ export function SlackConversationPage({ state, actions, team, channel }: { state
   const [thread, setThread] = useState<string | null>(null);
   const me = state.slack?.me?.userId ?? "";
   const connected = state.slack?.me?.step === "ready";
-  const callable = callableAgents(state, team);
+  const callable = callableAgents(state.agents, state.slack?.agentApps, team);
   useEffect(() => {
     setThread(null);
     actions.slackLoad(team, channel);
@@ -301,15 +301,6 @@ function MessageRow({ m, head, name, users, me, onThread, react, picked, onPick 
       )}
     </div>
   );
-}
-
-/** Agents with their own app ready in this workspace: the ones he can call. */
-function callableAgents(state: State, team: string): CallableAgent[] {
-  const apps = state.slack?.agentApps ?? {};
-  return state.agents.flatMap((a) => {
-    const app = apps[a.id];
-    return app && app.step === "ready" && app.teamId === team && app.handle ? [{ id: a.id, name: a.name, handle: app.handle }] : [];
-  });
 }
 
 function SlackComposer({ placeholder, disabled, agents, send }: { placeholder: string; disabled: boolean; agents: CallableAgent[]; send(text: string, mentions: string[]): Promise<{ error?: string }> }) {
