@@ -42,7 +42,10 @@
 // with UANA "TEST-Ana": two messages 70-80 days old, three in the last days,
 // one with a thread reply; read up to two days ago, so one is unread),
 // G0TRIO (a group DM with Ana and the stranger, one unread message 5 days old) and
-// D0QUIET (a DM with UOLD whose only message is 100 days old).
+// D0QUIET (a DM with UOLD whose only message is 100 days old). His channels:
+// C0GENERAL #general (two messages in the last days) and G0PRIV
+// #secret-plans (private, one message); users.conversations lists them for
+// types public_channel / private_channel.
 // conversations.history (oldest, latest, limit, cursor; top-level messages,
 // newest first), conversations.replies, conversations.members and
 // conversations.info (`last_read`) read them. A message sent to the `you`
@@ -109,6 +112,8 @@ const inbox = {
   D0ANA: { kind: "im", user: "UANA", members: ["UOWNER", "UANA"], messages: [] },
   G0TRIO: { kind: "mpim", name: "mpdm-test-ana--test-stranger--test-owner-1", members: ["UOWNER", "UANA", "USTRANGER"], messages: [] },
   D0QUIET: { kind: "im", user: "UOLD", members: ["UOWNER", "UOLD"], messages: [] },
+  C0GENERAL: { kind: "channel", name: "general", members: ["UOWNER", "UANA", "USTRANGER"], messages: [] },
+  G0PRIV: { kind: "group", name: "secret-plans", members: ["UOWNER", "UANA"], messages: [] },
 };
 {
   const ana = inbox.D0ANA.messages;
@@ -125,6 +130,9 @@ const inbox = {
   inbox.G0TRIO.messages.push({ type: "message", user: "USTRANGER", text: "TEST-hello all", ts: realTs(5 * DAY) });
   inbox.G0TRIO.last_read = "1000000000.000000";
   inbox.D0QUIET.messages.push({ type: "message", user: "UOLD", text: "TEST-ancient", ts: realTs(100 * DAY) });
+  inbox.C0GENERAL.messages.push({ type: "message", user: "USTRANGER", text: "TEST-standup in 5", ts: realTs(2 * DAY) });
+  inbox.C0GENERAL.messages.push({ type: "message", user: "UANA", text: "TEST-shipping today", ts: realTs(DAY) });
+  inbox.G0PRIV.messages.push({ type: "message", user: "UANA", text: "TEST-the secret plan", ts: realTs(3 * DAY) });
 }
 const topLevel = (m) => !m.thread_ts || m.thread_ts === m.ts || m.subtype === "thread_broadcast";
 
@@ -270,7 +278,11 @@ function api(method, p, auth, port) {
     }
     case "users.conversations": {
       if (kind !== "user") return refused;
-      const channels = Object.entries(inbox).map(([id, c]) => (c.kind === "im" ? { id, is_im: true, user: c.user, is_user_deleted: false } : { id, is_mpim: true, name: c.name }));
+      const types = (p.types ?? "public_channel").split(",");
+      const want = { im: "im", mpim: "mpim", channel: "public_channel", group: "private_channel" };
+      const channels = Object.entries(inbox)
+        .filter(([, c]) => types.includes(want[c.kind]))
+        .map(([id, c]) => (c.kind === "im" ? { id, is_im: true, user: c.user, is_user_deleted: false } : c.kind === "mpim" ? { id, is_mpim: true, name: c.name } : { id, is_channel: c.kind === "channel", is_group: c.kind === "group", is_private: c.kind === "group", name: c.name }));
       return { ok: true, channels, response_metadata: { next_cursor: "" } };
     }
     case "conversations.history": {
@@ -303,7 +315,10 @@ function api(method, p, auth, port) {
     case "conversations.info": {
       if (kind === "user" && inbox[p.channel]) {
         const c = inbox[p.channel];
-        return { ok: true, channel: c.kind === "im" ? { id: p.channel, is_im: true, user: c.user, last_read: c.last_read ?? "0000000000.000000" } : { id: p.channel, is_mpim: true, name: c.name, last_read: c.last_read ?? "0000000000.000000" } };
+        const last_read = c.last_read ?? "0000000000.000000";
+        if (c.kind === "im") return { ok: true, channel: { id: p.channel, is_im: true, user: c.user, last_read } };
+        if (c.kind === "mpim") return { ok: true, channel: { id: p.channel, is_mpim: true, name: c.name, last_read } };
+        return { ok: true, channel: { id: p.channel, is_channel: c.kind === "channel", is_private: c.kind === "group", name: c.name, last_read } };
       }
       if (kind !== "bot" && kind !== "user") return refused;
       const id = p.channel ?? "";

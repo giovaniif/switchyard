@@ -1478,3 +1478,55 @@ async fn the_owner_replies_reacts_and_reads_from_switchyard_as_himself() {
     c.send(json!({ "op": "slack.inbox.read", "team": "T0TEST", "channel": "G0TRIO", "ts": last })).await;
     fake.wait("the read mark in Slack", |s| s["marks"].as_array().is_some_and(|m| m.iter().any(|x| x["channel"] == "G0TRIO" && x["ts"] == last.as_str()))).await;
 }
+
+#[tokio::test]
+async fn the_owner_imports_the_channels_he_picks_and_only_those() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-channels");
+    let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api())]);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    connect_me(&mut c).await;
+    inbox_list(&mut c, "the DMs synced", |l| l.len() == 2).await;
+
+    // The channels he is in, none imported yet; no channel is in his inbox.
+    let list = inbox(&mut c, json!({ "op": "slack.inbox.channels" })).await;
+    assert_eq!(list["op"], "slack.inbox.channels", "{list}");
+    let names: Vec<&str> = list["channels"].as_array().unwrap().iter().map(|c| c["name"].as_str().unwrap()).collect();
+    assert_eq!(names, ["#general", "#secret-plans"]);
+    assert_eq!(list["channels"][1]["private"], true);
+    assert!(list["channels"].as_array().unwrap().iter().all(|c| c["imported"] == false));
+    // A channel's message before it is imported is not kept.
+    fake.say(json!({ "app": "you", "user": "UANA", "channel": "G0PRIV", "channel_type": "group", "text": "TEST-not imported" }));
+
+    // Imported: its 60 days load, and it is listed with his DMs.
+    let done = inbox(&mut c, json!({ "op": "slack.inbox.import", "channel": "C0GENERAL", "on": true })).await;
+    assert_eq!(done["op"], "slack.inbox.imported", "{done}");
+    let list = inbox_list(&mut c, "#general imported", |l| l.iter().any(|v| v["id"] == "C0GENERAL" && v["lastTs"] != "")).await;
+    let general = list.iter().find(|v| v["id"] == "C0GENERAL").unwrap();
+    assert_eq!((general["kind"].as_str(), general["name"].as_str()), (Some("channel"), Some("#general")));
+    assert!(!list.iter().any(|v| v["id"] == "G0PRIV"));
+    let page = inbox(&mut c, json!({ "op": "slack.inbox.messages", "team": "T0TEST", "channel": "C0GENERAL" })).await;
+    assert_eq!(texts(&page), ["TEST-standup in 5", "TEST-shipping today"]);
+    let channels = inbox(&mut c, json!({ "op": "slack.inbox.channels" })).await;
+    assert_eq!(channels["channels"][0], json!({ "id": "C0GENERAL", "name": "#general", "private": false, "imported": true }));
+
+    // Live in an imported channel; still nothing from the other one.
+    let from = c.mark();
+    let ts = fake.say(json!({ "app": "you", "user": "UANA", "channel": "C0GENERAL", "text": "TEST-deploy done" }));
+    c.wait_after(from, "the channel's message", |m| m["op"] == "slack.inbox.message" && m["message"]["ts"] == ts.as_str()).await;
+    fake.say(json!({ "app": "you", "user": "UANA", "channel": "G0PRIV", "channel_type": "group", "text": "TEST-still not imported" }));
+    c.drain_for(Duration::from_millis(300)).await;
+    assert!(!c.log.iter().any(|m| m["op"] == "slack.inbox.message" && m["channel"] == "G0PRIV"));
+    // Read here; a channel's read mark is not sent to Slack (that scope is not asked for).
+    c.send(json!({ "op": "slack.inbox.read", "team": "T0TEST", "channel": "C0GENERAL", "ts": ts })).await;
+    inbox_list(&mut c, "#general read", |l| l.iter().any(|v| v["id"] == "C0GENERAL" && v["unread"] == 0)).await;
+    assert!(!fake.state()["calls"].as_array().unwrap().iter().any(|c| c["method"] == "conversations.mark" && c["params"]["channel"] == "C0GENERAL"));
+
+    // Only channels: a DM's id is refused.
+    let refused = inbox(&mut c, json!({ "op": "slack.inbox.import", "channel": "D0ANA", "on": true })).await;
+    assert_eq!(refused["op"], "error");
+    // Turned off: forgotten.
+    inbox(&mut c, json!({ "op": "slack.inbox.import", "channel": "C0GENERAL", "on": false })).await;
+    inbox_list(&mut c, "#general forgotten", |l| !l.iter().any(|v| v["id"] == "C0GENERAL")).await;
+}

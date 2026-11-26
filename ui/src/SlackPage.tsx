@@ -37,7 +37,7 @@ export function SlackSidebar({ state, actions, route }: { state: State; actions:
             onClick={() => actions.go({ page: "slack", team: c.team, channel: c.id })}
           >
             <span className="row-engine">
-              <span className={`slack-face slack-face-${c.kind}`} aria-hidden="true">{c.kind === "mpim" ? (c.name.split(",").length + 1) : initials(c.name)}</span>
+              <span className={`slack-face slack-face-${c.kind}`} aria-hidden="true">{c.kind === "mpim" ? c.name.split(",").length + 1 : c.kind === "channel" || c.kind === "group" ? "#" : initials(c.name)}</span>
             </span>
             <span className="session-title">{c.name}</span>
             {c.unread > 0 && (
@@ -92,7 +92,7 @@ export function SlackConversationPage({ state, actions, team, channel }: { state
       </div>
     );
   }
-  const kind = conversation.kind === "im" ? "Direct message" : conversation.kind === "mpim" ? "Group direct message" : "Channel";
+  const kind = { im: "Direct message", mpim: "Group direct message", channel: "Channel", group: "Private channel" }[conversation.kind];
   return (
     <div className={`hosts slack-page ${thread ? "slack-has-thread" : ""}`}>
       <header className="bar">

@@ -1,5 +1,13 @@
 //! The owner's own Slack, kept in `yard.db`: every direct message and group
-//! DM (new ones too), as read through his user token.
+//! DM (new ones too), and the channels he imports, as read through his user
+//! token.
+//!
+//! - **Channels** (`slack.inbox.channels`: those he is in, from
+//!   `users.conversations`; `slack.inbox.import { channel, on }`): an imported
+//!   channel is loaded like a DM (60 days, then live) and listed with them;
+//!   one turned off is forgotten. Its read mark stays here: marking a channel
+//!   read in Slack takes `channels:write`, which can also make and archive
+//!   channels, and his app does not ask for it.
 //!
 //! - **Sync** (`sync`), in the background when his connection says hello the
 //!   first time in this process, and again after a connection that dropped
@@ -60,6 +68,7 @@ const SCHEMA: &str = "
         last_read TEXT NOT NULL DEFAULT '',
         synced INTEGER NOT NULL DEFAULT 0,
         complete INTEGER NOT NULL DEFAULT 0,
+        imported INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (team, id)
     );
     CREATE TABLE IF NOT EXISTS slack_messages (
@@ -105,6 +114,8 @@ impl Inbox {
             conn.busy_timeout(Duration::from_secs(5))?;
             conn.execute_batch("PRAGMA journal_mode = WAL;")?;
             conn.execute_batch(SCHEMA)?;
+            // Tables made before channels could be imported.
+            let _ = conn.execute_batch("ALTER TABLE slack_conversations ADD COLUMN imported INTEGER NOT NULL DEFAULT 0;");
             Ok(conn)
         })();
         let db = match db {
@@ -202,6 +213,12 @@ impl Inbox {
                 params![team, id, kind, name, peer],
             )
         });
+    }
+
+    fn imported(&self, team: &str, id: &str) -> bool {
+        self.with(|c| c.query_row("SELECT imported FROM slack_conversations WHERE team = ?1 AND id = ?2", params![team, id], |r| r.get::<_, i64>(0)).optional())
+            .flatten()
+            .is_some_and(|v| v != 0)
     }
 
     fn put_user(&self, team: &str, id: &str, name: &str) {
@@ -471,6 +488,23 @@ async fn sync_all(app: &Arc<App>) -> Result<()> {
             break;
         }
     }
+    // Imported channels catch up too.
+    let imported: Vec<(String, String)> = app
+        .slack
+        .inbox
+        .with(|c| {
+            let mut stmt = c.prepare("SELECT id, kind FROM slack_conversations WHERE team = ?1 AND imported = 1")?;
+            let rows = stmt.query_map([&team], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?.collect::<rusqlite::Result<Vec<_>>>();
+            rows
+        })
+        .unwrap_or_default();
+    for (id, _) in &imported {
+        if ready(app).is_none_or(|m| m.user_token != token) {
+            return Ok(());
+        }
+        load_conversation(app, &token, &team, id).await?;
+        app.slack.inbox.touched();
+    }
     for c in &found {
         let Some(id) = c["id"].as_str() else { continue };
         // His Slack was disconnected meanwhile.
@@ -479,26 +513,33 @@ async fn sync_all(app: &Arc<App>) -> Result<()> {
         }
         let (kind, name, peer) = describe(app, &token, &team, &me.user_id, c).await;
         app.slack.inbox.put_conversation(&team, id, &kind, &name, &peer);
-        let (_, last_ts, synced, _) = app.slack.inbox.conversation(&team, id).unwrap_or_default();
-        if synced {
-            if !last_ts.is_empty() {
-                load_since(app, &token, &team, id, &last_ts).await?;
-            }
-        } else {
-            let newest = load_since(app, &token, &team, id, &window_start()).await?;
-            // Slack's own read mark, where there is anything to read.
-            let last_read = if newest.is_empty() {
-                String::new()
-            } else {
-                match app.slack.api(&token, "conversations.info", &[("channel", id)]).await {
-                    Ok(v) => v["channel"]["last_read"].as_str().filter(|s| !s.is_empty() && *s != "0000000000.000000").map(str::to_string).unwrap_or(newest.clone()),
-                    Err(_) => newest.clone(),
-                }
-            };
-            app.slack.inbox.with(|c| c.execute("UPDATE slack_conversations SET synced = 1, last_read = MAX(last_read, ?3) WHERE team = ?1 AND id = ?2", params![team, id, last_read]));
-        }
+        load_conversation(app, &token, &team, id).await?;
         app.slack.inbox.touched();
     }
+    Ok(())
+}
+
+/// One conversation: its 60 days and Slack's read mark the first time, else
+/// what came since its newest message.
+async fn load_conversation(app: &App, token: &str, team: &str, id: &str) -> Result<()> {
+    let (_, last_ts, synced, _) = app.slack.inbox.conversation(team, id).unwrap_or_default();
+    if synced {
+        if !last_ts.is_empty() {
+            load_since(app, token, team, id, &last_ts).await?;
+        }
+        return Ok(());
+    }
+    let newest = load_since(app, token, team, id, &window_start()).await?;
+    // Slack's own read mark, where there is anything to read.
+    let last_read = if newest.is_empty() {
+        String::new()
+    } else {
+        match app.slack.api(token, "conversations.info", &[("channel", id)]).await {
+            Ok(v) => v["channel"]["last_read"].as_str().filter(|s| !s.is_empty() && *s != "0000000000.000000").map(str::to_string).unwrap_or(newest.clone()),
+            Err(_) => newest.clone(),
+        }
+    };
+    app.slack.inbox.with(|c| c.execute("UPDATE slack_conversations SET synced = 1, last_read = MAX(last_read, ?3) WHERE team = ?1 AND id = ?2", params![team, id, last_read]));
     Ok(())
 }
 
@@ -512,7 +553,8 @@ pub(super) async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result
         "message" => {
             let Some(channel) = ev["channel"].as_str() else { return Ok(()) };
             let kind = ev["channel_type"].as_str().unwrap_or(if channel.starts_with('D') { "im" } else { "" });
-            if kind != "im" && kind != "mpim" {
+            // A channel counts only once he imported it.
+            if kind != "im" && kind != "mpim" && !inbox.imported(&team, channel) {
                 return Ok(());
             }
             if inbox.conversation(&team, channel).is_none() {
@@ -665,14 +707,72 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
             anyhow::ensure!(!ts.is_empty(), "missing `ts`");
             let moved = inbox.with(|c| c.execute("UPDATE slack_conversations SET last_read = ?3 WHERE team = ?1 AND id = ?2 AND last_read < ?3", params![team, channel, ts])).unwrap_or(0) > 0;
             inbox.touched();
-            // Read here is read in Slack too (best effort).
-            if let (true, Some(m)) = (moved, me) {
+            // Read here is read in Slack too (best effort), for DMs: a
+            // channel's mark takes a scope his app does not ask for.
+            let dm = inbox.conversation(&team, &channel).is_some_and(|(kind, ..)| kind == "im" || kind == "mpim");
+            if let (true, true, Some(m)) = (moved, dm, me) {
                 let app = app.clone();
                 tokio::spawn(async move {
                     let _ = app.slack.api(&m.user_token, "conversations.mark", &[("channel", &channel), ("ts", &ts)]).await;
                 });
             }
             return Ok(());
+        }
+        "slack.inbox.channels" => {
+            let m = me.context("Your Slack is not connected.")?;
+            let mut cursor = String::new();
+            let mut channels = Vec::new();
+            loop {
+                let mut form = vec![("types", "public_channel,private_channel"), ("limit", "200"), ("exclude_archived", "true")];
+                if !cursor.is_empty() {
+                    form.push(("cursor", cursor.as_str()));
+                }
+                let v = app.slack.api(&m.user_token, "users.conversations", &form).await?;
+                for c in v["channels"].as_array().into_iter().flatten() {
+                    let Some(id) = c["id"].as_str() else { continue };
+                    channels.push(json!({
+                        "id": id,
+                        "name": format!("#{}", c["name"].as_str().unwrap_or(id)),
+                        "private": c["is_private"] == true,
+                        "imported": inbox.imported(&m.team_id, id),
+                    }));
+                }
+                cursor = v["response_metadata"]["next_cursor"].as_str().unwrap_or("").to_string();
+                if cursor.is_empty() || channels.len() >= 2_000 {
+                    break;
+                }
+            }
+            channels.sort_by(|a, b| b["imported"].as_bool().cmp(&a["imported"].as_bool()).then_with(|| a["name"].as_str().cmp(&b["name"].as_str())));
+            json!({ "op": "slack.inbox.channels", "team": m.team_id, "channels": channels })
+        }
+        "slack.inbox.import" => {
+            let m = me.context("Your Slack is not connected.")?;
+            let channel = s("channel");
+            anyhow::ensure!(channel.starts_with(['C', 'G']) && channel.len() <= 20 && channel.chars().all(|c| c.is_ascii_alphanumeric()), "That is not a Slack channel.");
+            let team = m.team_id.clone();
+            if msg["on"].as_bool().unwrap_or(true) {
+                let info = app.slack.api(&m.user_token, "conversations.info", &[("channel", &channel)]).await?;
+                let (kind, name, _) = describe(app, &m.user_token, &team, &m.user_id, &info["channel"]).await;
+                anyhow::ensure!(kind == "channel" || kind == "group", "That is not a channel.");
+                inbox.put_conversation(&team, &channel, &kind, &name, "");
+                inbox.with(|c| c.execute("UPDATE slack_conversations SET imported = 1 WHERE team = ?1 AND id = ?2", params![team, channel]));
+                // Its 60 days load in the background.
+                let app2 = app.clone();
+                let (token, team2, channel2) = (m.user_token.clone(), team.clone(), channel.clone());
+                tokio::spawn(async move {
+                    if let Err(e) = load_conversation(&app2, &token, &team2, &channel2).await {
+                        eprintln!("yardd: slack inbox: importing {channel2}: {e:#}");
+                    }
+                    app2.slack.inbox.touched();
+                });
+            } else {
+                inbox.with(|c| {
+                    c.execute("DELETE FROM slack_messages WHERE team = ?1 AND channel = ?2", params![team, channel])?;
+                    c.execute("DELETE FROM slack_conversations WHERE team = ?1 AND id = ?2", params![team, channel])
+                });
+            }
+            inbox.touched();
+            json!({ "op": "slack.inbox.imported", "team": team, "channel": channel, "on": msg["on"].as_bool().unwrap_or(true) })
         }
         "slack.inbox.send" => {
             let m = me.context("Your Slack is not connected.")?;

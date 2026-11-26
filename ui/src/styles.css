@@ -1724,6 +1724,7 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .slack-row .session-title { flex: 1 1 auto; min-width: 0; }
 .slack-face { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 6px; background: var(--slack-fill); color: var(--slack-ink); font-size: 8.5px; font-weight: 600; letter-spacing: -0.02em; }
 .slack-face-mpim { border-radius: 50%; }
+.slack-face-channel, .slack-face-group { font-size: 11px; }
 .slack-unread { flex: none; min-width: 18px; padding: 1px 5px; border-radius: 9px; background: var(--slack-ink); color: var(--bg); font-size: 11px; font-weight: 600; text-align: center; }
 .slack-page .bar h1 { flex: 0 1 auto; }
 .slack-kind { white-space: nowrap; }
@@ -1777,3 +1778,9 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
   .slack-has-thread .slack-main { display: none; }
   .slack-thread { width: 100%; border-left: 0; }
 }
+
+/* His channels on the Slack card: each with an Import switch. */
+.slack-channel-picker { display: grid; gap: 8px; padding: 8px 0 0 15px; }
+.slack-channel-list { display: grid; max-height: 320px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.slack-channel { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.slack-channel-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
