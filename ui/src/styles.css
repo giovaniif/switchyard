@@ -1705,7 +1705,10 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .tool-line .copy-btn, .copy-block .copy-corner, .approval-what-row .copy-btn { opacity: 0; transition: opacity 0.1s; }
 .tool-line:hover .copy-btn, .copy-block:hover .copy-corner, .approval-what-row:hover .copy-btn,
 .copy-btn:focus-visible, .copy-btn.copied { opacity: 1; }
-.approval-what-row { display: flex; align-items: flex-start; gap: 6px; }
+.approval-what-row { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; }
+/* Centred on the command's first line (1lh at the command's size), overhanging
+   it rather than making the card taller. */
+.approval-what-row .copy-btn { margin-block: calc((1lh - 24px) / 2); }
 .approval-what-row .approval-what { flex: 1; min-width: 0; }
 @media (hover: none) {
   .tool-line .copy-btn, .copy-block .copy-corner, .approval-what-row .copy-btn { opacity: 1; }
