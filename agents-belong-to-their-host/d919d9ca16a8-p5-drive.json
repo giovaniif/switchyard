@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "4524389ca3f92d784f34b8c4d7476dda8ab011a7",
+    "short": "4524389",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T18:53:13.892Z"
+  },
+  "dir": ".verify/evidence/r478-final-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4161,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/r478-final-head/after-delete-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3222,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/r478-final-head/after-delete-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

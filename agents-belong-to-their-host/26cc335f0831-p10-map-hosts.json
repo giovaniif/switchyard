@@ -1,0 +1,123 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "hosts",
+      "at": "2026-11-26T19:05:46.650Z",
+      "counts": {
+        "pass": 20,
+        "manual": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "hosts-page",
+          "status": "pass",
+          "ms": 4982
+        },
+        {
+          "label": "empty-state-tile",
+          "status": "pass",
+          "ms": 4794
+        },
+        {
+          "label": "sessions-list-collapsed",
+          "status": "pass",
+          "ms": 6545
+        },
+        {
+          "label": "add-direct-host",
+          "status": "pass",
+          "ms": 2888
+        },
+        {
+          "label": "remote-session",
+          "status": "pass",
+          "ms": 7414
+        },
+        {
+          "label": "hosts-grid",
+          "status": "pass",
+          "ms": 5387
+        },
+        {
+          "label": "selecting-a-host-shows-its-details",
+          "status": "pass",
+          "ms": 6904
+        },
+        {
+          "label": "ssh-host-unreachable",
+          "status": "pass",
+          "ms": 2245
+        },
+        {
+          "label": "remove-host",
+          "status": "pass",
+          "ms": 4786
+        },
+        {
+          "label": "refused-add-keeps-the-form",
+          "status": "pass",
+          "ms": 5372
+        },
+        {
+          "label": "local-name-right-after-start",
+          "status": "pass",
+          "ms": 2236
+        },
+        {
+          "label": "no-memory-limit-says-load-only",
+          "status": "pass",
+          "ms": 5942
+        },
+        {
+          "label": "ip-destination-keeps-the-whole-address",
+          "status": "pass",
+          "ms": 9041
+        },
+        {
+          "label": "long-name-fits-the-add-button",
+          "status": "pass",
+          "ms": 10185
+        },
+        {
+          "label": "long-derived-name-asks-for-a-shorter-one",
+          "status": "pass",
+          "ms": 14516
+        },
+        {
+          "label": "install-on-host",
+          "status": "manual",
+          "why": "needs a real SSH server"
+        },
+        {
+          "label": "engine-status-keeps-cards-aligned",
+          "status": "pass",
+          "ms": 6193
+        },
+        {
+          "label": "processes-say-the-host-is-offline",
+          "status": "pass",
+          "ms": 9533
+        },
+        {
+          "label": "new-session-says-the-remembered-host-is-offline",
+          "status": "pass",
+          "ms": 8503
+        },
+        {
+          "label": "sessions-stay-listed-while-their-host-is-down",
+          "status": "pass",
+          "ms": 6748
+        },
+        {
+          "label": "subscriptions-sign-in-opens-the-accounts-host",
+          "status": "pass",
+          "ms": 9007
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

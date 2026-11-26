@@ -1,0 +1,149 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --no-fail-fast --test slack --test agents -- a_moved_agents_slack_places slack_reaches_an_agent_on_a_remote_host a_hub_hands_the_agents_it_kept an_agents_slack_app_moves_between
+# exit 101 after 30921 ms at c7a73684483b4a27e471ce66b4668e34a555f37e
+
+
+running 2 tests
+test an_agents_slack_app_moves_between_hosts_whole_and_once ... FAILED
+test a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely ... FAILED
+
+failures:
+
+---- an_agents_slack_app_moves_between_hosts_whole_and_once stdout ----
+
+thread 'an_agents_slack_app_moves_between_hosts_whole_and_once' (1187904) panicked at crates/yardd/tests/agents.rs:1305:5:
+assertion `left == right` failed
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1187902-agents-app-move-hub-2 for inspection
+kept /tmp/yardd-test-1187902-agents-app-move-remote-0 for inspection
+
+---- a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely stdout ----
+
+thread 'a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely' (1187903) panicked at crates/yardd/tests/agents.rs:645:5:
+{"allowed":[{"id":"UOWNER","name":"TEST-Owner"}],"approvals":{},"apps":[{"agent":"g-oncall","appId":"A-TEST","appToken":"","authorizeUrl":"","botToken":"xoxb-TEST-oncall","botUser":"UBOT","clientId":"","clientSecret":"","eventsUrl":"","handle":"on-call","iconKey":"","iconSet":false,"manifest":"{}","mentions":[{"id":"UPAGER","name":"TEST-pager"}],"owner":"UOWNER","ownerName":"TEST-Owner","redirect":"","redirects":[],"signingSecret":"","syncError":"","teamId":"T1","teamName":"TEST-team","triage":["C-TEST"],"watched":[{"id":"C0INCIDENT","name":"#incidents"}]}],"me":null,"places":[],"publicUrl":"","threads":[{"agent":"g-oncall","app":true,"at":1,"key":"T1/C1/1.0","place":"#ops"},{"agent":"g-oncall","app":false,"at":1,"key":"T1/C2/2.0","place":"#dev"}],"workspaces":[{"accessToken":"xoxe.xoxp-TEST","expiresAt":1,"refreshToken":"xoxe-TEST-refresh","teamId":"T1","teamName":"TEST-team","userId":"UOWNER"}]}
+kept /tmp/yardd-test-1187902-agents-migrate-hub-3 for inspection
+kept /tmp/yardd-test-1187902-agents-migrate-remote-1 for inspection
+
+
+failures:
+    a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely
+    an_agents_slack_app_moves_between_hosts_whole_and_once
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 27 filtered out; finished in 0.40s
+
+
+running 2 tests
+test a_moved_agents_slack_places_and_approvals_stay_on_the_host_they_were_made_on ... FAILED
+test slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_the_thread ... FAILED
+
+failures:
+
+---- a_moved_agents_slack_places_and_approvals_stay_on_the_host_they_were_made_on stdout ----
+
+thread 'a_moved_agents_slack_places_and_approvals_stay_on_the_host_they_were_made_on' (1188119) panicked at crates/yardd/tests/slack.rs:1675:5:
+{
+  "agentApps": {
+    "h1a21933d49f1~g1a21933d4c82": {
+      "appId": "A0AGENT",
+      "canRedirect": true,
+      "error": null,
+      "eventsUrl": "",
+      "handle": "reviewer",
+      "iconKey": "",
+      "mentions": [],
+      "ownerName": "TEST-Owner",
+      "state": "connected",
+      "step": "ready",
+      "syncError": null,
+      "teamId": "T0TEST",
+      "teamName": "TEST-workspace",
+      "watched": []
+    }
+  },
+  "allowed": [
+    {
+      "id": "UOWNER",
+      "name": "TEST-Owner"
+    }
+  ],
+  "canRedirect": true,
+  "hosts": {
+    "h1a21933d49f1": {
+      "canRedirect": false,
+      "publicUrl": "",
+      "workspaces": [
+        {
+          "teamId": "T0TEST",
+          "teamName": "TEST-workspace"
+        }
+      ]
+    }
+  },
+  "me": null,
+  "places": [
+    {
+      "agentId": "g1a21933d4c82",
+      "at": 1795719157130,
+      "key": "T0TEST/DSTRANGER/",
+      "name": "DM with TEST-Stranger",
+      "sessionId": "s1a21933d5895"
+    },
+    {
+      "agentId": "g1a21933d4c82",
+      "at": 1795719157117,
+      "key": "T0TEST/D0OWNER/",
+      "name": "DM with TEST-Owner",
+      "sessionId": "s1a21933d5794"
+    }
+  ],
+  "publicCheck": null,
+  "publicUrl": "",
+  "publicUrlFixed": false,
+  "workspaces": [
+    {
+      "teamId": "T0TEST",
+      "teamName": "TEST-workspace"
+    }
+  ]
+}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1188118-slack-places-move-hub-2 for inspection
+kept /tmp/yardd-test-1188118-slack-places-move-remote-1 for inspection
+
+---- slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_the_thread stdout ----
+
+thread 'slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_the_thread' (1188120) panicked at crates/yardd/tests/common/mod.rs:422:27:
+timed out after 20s waiting for the agent's Slack place; last messages:
+{"op":"session","session":{"account":"default","agent":"g1a21933d4c71","archived":false,"automation":null,"branch":null,"createdAt":1795719157156,"cwd":"/tmp/yardd-test-1188118-slack-far-remote-0/data/agents/g1a21933d4c71","effort":"low","engine":"codex","host":"h1a21933d49d1","id":"h1a21933d49d1~s1
+{"op":"session","session":{"account":"default","agent":"g1a21933d4c71","archived":false,"automation":null,"branch":null,"createdAt":1795719157156,"cwd":"/tmp/yardd-test-1188118-slack-far-remote-0/data/agents/g1a21933d4c71","effort":"low","engine":"codex","host":"h1a21933d49d1","id":"h1a21933d49d1~s1
+{"op":"session","session":{"account":"default","agent":"g1a21933d4c71","answering":[{"app":"g1a21933d4c71","channel":"D0OWNER","channelName":"Direct message","guest":false,"history":[],"kind":"slack","placeKey":"T0TEST/D0OWNER/","placeLabel":"DM with TEST-Owner","team":"T0TEST","threadTs":"170000000
+{"event":{"origin":{"app":"g1a21933d4c71","channel":"D0OWNER","channelName":"Direct message","guest":false,"history":[],"kind":"slack","placeKey":"T0TEST/D0OWNER/","placeLabel":"DM with TEST-Owner","team":"T0TEST","threadTs":"1700000001.000100","ts":"1700000001.000100","user":"UOWNER","userName":"TE
+{"event":{"at":1795719157157,"type":"turn_started"},"events":null,"op":"event","seq":1,"sessionId":"h1a21933d49d1~s1a21933d5a43"}
+{"op":"slack","slack":{"agentApps":{"h1a21933d49d1~g1a21933d4c71":{"appId":"A0AGENT","canRedirect":true,"error":null,"eventsUrl":"","handle":"far","iconKey":"","mentions":[],"ownerName":"TEST-Owner","state":"connected","step":"ready","syncError":null,"teamId":"T0TEST","teamName":"TEST-workspace","wa
+{"event":{"itemId":"msg-1188247-3","text":"Echo: <slack from=\"TEST-Owner\" in=\"a direct message\">\nTEST-how is the box?\n<","type":"assistant_delta"},"events":null,"op":"event","seq":2,"sessionId":"h1a21933d49d1~s1a21933d5a43"}
+{"event":{"itemId":"msg-1188247-3","text":"/slack>\n(From TEST-Owner on Slack, in a direct message, not typed in Switchy","type":"assistant_delta"},"events":null,"op":"event","seq":3,"sessionId":"h1a21933d49d1~s1a21933d5a43"}
+{"event":{"itemId":"msg-1188247-3","text":"ard. Your final answer to this message is posted back to that Slack thread.)","type":"assistant_delta"},"events":null,"op":"event","seq":4,"sessionId":"h1a21933d49d1~s1a21933d5a43"}
+{"event":{"itemId":"msg-1188247-3","text":"Echo: <slack from=\"TEST-Owner\" in=\"a direct message\">\nTEST-how is the box?\n</slack>\n(From TEST-Owner on Slack, in a direct message, not typed in Switchyard. Your final answer to this message is posted back to that Slack thread.)","type":"assistant_me
+{"event":{"at":1795719157165,"status":"completed","type":"turn_completed"},"events":null,"op":"event","seq":6,"sessionId":"h1a21933d49d1~s1a21933d5a43"}
+{"op":"session","session":{"account":"default","agent":"g1a21933d4c71","archived":false,"automation":null,"branch":null,"createdAt":1795719157156,"cwd":"/tmp/yardd-test-1188118-slack-far-remote-0/data/agents/g1a21933d4c71","effort":"low","engine":"codex","host":"h1a21933d49d1","id":"h1a21933d49d1~s1
+kept /tmp/yardd-test-1188118-slack-far-hub-3 for inspection
+kept /tmp/yardd-test-1188118-slack-far-remote-0 for inspection
+
+
+failures:
+    a_moved_agents_slack_places_and_approvals_stay_on_the_host_they_were_made_on
+    slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_the_thread
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 19 filtered out; finished in 20.58s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 9.87s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+error: test failed, to rerun pass `-p yardd --test agents`
+     Running tests/slack.rs (target/debug/build/yardd/7070339f5020f7ad/out/slack-7070339f5020f7ad)
+error: test failed, to rerun pass `-p yardd --test slack`
+error: 2 targets failed:
+    `-p yardd --test agents`
+    `-p yardd --test slack`
