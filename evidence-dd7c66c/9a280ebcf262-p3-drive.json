@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "route": "session:s1a21805c41a2",
+  "build": {
+    "sha": "dd7c66c79c658e72002e2e1e60ac8aca5513acc4",
+    "short": "dd7c66c",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T13:22:40.453Z"
+  },
+  "dir": ".verify/evidence/copy-commands-and-code-head-desktop-cmd",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 5151,
+      "steps": 12,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/copy-commands-and-code-head-desktop-cmd/approval-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/copy-commands-and-code-head-desktop-cmd/step-copied-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 0,
+          "eval": "(Object.defineProperty(navigator, \"clipboard\", { configurable: true, value: { writeText: (t) => { window.__copied = t; return Promise.resolve(); } } }), 1)",
+          "value": 1
+        },
+        {
+          "step": 3,
+          "eval": "window.__copied",
+          "value": "echo approved"
+        },
+        {
+          "step": 8,
+          "eval": "(window.__copied = null, 1)",
+          "value": 1
+        },
+        {
+          "step": 10,
+          "eval": "window.__copied",
+          "value": "echo approved"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

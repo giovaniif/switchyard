@@ -1,0 +1,68 @@
+{
+  "ok": false,
+  "route": "session:s1a2180113c8c",
+  "build": {
+    "sha": "41aed8c556db8ef34c3847e45d5d3dfa95437de0",
+    "short": "41aed8c",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T13:22:06.600Z"
+  },
+  "dir": ".verify/evidence/copy-commands-and-code-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 13123,
+      "steps": 3,
+      "failed": {
+        "step": 0,
+        "action": {
+          "expect": "text:Allow this command?"
+        },
+        "reason": "for: Timeout 10000ms exceeded.",
+        "screenshot": ".verify/evidence/copy-commands-and-code-base/fail-mobile-step0.png",
+        "aria": "- main:\n  - button \"Open sessions\"\n  - heading \"[cmd] TEST-run the migration\" [level=1]\n  - code: yard/cmd-test-run-the-migration-3b3b\n  - button \"Set up iPhone app\"\n  - button \"Workspace\"\n  - button \"Delete\"\n  - text: \"[cmd] TEST-run the migration\"\n  - button \"Worked for 0s · 1 command not run\"\n  - text: yardd restarted during this turn.\n  - textbox \"Message\":\n    - /placeholder: Reply\n  - button \"Attach files\"\n  - button \"Dictate\"\n  - button \"Voice mode\"\n  - 'button \"Session setup: Fake Fast, Default, Low, Ask first\"': Fake Fast · Low\n  - button \"Send\" [disabled]"
+      },
+      "captures": [],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 12497,
+      "steps": 3,
+      "failed": {
+        "step": 0,
+        "action": {
+          "expect": "text:Allow this command?"
+        },
+        "reason": "for: Timeout 10000ms exceeded.",
+        "screenshot": ".verify/evidence/copy-commands-and-code-base/fail-desktop-step0.png",
+        "aria": "- navigation \"Sessions\":\n  - button \"Go to session or page\": Switchyard Ctrl K\n  - button \"Collapse sessions sidebar\" [expanded]\n  - button \"New session\"\n  - button \"Agents\"\n  - button \"Automations\"\n  - button \"Connectors\"\n  - button \"Import\"\n  - button \"Settings\"\n  - button \"[cmd] TEST-copy mobile · Fake Fast · Idle\"\n  - button \"Archive [cmd] TEST-copy mobile\"\n  - button \"Actions for [cmd] TEST-copy mobile\"\n  - button \"[cmd] TEST-copy desktop · Fake Fast · Idle\"\n  - button \"Archive [cmd] TEST-copy desktop\"\n  - button \"Actions for [cmd] TEST-copy desktop\"\n  - button \"[cmd] TEST-copy mobile · Fake Fast · Idle\"\n  - button \"Archive [cmd] TEST-copy mobile\"\n  - button \"Actions for [cmd] TEST-copy mobile\"\n  - button \"[cmd] TEST-copy desktop · Fake Fast · Idle\"\n  - button \"Archive [cmd] TEST-copy desktop\"\n  - button \"Actions for [cmd] TEST-copy desktop\"\n  - button \"[cmd] TEST-run the migration · Fake Fast · Idle\"\n  - button \"Archive [cmd] TEST-run the migration\"\n  - button \"Actions for [cmd] TEST-run the migration\"\n  - button \"TEST-hello from Claude · Haiku 5.5 · Idle\"\n  - button \"Archive TEST-hello from Claude\"\n  - button \"Actions for TEST-hello from Claude\"\n  - button \"[edit] TEST-fix the greeting · Fake Fast · Idle\"\n  - button \"Archive [edit] TEST-fix the greeting\"\n  - button \"Actions for [edit] TEST-fix the greeting\"\n  - button \"TEST-say hello · Fake Fast · Idle\"\n  - button \"Archive TEST-say hello\"\n  - button \"Actions for TEST-say hello\"\n  - button \"[think] TEST-plan the refactor · Fake Fast · Idle\"\n  - button \"Archive [think] TEST-plan the refactor\"\n  - button \"Actions for [think] TEST-plan the refactor\"\n  - button \"[fail] TEST-failing turn · Fake Fast · Idle\"\n  - button \"Archive [fail] TEST-failing turn\"\n  - button \"Actions for [fail] TEST-failing turn\"\n  - button \"Subscription usage\": Usage 47% used\n  - button \"iso-host 10% · 51%\"\n- separator \"Resize the sessions sidebar\"\n- main:\n  - heading \"[cmd] TEST-run the migration\" [level=1]\n  - code: yard/cmd-test-run-the-migration-3b3b\n  - button \"Set up iPhone app\"\n  - button \"Collapse workspace\" [expanded]\n  - button \"Delete\"\n  - text: \"[cmd] TEST-run the migration\"\n  - button \"Worked for 0s · 1 command not run\"\n  - text: yardd restarted during this turn.\n  - textbox \"Message\":\n    - /placeholder: Reply\n  - button \"Attach files\"\n  - button \"Dictate\"\n  - button \"Voice mode\"\n  - button \"Model Fake Fast\": Fake Fast\n  - 'button \"Account: Codex, Default\"'\n  - button \"Effort Low\": Low\n  - button \"Ask first\"\n  - button \"Send\" [disabled]\n- region \"Workspace\":\n  - separator \"Resize the workspace pane\"\n  - button \"Terminal\" [pressed]\n  - button \"Subagents\"\n  - button \"Processes\"\n  - tablist \"Terminals\":\n    - tab \"1\" [selected]\n    - button \"Close terminal\"\n    - button \"New terminal\"\n    - button \"Attach\"\n  - textbox \"Terminal input\""
+      },
+      "captures": [],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 0 {\"expect\":\"text:Allow this command?\"}: for: Timeout 10000ms exceeded.",
+      "hint": "see .verify/evidence/copy-commands-and-code-base/fail-mobile-step0.png and the aria snapshot"
+    },
+    {
+      "code": "step-failed",
+      "msg": "desktop: step 0 {\"expect\":\"text:Allow this command?\"}: for: Timeout 10000ms exceeded.",
+      "hint": "see .verify/evidence/copy-commands-and-code-base/fail-desktop-step0.png and the aria snapshot"
+    }
+  ]
+}

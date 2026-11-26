@@ -1,0 +1,18 @@
+$ cd ui && git show dd7c66c:ui/src/thread.test.ts > src/zz-head-thread.test.ts; bun test src/zz-head-thread.test.ts; rc=$?; rm -f src/zz-head-thread.test.ts; exit $rc
+# exit 1 after 16 ms at 41aed8c556db8ef34c3847e45d5d3dfa95437de0
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/zz-head-thread.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+SyntaxError: Export named 'stepCommand' not found in module '/home/giovani/.yard/wt/better-than-claude-code/yard-about-the-phone-connection-we-f866/ui/src/thread.ts'.
+-------------------------------
+
+
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file. [6.00ms]

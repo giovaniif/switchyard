@@ -1,0 +1,271 @@
+{
+  "v": 1,
+  "claim": "Commands an engine asks to run, its code blocks and tool output have no Copy button: copying means selecting by hand, which drags in the step's label and is fiddly on a phone",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-about-the-phone-connection-we-f866",
+  "base": "41aed8c556db8ef34c3847e45d5d3dfa95437de0",
+  "head": "dd7c66c79c658e72002e2e1e60ac8aca5513acc4",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/CopyButton.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/MobileSetup.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/thread.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/thread.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/thread.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T13:21:59.378Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "41aed8c556db8ef34c3847e45d5d3dfa95437de0",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "8184ab28fcf2ea68ccaefdaabb64447f73782e742d1dff13d0c8ae3eddad7766"
+        },
+        {
+          "path": "p1-fail-mobile-step0.png",
+          "sha256": "7adaacf9df7768c383c68b6b52beb6d92ca4096239191fd2b71e5af497c217be"
+        },
+        {
+          "path": "p1-fail-desktop-step0.png",
+          "sha256": "c217412aa6cc588ab2be0357920b3efe3d0a3f70cf7d8110144be17eb186d955"
+        }
+      ],
+      "addedAt": "2026-11-26T13:22:33.317Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "41aed8c556db8ef34c3847e45d5d3dfa95437de0",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "48f271651389467afc792e6c1b6b88c8d986435d74908d6478511081da6bf3b2"
+        }
+      ],
+      "addedAt": "2026-11-26T13:22:33.361Z",
+      "cmd": "cd ui && git show dd7c66c:ui/src/thread.test.ts > src/zz-head-thread.test.ts; bun test src/zz-head-thread.test.ts; rc=$?; rm -f src/zz-head-thread.test.ts; exit $rc",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "dd7c66c79c658e72002e2e1e60ac8aca5513acc4",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "9a280ebcf262c707ac177654530cfe5f8faa8244325966bbbde041111fce6116"
+        },
+        {
+          "path": "p3-approval-desktop.png",
+          "sha256": "3be1b23aede9ae822ac4e3c7119d54701902d92143efe7198139fe18c93ff53c"
+        },
+        {
+          "path": "p3-step-copied-desktop.png",
+          "sha256": "c078e2b190198c071aada66d8fc872862729b05942a97384eb1fa90efe638948"
+        }
+      ],
+      "addedAt": "2026-11-26T13:22:57.799Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "dd7c66c79c658e72002e2e1e60ac8aca5513acc4",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "b5508392cb74799a4a8cf76de9d7131c25c849898c2db72119b3dcb40852807d"
+        },
+        {
+          "path": "p4-code-copied-desktop.png",
+          "sha256": "11c02fed22775bb9dc1a4a978aee552654feb345d96d377b8b96757580677ac3"
+        }
+      ],
+      "addedAt": "2026-11-26T13:22:57.839Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "dd7c66c79c658e72002e2e1e60ac8aca5513acc4",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "83059d97d0f89c70f1499ee86350aed3e6c055b89d404d843d37a241c6fea9ec"
+        },
+        {
+          "path": "p5-approval-mobile.png",
+          "sha256": "5362397a7ff8a90e07cc60509d96e5ba583df3d7c9dce51fe29cba8ca09de4c5"
+        },
+        {
+          "path": "p5-step-copied-mobile.png",
+          "sha256": "bdb6e5048ecf50e67dca0c822976ea2783989f4f042811af0e2525c68f8170fa"
+        }
+      ],
+      "addedAt": "2026-11-26T13:22:57.877Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "dd7c66c79c658e72002e2e1e60ac8aca5513acc4",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p6-drive.json",
+          "sha256": "e2aabf7ab5b94e2f617f31f17d3a3f7c9d99b2f53d74a4c858a0e8ad1e35fbc3"
+        },
+        {
+          "path": "p6-code-copied-mobile.png",
+          "sha256": "c3fa01efd3052ad16e4f2410d7e9f1d58e5d07426c83f35a2308e33af21e4049"
+        }
+      ],
+      "addedAt": "2026-11-26T13:22:57.915Z",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "test",
+      "at": "dd7c66c79c658e72002e2e1e60ac8aca5513acc4",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-cmd.log",
+          "sha256": "832129e83d600aa130ac06461c2fe72d6d7572da2ff34daa2b857345730bc9d3"
+        }
+      ],
+      "addedAt": "2026-11-26T13:22:57.953Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "design",
+      "at": "dd7c66c79c658e72002e2e1e60ac8aca5513acc4",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-design.json",
+          "sha256": "da065638c6e09af490f1266f6bb17c72f1353083982f86e2a56829fb449bda99"
+        }
+      ],
+      "addedAt": "2026-11-26T13:22:58.322Z",
+      "cmd": "verify/yv design-check --base 41aed8c556db",
+      "exit": 0
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "regression",
+      "at": "dd7c66c79c658e72002e2e1e60ac8aca5513acc4",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-map-thread.json",
+          "sha256": "c29f9a6c3695e1cf7aa8e5dd3b0b9631da3a4427336e6b80c62da876b6b71b64"
+        }
+      ],
+      "addedAt": "2026-11-26T13:22:58.405Z",
+      "cmd": "verify/yv map run thread",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "thread/reply-renders",
+        "thread/markdown-table-renders",
+        "thread/markdown-blocks-without-blank-lines",
+        "thread/web-links-open-outside-the-thread",
+        "thread/thinking-folds",
+        "thread/edit-shows-diff",
+        "thread/failed-turn-shows-error",
+        "thread/follow-up-turn",
+        "thread/claude-session-renders",
+        "thread/reply-to-part-of-answer",
+        "thread/comments-go-with-their-parts",
+        "thread/no-reply-on-own-message",
+        "thread/queue-a-message-while-working",
+        "thread/remove-a-queued-message",
+        "thread/steer-a-running-turn",
+        "thread/steer-a-selected-queued-message",
+        "thread/stop-returns-the-queue",
+        "thread/edit-a-queued-message",
+        "thread/edit-a-queued-reply-keeps-its-quotes",
+        "thread/draft-survives-switching-sessions",
+        "thread/workspace-subagents",
+        "thread/workspace-subagents-line-up",
+        "thread/subagent-nests-and-expands",
+        "thread/fold-names-the-subagent",
+        "thread/working-line-stays-in-view",
+        "thread/pr-link-hover-card",
+        "thread/pr-link-card-states",
+        "thread/pr-link-card-error",
+        "thread/pr-link-keyboard-and-touch",
+        "thread/links-inside-bold-text",
+        "thread/file-links-download",
+        "thread/file-viewer-kinds",
+        "thread/file-reload-reads-it-again",
+        "thread/numbered-steps-across-code-blocks",
+        "thread/history-reloads-after-resync",
+        "thread/copy-commands-code-and-output"
+      ]
+    }
+  ]
+}

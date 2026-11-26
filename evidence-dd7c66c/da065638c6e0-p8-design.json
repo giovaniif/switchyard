@@ -1,0 +1,56 @@
+{
+  "command": "design-check",
+  "ok": true,
+  "base": "41aed8c556db8ef34c3847e45d5d3dfa95437de0",
+  "ui": true,
+  "touched": [
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/App.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "paths": [
+        "ui/src/CopyButton.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/MobileSetup.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/styles.css"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/thread.test.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/thread.ts"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "rule": "raw-button",
+      "severity": "warn",
+      "file": "ui/src/CopyButton.tsx",
+      "line": 42,
+      "text": "<button",
+      "hint": "give it a design-system button class: btn, btn-text, btn-icon, btn-primary, btn-quiet"
+    }
+  ],
+  "problems": [],
+  "hint": "screenshot the reference screen next to your after-shots, and cover empty, loading, error and long-text states at both viewports"
+}
