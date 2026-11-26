@@ -125,3 +125,28 @@ export function filterServers(servers: McpServer[], query: string, filter: Conne
     return matches && words.every((word) => text.includes(word));
   });
 }
+
+/** What an agent or automation without a list of its own leaves out (yardd's
+ *  scope.rs `DENIED_BY_DEFAULT`), matched ignoring case. */
+export const DENIED_BY_DEFAULT = ["metabase", "claude.ai Metabase"];
+
+/** The servers an agent or automation can be given: the account's MCP
+ *  servers (not ChatGPT apps, which are not scoped), plus any it already has
+ *  that the account no longer lists, so a save does not drop them unseen. */
+export function pickableConnectors(servers: McpServer[] | undefined, picked: string[] | null): string[] {
+  const names = (servers ?? []).filter((s) => !s.app).map((s) => s.name);
+  for (const n of picked ?? []) if (!names.includes(n)) names.push(n);
+  return names;
+}
+
+/** Whether a server is on: `picked` null is the default (all but the deny list). */
+export function connectorOn(picked: string[] | null, name: string): boolean {
+  if (picked) return picked.includes(name);
+  return !DENIED_BY_DEFAULT.some((d) => d.toLowerCase() === name.toLowerCase());
+}
+
+/** Turn one server on or off. The default becomes an explicit list of what it covered. */
+export function toggleConnector(picked: string[] | null, all: string[], name: string): string[] {
+  const now = picked ?? all.filter((n) => connectorOn(null, n));
+  return now.includes(name) ? now.filter((n) => n !== name) : [...now, name];
+}
