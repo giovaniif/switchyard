@@ -837,8 +837,14 @@ the composer and session view in `App.tsx`.
     cannot post). Any other channel or thread is refused, and the refusal
     lists the agent's threads (place, channel id, `thread_ts`, last message)
     so the model can pick one. With no `channel` (an id or `#name`) and no
-    `thread_ts`, the thread it last heard from; `channel` alone picks its
-    newest thread there. An agent without an app, or with one not installed
+    `thread_ts`, the thread of the Slack message that started the turn (its
+    first Slack origin in `answering`); a turn with no Slack origin must name
+    a thread, unless exactly one of the agent's threads had a message in the
+    last 24 hours. Never just the newest thread: an agent juggling two
+    tickets would post one's news in the other's thread. `channel` alone
+    picks the turn's thread if it is there, else its newest thread there.
+    Posts are mrkdwn with the app's mention list (`to_mrkdwn_with`), so the
+    people the owner chose can be tagged and nobody else. An agent without an app, or with one not installed
     yet, is refused and told how to get one. A thread routed through the
     shared bot in a channel is allowed, and if the agent's app is not in
     that channel Slack's `not_in_channel` is said plainly. Links keep `app`
@@ -1156,9 +1162,11 @@ its engine framing and one arm in `origins::reply`.
   handle, the icon sent once per key and refused when not a 512-2000 px PNG,
   a lapsed configuration token shown and caught up by a new one, an old app
   updated at start, the public address set from the page), and `slack_reply`
-  (refused without an app and with no thread yet; the newest thread by
-  default and one named by `#name` and `thread_ts`, posted by the agent's
-  own bot; another agent's thread, a channel it was not asked in and a
+  (refused without an app and with no thread yet; the only recent thread
+  by default and one named by `#name` and `thread_ts`, posted by the agent's
+  own bot; a turn from a second Slack thread posting in its own thread, a
+  Switchyard turn with two recent threads refused until it names one, the
+  app's mention list kept in a post; another agent's thread, a channel it was not asked in and a
   made-up `thread_ts` refused with its threads listed; an agent without an
   app refused in its own thread). The fake knows
   `tooling.tokens.rotate`, `apps.manifest.create`/`update`/`delete`,

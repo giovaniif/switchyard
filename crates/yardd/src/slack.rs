@@ -1857,16 +1857,25 @@ pub struct Thread {
     place: String,
     handle: String,
     token: String,
+    /// Who its posts may @mention (the owner's list for its app).
+    mentions: Vec<String>,
 }
+
+/// How recent a thread must be to be the one `slack_reply` picks unasked,
+/// when the turn did not come from Slack.
+const RECENT_THREAD_MS: u64 = 24 * 3_600_000;
 
 /// The thread an agent's `slack_reply` posts in, as its own app. Only a
 /// thread routed to that agent, in its app's workspace, and not a direct
 /// message with the shared bot (another bot's DM, where its app cannot
 /// post): the agent writes only where someone asked it something, never in
 /// a channel or thread it picks. `channel` (an id or `#name`) and `thread`
-/// (a `thread_ts`) narrow the choice; with neither, the thread it heard from
-/// last.
-pub fn thread_for(slack: &Slack, agent: &str, channel: &str, thread: &str) -> Result<Thread> {
+/// (a `thread_ts`) narrow the choice. With neither, the thread of the
+/// message that started this turn (`origin`, when it came from Slack); a
+/// turn from elsewhere must name one, unless only one thread of the agent's
+/// was active in the last day. Never simply the newest thread: an agent
+/// juggling two tickets would post one's news in the other's thread.
+pub fn thread_for(slack: &Slack, agent: &str, channel: &str, thread: &str, origin: Option<&Value>) -> Result<Thread> {
     let Some(rec) = slack.app_of(agent) else {
         bail!("Not posted: you have no Slack app of your own. The user can give you one (update_setup with connect: slack), then you post as it.");
     };
@@ -1888,11 +1897,24 @@ pub fn thread_for(slack: &Slack, agent: &str, channel: &str, thread: &str) -> Re
     mine.sort_by_key(|(l, ..)| std::cmp::Reverse(l.at));
     let want_channel = channel.trim().trim_start_matches('#');
     let want_thread = thread.trim();
-    let fits = |(l, c, ts): &&(&Link, &str, &str)| {
-        (want_channel.is_empty() || c.eq_ignore_ascii_case(want_channel) || l.place.trim_start_matches('#').eq_ignore_ascii_case(want_channel))
-            && (want_thread.is_empty() || *ts == want_thread)
+    let in_channel = |l: &Link, c: &str| want_channel.is_empty() || c.eq_ignore_ascii_case(want_channel) || l.place.trim_start_matches('#').eq_ignore_ascii_case(want_channel);
+    // The thread of the Slack message this turn answers, if the agent may post there.
+    let own = origin.and_then(|o| {
+        let key = format!("{}/{}/{}", o["team"].as_str()?, o["channel"].as_str()?, o["threadTs"].as_str()?);
+        mine.iter().find(|(l, ..)| l.key == key)
+    });
+    let found = if !want_thread.is_empty() {
+        mine.iter().find(|(l, c, ts)| in_channel(l, c) && *ts == want_thread)
+    } else if !want_channel.is_empty() {
+        own.filter(|(l, c, _)| in_channel(l, c)).or_else(|| mine.iter().find(|(l, c, _)| in_channel(l, c)))
+    } else if origin.is_some() {
+        own
+    } else {
+        let now = now_ms();
+        let recent: Vec<_> = mine.iter().filter(|(l, ..)| now.saturating_sub(l.at) < RECENT_THREAD_MS).collect();
+        if recent.len() == 1 { Some(recent[0]) } else { None }
     };
-    let Some((l, c, ts)) = mine.iter().find(fits) else {
+    let Some((l, c, ts)) = found else {
         if mine.is_empty() {
             bail!("Not posted: nobody has asked you anything in Slack through your app yet, so there is no thread you may post in. You can post only in a Slack thread that was routed to you.");
         }
@@ -1902,6 +1924,12 @@ pub fn thread_for(slack: &Slack, agent: &str, channel: &str, thread: &str) -> Re
             .map(|(l, c, ts)| format!("{} (channel {c}, thread_ts {ts}, last message {})", if l.place.is_empty() { *c } else { l.place.as_str() }, crate::agent_tools::at_clock(l.at)))
             .collect::<Vec<_>>()
             .join("; ");
+        if want_thread.is_empty() && want_channel.is_empty() {
+            if origin.is_some() {
+                bail!("Not posted: the Slack message this turn answers is not in a thread you may post in. Name one of yours with thread_ts (and channel). Yours, newest first: {yours}.");
+            }
+            bail!("Not posted: this turn did not come from Slack, so say which thread: pass its thread_ts (and channel). Yours, newest first: {yours}.");
+        }
         bail!("Not posted: that is not a Slack thread you were asked in, and you can post only in those. Yours, newest first: {yours}.");
     };
     Ok(Thread {
@@ -1910,15 +1938,17 @@ pub fn thread_for(slack: &Slack, agent: &str, channel: &str, thread: &str) -> Re
         place: if l.place.is_empty() { c.to_string() } else { l.place.clone() },
         handle: rec.handle.clone(),
         token: rec.bot_token.clone(),
+        mentions: rec.mentions.iter().map(|p| p.id.clone()).collect(),
     })
 }
 
 /// Posts an agent's own message in a thread from `thread_for`, as an answer
-/// is: mrkdwn, split, after any answer being posted.
+/// is: mrkdwn (only its app's chosen people can be mentioned), split, after
+/// any answer being posted.
 pub async fn post_in(app: &Arc<App>, t: &Thread, text: &str) -> Result<String> {
     let slack = &app.slack;
     let _order = slack.posting.lock().await;
-    let parts = split(&to_mrkdwn(text), PART);
+    let parts = split(&to_mrkdwn_with(text, &t.mentions), PART);
     for (i, part) in parts.iter().enumerate() {
         if let Err(e) = slack.post(&t.token, &t.channel, &t.ts, part).await {
             let why = format!("{e:#}");
@@ -2392,5 +2422,33 @@ mod tests {
         assert!(icon_ok(&png(256, 256)).unwrap_err().to_string().contains("512 to 2000"));
         assert!(icon_ok(&png(2048, 2048)).is_err());
         assert!(icon_ok(b"<svg></svg> and more bytes to pass the length").unwrap_err().to_string().contains("not a PNG"));
+    }
+
+    #[test]
+    fn slack_reply_posts_in_this_turns_thread_not_the_newest() {
+        let slack = Slack::load(PathBuf::from("/nonexistent/yardd-test"));
+        let now = now_ms();
+        {
+            let mut cfg = slack.cfg.lock().unwrap();
+            cfg.apps.push(AgentApp { agent: "a".into(), team_id: "T1".into(), bot_token: "xoxb-a".into(), handle: "a".into(), mentions: vec![Person { id: "U1".into(), name: "Gio".into() }], ..Default::default() });
+            let link = |key: &str, at: u64, place: &str| Link { key: key.into(), agent: "a".into(), at, app: true, place: place.into() };
+            // Ticket A's thread heard from last; ticket B's earlier.
+            cfg.threads.push(link("T1/C1/1.0", now - 60_000, "#ops"));
+            cfg.threads.push(link("T1/C2/2.0", now - 1_000, "#dev"));
+        }
+        let origin = |c: &str, t: &str| json!({ "kind": "slack", "team": "T1", "channel": c, "threadTs": t });
+        let t = thread_for(&slack, "a", "", "", Some(&origin("C1", "1.0"))).unwrap();
+        assert_eq!((t.channel.as_str(), t.ts.as_str(), t.mentions.clone()), ("C1", "1.0", vec!["U1".to_string()]));
+        // A turn from elsewhere with two recent threads must say which.
+        let e = thread_for(&slack, "a", "", "", None).err().unwrap().to_string();
+        assert!(e.contains("did not come from Slack") && e.contains("#dev (channel C2, thread_ts 2.0") && e.contains("#ops (channel C1, thread_ts 1.0"), "{e}");
+        assert_eq!(thread_for(&slack, "a", "", "1.0", None).unwrap().channel, "C1");
+        assert_eq!(thread_for(&slack, "a", "#dev", "", Some(&origin("C1", "1.0"))).unwrap().ts, "2.0");
+        // A Slack message whose thread it may not post in (another bot's DM) is refused, not swapped for another.
+        let e = thread_for(&slack, "a", "", "", Some(&origin("D9", "3.0"))).err().unwrap().to_string();
+        assert!(e.contains("not in a thread you may post in"), "{e}");
+        // One thread active in the last day: that one, unasked.
+        slack.cfg.lock().unwrap().threads[0].at = now - RECENT_THREAD_MS - 1;
+        assert_eq!(thread_for(&slack, "a", "", "", None).unwrap().channel, "C2");
     }
 }

@@ -847,6 +847,31 @@ async fn an_agent_posts_later_only_in_slack_threads_routed_to_it_as_its_own_app(
     let steps: Vec<Value> = c.events(&sid).into_iter().filter(|e| e["type"] == "tool_started" && e["title"] == "Posted in Slack").collect();
     assert!(steps.iter().any(|e| e["detail"] == "TEST-**deployed** to prod"), "{steps:?}");
 
+    // A second ticket, in #dev: a turn that came from Slack posts in its own
+    // thread by default, not in the other ticket's.
+    let seq = c.next_seq(&sid);
+    let dev = fake.say(json!({ "app": "agent", "user": "UOWNER", "channel": "C0DEV", "text": format!("<@UAGENT> TEST-second ticket {}", slack_reply(json!({ "text": "TEST-dev news" }))) }));
+    c.wait_turn_done(&sid, seq).await;
+    fake.wait("the #dev answer", |s| FakeSlack::posts(s, &dev).len() == 2).await;
+    assert_eq!(FakeSlack::posts(&fake.state(), &dev)[0], "TEST-dev news");
+    assert!(!FakeSlack::posts(&fake.state(), &ts).iter().any(|p| p.contains("dev news")));
+
+    // From Switchyard with two threads active today, it must name one; named,
+    // only the people the owner chose can be tagged.
+    step(&mut c, json!({ "op": "slack.app.mention", "agentId": id, "user": "UOWNER", "name": "TEST-Owner" })).await.unwrap();
+    let seq = c.next_seq(&sid);
+    let calls = [slack_reply(json!({ "text": "TEST-which?" })), slack_reply(json!({ "text": "TEST-cc <@UOWNER> <@USTRANGER>", "thread_ts": dev }))];
+    ask(&mut c, &id, &calls.join(" ")).await;
+    c.wait_turn_done(&sid, seq).await;
+    let r = tool_results(&sb, "slack_reply");
+    let (which, named) = (&r[r.len() - 2], &r[r.len() - 1]);
+    let text = which["text"].as_str().unwrap();
+    assert!(which["isError"] == true && text.contains("did not come from Slack") && text.contains(&format!("thread_ts {dev}")) && text.contains(&format!("thread_ts {ts}")), "{which}");
+    assert_eq!(named["isError"], false, "{named}");
+    let posts = FakeSlack::posts(&fake.state(), &dev);
+    assert_eq!(posts.last().unwrap(), "TEST-cc <@UOWNER> &lt;@USTRANGER&gt;");
+    assert!(!fake.state()["posts"].to_string().contains("TEST-which?"));
+
     // Ada has no app of her own: refused even for her own thread.
     let ada_chat = chat_of(&mut c, &ada).await;
     let seq = c.next_seq(&ada_chat);

@@ -388,12 +388,12 @@ fn described(names: &str) -> Value {
         },
         {
             "name": "slack_reply",
-            "description": format!("Post a message in a Slack thread as your own Slack app, at any time: news you promised there (\"tell us here when it's deployed\"), after a long wait, or from a turn the user started in Switchyard. Without channel and thread_ts it goes to the Slack thread you last heard from. You can post only in Slack threads that were routed to you (someone wrote to you there); any other channel or thread is refused. Your final answer to a message from Slack is already posted in its thread, so do not repeat it with this. Needs a Slack app of your own. At most {SLACK_PER_HOUR} per hour."),
+            "description": format!("Post a message in a Slack thread as your own Slack app, at any time: news you promised there (\"tell us here when it's deployed\"), after a long wait, or from a turn the user started in Switchyard. Without channel and thread_ts it goes to the Slack thread of the message this turn answers; in a turn that did not come from Slack, name the thread with thread_ts (unless only one of your threads was active in the last day). You can post only in Slack threads that were routed to you (someone wrote to you there); any other channel or thread is refused. Your final answer to a message from Slack is already posted in its thread, so do not repeat it with this. Needs a Slack app of your own. At most {SLACK_PER_HOUR} per hour."),
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "text": text("The message, in Markdown."),
-                    "channel": text("Optional: the channel, by id (C0123ABC) or name (#ops), to pick among your threads; the newest thread there is used."),
+                    "channel": text("Optional: the channel, by id (C0123ABC) or name (#ops), to pick among your threads; this turn's thread if it is there, else your newest thread there."),
                     "thread_ts": text("Optional: the thread's ts, to pick one thread exactly. A refusal lists your threads with theirs."),
                 },
                 "required": ["text"],
@@ -549,7 +549,9 @@ async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Resul
             if text.is_empty() {
                 bail!("Not posted: the text is empty.");
             }
-            let thread = crate::slack::thread_for(&app.slack, &me.id, &arg("channel"), &arg("thread_ts"))?;
+            // The Slack message that started this turn, if one did.
+            let origin = caller.answering.iter().find(|o| origins::kind(o) == "slack");
+            let thread = crate::slack::thread_for(&app.slack, &me.id, &arg("channel"), &arg("thread_ts"), origin)?;
             if let Err(until) = app.tools.take(&me.id, tool, SLACK_PER_HOUR, now_ms()) {
                 bail!("Not posted: you already posted {SLACK_PER_HOUR} times in Slack in the last hour. Try again after {}, or put it in your answer.", at_clock(until));
             }

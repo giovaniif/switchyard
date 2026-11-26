@@ -7,7 +7,7 @@
 //
 // The workspace is TEST-workspace (T0TEST); the bot is @switchyard (UBOT,
 // BBOT). Users: UOWNER "TEST-Owner", USTRANGER "TEST-Stranger", any other id
-// "TEST-<id>". Channels: C0GENERAL #general, C0OPS #ops; a D… id is a DM.
+// "TEST-<id>". Channels: C0GENERAL #general, C0OPS #ops, C0DEV #dev; a D… id is a DM.
 // A token containing "bad" is refused (invalid_auth).
 //
 // Web API (form or JSON bodies, bearer token): auth.test,
@@ -57,7 +57,7 @@ const arg = (name) => {
 const BOT = "UBOT";
 const AGENT_BOT = "UAGENT";
 const USERS = { UOWNER: "TEST-Owner", USTRANGER: "TEST-Stranger" };
-const CHANNELS = { C0GENERAL: "general", C0OPS: "ops" };
+const CHANNELS = { C0GENERAL: "general", C0OPS: "ops", C0DEV: "dev" };
 
 let clock = 1_700_000_000;
 const nextTs = () => `${++clock}.000100`;
