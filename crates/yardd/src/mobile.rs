@@ -9,6 +9,20 @@ use serde_json::{json, Value};
 /// Phones remembered, most recent first.
 const MAX_DEVICES: usize = 5;
 
+/// Switchyard for iPhone's public TestFlight beta, so the setup card can offer
+/// the install without any configuration. `YARD_TESTFLIGHT_URL` replaces it
+/// (a fork with its own app); `none` offers no install link.
+const TESTFLIGHT: &str = "https://testflight.apple.com/join/BygX29JY";
+
+/// Empty counts as unset: docker-compose passes the variable through empty.
+fn testflight_url(var: Option<String>) -> Option<String> {
+    match var.as_deref().map(str::trim) {
+        None | Some("") => Some(TESTFLIGHT.into()),
+        Some("none") => None,
+        Some(v) => Some(v.into()),
+    }
+}
+
 pub struct Mobile {
     data: PathBuf,
     inner: Mutex<Inner>,
@@ -41,7 +55,7 @@ impl Mobile {
         let inner = self.inner.lock().unwrap();
         json!({
             "configured": inner.configured,
-            "testFlightUrl": std::env::var("YARD_TESTFLIGHT_URL").ok(),
+            "testFlightUrl": testflight_url(std::env::var("YARD_TESTFLIGHT_URL").ok()),
             "devices": inner.devices,
             "live": inner.live,
             "origins": phone_origins(&crate::ws::allowed_origins()),
@@ -102,7 +116,15 @@ fn phone_origins(allowed: &[String]) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::phone_origins;
+    use super::{phone_origins, testflight_url, TESTFLIGHT};
+
+    #[test]
+    fn the_public_beta_is_offered_unless_replaced_or_turned_off() {
+        assert_eq!(testflight_url(None).as_deref(), Some(TESTFLIGHT));
+        assert_eq!(testflight_url(Some(" ".into())).as_deref(), Some(TESTFLIGHT));
+        assert_eq!(testflight_url(Some("https://testflight.apple.com/join/AbCd1234".into())).as_deref(), Some("https://testflight.apple.com/join/AbCd1234"));
+        assert_eq!(testflight_url(Some("none".into())), None);
+    }
 
     #[test]
     fn only_https_addresses_a_phone_can_reach_are_offered() {

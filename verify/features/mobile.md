@@ -24,13 +24,13 @@ yv iso down
 ### setup-entry-points
 Viewports: both
 The shortcut is present on new and existing sessions. It opens the persistent
-Hosts card, with no false TestFlight URL before the beta has an invitation.
+Hosts card, which offers the public TestFlight beta with no configuration.
 This host lists no address a phone can open, so the card asks for one; a
 valid one gives a QR code on a desktop and an Open link on a phone, and
 localhost (the phone itself) gives neither.
 
 ```sh
-yv drive new --viewport desktop --steps '[{"expect":"role:button:Set up iPhone app"},{"click":"role:button:Set up iPhone app"},{"expect":"role:status","text":"No phone connected yet"},{"expect":"role:region:iPhone app","text":"Install the app from TestFlight"},{"expect":"role:link:Install with TestFlight","count":0},{"fill":"label:Address the phone can reach","value":"https://yard.test"},{"expect":"css:.phone-qr-code"},{"eval":"document.querySelector(\".phone-qr-code\").getAttribute(\"aria-label\")","equals":"QR code that opens Switchyard on your iPhone with yard.test"},{"fill":"label:Address the phone can reach","value":"http://localhost:47717"},{"expect":"css:.phone-qr-code","count":0},{"expect":"css:.mobile-setup .warn","text":"point to the phone itself"},{"shot":"setup"}]'
+yv drive new --viewport desktop --steps '[{"expect":"role:button:Set up iPhone app"},{"click":"role:button:Set up iPhone app"},{"expect":"role:status","text":"No phone connected yet"},{"expect":"role:link:Install with TestFlight"},{"eval":"document.querySelector(\".mobile-setup .btn-primary\").getAttribute(\"href\")","equals":"https://testflight.apple.com/join/BygX29JY"},{"fill":"label:Address the phone can reach","value":"https://yard.test"},{"expect":"css:.phone-qr-code"},{"eval":"document.querySelector(\".phone-qr-code\").getAttribute(\"aria-label\")","equals":"QR code that opens Switchyard on your iPhone with yard.test"},{"fill":"label:Address the phone can reach","value":"http://localhost:47717"},{"expect":"css:.phone-qr-code","count":0},{"expect":"css:.mobile-setup .warn","text":"point to the phone itself"},{"shot":"setup"}]'
 yv drive new --viewport mobile --steps '[{"click":"role:button:Set up iPhone app"},{"fill":"label:Address the phone can reach","value":"https://yard.test"},{"expect":"role:link:Open in Switchyard"},{"eval":"document.querySelector(\".mobile-open\").getAttribute(\"href\")","equals":"switchyard://connect?host=https%3A%2F%2Fyard.test"},{"shot":"setup"}]'
 yv drive 'session:{{sid_echo}}' --steps '[{"expect":"role:button:Set up iPhone app"},{"shot":"session-shortcut"}]'
 ```

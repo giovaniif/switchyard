@@ -232,10 +232,19 @@ requesting device verification. Internal testing does not provide a public
 
 ## Show the installation link in Switchyard
 
-Once a real TestFlight public invitation exists, set
-`YARD_TESTFLIGHT_URL=https://testflight.apple.com/join/<8-character-code>` on
-the **hub serving the page**. Never invent a code or use another app's link.
-Hosts then offers Install with TestFlight. The session-corner shortcut remains
+yardd offers the public beta, **https://testflight.apple.com/join/BygX29JY**,
+with no configuration (`TESTFLIGHT` in `crates/yardd/src/mobile.rs`). It
+belongs to the external group **Public beta** (`2de7743d-f3bb-4ad2-9edd-96cc2d086b65`,
+created 2026-11-26, public link on, no tester limit). The link accepts testers
+only once Apple's Beta App Review has approved a build in that group: each new
+**version** (not each build) needs that review, and a build must be added to
+the group (`POST /v1/betaGroups/{id}/relationships/builds`) before testers see it.
+The reviewer gets in with **Look around with demo sessions** on the connect
+screen, since a host is only reachable on the owner's private network.
+
+`YARD_TESTFLIGHT_URL` on the **hub serving the page** replaces the link, for a
+fork with its own app; `none` offers no install link. Never invent a code or
+use another app's link. Hosts offers Install with TestFlight. The session-corner shortcut remains
 until the native app actually connects and the hub saves that setup state.
 
 On this server, the live hub is the `yardd` **systemd user service**, configured
