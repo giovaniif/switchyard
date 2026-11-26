@@ -238,6 +238,20 @@ fn list_dirs(path: &str) -> Result<Vec<Value>> {
     Ok(dirs.into_iter().map(|(name, git)| json!({ "name": name, "git": git })).collect())
 }
 
+/// The shortest prefix of an absolute `path` that does not exist. A typo can
+/// sit anywhere up the path, and the picker names the folder that is not
+/// there rather than an io error for the one it asked about.
+fn first_missing(path: &str) -> Option<String> {
+    let path = Path::new(path);
+    if !path.is_absolute() {
+        return None;
+    }
+    let ancestors: Vec<&Path> = path.ancestors().collect();
+    // Only NotFound: a folder the daemon may not read still exists.
+    let gone = |p: &&Path| matches!(std::fs::metadata(p), Err(e) if e.kind() == std::io::ErrorKind::NotFound);
+    ancestors.into_iter().rev().find(gone).map(|p| p.to_string_lossy().into_owned())
+}
+
 /// Start a session from a `session.create` message. `direct` gets `created`
 /// as soon as the session exists (the UI opens it), with the message's `ref`;
 /// automations pass `None` and a title of their own, and tag the session with
@@ -450,7 +464,10 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             let path = str_field(msg, "path")?;
             let reply = match list_dirs(path) {
                 Ok(dirs) => json!({ "op": "fs.dirs", "path": path, "dirs": dirs }),
-                Err(e) => json!({ "op": "fs.dirs", "path": path, "error": format!("{e:#}") }),
+                Err(e) => match first_missing(path) {
+                    Some(missing) => json!({ "op": "fs.dirs", "path": path, "missing": missing }),
+                    None => json!({ "op": "fs.dirs", "path": path, "error": format!("{e:#}") }),
+                },
             };
             let _ = direct.send(reply.to_string());
         }
