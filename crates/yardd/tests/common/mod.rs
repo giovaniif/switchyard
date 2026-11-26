@@ -392,6 +392,15 @@ impl Client {
             .expect("send failed");
     }
 
+    /// Several messages in one write, so the daemon reads them together, as
+    /// it does from a client that sends faster than it is scheduled.
+    pub async fn send_burst(&mut self, msgs: &[Value]) {
+        for msg in msgs {
+            self.ws.feed(Message::Text(msg.to_string())).await.expect("send failed");
+        }
+        self.ws.flush().await.expect("send failed");
+    }
+
     /// Where the log ends now; pass it to `wait_after` to ignore older messages.
     pub fn mark(&self) -> usize {
         self.log.len()
