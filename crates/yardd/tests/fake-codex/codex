@@ -46,9 +46,11 @@
 // holds the MCP overrides), and `threads.json`, so a restarted fake can resume
 // a thread the previous one started, and refuses one it never saw.
 //
-// Loaded threads: thread/start and thread/resume load one, thread/unsubscribe
-// unloads it (answering `unsubscribed`, or `notLoaded`) and sends
-// `thread/closed`; thread/loaded/list lists them. A turn on a thread that is
+// Loaded threads: thread/start and thread/resume load one; thread/unsubscribe
+// answers `unsubscribed` (`notLoaded` for one that is not) and, as the real
+// app-server does, unloads it at once (sending `thread/closed`) only when the
+// thread's config set `thread_unload_delay_secs` to 0; otherwise it stays
+// loaded. thread/loaded/list lists them. A turn on a thread that is
 // not loaded fails, as it would on a released one. Each change logs
 // `loaded=<n>` to codex.log.
 
@@ -91,9 +93,9 @@ const saveThreads = () => {
 };
 
 // Threads loaded in this process (see the header).
-const loaded = new Set();
-const load = (tid) => {
-  loaded.add(tid);
+const loaded = new Map(); // thread id -> its thread_unload_delay_secs
+const load = (tid, config) => {
+  loaded.set(tid, config?.thread_unload_delay_secs);
   log(`loaded=${loaded.size}`);
 };
 
@@ -228,28 +230,30 @@ async function handle(msg) {
       const tid = newId("thread");
       threads.set(tid, { cwd: p.cwd ?? "", tools: p.config?.["mcp_servers.switchyard"] ?? null });
       saveThreads();
-      load(tid);
+      load(tid, p.config);
       return reply(threadResponse(tid, p));
     }
     case "thread/resume": {
       if (!threads.has(p.threadId)) return fail(`no such thread: ${p.threadId}`);
       if (dir) appendFileSync(`${dir}/thread-resumes.jsonl`, `${JSON.stringify(p)}\n`);
-      load(p.threadId);
+      load(p.threadId, p.config);
       // A resumed thread's servers are the ones it is resumed with.
       threads.get(p.threadId).tools = p.config?.["mcp_servers.switchyard"] ?? null;
       saveThreads();
       return reply(threadResponse(p.threadId, p));
     }
     case "thread/unsubscribe": {
-      if (!loaded.delete(p.threadId)) return reply({ status: "notLoaded" });
+      if (!loaded.has(p.threadId)) return reply({ status: "notLoaded" });
+      const unloadNow = loaded.get(p.threadId) === 0;
+      if (unloadNow) loaded.delete(p.threadId);
       log(`loaded=${loaded.size}`);
       reply({ status: "unsubscribed" });
-      notify("thread/closed", { threadId: p.threadId });
+      if (unloadNow) notify("thread/closed", { threadId: p.threadId });
       return;
     }
     case "thread/loaded/list":
       log(`loaded=${loaded.size}`);
-      return reply({ data: [...loaded], nextCursor: null });
+      return reply({ data: [...loaded.keys()], nextCursor: null });
     case "turn/start": {
       const thread = threads.get(p.threadId);
       if (!thread) return fail(`no such thread: ${p.threadId}`);

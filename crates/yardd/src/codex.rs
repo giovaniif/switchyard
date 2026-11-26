@@ -717,6 +717,18 @@ fn restricted_config(config: &Value) -> Value {
     overrides
 }
 
+/// A thread with no subscriber stays loaded, MCP connections and all, for
+/// `thread_unload_delay_secs` (codex 0.171; checked: with the default, two
+/// unsubscribed threads were still loaded and their MCP servers running).
+/// yardd unsubscribes only once it has decided to let go (see `release`), so
+/// the thread unloads at once: `thread/closed` follows and its servers exit.
+fn unload_when_released(params: &mut Value) {
+    if !params["config"].is_object() {
+        params["config"] = json!({});
+    }
+    params["config"]["thread_unload_delay_secs"] = json!(0);
+}
+
 /// Thread-local overrides that switch off every configured MCP server the
 /// session's scope leaves out (see `scope`), and leave the rest as configured:
 /// a server the owner disabled stays disabled. Each entry keeps its transport
@@ -781,6 +793,7 @@ pub async fn create(app: &Arc<App>, sid: &str) -> Result<()> {
     } else if let Some(config) = thread_config(app, &c, sid, &meta.cwd).await? {
         params["config"] = config;
     }
+    unload_when_released(&mut params);
     let res = c.request("thread/start", params).await?;
     let thread_id = res["thread"]["id"]
         .as_str()
@@ -821,6 +834,7 @@ async fn resume(app: &Arc<App>, sid: &str) -> Result<()> {
     if let Some(config) = thread_config(app, &c, sid, &meta.cwd).await? {
         params["config"] = config;
     }
+    unload_when_released(&mut params);
     c.request("thread/resume", params).await?;
     attach(app, &c, sid, thread_id);
     Ok(())
