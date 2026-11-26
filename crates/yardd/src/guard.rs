@@ -86,6 +86,8 @@ struct Inner {
     queue: VecDeque<(String, String)>,
     /// From the last sample; None when the host is fine.
     pressure: Option<String>,
+    /// When `procs` was last sampled, in ms.
+    sampled_at: u64,
 }
 
 pub struct Guard {
@@ -189,6 +191,36 @@ impl Guard {
             .collect()
     }
 
+    /// When the processes were last sampled (ms), 0 before the first sample.
+    pub fn sampled_at(&self) -> u64 {
+        self.inner.lock().unwrap().sampled_at
+    }
+
+    /// A process a Claude session's agent left running (a background shell,
+    /// a `Monitor`, a watcher a subagent started), as of the last sample:
+    /// stopping the sidecar would kill it. Not the engine (sidecar and CLI),
+    /// not its MCP servers, not the terminal's shells. A process the CLI runs
+    /// is the agent's when it is a shell given a command (`sh -c …`, how
+    /// Claude Code runs Bash), or below one; any other child of the CLI is an
+    /// MCP server. Anything the sidecar runs itself is the agent's.
+    pub fn agent_work(&self, sid: &str) -> Option<String> {
+        let inner = self.inner.lock().unwrap();
+        let rows = inner.procs.get(sid)?;
+        let sidecar = *inner.sidecars.get(sid)?;
+        let row = |pid: u32| rows.iter().find(|r| r.pid == pid);
+        rows.iter()
+            .filter(|r| r.origin == "agent" && !r.engine)
+            .find(|r| {
+                // Walk up to the process right below the engine.
+                let mut top = *r;
+                while let Some(parent) = row(top.ppid).filter(|p| !p.engine && p.pid != top.pid) {
+                    top = parent;
+                }
+                top.ppid == sidecar || is_shell_command(&top.cmd)
+            })
+            .map(|r| format!("{} (pid {})", r.cmd.chars().take(120).collect::<String>(), r.pid))
+    }
+
     fn pressure(&self, inner: &Inner) -> Option<String> {
         if self.limits.forced {
             return Some("pressure is forced on (YARD_FORCE_PRESSURE=1)".to_string());
@@ -268,7 +300,11 @@ pub fn sample(app: &Arc<App>, sys: &System, load: f64, cores: usize, mem_free: u
     guard.inner.lock().unwrap().pressure = (!reasons.is_empty()).then(|| reasons.join("; "));
 
     let (listed, usage, _) = attribute(app, sys);
-    guard.inner.lock().unwrap().procs = listed;
+    {
+        let mut inner = guard.inner.lock().unwrap();
+        inner.procs = listed;
+        inner.sampled_at = crate::state::now_ms();
+    }
 
     // One per sample, so a burst of starts cannot push the host straight
     // back under pressure.
@@ -408,6 +444,15 @@ fn attribute(app: &Arc<App>, sys: &System) -> (HashMap<String, Vec<ProcRow>>, Ha
     }
     // The closure holds `usage` and `listed` until here.
     (listed, usage, engines)
+}
+
+/// `bash -c '…'`, `/bin/zsh -c -l …`: a shell running a command line, as
+/// Claude Code runs every Bash call (an MCP server that is a shell script
+/// runs as `bash script.sh`, without `-c`).
+fn is_shell_command(cmd: &str) -> bool {
+    let mut words = cmd.split_whitespace();
+    let shell = words.next().and_then(|w| w.rsplit('/').next()).unwrap_or("");
+    ["sh", "bash", "zsh", "dash", "fish"].contains(&shell) && words.any(|w| w.starts_with('-') && !w.starts_with("--") && w.contains('c'))
 }
 
 /// The signal `session.kill` sends.
@@ -617,6 +662,34 @@ mod tests {
         );
         listed.insert("s2".to_string(), vec![row(30, 1, 300, false)]);
         (listed, [10, 11, 99].into_iter().collect())
+    }
+
+    #[test]
+    fn an_agent_shell_is_work_and_an_mcp_server_is_not() {
+        let guard = Guard::default();
+        let with_cmd = |pid, ppid, cmd: &str, engine| ProcRow { cmd: cmd.into(), ..row(pid, ppid, 100, engine) };
+        let sidecar = with_cmd(10, 1, "bun run main.ts", true);
+        let cli = with_cmd(11, 10, "claude --output-format stream-json", true);
+        let mcp = with_cmd(12, 11, "/bin/bash /tmp/probe-mcp.sh", false);
+        let mcp_kid = with_cmd(13, 12, "bun mcp-chart", false);
+        let set = |rows: Vec<ProcRow>| {
+            let mut inner = guard.inner.lock().unwrap();
+            inner.sidecars.insert("s1".into(), 10);
+            inner.procs.insert("s1".into(), rows);
+        };
+        set(vec![sidecar.clone(), cli.clone(), mcp.clone(), mcp_kid.clone()]);
+        assert_eq!(guard.agent_work("s1"), None, "only the engine and an MCP server");
+        // A background Bash call: Claude Code's shell, and what it runs.
+        set(vec![sidecar.clone(), cli.clone(), mcp.clone(), with_cmd(14, 11, "/bin/bash -c -l source snapshot.sh && eval 'gh pr checks --watch'", false), with_cmd(15, 14, "gh pr checks --watch", false)]);
+        assert!(guard.agent_work("s1").is_some_and(|w| w.contains("pid 14") || w.contains("pid 15")));
+        // Run by the sidecar itself.
+        set(vec![sidecar.clone(), cli.clone(), with_cmd(16, 10, "sleep 30", false)]);
+        assert!(guard.agent_work("s1").is_some());
+        // The terminal's shells are not the engine's to keep.
+        set(vec![sidecar, cli, ProcRow { origin: "terminal", ..with_cmd(17, 1, "bash -c x", false) }]);
+        assert_eq!(guard.agent_work("s1"), None);
+        assert!(is_shell_command("zsh -lc 'echo'"));
+        assert!(!is_shell_command("bash script.sh --color"));
     }
 
     #[test]

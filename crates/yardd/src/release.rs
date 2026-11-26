@@ -41,18 +41,47 @@ pub fn soon(app: &App, sid: &str) {
     app.release_now.notify_one();
 }
 
+/// Work the engine itself keeps for later, by the tools the agent called
+/// (the sidecar flags them `keepsAlive`, see sidecar/yard-claude/src/tools.ts):
+/// a wakeup (`ScheduleWakeup`), a `Monitor` or a background command started
+/// in the latest turn holds the engine until a later turn ends without one.
+/// A cron job (`CronCreate`) lives in the process until `CronDelete`
+/// (`endsCron`), whatever turns come after.
+pub fn keeps_alive(events: &[serde_json::Value]) -> Option<&str> {
+    let start = events.iter().rposition(|e| e["type"] == "turn_started").unwrap_or(0);
+    let latest = events[start..].iter().filter(|e| e["type"] == "tool_started").find_map(|e| e["keepsAlive"].as_str().filter(|k| *k != "cron"));
+    if latest.is_some() {
+        return latest;
+    }
+    let cron = events.iter().rev().find(|e| e["type"] == "tool_started" && (e["keepsAlive"] == "cron" || e["endsCron"] == true));
+    cron.and_then(|e| e["keepsAlive"].as_str())
+}
+
 /// Sessions whose engine is due to be released, with their engine.
 fn due(app: &App, window_ms: u64) -> Vec<(String, String)> {
     let now = now_ms();
-    let map = app.sessions.lock().unwrap();
-    map.values()
-        .filter(|s| !crate::private::internal(&s.meta.id) && quiet(&s.meta))
-        .filter(|s| matches!(s.backend, Backend::Codex { turn_id: None, .. } | Backend::Claude { .. }))
-        .filter(|s| {
-            let ended_run = s.meta.automation.is_some() && s.meta.finished_at.is_some();
-            ended_run || now.saturating_sub(s.active_at) >= window_ms
-        })
-        .map(|s| (s.meta.id.clone(), s.meta.engine.clone()))
+    let candidates: Vec<(String, String, u64)> = {
+        let map = app.sessions.lock().unwrap();
+        map.values()
+            .filter(|s| !crate::private::internal(&s.meta.id) && quiet(&s.meta))
+            .filter(|s| matches!(s.backend, Backend::Codex { turn_id: None, .. } | Backend::Claude { .. }))
+            .filter(|s| {
+                let ended_run = s.meta.automation.is_some() && s.meta.finished_at.is_some();
+                ended_run || now.saturating_sub(s.active_at) >= window_ms
+            })
+            .filter(|s| keeps_alive(&s.events).is_none())
+            .map(|s| (s.meta.id.clone(), s.meta.engine.clone(), s.active_at))
+            .collect()
+    };
+    // Stopping a Claude sidecar ends every process under it: not while the
+    // agent left one running, judged on a sample taken after the session's
+    // last activity. Codex's shared app-server cannot tell whose a process
+    // is once its command item has ended, so Codex sessions are not checked.
+    let sampled = app.guard.sampled_at();
+    candidates
+        .into_iter()
+        .filter(|(sid, engine, active)| engine != "claude" || (sampled > *active && app.guard.agent_work(sid).is_none()))
+        .map(|(sid, engine, _)| (sid, engine))
         .collect()
 }
 

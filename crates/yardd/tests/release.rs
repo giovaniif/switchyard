@@ -30,7 +30,7 @@ fn loaded(sb: &Sandbox) -> Option<usize> {
 }
 
 fn alive(pid: &str) -> bool {
-    std::process::Command::new("kill").args(["-0", pid]).status().is_ok_and(|s| s.success())
+    std::process::Command::new("kill").args(["-0", pid]).stderr(std::process::Stdio::null()).status().is_ok_and(|s| s.success())
 }
 
 fn sidecar_starts(sb: &Sandbox) -> Vec<String> {
@@ -264,6 +264,50 @@ async fn a_claude_session_with_subagents_at_work_keeps_its_sidecar() {
     let pid = pid_of(&sidecar_starts(&sb)[0]);
     tokio::time::sleep(Duration::from_millis(1500)).await;
     assert!(alive(&pid), "the sidecar was stopped while its subagents worked");
+}
+
+/// Long enough for the window and a process sample after it (every 3 s).
+const PAST_A_SAMPLE: Duration = Duration::from_millis(4500);
+
+#[tokio::test]
+async fn a_claude_session_with_a_process_left_running_keeps_its_sidecar() {
+    let sb = Sandbox::new("release-claude-proc");
+    let d = sb.start_with(&[("YARD_RELEASE_IDLE_MS", "300"), ("YARD_SIDECAR", &sidecar())]);
+    let mut c = d.client().await;
+    // Its subagent reports within the turn, but a `sleep 30` stays under the sidecar.
+    let sid = c.create(&sb.folder("proj"), "[subagent] TEST-survey", json!({ "engine": "claude", "model": "claude-haiku-5-5", "effort": "low" })).await;
+    c.wait_turn_done(&sid, 0).await;
+    let pid = pid_of(&sidecar_starts(&sb)[0]);
+    tokio::time::sleep(PAST_A_SAMPLE).await;
+    assert!(alive(&pid), "the sidecar was stopped with the agent's process still running");
+}
+
+#[tokio::test]
+async fn a_claude_session_waiting_on_a_wakeup_or_a_cron_job_keeps_its_sidecar() {
+    let sb = Sandbox::new("release-claude-keep");
+    let d = sb.start_with(&[("YARD_RELEASE_IDLE_MS", "300"), ("YARD_SIDECAR", &sidecar())]);
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "[wakeup] TEST-check CI in ten minutes", json!({ "engine": "claude", "model": "claude-haiku-5-5", "effort": "low" })).await;
+    c.wait_turn_done(&sid, 0).await;
+    let pid = pid_of(&sidecar_starts(&sb)[0]);
+    let keeps = c.events(&sid).into_iter().find(|e| e["type"] == "tool_started").unwrap();
+    assert_eq!(keeps["keepsAlive"], "wakeup", "{keeps}");
+    tokio::time::sleep(PAST_A_SAMPLE).await;
+    assert!(alive(&pid), "the sidecar was stopped before its wakeup");
+
+    // A cron job holds it across later turns, until it is deleted.
+    for text in ["[cron] TEST-poll every five minutes", "TEST-anything else"] {
+        let seq = c.next_seq(&sid);
+        c.send(json!({ "op": "session.send", "sessionId": sid, "text": text })).await;
+        c.wait_turn_done(&sid, seq).await;
+        tokio::time::sleep(PAST_A_SAMPLE).await;
+        assert!(alive(&pid), "the sidecar was stopped with a cron job (after `{text}`)");
+    }
+    let seq = c.next_seq(&sid);
+    c.send(json!({ "op": "session.send", "sessionId": sid, "text": "[cron-delete] TEST-stop polling" })).await;
+    c.wait_turn_done(&sid, seq).await;
+    until("the sidecar to be released once nothing is scheduled", 15, || !alive(&pid)).await;
+    assert_eq!(sidecar_starts(&sb).len(), 1, "one sidecar throughout");
 }
 
 #[tokio::test]
