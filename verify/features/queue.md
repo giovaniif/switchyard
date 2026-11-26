@@ -83,3 +83,9 @@ yv drive hosts --steps '[{"expect":{"css":".host-summary .host-state-busy"},"tex
 
 ## Gotchas
 - Queued sessions survive a restart and keep their prompt.
+- One `drive` with both viewports runs them one after the other against the
+  same daemon. A step that changes the session (Start anyway, Send) leaves the
+  second viewport looking at a started session, so its `.queued-line` step
+  times out. A recipe or proof that starts a queued session makes one session
+  per viewport and runs one `--viewport` drive for each (patrol 2026-11-26,
+  #491's head proof failed that way at desktop).
