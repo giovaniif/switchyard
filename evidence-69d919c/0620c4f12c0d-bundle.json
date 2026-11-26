@@ -1,0 +1,202 @@
+{
+  "v": 1,
+  "claim": "A queued session's message box reads 'Reply' and accepts text, but Send is disabled and Enter does nothing, with no reason shown (yardd refuses messages to a queued session until it starts).",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-cf73",
+  "base": "a7fa1b4575f0aeb044a8146ff2cfec5f7552a80f",
+  "head": "69d919c6ca6d06d7eaed68a47a406d6530aab29d",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/queue.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T11:06:36.994Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "7f4a1d762139e090660380f2fd1afda96137bdea",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-queued-composer-hint-base.json",
+          "sha256": "e0cdd9e26dd509f672694ed406b159f931050dcbcd1aff7292d696e912b9514d"
+        },
+        {
+          "path": "p1-base-queued-composer-mobile.png",
+          "sha256": "efc1794c504ac789b684c051b09683856012ff68564baa13e4d09b5c486407d2"
+        },
+        {
+          "path": "p1-base-queued-composer-desktop.png",
+          "sha256": "1041d5ecb7ebef170c4479d535f6e2cc6f1baff56b918936227ee109872e0c71"
+        }
+      ],
+      "addedAt": "2026-11-26T11:06:50.171Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "7f4a1d762139e090660380f2fd1afda96137bdea",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "4d1e05ed1c03d74c399808c41bc4972e996ad27287618f2dc9d66283977d0663"
+        }
+      ],
+      "addedAt": "2026-11-26T11:06:50.216Z",
+      "cmd": "verify/yv map run queue --recipe queued-session-composer-says-start-first",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "69d919c6ca6d06d7eaed68a47a406d6530aab29d",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-queued-composer-hint-head-mobile.json",
+          "sha256": "04171687add927bca0db53c5e13027f708be390123ccf8689f43cf9ff4401170"
+        },
+        {
+          "path": "p3-head-queued-empty-mobile.png",
+          "sha256": "72feb459bcad15f92237a46a1e76fce1162dae485f368a4e5542826a410b9f9a"
+        },
+        {
+          "path": "p3-head-queued-composer-mobile.png",
+          "sha256": "9c0cdc368cf32014b7582c43f867d2158266add9133b1611ea2be223f71392e7"
+        },
+        {
+          "path": "p3-head-started-mobile.png",
+          "sha256": "ac860e988715c3bf6179c264fe1bf795a47e39652b1d6afb6861b305f15ea8c1"
+        }
+      ],
+      "addedAt": "2026-11-26T11:07:26.965Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "69d919c6ca6d06d7eaed68a47a406d6530aab29d",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-queued-composer-hint-head-desktop.json",
+          "sha256": "d721dc67bc9bb99a906865b0e6547abde7fb395739c9b8303ec601662bfe063e"
+        },
+        {
+          "path": "p4-head-queued-empty-desktop.png",
+          "sha256": "e33c10dfcdfe292c6849e533d40bb2126144ddcc355bc91a9be16fd1725981c5"
+        },
+        {
+          "path": "p4-head-queued-composer-desktop.png",
+          "sha256": "0fec6f4042351b100bc3fdee83b8979fd1648611f3c7dd3ded6885b64bc6b8e7"
+        },
+        {
+          "path": "p4-head-started-desktop.png",
+          "sha256": "48c633f9cb43d32b1c137d64670dedb884e106ce2e4c2dd3a74df527ab9e52d7"
+        }
+      ],
+      "addedAt": "2026-11-26T11:07:32.377Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "69d919c6ca6d06d7eaed68a47a406d6530aab29d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "f1ce24c3719e5d882240912ae43cb2a20e9e400f03bf03315a6e7d44706885b4"
+        }
+      ],
+      "addedAt": "2026-11-26T11:07:43.120Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "69d919c6ca6d06d7eaed68a47a406d6530aab29d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "580f24531d53157d10bc55fa9c148ee55389eef630696fd18a4c4e3f09d5201e"
+        }
+      ],
+      "addedAt": "2026-11-26T11:07:43.575Z",
+      "cmd": "verify/yv map run queue --recipe queued-session-composer-says-start-first",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "69d919c6ca6d06d7eaed68a47a406d6530aab29d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "be64b55271ef731849cd4fd8bcb80fe9ac2fec5e94cbe64e01cde33b6a76f8fa"
+        }
+      ],
+      "addedAt": "2026-11-26T11:07:49.781Z",
+      "cmd": "verify/yv design-check --base a7fa1b4575f0",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "69d919c6ca6d06d7eaed68a47a406d6530aab29d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-queue.json",
+          "sha256": "6971b30479b88a23f6602cb7a3d973e47065ce75cd3bb641db7ddcfab4a40386"
+        }
+      ],
+      "addedAt": "2026-11-26T11:07:52.872Z",
+      "cmd": "verify/yv map run queue",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "queue/new-session-queues",
+        "queue/start-anyway",
+        "queue/double-click-start-anyway",
+        "queue/agent-queues-and-starts-anyway",
+        "queue/queued-session-composer-says-start-first",
+        "queue/hosts-page-shows-pressure"
+      ]
+    }
+  ]
+}

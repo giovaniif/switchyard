@@ -1,0 +1,72 @@
+{
+  "command": "drive",
+  "ok": true,
+  "route": "session:s1a2178946d32",
+  "build": {
+    "sha": "7f4a1d762139e090660380f2fd1afda96137bdea",
+    "short": "7f4a1d7",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T11:06:42.060Z"
+  },
+  "dir": ".verify/evidence/queued-composer-hint-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3360,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/queued-composer-hint-base/base-queued-composer-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "document.querySelector(\"textarea[aria-label=Message]\").placeholder",
+          "value": "Reply"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3903,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/queued-composer-hint-base/base-queued-composer-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 5,
+          "eval": "document.querySelector(\"textarea[aria-label=Message]\").placeholder",
+          "value": "Reply"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

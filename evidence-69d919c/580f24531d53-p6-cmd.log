@@ -1,0 +1,26 @@
+$ verify/yv map run queue --recipe queued-session-composer-says-start-first
+# exit 0 after 6159 ms at 69d919c6ca6d06d7eaed68a47a406d6530aab29d
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "queue",
+      "at": "2026-11-26T11:07:49.730Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "queued-session-composer-says-start-first",
+          "status": "pass",
+          "ms": 5786
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+

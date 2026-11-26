@@ -1,0 +1,45 @@
+$ verify/yv map run queue --recipe queued-session-composer-says-start-first
+# exit 1 after 25802 ms at 7f4a1d762139e090660380f2fd1afda96137bdea
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "queue",
+      "at": "2026-11-26T11:07:16.014Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "queued-session-composer-says-start-first",
+          "status": "fail",
+          "ms": 25422,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 1 {\"expect\":\"placeholder:Queued: Start anyway to reply\"}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-cf73/.verify/drives/2026-11-26T11-06-50-926Z/fail-mobile-step1.png and the aria snapshot"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 1 {\"expect\":\"placeholder:Queued: Start anyway to reply\"}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-cf73/.verify/drives/2026-11-26T11-06-50-926Z/fail-desktop-step1.png and the aria snapshot"
+            }
+          ],
+          "tail": "-patrol-2026-11-26-cf73/.verify/drives/2026-11-26T11-06-50-926Z/fail-desktop-step1.png\",\n        \"aria\": \"- navigation \\\"Sessions\\\":\\n  - button \\\"Go to session or page\\\": Switchyard Ctrl K\\n  - button \\\"Collapse sessions sidebar\\\" [expanded]\\n  - button \\\"New session\\\"\\n  - button \\\"Agents\\\"\\n  - button \\\"Automations\\\"\\n  - button \\\"Connectors\\\"\\n  - button \\\"Import\\\"\\n  - button \\\"Settings\\\"\\n  - button \\\"TEST-queued reply · Fake Fast · Queued\\\"\\n  - button \\\"Archive TEST-queued reply\\\"\\n  - button \\\"Actions for TEST-queued reply\\\"\\n  - button \\\"Subscription usage\\\": Usage 47% used\\n  - button \\\"iso-host 6% · 67%\\\"\\n- separator \\\"Resize the sessions sidebar\\\"\\n- main:\\n  - heading \\\"TEST-queued reply\\\" [level=1]\\n  - code: yard/test-queued-reply-7141\\n  - button \\\"Set up iPhone app\\\"\\n  - button \\\"Collapse workspace\\\" [expanded]\\n  - button \\\"Delete\\\"\\n  - text: \\\"TEST-queued reply Queued: pressure is forced on (YARD_FORCE_PRESSURE=1).\\\"\\n  - button \\\"Start anyway\\\"\\n  - textbox \\\"Message\\\":\\n    - /placeholder: Reply\\n  - button \\\"Attach files\\\"\\n  - button \\\"Dictate\\\"\\n  - button \\\"Voice mode\\\"\\n  - button \\\"Model Fake Fast\\\": Fake Fast\\n  - 'button \\\"Account: Codex, Default\\\"'\\n  - button \\\"Effort Low\\\": Low\\n  - button \\\"Ask first\\\"\\n  - button \\\"Send\\\" [disabled]\\n- region \\\"Workspace\\\":\\n  - separator \\\"Resize the workspace pane\\\"\\n  - button \\\"Terminal\\\" [pressed]\\n  - button \\\"Subagents\\\"\\n  - button \\\"Processes\\\"\\n  - tablist \\\"Terminals\\\":\\n    - tab \\\"1\\\" [selected]\\n    - button \\\"Close terminal\\\"\\n    - button \\\"New terminal\\\"\\n    - button \\\"Attach\\\"\\n  - textbox \\\"Terminal input\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 1 {\\\"expect\\\":\\\"placeholder:Queued: Start anyway to reply\\\"}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-cf73/.verify/drives/2026-11-26T11-06-50-926Z/fail-mobile-step1.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 1 {\\\"expect\\\":\\\"placeholder:Queued: Start anyway to reply\\\"}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-cf73/.verify/drives/2026-11-26T11-06-50-926Z/fail-desktop-step1.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "queue/queued-session-composer-says-start-first",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

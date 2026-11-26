@@ -1,0 +1,54 @@
+{
+  "command": "drive",
+  "ok": true,
+  "route": "session:s1a21789f5d34",
+  "build": {
+    "sha": "69d919c6ca6d06d7eaed68a47a406d6530aab29d",
+    "short": "69d919c",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T11:07:20.984Z"
+  },
+  "dir": ".verify/evidence/queued-composer-hint-head",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4742,
+      "steps": 12,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/queued-composer-hint-head/head-queued-empty-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/queued-composer-hint-head/head-queued-composer-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/queued-composer-hint-head/head-started-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
