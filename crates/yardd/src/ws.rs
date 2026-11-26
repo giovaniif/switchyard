@@ -194,6 +194,11 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
 /// waiting on that one request (an upload) can tell it failed.
 fn error_reply(msg: &Value, e: &anyhow::Error) -> String {
     let mut reply = json!({ "op": "error", "message": format!("{e:#}"), "for": msg["op"] });
+    // A hand-over refusal says which it is, so a hub never reads it from
+    // the wording (`agents::Refusal`).
+    if let Some(code) = crate::agents::refusal_code(e) {
+        reply["code"] = json!(code);
+    }
     if matches!(msg["op"].as_str(), Some("term.open" | "term.new")) {
         reply["sessionId"] = msg["sessionId"].clone();
     }

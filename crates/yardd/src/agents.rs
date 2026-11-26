@@ -898,7 +898,8 @@ fn online(app: &App, host: &str, offline: impl FnOnce(&str) -> String) -> Result
 /// agents does not know the ops: say what to do about it.
 async fn call(app: &Arc<App>, host: &str, name: &str, msg: Value) -> Result<Value> {
     match crate::remote::request(app, host, msg).await {
-        Err(e) if format!("{e:#}").contains("unknown op") => {
+        // Not a refusal: those may name an agent called anything.
+        Err(e) if refusal_code(&e).is_none() && format!("{e:#}").contains("unknown op") => {
             bail!("{name} runs an older Switchyard that cannot run agents. Use Update Switchyard on its card in Hosts, then try again.")
         }
         other => other,
@@ -2081,16 +2082,45 @@ pub fn window_may_send(op: &str) -> bool {
     !HAND_OVER_OPS.contains(&op) && !op.starts_with("agent.hosted.") && !op.starts_with("agent.hub.")
 }
 
-/// Said while the agent's conversation has a turn going: an answer it owes
-/// goes back to where it was asked, and a tool's write lands on the record
-/// that stays. A hand-over waits for it and is tried again.
-const BUSY: &str = "is in the middle of a turn";
-/// Said by a host still letting go of an earlier copy: tried again.
-const LETTING_GO: &str = "is still letting go of";
-/// Said for a hand-over whose agent was deleted on the new host since.
-const DELETED: &str = "was deleted on";
-/// Said for an agent that is someone else's: waiting changes nothing.
-const NOT_YOURS: [&str; 2] = ["for another Mac", "already has an agent of its own"];
+/// A hand-over refusal the other side acts on, told apart by its `code`
+/// (sent beside the message by `ws::error_reply`, read back by
+/// `remote::request`), never by its wording, which names the agent: an
+/// agent called "… was deleted on …" must not read as deleted.
+#[derive(Debug)]
+pub struct Refusal {
+    pub code: String,
+    pub message: String,
+}
+
+impl std::fmt::Display for Refusal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for Refusal {}
+
+/// The agent's conversation has a turn going: an answer it owes goes back
+/// to where it was asked, and a tool's write lands on the record that
+/// stays. A hand-over waits for it and is tried again.
+const BUSY: &str = "busy";
+/// A host still letting go of an earlier copy: tried again.
+const LETTING_GO: &str = "letting_go";
+/// The agent of this hand-over was deleted on the new host since.
+const DELETED: &str = "deleted";
+/// An agent that is someone else's: waiting changes nothing.
+const NOT_YOURS: &str = "not_yours";
+
+fn refuse(code: &str, message: String) -> anyhow::Error {
+    Refusal { code: code.to_string(), message }.into()
+}
+
+/// The code of a refusal (`Refusal`), however it was wrapped. A refusal
+/// without one (a build from before codes) is a plain failure: tried again
+/// later, never taken for a deletion.
+pub fn refusal_code(e: &anyhow::Error) -> Option<&str> {
+    e.chain().find_map(|c| c.downcast_ref::<Refusal>()).map(|r| r.code.as_str())
+}
 
 fn busy_now(app: &App, a: &Agent) -> bool {
     a.chat.as_deref().and_then(|sid| app.meta(sid)).is_some_and(|m| busy(&m.status))
@@ -2148,7 +2178,7 @@ fn adopt(app: &Arc<App>, input: &Value, slack: &Value, sender: &str, transfer: &
     }
     let here = crate::hosts::local_name();
     if app.agents.ended.lock().unwrap().iter().any(|t| t == transfer) {
-        bail!("{} {DELETED} {here}. Nothing was changed.", a.name);
+        return Err(refuse(DELETED, format!("{} was deleted on {here}. Nothing was changed.", a.name)));
     }
     let old = app.agents.get(&a.id);
     if let Some(o) = &old {
@@ -2161,16 +2191,16 @@ fn adopt(app: &Arc<App>, input: &Value, slack: &Value, sender: &str, transfer: &
             return Ok(o.clone());
         }
         if o.hosted && !o.hub.is_empty() && !sender.is_empty() && o.hub != sender {
-            bail!("{here} runs {} for another Mac, which keeps its record. Nothing was changed.", o.name);
+            return Err(refuse(NOT_YOURS, format!("{here} runs {} for another Mac, which keeps its record. Nothing was changed.", o.name)));
         }
         if !o.hosted && !o.leaving.is_empty() {
-            bail!("{here} {LETTING_GO} its copy of {}. Try again in a moment.", o.name);
+            return Err(refuse(LETTING_GO, format!("{here} is still letting go of its copy of {}. Try again in a moment.", o.name)));
         }
         if !o.hosted {
-            bail!("{here} already has an agent of its own with this id ({}). Nothing was changed on either side.", o.name);
+            return Err(refuse(NOT_YOURS, format!("{here} already has an agent of its own with this id ({}). Nothing was changed on either side.", o.name)));
         }
         if busy_now(app, o) {
-            bail!("{} {BUSY} on {here}. It moves once the turn ends.", o.name);
+            return Err(refuse(BUSY, format!("{} is in the middle of a turn on {here}. It moves once the turn ends.", o.name)));
         }
     }
     check_fields(&mut a)?;
@@ -2237,7 +2267,7 @@ fn adopt(app: &Arc<App>, input: &Value, slack: &Value, sender: &str, transfer: &
 fn export(app: &Arc<App>, id: &str, transfer: &str) -> Result<Value> {
     let a = app.agents.get(id).filter(|a| !a.hosted).context("no such agent")?;
     if busy_now(app, &a) {
-        bail!("{} {BUSY}. Move it once the turn ends.", a.name);
+        return Err(refuse(BUSY, format!("{} is in the middle of a turn. Move it once the turn ends.", a.name)));
     }
     // Leaving by another hand-over: that one finishes or is abandoned first,
     // or its release (or abandon) would no longer find the copy it names.
@@ -2270,7 +2300,7 @@ fn release(app: &Arc<App>, id: &str, transfer: &str) -> Result<()> {
         return Ok(());
     }
     if busy_now(app, &a) {
-        bail!("{} {BUSY}. It lets go once the turn ends.", a.name);
+        return Err(refuse(BUSY, format!("{} is in the middle of a turn. It lets go once the turn ends.", a.name)));
     }
     // Backed up when it started leaving (`export`, `transfer`, `migrate`).
     crate::slack::release_app(app, id)?;
@@ -2371,7 +2401,7 @@ pub async fn migrate(app: &Arc<App>, host: &str, now: bool) {
                 retry.remove(&a.id);
                 eprintln!("yardd: {} now lives on its host {host}", a.name);
             }
-            Err(e) if format!("{e:#}").contains(DELETED) => {
+            Err(e) if refusal_code(&e) == Some(DELETED) => {
                 // The host deleted the agent this record was handed to: this
                 // stale copy goes too.
                 drop(retry);
@@ -2382,12 +2412,13 @@ pub async fn migrate(app: &Arc<App>, host: &str, now: bool) {
             }
             Err(e) => {
                 let why = format!("{e:#}");
+                let code = refusal_code(&e);
                 // The host said no, so it surely did not take it: the record
                 // is this yardd's alone until the next try, editable and
                 // deletable (a turn its hidden copy runs saves its memory
                 // here). A lost answer, or a step after the adopt, keeps it
                 // leaving.
-                if [BUSY, LETTING_GO].iter().chain(NOT_YOURS.iter()).any(|k| why.contains(k)) {
+                if code.is_some_and(|c| [BUSY, LETTING_GO, NOT_YOURS].contains(&c)) {
                     let _ = app.agents.try_change(|list| {
                         if let Some(x) = list.iter_mut().find(|x| x.id == a.id && x.leaving == transfer) {
                             x.leaving.clear();
@@ -2395,7 +2426,7 @@ pub async fn migrate(app: &Arc<App>, host: &str, now: bool) {
                     });
                 }
                 let r = retry.entry(a.id.clone()).or_default();
-                if NOT_YOURS.iter().any(|k| why.contains(k)) {
+                if code == Some(NOT_YOURS) {
                     r.refused = Some(why.clone());
                 } else {
                     r.refused = None;
@@ -2627,7 +2658,7 @@ async fn transfer(app: &Arc<App>, input: &Value) -> Result<Option<Value>> {
     match &from {
         From::Here(a) | From::Kept(a) => {
             if busy_now(app, a) {
-                bail!("{} {BUSY}. Move it once the turn ends.", a.name);
+                return Err(refuse(BUSY, format!("{} is in the middle of a turn. Move it once the turn ends.", a.name)));
             }
             if moving_now(app, a) {
                 bail!("{} is moving to another host. Move it again once it gets there.", a.name);
@@ -2727,6 +2758,13 @@ mod tests {
 
     fn agent() -> Agent {
         serde_json::from_value(json!({ "id": "g1", "name": "Reviewer", "engine": "codex", "createdAt": 1, "updatedAt": 1 })).unwrap()
+    }
+
+    #[test]
+    fn a_refusal_keeps_its_code_through_context_and_a_plain_error_has_none() {
+        let e = refuse(BUSY, "TEST-was deleted on box is in the middle of a turn.".into()).context("box said no");
+        assert_eq!(refusal_code(&e), Some(BUSY));
+        assert_eq!(refusal_code(&anyhow::anyhow!("TEST-x was deleted on box. Nothing was changed.")), None);
     }
 
     #[test]

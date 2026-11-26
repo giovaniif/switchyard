@@ -687,6 +687,11 @@ the composer and session view in `App.tsx`.
     answer it owes goes back where it was asked), or while it is still
     letting go of an earlier copy; refused for good for a hidden copy
     another hub put there, or an agent of its own from another hand-over.
+    Each refusal carries a `code` beside its message (`busy`, `letting_go`,
+    `not_yours`, `deleted`; `agents::Refusal`, sent by `ws::error_reply`,
+    read back by `remote::request`), and the hub acts on the code only:
+    the message names the agent, so its wording could misfire. A refusal
+    without a code is a plain failure, tried again later.
     The same transfer sent again changes nothing. Each side backs up
     `agents.json` and `slack.json` (`.bak-<time>`, the newest ten kept;
     `slack.json`'s hold tokens) right before its first change and saves
@@ -1115,7 +1120,8 @@ the composer and session view in `App.tsx`.
   window refused the hand-over ops even through the hub, fields this build
   does not know kept through saves and moves, an agent deleted on its host
   mid-hand-over staying deleted (release failing, or the adopt answer
-  lost), a lost export answer abandoned, an agent's own app moving whole and
+  lost), a refusal told by its code, never by the agent's name (one named
+  "… was deleted on …" refused as busy keeps its record and app), a lost export answer abandoned, an agent's own app moving whole and
   once with no thread, a lost adopt answer between hosts found
   and finished, one backup per hand-over however often it is tried, an
   adopt whose app cannot be kept keeping nothing, a second export refused

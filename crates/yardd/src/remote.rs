@@ -1230,7 +1230,14 @@ pub async fn request(app: &Arc<App>, host: &str, mut msg: Value) -> Result<Value
             if let Message::Text(text) = frame? {
                 let reply: Value = serde_json::from_str(&text)?;
                 if reply["ref"] == reference {
-                    if reply["op"] == "error" { bail!("{}", reply["message"].as_str().unwrap_or("host request failed")); }
+                    if reply["op"] == "error" {
+                        let message = reply["message"].as_str().unwrap_or("host request failed").to_string();
+                        // A hand-over refusal keeps its code (`agents::Refusal`).
+                        if let Some(code) = reply["code"].as_str() {
+                            return Err(crate::agents::Refusal { code: code.to_string(), message }.into());
+                        }
+                        bail!("{message}");
+                    }
                     return Ok(reply);
                 }
             }
