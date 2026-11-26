@@ -639,10 +639,10 @@ async fn a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely() {
     assert_eq!(there["allowed"], json!([{ "id": "UOWNER", "name": "TEST-Owner" }]));
     let left = saved_slack(&hub_sb);
     assert!(left["apps"].as_array().unwrap().is_empty(), "{left}");
-    // Every Slack thread routed to it went with it (its slack_reply posts
-    // there), the retired shared bot's too.
+    // Its Slack threads are this host's and do not travel: the Mac drops
+    // them (they point at nothing here now), and the server starts afresh.
     assert!(left["threads"].as_array().unwrap().is_empty(), "{left}");
-    assert_eq!(there["threads"], json!([{ "key": "T1/C1/1.0", "agent": "g-oncall", "at": 1, "app": true, "place": "#ops" }, { "key": "T1/C2/2.0", "agent": "g-oncall", "at": 1, "app": false, "place": "#dev" }]));
+    assert!(there["threads"].as_array().map_or(true, |l| l.is_empty()), "{there}");
     assert!(backups(&hub_sb, "slack.json") >= 1);
     // The Mac backed up before its first change: its oldest backup is the file as it was.
     let first = oldest_backup(&hub_sb, "slack.json");
@@ -1284,8 +1284,9 @@ async fn an_agents_slack_app_moves_between_hosts_whole_and_once() {
     let mut c = hub.client().await;
     ready(&mut c).await;
     let host = add_remote(&mut c, &remote, "TEST-box").await;
-    // The box owns an agent with its own app: a channel it watches, who it
-    // may @mention, and a thread it answered in.
+    // The box owns an agent with its own app: a channel it watches and who
+    // it may @mention. A thread sent along is not taken: threads are each
+    // host's own.
     let mut r = remote.client().await;
     ready(&mut r).await;
     let from = r.mark();
@@ -1301,20 +1302,21 @@ async fn an_agents_slack_app_moves_between_hosts_whole_and_once() {
     c.wait_for("the hub lists it", |m| (m["op"] == "agents" || m["op"] == "snapshot") && m["agents"].as_array().unwrap().iter().any(|a| a["id"] == far.as_str())).await;
     let apps_of = |sb: &Sandbox| saved_slack(sb)["apps"].as_array().cloned().unwrap_or_default().into_iter().filter(|a| a["agent"] == "g-watch").collect::<Vec<_>>();
     let threads_of = |sb: &Sandbox| saved_slack(sb)["threads"].as_array().cloned().unwrap_or_default().into_iter().filter(|l| l["agent"] == "g-watch").count();
+    assert_eq!(threads_of(&remote_sb), 0);
     // Here: the app whole and once; the box keeps none of it.
     save(&mut c, json!({ "id": far, "host": "local" })).await.unwrap();
     eventually("the box let go", || !saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-watch") && apps_of(&remote_sb).is_empty()).await;
     let here = apps_of(&hub_sb);
     assert_eq!(here.len(), 1, "{here:?}");
     assert_eq!((here[0]["watched"].clone(), here[0]["mentions"].clone()), (app["watched"].clone(), app["mentions"].clone()));
-    assert_eq!((threads_of(&hub_sb), threads_of(&remote_sb)), (1, 0));
+    assert_eq!((threads_of(&hub_sb), threads_of(&remote_sb)), (0, 0));
     // And back: the same, the other way.
     save(&mut c, json!({ "id": "g-watch", "host": host })).await.unwrap();
     eventually("the hub let go", || !saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-watch") && apps_of(&hub_sb).is_empty()).await;
     let there = apps_of(&remote_sb);
     assert_eq!(there.len(), 1, "{there:?}");
     assert_eq!(there[0]["watched"], app["watched"]);
-    assert_eq!((threads_of(&hub_sb), threads_of(&remote_sb)), (0, 1));
+    assert_eq!((threads_of(&hub_sb), threads_of(&remote_sb)), (0, 0));
 }
 
 #[tokio::test]
