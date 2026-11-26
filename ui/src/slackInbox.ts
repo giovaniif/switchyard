@@ -85,6 +85,35 @@ export function mentionQuery(text: string, caret: number): string | null {
   return m ? m[1].toLowerCase() : null;
 }
 
+/** Agents offered for a typed `@query`: the one whose handle it is first
+ *  (so the highlight sits on a mention typed in full), then those whose
+ *  handle or name starts with it, then any that contain it. */
+export function suggestAgents(agents: CallableAgent[], query: string): CallableAgent[] {
+  const fields = (a: CallableAgent) => [a.handle, a.name.toLowerCase()];
+  const rank = (a: CallableAgent) => (a.handle === query ? 0 : fields(a).some((f) => f.startsWith(query)) ? 1 : 2);
+  return agents.filter((a) => fields(a).some((f) => f.includes(query))).sort((a, b) => rank(a) - rank(b));
+}
+
+/** What a key does in the reply box, the way Slack's own picker works: with
+ *  the @ list open, Up and Down move the highlight round the ends, Enter or
+ *  Tab writes the highlighted handle and Escape closes the list. Enter sends
+ *  when no list is open, or when what is typed already is the highlighted
+ *  handle (the mention is complete). null: the textarea's own key (Shift+Enter
+ *  is a new line; an IME's Enter confirms its text). */
+export type ComposerKey = { do: "move"; to: number } | { do: "pick"; agent: CallableAgent } | { do: "close" } | { do: "send" } | null;
+export function composerKey(e: { key: string; shiftKey: boolean; composing: boolean }, offered: CallableAgent[], active: number, query: string | null): ComposerKey {
+  if (e.composing) return null;
+  const enter = e.key === "Enter" && !e.shiftKey;
+  if (offered.length) {
+    const at = Math.min(active, offered.length - 1);
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") return { do: "move", to: (at + (e.key === "ArrowDown" ? 1 : offered.length - 1)) % offered.length };
+    if (e.key === "Escape") return { do: "close" };
+    if (enter && offered[at].handle === query) return { do: "send" };
+    if (enter || (e.key === "Tab" && !e.shiftKey)) return { do: "pick", agent: offered[at] };
+  }
+  return enter ? { do: "send" } : null;
+}
+
 /** The agents a message calls: each `@handle` written as a word. */
 export function calledAgents(text: string, agents: CallableAgent[]): string[] {
   return agents.filter((a) => new RegExp(`(^|[^a-z0-9._-])@${a.handle.replace(/[.]/g, "\\.")}(?![a-z0-9_-])(?!\\.[a-z0-9_-])`, "i").test(text)).map((a) => a.id);

@@ -4,13 +4,13 @@
 // threads in a pane, reactions, and a reply box that posts as him). yardd's
 // slack/inbox.rs keeps them; Slack's text is untrusted and drawn as React
 // elements only (slackText.ts).
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { SlackMessage, SlackPage as Page } from "./protocol";
 import type { Actions, Route, State } from "./store";
 import { Icon, MenuButton } from "./App";
 import { SLACK_MARK } from "./SlackSetup";
 import { parseSlack, emojiChar, type SlackNode } from "./slackText";
-import { callableAgents, calledAgents, initials, mentionQuery, pageKey, shownConversations, startsGroup, topLevel, type CallableAgent } from "./slackInbox";
+import { callableAgents, calledAgents, composerKey, initials, mentionQuery, pageKey, shownConversations, startsGroup, suggestAgents, topLevel, type CallableAgent } from "./slackInbox";
 
 const CLOSE = "M6 6l12 12M18 6L6 18";
 const ARROW_UP = "M12 19V5M5 12l7-7 7 7";
@@ -319,8 +319,19 @@ function SlackComposer({ placeholder, disabled, agents, send }: { placeholder: s
     box.current.focus();
     box.current.setSelectionRange(at, at);
   }, [text]);
+  // The @ list: its highlighted row, and the text it was closed on by Escape
+  // (it stays closed until he types).
+  const [active, setActive] = useState(0);
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const listId = useId();
   const query = agents.length ? mentionQuery(text, caret) : null;
-  const suggestions = query === null ? [] : agents.filter((a) => a.handle.includes(query) || a.name.toLowerCase().includes(query));
+  const suggestions = query === null || dismissed === text ? [] : suggestAgents(agents, query);
+  const highlighted = Math.min(active, suggestions.length - 1);
+  useEffect(() => setActive(0), [query, suggestions.length]);
+  // A long list scrolls to keep the highlighted row in sight.
+  useEffect(() => {
+    if (suggestions.length) document.getElementById(`${listId}-${highlighted}`)?.scrollIntoView({ block: "nearest" });
+  }, [listId, highlighted, suggestions.length]);
   const called = calledAgents(text, agents);
   const pick = (a: CallableAgent) => {
     const start = text.slice(0, caret).lastIndexOf("@");
@@ -343,9 +354,19 @@ function SlackComposer({ placeholder, disabled, agents, send }: { placeholder: s
   return (
     <div className="slack-compose">
       {suggestions.length > 0 && (
-        <div className="mention-list slack-mention-list" role="listbox" aria-label="Agents">
-          {suggestions.map((a) => (
-            <button key={a.id} role="option" aria-selected={false} className="picker-item menu-item" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(a)}>
+        <div className="mention-list slack-mention-list" id={listId} role="listbox" aria-label="Agents">
+          {suggestions.map((a, i) => (
+            <button
+              key={a.id}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === highlighted}
+              tabIndex={-1}
+              className={`picker-item menu-item ${i === highlighted ? "active" : ""}`}
+              // Keep the caret in the box while the pick is made.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => pick(a)}
+            >
               <strong>{a.name}</strong>
               <span className="muted small">@{a.handle}</span>
             </button>
@@ -360,16 +381,27 @@ function SlackComposer({ placeholder, disabled, agents, send }: { placeholder: s
           placeholder={disabled ? "Your Slack is not connected" : placeholder}
           value={text}
           disabled={disabled}
+          aria-autocomplete={agents.length ? "list" : undefined}
+          aria-expanded={agents.length ? suggestions.length > 0 : undefined}
+          aria-controls={suggestions.length ? listId : undefined}
+          aria-activedescendant={suggestions.length ? `${listId}-${highlighted}` : undefined}
           onChange={(e) => {
             setText(e.target.value);
             setCaret(e.target.selectionStart ?? e.target.value.length);
+            setDismissed(null);
           }}
           onSelect={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              if (suggestions.length === 1) pick(suggestions[0]);
-              else void go();
+            const k = composerKey({ key: e.key, shiftKey: e.shiftKey, composing: e.nativeEvent.isComposing }, suggestions, highlighted, query);
+            if (!k) return;
+            e.preventDefault();
+            if (k.do === "move") setActive(k.to);
+            else if (k.do === "pick") pick(k.agent);
+            else if (k.do === "send") void go();
+            else {
+              // Only the list closes, not the thread pane or the drawer behind it.
+              e.stopPropagation();
+              setDismissed(text);
             }
           }}
         />
