@@ -1,0 +1,45 @@
+$ verify/yv map run new-session --recipe long-host-name-keeps-the-host-sheet-row
+# exit 1 after 5657 ms at 385945940a73035dc5ff2cccee35abac7f1c4af9
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "new-session",
+      "at": "2026-11-26T03:26:17.436Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "long-host-name-keeps-the-host-sheet-row",
+          "status": "fail",
+          "ms": 4798,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 3 {\"eval\":\"(() => { const items = [...document.querySelectorAll(\\\".picker-item\\\")].filter(x => x.textContent.includes(\\\"fd7a\\\") || x.textContent.includes(\\\"TEST-a-long\\\")); return items.length === 2 && items.every((b) => { const r = b.getBoundingClientRect(); const svg = b.querySelector(\\\"svg\\\").getBoundingClientRect(); const aside = b.querySelector(\\\".menu-aside\\\").getBoundingClientRect(); return svg.width === Number(b.querySelector(\\\"svg\\\").getAttribute(\\\"width\\\")) && aside.right <= r.right && aside.left >= svg.right && r.height <= 44; }); })()\",\"equals\":true}: eval returned false, expected true",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-a329/.verify/drives/2026-11-26T03-26-13-181Z/fail-mobile-step3.png and the aria snapshot"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 3 {\"eval\":\"(() => { const items = [...document.querySelectorAll(\\\".picker-item\\\")].filter(x => x.textContent.includes(\\\"fd7a\\\") || x.textContent.includes(\\\"TEST-a-long\\\")); return items.length === 2 && items.every((b) => { const r = b.getBoundingClientRect(); const svg = b.querySelector(\\\"svg\\\").getBoundingClientRect(); const aside = b.querySelector(\\\".menu-aside\\\").getBoundingClientRect(); return svg.width === Number(b.querySelector(\\\"svg\\\").getAttribute(\\\"width\\\")) && aside.right <= r.right && aside.left >= svg.right && r.height <= 44; }); })()\",\"equals\":true}: eval returned false, expected true",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-a329/.verify/drives/2026-11-26T03-26-13-181Z/fail-desktop-step3.png and the aria snapshot"
+            }
+          ],
+          "tail": "=> { const items = [...document.querySelectorAll(\\\".picker-item\\\")].filter(x => x.textContent.includes(\\\"fd7a\\\") || x.textContent.includes(\\\"TEST-a-long\\\")); return items.length === 2 && items.every((b) => { const r = b.getBoundingClientRect(); const svg = b.querySelector(\\\"svg\\\").getBoundingClientRect(); const aside = b.querySelector(\\\".menu-aside\\\").getBoundingClientRect(); return svg.width === Number(b.querySelector(\\\"svg\\\").getAttribute(\\\"width\\\")) && aside.right <= r.right && aside.left >= svg.right && r.height <= 44; }); })()\",\n          \"value\": false\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 3 {\\\"eval\\\":\\\"(() => { const items = [...document.querySelectorAll(\\\\\\\".picker-item\\\\\\\")].filter(x => x.textContent.includes(\\\\\\\"fd7a\\\\\\\") || x.textContent.includes(\\\\\\\"TEST-a-long\\\\\\\")); return items.length === 2 && items.every((b) => { const r = b.getBoundingClientRect(); const svg = b.querySelector(\\\\\\\"svg\\\\\\\").getBoundingClientRect(); const aside = b.querySelector(\\\\\\\".menu-aside\\\\\\\").getBoundingClientRect(); return svg.width === Number(b.querySelector(\\\\\\\"svg\\\\\\\").getAttribute(\\\\\\\"width\\\\\\\")) && aside.right <= r.right && aside.left >= svg.right && r.height <= 44; }); })()\\\",\\\"equals\\\":true}: eval returned false, expected true\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-a329/.verify/drives/2026-11-26T03-26-13-181Z/fail-mobile-step3.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 3 {\\\"eval\\\":\\\"(() => { const items = [...document.querySelectorAll(\\\\\\\".picker-item\\\\\\\")].filter(x => x.textContent.includes(\\\\\\\"fd7a\\\\\\\") || x.textContent.includes(\\\\\\\"TEST-a-long\\\\\\\")); return items.length === 2 && items.every((b) => { const r = b.getBoundingClientRect(); const svg = b.querySelector(\\\\\\\"svg\\\\\\\").getBoundingClientRect(); const aside = b.querySelector(\\\\\\\".menu-aside\\\\\\\").getBoundingClientRect(); return svg.width === Number(b.querySelector(\\\\\\\"svg\\\\\\\").getAttribute(\\\\\\\"width\\\\\\\")) && aside.right <= r.right && aside.left >= svg.right && r.height <= 44; }); })()\\\",\\\"equals\\\":true}: eval returned false, expected true\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-a329/.verify/drives/2026-11-26T03-26-13-181Z/fail-desktop-step3.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "new-session/long-host-name-keeps-the-host-sheet-row",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

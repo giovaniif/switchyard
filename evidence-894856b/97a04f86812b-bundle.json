@@ -1,0 +1,175 @@
+{
+  "v": 1,
+  "claim": "Host picker (new session, settings defaults): a long host name (a whole IPv6 address or a 40-character name) squeezes the row's cloud icon to nothing and pushes 'unreachable' past the row's edge",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-a329",
+  "base": "979805c800f31af23b70f38700368f7e3badee97",
+  "head": "894856b509366d7082e7ac34d039822de5325ab8",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/new-session.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T03:26:00.019Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "385945940a73035dc5ff2cccee35abac7f1c4af9",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "dda07f48f86841734cfe8f5b0023b81e6a5f8f7eeebfee4794df9bf57a7920d9"
+        },
+        {
+          "path": "p1-sheet-mobile.png",
+          "sha256": "a37e0688731d29f2c9bf781b3ebd7d15caf3f4f7eef8b6e932dc7f8e8d113b37"
+        },
+        {
+          "path": "p1-fail-mobile-step4.png",
+          "sha256": "a37e0688731d29f2c9bf781b3ebd7d15caf3f4f7eef8b6e932dc7f8e8d113b37"
+        },
+        {
+          "path": "p1-sheet-desktop.png",
+          "sha256": "5360c9f9104707f411a31fa4b3b8dfa0475531ee248165dc1417151e108b671d"
+        },
+        {
+          "path": "p1-fail-desktop-step4.png",
+          "sha256": "5360c9f9104707f411a31fa4b3b8dfa0475531ee248165dc1417151e108b671d"
+        }
+      ],
+      "addedAt": "2026-11-26T03:26:11.736Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "385945940a73035dc5ff2cccee35abac7f1c4af9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "1ce78b5dedf8bc786732581978fbf44693c4f77a6c00ec89f5e4510fda4c596c"
+        }
+      ],
+      "addedAt": "2026-11-26T03:26:11.783Z",
+      "cmd": "verify/yv map run new-session --recipe long-host-name-keeps-the-host-sheet-row",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "894856b509366d7082e7ac34d039822de5325ab8",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "ef9d5288a245a5ea121393e20776a2f7c39c38eb4f1330ea8f342d7eb5d3120a"
+        },
+        {
+          "path": "p3-sheet-mobile.png",
+          "sha256": "2b92db3e5716ecd500e0a7c6a6cad85d6243703b721e4134887963828325d4bb"
+        },
+        {
+          "path": "p3-sheet-desktop.png",
+          "sha256": "667d75c0d2c7c8f961a17a2a597b7bb7d6b5751a81c1c5b509c9d702407a6bb7"
+        }
+      ],
+      "addedAt": "2026-11-26T03:26:27.837Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "894856b509366d7082e7ac34d039822de5325ab8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "3cace2f94620b0ad7c52079a4546dfc6f746530b1cb4c3286e079f73129e9c4e"
+        }
+      ],
+      "addedAt": "2026-11-26T03:26:27.881Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "894856b509366d7082e7ac34d039822de5325ab8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "25bbfe4897802028a641768c94552ef584676f62bb5ba7eebc7251984828a009"
+        }
+      ],
+      "addedAt": "2026-11-26T03:26:28.332Z",
+      "cmd": "verify/yv design-check --base 979805c800f3",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "894856b509366d7082e7ac34d039822de5325ab8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-new-session.json",
+          "sha256": "84872fe6649d2906b79fa057e08a561f4d08640b8503aa734334f449d838b064"
+        }
+      ],
+      "addedAt": "2026-11-26T03:26:31.868Z",
+      "cmd": "verify/yv map run new-session",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "new-session/page-renders",
+        "new-session/send-creates-session",
+        "new-session/long-prompt-titled-at-a-word",
+        "new-session/long-second-word-is-cut-not-dropped",
+        "new-session/empty-prompt-cannot-send",
+        "new-session/worktree-note",
+        "new-session/base-branch-picker",
+        "new-session/typed-path-with-no-match-says-so",
+        "new-session/typed-path-under-a-missing-folder-names-it",
+        "new-session/typed-path-through-a-file-names-the-file",
+        "new-session/remembered-folder-that-is-gone-says-so",
+        "new-session/long-folder-keeps-its-chip-icon",
+        "new-session/long-host-name-keeps-the-host-sheet-row",
+        "new-session/folder-menu-stays-on-screen",
+        "new-session/recent-folder-opens-with-tab",
+        "new-session/refused-send-names-the-session-in-the-way",
+        "new-session/task-draft-survives-opening-a-session"
+      ]
+    }
+  ]
+}
