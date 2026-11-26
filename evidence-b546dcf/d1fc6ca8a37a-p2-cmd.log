@@ -1,0 +1,39 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test daemon a_codex_question_takes_the_owners_answers
+# exit 101 after 21558 ms at 4e007fb288d29490d2fb31ee0d030893339d816b
+
+
+running 1 test
+test a_codex_question_takes_the_owners_answers ... FAILED
+
+failures:
+
+---- a_codex_question_takes_the_owners_answers stdout ----
+
+thread 'a_codex_question_takes_the_owners_answers' (2367945) panicked at crates/yardd/tests/common/mod.rs:422:27:
+timed out after 20s waiting for event `approval_request` (seq >= 0) in s1a21828617b1; last messages:
+{"op":"session","session":{"account":"default","archived":false,"automation":null,"branch":null,"createdAt":1795701629307,"cwd":"/tmp/yardd-test-2367944-codex-question-0/work/proj","effort":"low","engine":"codex","host":"local","id":"s1a21828617b1","model":"fake-fast","parent":null,"pending":[],"per
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"event":{"text":"[question] TEST-pick","type":"user_message"},"op":"event","seq":0,"sessionId":"s1a21828617b1"}
+{"op":"usage","usage":{"codex":{"limitId":"codex","primary":{"resetsAt":1795709459,"usedPercent":12,"windowDurationMins":300},"secondary":{"resetsAt":1795975259,"usedPercent":34,"windowDurationMins":10080}}}}
+{"event":{"at":1795701629333,"type":"turn_started"},"op":"event","seq":1,"sessionId":"s1a21828617b1"}
+{"event":{"itemId":"msg-2367978-4","text":"No answers.","type":"assistant_delta"},"op":"event","seq":2,"sessionId":"s1a21828617b1"}
+{"event":{"itemId":"msg-2367978-4","text":"No answers.","type":"assistant_message"},"op":"event","seq":3,"sessionId":"s1a21828617b1"}
+{"event":{"at":1795701629338,"status":"completed","type":"turn_completed"},"op":"event","seq":4,"sessionId":"s1a21828617b1"}
+{"op":"session","session":{"account":"default","archived":false,"automation":null,"branch":null,"createdAt":1795701629307,"cwd":"/tmp/yardd-test-2367944-codex-question-0/work/proj","effort":"low","engine":"codex","host":"local","id":"s1a21828617b1","lastTurn":"completed","model":"fake-fast","parent"
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-2367944-codex-question-0 for inspection
+
+
+failures:
+    a_codex_question_takes_the_owners_answers
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 89 filtered out; finished in 20.17s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 1.34s
+     Running tests/daemon.rs (target/debug/build/yardd/bc3e500ead7d3ac6/out/daemon-bc3e500ead7d3ac6)
+error: test failed, to rerun pass `-p yardd --test daemon`
