@@ -1,0 +1,56 @@
+{
+  "command": "design-check",
+  "ok": true,
+  "base": "e6b16a83cfaf61b32a589259e87404f9fedbe81f",
+  "ui": true,
+  "touched": [
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/MobileSetup.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "paths": [
+        "ui/src/PhoneWelcome.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/main.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/mobile.test.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/mobile.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/styles.css"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "rule": "raw-svg",
+      "severity": "warn",
+      "file": "ui/src/MobileSetup.tsx",
+      "line": 28,
+      "text": "<svg className=\"phone-qr-code\" viewBox={`0 0 ${size} ${size}`} role=\"img\" aria-label={label} data-href={text} shapeRendering=\"crispEdges\">",
+      "hint": "use <Icon d={PATH} /> like the rest of the UI"
+    }
+  ],
+  "problems": [],
+  "hint": "screenshot the reference screen next to your after-shots, and cover empty, loading, error and long-text states at both viewports"
+}

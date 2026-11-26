@@ -1,0 +1,196 @@
+{
+  "v": 1,
+  "claim": "The Hosts card's QR code does nothing when the Switchyard app is not installed yet (the iPhone Camera ignores a switchyard:// code), so a new phone has no way in",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-about-the-phone-connection-we-f866",
+  "base": "e6b16a83cfaf61b32a589259e87404f9fedbe81f",
+  "head": "0b5c347c52bf12a26d885ff34dc0a9208c9b5a2e",
+  "changed": [
+    {
+      "status": "M",
+      "path": "docs/IOS_BUILDS.md"
+    },
+    {
+      "status": "M",
+      "path": "mobile/README.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/MobileSetup.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/PhoneWelcome.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/main.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/mobile.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/mobile.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/mobile.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T01:27:42.648Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "e6b16a83cfaf61b32a589259e87404f9fedbe81f",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "3fd3cd2741e369fd0ac15392f3cb79ae402d105a1d518853116dbb196774fc62"
+        },
+        {
+          "path": "p1-base-phone-page-mobile.png",
+          "sha256": "9ae4b634853a1f13dd46e787f6d337eb12fc6f09058666c36fdc9692cf628ffa"
+        }
+      ],
+      "addedAt": "2026-11-26T01:27:52.810Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "e6b16a83cfaf61b32a589259e87404f9fedbe81f",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "abebdb275e4dd94e81762a20029f906119c3a25a9e8f2e13c465a47efc672232"
+        }
+      ],
+      "addedAt": "2026-11-26T01:27:52.856Z",
+      "cmd": "cd ui && git show 0b5c347:ui/src/mobile.test.ts > src/zz-head-mobile.test.ts; bun test src/zz-head-mobile.test.ts; rc=$?; rm -f src/zz-head-mobile.test.ts; exit $rc",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "test",
+      "at": "0b5c347c52bf12a26d885ff34dc0a9208c9b5a2e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "484ba32575e09da9240cd8493bfac1bf6f8a60fee15187a77a2c75005aeb35bb"
+        }
+      ],
+      "addedAt": "2026-11-26T01:28:05.721Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "design",
+      "at": "0b5c347c52bf12a26d885ff34dc0a9208c9b5a2e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-design.json",
+          "sha256": "0e4c858d98392211781a8e33bb83d947925276cda5cd0bcc07de06e54756dbea"
+        }
+      ],
+      "addedAt": "2026-11-26T01:28:06.117Z",
+      "cmd": "verify/yv design-check --base e6b16a83cfaf",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "regression",
+      "at": "0b5c347c52bf12a26d885ff34dc0a9208c9b5a2e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-map-mobile.json",
+          "sha256": "994a723e4a40119b63d2d725c5ada23014b71a9be9e84bab812499e79deba582"
+        }
+      ],
+      "addedAt": "2026-11-26T01:28:06.204Z",
+      "cmd": "verify/yv map run mobile",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "mobile/setup-entry-points",
+        "mobile/qr-for-the-hosts-address",
+        "mobile/qr-opens-a-page-safari-can-show",
+        "mobile/phone-workspace",
+        "mobile/workspace-button-text-centered",
+        "mobile/successful-connection-removes-shortcuts"
+      ]
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "0b5c347c52bf12a26d885ff34dc0a9208c9b5a2e",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p6-2-drive.json",
+          "sha256": "4bc72eb2f3265b5d07f22e753f46e36eb6d8963281cabb32bfa38e1212249809"
+        },
+        {
+          "path": "p6-2-card-desktop.png",
+          "sha256": "f73ea28311575067df6055bf69ba456dfb62e6dd0e6c77a50d13b252539a4f21"
+        }
+      ],
+      "addedAt": "2026-11-26T01:29:06.201Z",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "fix",
+      "at": "0b5c347c52bf12a26d885ff34dc0a9208c9b5a2e",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p7-drive.json",
+          "sha256": "ed5fbccbb8ee0398eb0b821f2d0fde9c3437943d7f17840f44f3bb8e2c7f0f5e"
+        },
+        {
+          "path": "p7-phone-page-mobile.png",
+          "sha256": "6631e189705c4490e01568329cc8d7c0aea316af149dc35e67fe14e61c7b1884"
+        },
+        {
+          "path": "p7-phone-page-no-invite-mobile.png",
+          "sha256": "9ea8e1450da0bf31fa93767835bb1dc63b8102b405bf96b32f2413631e4487b3"
+        }
+      ],
+      "addedAt": "2026-11-26T01:29:09.502Z",
+      "failedApi": []
+    }
+  ]
+}

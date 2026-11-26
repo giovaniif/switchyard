@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "e6b16a83cfaf61b32a589259e87404f9fedbe81f",
+    "short": "e6b16a8",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T01:27:49.970Z"
+  },
+  "dir": ".verify/evidence/iphone-qr-opens-safari-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2082,
+      "steps": 3,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/iphone-qr-opens-safari-base/base-phone-page-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 0,
+          "eval": "(location.href = \"/?phone\", 1)",
+          "value": 1
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

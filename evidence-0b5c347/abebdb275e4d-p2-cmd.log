@@ -1,0 +1,18 @@
+$ cd ui && git show 0b5c347:ui/src/mobile.test.ts > src/zz-head-mobile.test.ts; bun test src/zz-head-mobile.test.ts; rc=$?; rm -f src/zz-head-mobile.test.ts; exit $rc
+# exit 1 after 24 ms at e6b16a83cfaf61b32a589259e87404f9fedbe81f
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/zz-head-mobile.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+SyntaxError: Export named 'phonePage' not found in module '/home/giovani/.yard/wt/better-than-claude-code/yard-about-the-phone-connection-we-f866/ui/src/mobile.ts'.
+-------------------------------
+
+
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file. [12.00ms]

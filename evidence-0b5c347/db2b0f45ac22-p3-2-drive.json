@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "e6b16a83cfaf61b32a589259e87404f9fedbe81f",
+    "short": "e6b16a8",
+    "dirty": true,
+    "diffHash": "a7f2d785ee5afd9a",
+    "at": "2026-11-26T01:25:59.707Z"
+  },
+  "dir": ".verify/evidence/iphone-qr-opens-safari-head-m",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3144,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/iphone-qr-opens-safari-head-m/phone-page-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/iphone-qr-opens-safari-head-m/phone-page-no-invite-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 0,
+          "eval": "(location.href = \"/?phone&testflight=https://testflight.apple.com/join/AbCd1234\", 1)",
+          "value": 1
+        },
+        {
+          "step": 4,
+          "eval": "(location.href = \"/?phone\", 1)",
+          "value": 1
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
