@@ -1,0 +1,45 @@
+$ verify/yv map run focused-pages --recipe archived-waiting-session-says-needs-approval
+# exit 1 after 26853 ms at aa9d2f69cc2abb8ffe1ae3e6124e2924a34cd007
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "focused-pages",
+      "at": "2026-11-26T00:21:07.490Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "archived-waiting-session-says-needs-approval",
+          "status": "fail",
+          "ms": 25603,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 1 {\"expect\":{\"css\":\".focused-session-row\",\"hasText\":\"[cmd] TEST-run the migration\"},\"text\":\"Archived · Needs approval\"}: expected {\"css\":\".focused-session-row\",\"hasText\":\"[cmd] TEST-run the migration\"} to contain \"Archived · Needs approval\", got \"[cmd] TEST-run the migration",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-4f14/.verify/drives/2026-11-26T00-20-42-602Z/fail-mobile-step1.png and the aria snapshot"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 1 {\"expect\":{\"css\":\".focused-session-row\",\"hasText\":\"[cmd] TEST-run the migration\"},\"text\":\"Archived · Needs approval\"}: expected {\"css\":\".focused-session-row\",\"hasText\":\"[cmd] TEST-run the migration\"} to contain \"Archived · Needs approval\", got \"[cmd] TEST-run the migration",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-4f14/.verify/drives/2026-11-26T00-20-42-602Z/fail-desktop-step1.png and the aria snapshot"
+            }
+          ],
+          "tail": "ting\\\"\\n  - button \\\"Actions for [edit] TEST-fix the greeting\\\"\\n  - button \\\"TEST-say hello · Fake Fast · Idle · Default\\\"\\n  - button \\\"Archive TEST-say hello\\\"\\n  - button \\\"Actions for TEST-say hello\\\"\\n  - button \\\"[fail] TEST-failing turn · Fake Fast · Idle · Default\\\"\\n  - button \\\"Archive [fail] TEST-failing turn\\\"\\n  - button \\\"Actions for [fail] TEST-failing turn\\\"\\n  - button \\\"Archived 2 A session needs approval\\\":\\n    - text: Archived 2\\n    - img \\\"A session needs approval\\\"\\n  - button \\\"Subscription usage\\\": Usage 91% used\\n  - button \\\"iso-host 2% · 31%\\\"\\n- separator \\\"Resize the sessions sidebar\\\"\\n- banner:\\n  - heading \\\"Sessions\\\" [level=1]\\n  - button \\\"New session\\\"\\n- group \\\"Session visibility\\\":\\n  - button \\\"Active\\\"\\n  - button \\\"All sessions\\\"\\n  - button \\\"Archived\\\" [pressed]\\n- textbox \\\"Search sessions\\\"\\n- button \\\"[think] TEST-plan the refactor Codex · Default · iso-host Archived —\\\":\\n  - strong: \\\"[think] TEST-plan the refactor\\\"\\n  - text: Codex · Default · iso-host Archived —\\n- button \\\"[cmd] TEST-run the migration Codex · Default · iso-host Archived —\\\":\\n  - strong: \\\"[cmd] TEST-run the migration\\\"\\n  - text: Codex · Default · iso-host Archived —\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 1 {\\\"expect\\\":{\\\"css\\\":\\\".focused-session-row\\\",\\\"hasText\\\":\\\"[cmd] TEST-run the migration\\\"},\\\"text\\\":\\\"Archived · Needs approval\\\"}: expected {\\\"css\\\":\\\".focused-session-row\\\",\\\"hasText\\\":\\\"[cmd] TEST-run the migration\\\"} to contain \\\"Archived · Needs approval\\\", got \\\"[cmd] TEST-run the migration\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-4f14/.verify/drives/2026-11-26T00-20-42-602Z/fail-mobile-step1.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 1 {\\\"expect\\\":{\\\"css\\\":\\\".focused-session-row\\\",\\\"hasText\\\":\\\"[cmd] TEST-run the migration\\\"},\\\"text\\\":\\\"Archived · Needs approval\\\"}: expected {\\\"css\\\":\\\".focused-session-row\\\",\\\"hasText\\\":\\\"[cmd] TEST-run the migration\\\"} to contain \\\"Archived · Needs approval\\\", got \\\"[cmd] TEST-run the migration\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-4f14/.verify/drives/2026-11-26T00-20-42-602Z/fail-desktop-step1.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "focused-pages/archived-waiting-session-says-needs-approval",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

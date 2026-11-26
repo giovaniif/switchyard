@@ -1,0 +1,97 @@
+{
+  "ok": true,
+  "route": "sessions",
+  "build": {
+    "sha": "aa9d2f69cc2abb8ffe1ae3e6124e2924a34cd007",
+    "short": "aa9d2f6",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T00:20:34.266Z"
+  },
+  "dir": ".verify/evidence/archived-row-status-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2349,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/archived-row-status-base/sessions-archived-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/archived-row-status-base/sessions-all-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "[...document.querySelectorAll(\".focused-session-row\")].find((r) => r.textContent.includes(\"[cmd] TEST-run the migration\")).querySelector(\".focused-session-state\").textContent.trim()",
+          "value": "Archived"
+        },
+        {
+          "step": 5,
+          "eval": "[...document.querySelectorAll(\".focused-session-row\")].find((r) => r.textContent.includes(\"[cmd] TEST-run the migration\")).querySelector(\".focused-session-state\").textContent.trim()",
+          "value": "Archived"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 1883,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/archived-row-status-base/sessions-archived-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/archived-row-status-base/sessions-all-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "[...document.querySelectorAll(\".focused-session-row\")].find((r) => r.textContent.includes(\"[cmd] TEST-run the migration\")).querySelector(\".focused-session-state\").textContent.trim()",
+          "value": "Archived"
+        },
+        {
+          "step": 5,
+          "eval": "[...document.querySelectorAll(\".focused-session-row\")].find((r) => r.textContent.includes(\"[cmd] TEST-run the migration\")).querySelector(\".focused-session-state\").textContent.trim()",
+          "value": "Archived"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

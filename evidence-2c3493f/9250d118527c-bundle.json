@@ -1,0 +1,182 @@
+{
+  "v": 1,
+  "claim": "On the Sessions page (and the Hosts page's session list) an archived session waiting for approval read only 'Archived' next to an amber dot, hiding why; past idle an archived row now reads 'Archived · <status>'.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-4f14",
+  "base": "bdcce592a84b02a8e1516264584136bb918ad270",
+  "head": "2c3493fa4ddae1586d51da77ad23085c57f3ac7e",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/focused-pages.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T00:20:29.635Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "aa9d2f69cc2abb8ffe1ae3e6124e2924a34cd007",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "51c350a687dc7ba398a0e005a5811839d1cf96cfda0600914bdaf8970e561505"
+        },
+        {
+          "path": "p1-sessions-archived-mobile.png",
+          "sha256": "f7e49b88f134edd8c7ac7925780922b5c68931dd3b211ccc4bbbd8de74bacaa3"
+        },
+        {
+          "path": "p1-sessions-all-mobile.png",
+          "sha256": "7ae4b97175d9fc88018cb4597ffa4ae915744fd82510d81239055e21e4f7fdcf"
+        },
+        {
+          "path": "p1-sessions-archived-desktop.png",
+          "sha256": "d5d6a443f1ae1a4d19d8826aa6f1d591f3c37ca0e555da22dfea74ef984d7fef"
+        },
+        {
+          "path": "p1-sessions-all-desktop.png",
+          "sha256": "b07ca72bac66d1a815c63d0a828ffa0987282581f971755f5bd31c8f8746eb02"
+        }
+      ],
+      "addedAt": "2026-11-26T00:20:40.592Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "aa9d2f69cc2abb8ffe1ae3e6124e2924a34cd007",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "bca8b03a9e2c5fb96cd1f33ce437db032a91be7da237e305337afa13aa5b9ede"
+        }
+      ],
+      "addedAt": "2026-11-26T00:20:40.639Z",
+      "cmd": "verify/yv map run focused-pages --recipe archived-waiting-session-says-needs-approval",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "2c3493fa4ddae1586d51da77ad23085c57f3ac7e",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "0a9d077366262406cea87e3470968ad0aa0e6567a7041de6f5e4a42396ae20d8"
+        },
+        {
+          "path": "p3-sessions-archived-mobile.png",
+          "sha256": "e03f76379a80146b09b68d0b04d86b1148af44197a349012c0e6d56620ad7ae1"
+        },
+        {
+          "path": "p3-sessions-all-mobile.png",
+          "sha256": "27f3c90207b8f6e80e1aafaf9facf6164cd203377bf9f93ce41058e32b2674b9"
+        },
+        {
+          "path": "p3-sessions-archived-desktop.png",
+          "sha256": "3f979403b3be1d86dcd48af5386fcae200eaf37af63ff4f9471c998052aeb264"
+        },
+        {
+          "path": "p3-sessions-all-desktop.png",
+          "sha256": "351d428a160ffaad04fb069c32cfc32a1a8b987dfea7be00f866a851c40bd9a8"
+        }
+      ],
+      "addedAt": "2026-11-26T00:21:18.390Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "2c3493fa4ddae1586d51da77ad23085c57f3ac7e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "2ad56ddb65194c9bef10d16300588e2e86218152c6c423575eb6d1792a969a81"
+        }
+      ],
+      "addedAt": "2026-11-26T00:21:28.329Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "2c3493fa4ddae1586d51da77ad23085c57f3ac7e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "a30d7f67224862a5ea00433180b39c5614470e1e5d7c5a7d947d30bc03e95039"
+        }
+      ],
+      "addedAt": "2026-11-26T00:21:28.712Z",
+      "cmd": "verify/yv design-check --base bdcce592a84b",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "2c3493fa4ddae1586d51da77ad23085c57f3ac7e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-focused-pages.json",
+          "sha256": "5d8173aac09285f3ba0046c6d40ee634d985a201e376861d6f9498e15159d3bc"
+        }
+      ],
+      "addedAt": "2026-11-26T00:21:28.792Z",
+      "cmd": "verify/yv map run focused-pages",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "focused-pages/selected-host-tabs",
+        "focused-pages/compact-usage-popover",
+        "focused-pages/usage-popover-leads-with-trigger-account",
+        "focused-pages/usage-row-lines-up-with-host-rows",
+        "focused-pages/subscriptions-page",
+        "focused-pages/account-picker-separate-from-model",
+        "focused-pages/other-engine-account-and-fixed-session",
+        "focused-pages/sessions-search-and-archive",
+        "focused-pages/sessions-visibility-tabs",
+        "focused-pages/archived-waiting-session-says-needs-approval",
+        "focused-pages/sessions-search-no-match-says-so",
+        "focused-pages/sessions-search-finds-the-account",
+        "focused-pages/host-rows-line-up-with-the-page",
+        "focused-pages/session-rows-line-up-with-the-page",
+        "focused-pages/session-rows-have-straight-dividers",
+        "focused-pages/offline-host-and-selection-fallback",
+        "focused-pages/workspace-widths-and-views",
+        "focused-pages/manage-accounts-opens-logins",
+        "focused-pages/sidebar-skips-duplicate-page-links",
+        "focused-pages/subscriptions-page-signed-out-account"
+      ]
+    }
+  ]
+}
