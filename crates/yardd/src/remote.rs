@@ -1173,7 +1173,7 @@ mod tests {
         assert_eq!(route(&json!({ "op": "agent.save", "agent": { "id": "g1", "host": "h1" } })), None, "a move is the hub's");
         assert_eq!(route(&json!({ "op": "agent.new", "host": "h1" })).as_deref(), Some("h1"));
         assert_eq!(route(&json!({ "op": "slack.app.icon", "agentId": "h1~g1" })).as_deref(), Some("h1"));
-        assert_eq!(route(&json!({ "op": "slack.route", "agent": "h1~g1" })), None, "the shared bot is the hub's");
+        assert_eq!(route(&json!({ "op": "slack.me.retry" })), None, "the owner's own Slack is the hub's");
         let out = outgoing(json!({ "op": "agent.save", "agent": { "id": "h1~g1", "host": "h1", "memory": "m" } }));
         assert_eq!(out["agent"], json!({ "id": "g1", "host": "local", "memory": "m" }));
         assert!(outgoing(json!({ "op": "agent.save", "agent": { "name": "x", "host": "h1" } }))["agent"].get("id").is_none());

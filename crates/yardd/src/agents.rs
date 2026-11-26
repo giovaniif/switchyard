@@ -2434,9 +2434,8 @@ fn refused(app: &App, id: &str) -> Option<String> {
 
 /// Hand a record kept here to `host` by `transfer`: send it all
 /// (`agent.adopt`; the host checks everything before it writes anything),
-/// and only once the host owns it back up this yardd's files, point the
-/// shared bot at its new id and let go here, then tell the host its app is
-/// its own. What does not happen at once is owed and tried again
+/// and only once the host owns it let go here (backed up when the hand-over
+/// began), then tell the host its app is its own. What does not happen at once is owed and tried again
 /// (`run_pending`). Answers the agent as the host has it.
 async fn hand_over(app: &Arc<App>, host: &str, a: &Agent, transfer: &str) -> Result<Value> {
     let name = host_name(app, host);
@@ -2451,8 +2450,6 @@ async fn hand_over(app: &Arc<App>, host: &str, a: &Agent, transfer: &str) -> Res
     let slack = crate::slack::export_app(app, &a.id);
     let reply = call(app, host, &name, json!({ "op": "agent.adopt", "agent": record, "slack": slack, "hub": app.tools.hub_id(), "transfer": transfer })).await?;
     anyhow::ensure!(reply["op"] == "agent.adopted", "the host did not take it");
-    let new_id = format!("{host}{}{}", crate::remote::SEP, a.id);
-    crate::slack::moved(app, &a.id, &new_id)?;
     settle(app, vec![step(LOCAL, "agent.release", &a.id, transfer), step(host, "agent.settled", &a.id, transfer)]).await;
     Ok(crate::remote::prefixed_agent(host, &reply["agent"]))
 }
@@ -2716,14 +2713,9 @@ async fn transfer(app: &Arc<App>, input: &Value) -> Result<Option<Value>> {
                     }
                 },
             };
-            // Owed first, so nothing below can leave two owners: the old host
-            // lets go, then the new one hears its app is its own; both are
-            // asked again until they answer.
+            // The old host lets go, then the new one hears its app is its
+            // own; both are asked again until they answer.
             settle(app, vec![step(&f.host, "agent.release", &f.id, &transfer), step(to, "agent.settled", &f.id, &transfer)]).await;
-            let new_id = moved["id"].as_str().unwrap_or_default().to_string();
-            if let Err(e) = backup_all(app).and_then(|_| crate::slack::moved(app, id, &new_id)) {
-                eprintln!("yardd: the shared bot still names {id} for {name}: {e:#}");
-            }
             Ok(Some(moved))
         }
     }

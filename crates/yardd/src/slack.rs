@@ -736,7 +736,7 @@ pub fn broadcast(app: &App) {
 /// What the windows see: this yardd's Slack, plus each host's agents' own
 /// apps (keyed `<hostId>~<agent>`, as their agents are) and what a host's
 /// agent needs to get one there (`hosts`: its workspaces and addresses).
-/// The shared bot and its allowlist stay this yardd's.
+/// The owner's own Slack (`me`) and the allowlist stay this yardd's.
 pub fn view(app: &App) -> Value {
     let mut v = app.slack.view();
     let mut hosts = serde_json::Map::new();
@@ -776,17 +776,18 @@ pub fn backup(app: &App) -> Result<()> {
 }
 
 /// An agent leaving this host takes its Slack app: the whole record (every
-/// field, those this build does not know too), its workspace's configuration
-/// token, the Slack threads its own app heard and its icon. Null without
-/// one. Nothing changes here: while the agent is leaving (`agents::leaving`)
-/// deleting it leaves the app in Slack. The shared bot's allowlist stays.
+/// field, its watched channels and mention list and those this build does
+/// not know too), its workspace's configuration token, the Slack threads
+/// routed to it (so `slack_reply` still posts there) and its icon. Null
+/// without one. Nothing changes here: while the agent is leaving
+/// (`agents::leaving`) deleting it leaves the app in Slack. The owner's own
+/// Slack and the allowlist stay.
 pub fn export_app(app: &App, agent: &str) -> Value {
     let slack = &app.slack;
     let Some(rec) = slack.app_of(agent) else { return Value::Null };
     let (workspace, threads) = {
         let cfg = slack.cfg.lock().unwrap();
-        // The threads its own app heard, so `slack_reply` can still post there.
-        let threads: Vec<Link> = cfg.threads.iter().filter(|l| l.agent == agent && l.app).cloned().collect();
+        let threads: Vec<Link> = cfg.threads.iter().filter(|l| l.agent == agent).cloned().collect();
         (cfg.workspaces.iter().find(|w| w.team_id == rec.team_id).cloned(), threads)
     };
     use base64::Engine;
@@ -882,36 +883,23 @@ pub fn settled(app: &App, agent: &str) -> Result<()> {
 }
 
 /// The agent now lives on another host, which runs its Slack app: its
-/// connection here closes and the record goes, with the threads its own app
-/// heard. The app itself stays in Slack, untouched. The caller backs up first.
+/// connection here closes and the record goes, with the Slack threads routed
+/// to it. The app itself stays in Slack, untouched. The caller backs up first.
 pub fn release_app(app: &App, agent: &str) -> Result<()> {
     stop_app(app, agent);
-    if !app.slack.has_app(agent) {
+    let held = {
+        let cfg = app.slack.cfg.lock().unwrap();
+        cfg.apps.iter().any(|a| a.agent == agent) || cfg.threads.iter().any(|l| l.agent == agent)
+    };
+    if !held {
         return Ok(());
     }
     app.slack.try_change(|c| {
         c.apps.retain(|a| a.agent != agent);
-        // The threads its own app heard went with it.
-        c.threads.retain(|l| !(l.agent == agent && l.app));
+        // They went with it (`export_app`), or point at nothing here now.
+        c.threads.retain(|l| l.agent != agent);
     })?;
     let _ = std::fs::remove_file(icon_path(&app.slack, agent));
-    broadcast(app);
-    Ok(())
-}
-
-/// The agent is known here by a new id now (it moved, or its host owns it):
-/// the threads the retired shared bot routed to it follow it.
-pub fn moved(app: &App, from: &str, to: &str) -> Result<()> {
-    if from == to || !app.slack.cfg.lock().unwrap().threads.iter().any(|l| l.agent == from && !l.app) {
-        return Ok(());
-    }
-    app.slack.try_change(|c| {
-        for l in &mut c.threads {
-            if l.agent == from && !l.app {
-                l.agent = to.to_string();
-            }
-        }
-    })?;
     broadcast(app);
     Ok(())
 }

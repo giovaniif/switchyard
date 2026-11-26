@@ -440,10 +440,6 @@ async fn an_agent_moves_between_hosts_and_its_next_conversation_starts_where_the
     let id = agent["id"].as_str().unwrap().to_string();
     let here = ask(&mut c, &id, "TEST-said here", json!({})).await.unwrap();
     c.wait_turn_done(&here, 0).await;
-    // The shared bot's default agent is this one (no Slack app of its own).
-    let from = c.mark();
-    c.send(json!({ "op": "slack.route", "agent": id, "ref": "route" })).await;
-    c.wait_after(from, "the default agent set", |m| m["ref"] == "route").await;
 
     // To the remote: the record goes there, the conversation here stays as
     // an ordinary session, and the next one starts there with the preamble
@@ -460,10 +456,7 @@ async fn an_agent_moves_between_hosts_and_its_next_conversation_starts_where_the
     assert!(there_record["hosted"].is_null());
     c.wait_for("the old conversation is an ordinary session", |m| m["op"] == "session" && m["session"]["id"] == here.as_str() && m["session"]["agent"].is_null()).await;
     // Backed up before the first change, even with no Slack app of its own.
-    assert_eq!(oldest_backup(&hub_sb, "slack.json")["defaultAgent"], id.as_str());
     assert_eq!(oldest_backup(&hub_sb, "agents.json").as_array().unwrap().iter().find(|a| a["id"] == id.as_str()).unwrap()["host"], "local");
-    let slack_now: Value = serde_json::from_str(&std::fs::read_to_string(hub_sb.data().join("slack.json")).unwrap()).unwrap();
-    assert_eq!(slack_now["defaultAgent"], far_id.as_str());
     assert!(!c.history(&here).await.is_empty(), "the old conversation stays readable");
     let there = ask(&mut c, &far_id, "TEST-said there", json!({})).await.unwrap();
     assert!(there.starts_with(&format!("{host}~")));
@@ -487,15 +480,15 @@ async fn an_agent_moves_between_hosts_and_its_next_conversation_starts_where_the
     c.wait_status(&there, "idle").await;
 
     // And back: the remote lets go of it but keeps the conversation.
-    let before_back = backups(&hub_sb, "slack.json");
+    let before_back = backups(&hub_sb, "agents.json");
     let back = save(&mut c, json!({ "id": far_id, "host": "local" })).await.unwrap();
     assert_eq!(back["id"], id.as_str());
-    // Back here: this side backed up before it took the agent or moved the default.
-    let mut found: Vec<std::path::PathBuf> = std::fs::read_dir(hub_sb.data()).unwrap().map(|e| e.unwrap().path()).filter(|p| p.file_name().unwrap().to_string_lossy().starts_with("slack.json.bak-")).collect();
+    // Back here: this side backed up before it took the agent.
+    let mut found: Vec<std::path::PathBuf> = std::fs::read_dir(hub_sb.data()).unwrap().map(|e| e.unwrap().path()).filter(|p| p.file_name().unwrap().to_string_lossy().starts_with("agents.json.bak-")).collect();
     found.sort();
     assert!(found.len() > before_back);
-    let taken: Value = serde_json::from_str(&std::fs::read_to_string(&found[before_back]).unwrap()).unwrap();
-    assert_eq!(taken["defaultAgent"], far_id.as_str(), "{taken}");
+    let taken: Value = serde_json::from_str(&std::fs::read_to_string(found.last().unwrap()).unwrap()).unwrap();
+    assert!(!taken.as_array().unwrap().iter().any(|a| a["id"] == id.as_str()), "{taken}");
     assert_eq!(back["host"], "local");
     assert!(!saved_agents(&remote_sb).iter().any(|a| a["id"] == id.as_str()));
     assert!(saved_agents(&hub_sb).iter().any(|a| a["id"] == id.as_str() && a["memory"] == "TEST-mover memory"));
@@ -557,8 +550,7 @@ fn seed_old_hub(hub_sb: &Sandbox, remote: &Daemon, host: &str, chat: &str) {
         "allowed": [{ "id": "UOWNER", "name": "TEST-Owner" }, { "id": "UOTHER", "name": "TEST-Someone else" }],
         "workspaces": [{ "teamId": "T1", "teamName": "TEST-team", "userId": "UOWNER", "refreshToken": "xoxe-TEST-refresh", "accessToken": "xoxe.xoxp-TEST", "expiresAt": 1 }],
         "apps": [{ "agent": "g-oncall", "teamId": "T1", "teamName": "TEST-team", "appId": "A-TEST", "botToken": "xoxb-TEST-oncall", "botUser": "UBOT",
-                   "owner": "UOWNER", "ownerName": "TEST-Owner", "handle": "on-call", "mentions": [{ "id": "UPAGER", "name": "TEST-pager" }], "watchedChannels": ["C-TEST"], "manifest": "{}" }],
-        "defaultAgent": "g-oncall",
+                   "owner": "UOWNER", "ownerName": "TEST-Owner", "handle": "on-call", "mentions": [{ "id": "UPAGER", "name": "TEST-pager" }], "watched": [{ "id": "C0INCIDENT", "name": "#incidents" }], "triage": ["C-TEST"], "manifest": "{}" }],
         "threads": [{ "key": "T1/C1/1.0", "agent": "g-oncall", "at": 1, "app": true, "place": "#ops" }, { "key": "T1/C2/2.0", "agent": "g-oncall", "at": 1, "app": false, "place": "#dev" }],
     });
     std::fs::write(hub_sb.data().join("slack.json"), slack.to_string()).unwrap();
@@ -631,29 +623,31 @@ async fn a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely() {
     eventually("the hub's record removed", || saved_agents(&hub_sb).is_empty()).await;
     assert!(backups(&hub_sb, "agents.json") >= 1);
 
-    // Its Slack app moved whole: every field (one this build does not know
-    // too), its workspace's token and the allowed people. The hub keeps
-    // none of it, and its shared bot's default agent follows it.
+    // Its Slack app moved whole, once: every field (its watched channels and
+    // mention list, and one this build does not know), its workspace's token
+    // and the allowed people. The hub keeps none of it.
     let there = saved_slack(&remote_sb);
+    assert_eq!(there["apps"].as_array().unwrap().len(), 1, "{there}");
     let app = &there["apps"][0];
     assert_eq!((app["agent"].as_str(), app["appId"].as_str(), app["botToken"].as_str()), (Some("g-oncall"), Some("A-TEST"), Some("xoxb-TEST-oncall")));
-    assert_eq!(app["watchedChannels"], json!(["C-TEST"]));
+    assert_eq!(app["watched"], json!([{ "id": "C0INCIDENT", "name": "#incidents" }]));
+    assert_eq!(app["triage"], json!(["C-TEST"]));
     assert_eq!(app["mentions"][0]["id"], "UPAGER");
     assert_eq!(there["workspaces"][0]["refreshToken"], "xoxe-TEST-refresh");
     // Only whoever installed the app may reach the server through it; the
-    // Mac's other allowed people are the Mac's (they reach its shared bot).
+    // Mac's other allowed people are the Mac's.
     assert_eq!(there["allowed"], json!([{ "id": "UOWNER", "name": "TEST-Owner" }]));
     let left = saved_slack(&hub_sb);
     assert!(left["apps"].as_array().unwrap().is_empty(), "{left}");
-    assert_eq!(left["defaultAgent"], id.as_str());
-    // The threads its own app heard went with it (its slack_reply posts there); the shared bot's stay, following it.
-    assert_eq!(left["threads"], json!([{ "key": "T1/C2/2.0", "agent": id, "at": 1, "app": false, "place": "#dev" }]));
-    assert_eq!(there["threads"], json!([{ "key": "T1/C1/1.0", "agent": "g-oncall", "at": 1, "app": true, "place": "#ops" }]));
+    // Every Slack thread routed to it went with it (its slack_reply posts
+    // there), the retired shared bot's too.
+    assert!(left["threads"].as_array().unwrap().is_empty(), "{left}");
+    assert_eq!(there["threads"], json!([{ "key": "T1/C1/1.0", "agent": "g-oncall", "at": 1, "app": true, "place": "#ops" }, { "key": "T1/C2/2.0", "agent": "g-oncall", "at": 1, "app": false, "place": "#dev" }]));
     assert!(backups(&hub_sb, "slack.json") >= 1);
     // The Mac backed up before its first change: its oldest backup is the file as it was.
     let first = oldest_backup(&hub_sb, "slack.json");
-    assert_eq!(first["defaultAgent"], "g-oncall", "{first}");
-    assert_eq!(first["apps"][0]["agent"], "g-oncall");
+    assert_eq!(first["apps"][0]["agent"], "g-oncall", "{first}");
+    assert_eq!(first["apps"][0]["watched"][0]["id"], "C0INCIDENT");
     assert_eq!(oldest_backup(&hub_sb, "agents.json")[0]["id"], "g-oncall");
     c.wait_for("its app listed under its new id", |m| m["op"] == "slack" && m["slack"]["agentApps"][&id].is_object()).await;
 
@@ -1282,28 +1276,45 @@ async fn a_move_whose_export_answer_is_lost_leaves_nothing_leaving() {
 }
 
 #[tokio::test]
-async fn a_move_here_that_cannot_note_the_shared_bot_still_lets_the_old_host_go() {
-    let remote_sb = Sandbox::new("agents-moved-unsaved-remote");
-    let remote = remote_sb.start();
-    let hub_sb = Sandbox::new("agents-moved-unsaved-hub");
-    let hub = hub_sb.start_with(&[("YARD_SETTLE_MS", "300")]);
+async fn an_agents_slack_app_moves_between_hosts_whole_and_once() {
+    let remote_sb = Sandbox::new("agents-app-move-remote");
+    let remote = remote_sb.start_with(NO_SLACK);
+    let hub_sb = Sandbox::new("agents-app-move-hub");
+    let hub = hub_sb.start_with(&[("YARD_SLACK_API", "http://127.0.0.1:9/api/"), ("YARD_SETTLE_MS", "300")]);
     let mut c = hub.client().await;
     ready(&mut c).await;
     let host = add_remote(&mut c, &remote, "TEST-box").await;
-    let far = save(&mut c, json!({ "name": "Far", "engine": "codex", "model": MODEL, "host": host })).await.unwrap();
-    let own = far["id"].as_str().unwrap().split_once('~').unwrap().1.to_string();
-    // The shared bot's default agent is it; then slack.json cannot be written.
-    let fid = far["id"].clone();
-    c.wait_for("the hub lists it", |m| (m["op"] == "agents" || m["op"] == "snapshot") && m["agents"].as_array().unwrap().iter().any(|a| a["id"] == fid)).await;
-    let from = c.mark();
-    c.send(json!({ "op": "slack.route", "agent": far["id"], "ref": "r" })).await;
-    let routed = c.wait_after(from, "routed", |m| m["ref"] == "r").await;
-    assert_eq!(routed["op"], "slack", "{routed}");
-    std::fs::create_dir_all(hub_sb.data().join("slack.json.tmp")).unwrap();
-    let _ = save(&mut c, json!({ "id": far["id"], "host": "local" })).await;
-    // One owner: here. The box lets go even though the shared bot's note failed.
-    eventually("the box let go", || !saved_agents(&remote_sb).iter().any(|a| a["id"] == own.as_str())).await;
-    assert!(saved_agents(&hub_sb).iter().any(|a| a["id"] == own.as_str()));
+    // The box owns an agent with its own app: a channel it watches, who it
+    // may @mention, and a thread it answered in.
+    let mut r = remote.client().await;
+    ready(&mut r).await;
+    let from = r.mark();
+    let app = json!({ "agent": "g-watch", "teamId": "T1", "appId": "A-TEST-watch", "botToken": "xoxb-TEST-watch", "manifest": "{}",
+        "watched": [{ "id": "C0INCIDENT", "name": "#incidents" }], "mentions": [{ "id": "UPAGER", "name": "TEST-pager" }] });
+    let thread = json!({ "key": "T1/C1/1.0", "agent": "g-watch", "at": 1, "app": true, "place": "#ops" });
+    r.send(json!({ "op": "agent.adopt", "hub": "fedcba9876543210fedcba9876543210", "transfer": "t-first",
+        "agent": { "id": "g-watch", "name": "Watcher", "engine": "codex", "model": MODEL, "effort": EFFORT, "createdAt": 1, "updatedAt": 1 },
+        "slack": { "app": app, "threads": [thread] }, "ref": "a" })).await;
+    assert_eq!(r.wait_after(from, "adopted", |m| m["ref"] == "a").await["op"], "agent.adopted");
+    drop(r);
+    let far = format!("{host}~g-watch");
+    c.wait_for("the hub lists it", |m| (m["op"] == "agents" || m["op"] == "snapshot") && m["agents"].as_array().unwrap().iter().any(|a| a["id"] == far.as_str())).await;
+    let apps_of = |sb: &Sandbox| saved_slack(sb)["apps"].as_array().cloned().unwrap_or_default().into_iter().filter(|a| a["agent"] == "g-watch").collect::<Vec<_>>();
+    let threads_of = |sb: &Sandbox| saved_slack(sb)["threads"].as_array().cloned().unwrap_or_default().into_iter().filter(|l| l["agent"] == "g-watch").count();
+    // Here: the app whole and once; the box keeps none of it.
+    save(&mut c, json!({ "id": far, "host": "local" })).await.unwrap();
+    eventually("the box let go", || !saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-watch") && apps_of(&remote_sb).is_empty()).await;
+    let here = apps_of(&hub_sb);
+    assert_eq!(here.len(), 1, "{here:?}");
+    assert_eq!((here[0]["watched"].clone(), here[0]["mentions"].clone()), (app["watched"].clone(), app["mentions"].clone()));
+    assert_eq!((threads_of(&hub_sb), threads_of(&remote_sb)), (1, 0));
+    // And back: the same, the other way.
+    save(&mut c, json!({ "id": "g-watch", "host": host })).await.unwrap();
+    eventually("the hub let go", || !saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-watch") && apps_of(&hub_sb).is_empty()).await;
+    let there = apps_of(&remote_sb);
+    assert_eq!(there.len(), 1, "{there:?}");
+    assert_eq!(there[0]["watched"], app["watched"]);
+    assert_eq!((threads_of(&hub_sb), threads_of(&remote_sb)), (0, 1));
 }
 
 #[tokio::test]

@@ -456,7 +456,7 @@ async fn an_agents_app_takes_human_messages_and_answers_in_the_thread() {
 async fn slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_the_thread() {
     let fake = FakeSlack::start();
     let remote_sb = Sandbox::new("slack-far-remote");
-    let remote = remote_sb.start();
+    let remote = remote_sb.start_with(&[("YARD_SLACK_API", &fake.api()), ("YARD_ALLOW_ORIGIN", ORIGIN)]);
     let sb = Sandbox::new("slack-far-hub");
     let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api()), ("YARD_ALLOW_ORIGIN", ORIGIN)]);
     let mut c = daemon.client().await;
@@ -468,8 +468,11 @@ async fn slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_th
     let from = c.mark();
     c.send(json!({ "op": "agent.save", "agent": { "name": "Far", "engine": "codex", "model": MODEL, "effort": EFFORT, "host": host }, "ref": "far" })).await;
     let far = c.wait_after(from, "Far saved", |m| m["ref"] == "far").await["agent"]["id"].as_str().unwrap().to_string();
-    // Its app lives on the hub, like Slack itself.
-    agent_app(&mut c, daemon.port, &far).await;
+    // Its app lives on its host, with the agent, made from the hub's window
+    // (Slack sends the browser back to the host).
+    agent_app(&mut c, remote.port, &far).await;
+    assert!(std::fs::read_to_string(remote_sb.data().join("slack.json")).unwrap().contains("xapp-1-agent-TEST"));
+    assert!(!std::fs::read_to_string(sb.data().join("slack.json")).unwrap_or_default().contains("xapp-1-agent-TEST"));
 
     // Its conversation on the remote gets the message with its Slack origin...
     let ts = fake.say(json!({ "app": "agent", "user": "UOWNER", "text": "TEST-how is the box?" }));
@@ -483,7 +486,7 @@ async fn slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_th
     assert_eq!(msgs[0]["origin"]["userName"], "TEST-Owner");
     let input = remote_sb.turn_inputs()[0][0]["text"].as_str().unwrap().to_string();
     assert!(input.contains("<slack from=\"TEST-Owner\" in=\"a direct message\">\nTEST-how is the box?\n</slack>"), "{input}");
-    // ...and the answer the remote's turn made is posted from the hub, in that thread.
+    // ...and the answer the remote's turn made is posted by its app, in that thread.
     let st = fake.wait("the answer in the thread", |s| !FakeSlack::posts(s, &ts).is_empty() && s["reactions"][&ts] == json!(["white_check_mark"])).await;
     let answer = FakeSlack::posts(&st, &ts);
     assert_eq!(answer.len(), 1);
