@@ -609,7 +609,11 @@ button.quote-card-number:hover { background: var(--info); color: var(--bg); }
 .menu-list { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow: auto; }
 .menu-item { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; cursor: pointer; }
 .menu-item.cursor { background: var(--fill); }
-.menu-aside { margin-left: auto; }
+.menu-aside { flex: none; margin-left: auto; }
+/* A host name may be a whole IPv6 address or 40 characters with no spaces:
+   it is cut, so the icon and the aside keep their room. */
+.menu-item > svg { flex: none; }
+.menu-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-divider { height: 1px; margin: 2px 0; background: var(--line); }
 .folder-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .folder-detail { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
