@@ -89,6 +89,7 @@ let envelopeN = 0;
 import { createHmac } from "node:crypto";
 
 const SIGNING_SECRET = "TEST-signing-secret";
+const history = new Map();
 const state = { opens: 0, acks: [], calls: [], posts: [], ephemerals: [], reactions: {}, manifests: [], updates: [], icons: [], deleted: [] };
 // Configuration tokens: each rotation hands out the next; /_fake/lapse
 // refuses every one handed out before it, as when a token goes unused.
@@ -226,9 +227,17 @@ function api(method, p, auth, port) {
       if (!p.channel) return { ok: false, error: "channel_not_found" };
       if (!p.text) return { ok: false, error: "no_text" };
       const ts = nextTs();
+      const blocks = p.blocks ? JSON.parse(p.blocks) : [];
       // Which bot posted: an agent's own (@agent) or the shared one.
-      state.posts.push({ channel: p.channel, thread_ts: p.thread_ts ?? null, text: p.text, ts, app: token.includes("agent") ? "agent" : "shared" });
+      state.posts.push({ channel: p.channel, thread_ts: p.thread_ts ?? null, text: p.text, ts, blocks, app: token.includes("agent") ? "agent" : "shared" });
       return { ok: true, channel: p.channel, ts, message: { text: p.text, ts } };
+    }
+    case "chat.update": {
+      if (kind !== "bot") return refused;
+      const post = state.posts.find((post) => post.channel === p.channel && post.ts === p.ts);
+      if (!post) return { ok: false, error: "message_not_found" };
+      Object.assign(post, { text: p.text, blocks: JSON.parse(p.blocks ?? "[]") });
+      return { ok: true, channel: p.channel, ts: p.ts };
     }
     case "chat.postEphemeral":
       if (kind !== "bot") return refused;
@@ -262,6 +271,8 @@ function api(method, p, auth, port) {
       return { ok: true, channels, response_metadata: { next_cursor: "" } };
     }
     case "conversations.history": {
+      // An agent's bot reads what a test put there (/_fake/history).
+      if (kind === "bot") return { ok: true, messages: history.get(p.ts ? `${p.channel}/${p.ts}` : p.channel) ?? [] };
       if (kind !== "user") return refused;
       const c = inbox[p.channel];
       if (!c) return { ok: false, error: "channel_not_found" };
@@ -273,6 +284,8 @@ function api(method, p, auth, port) {
       return { ok: true, messages: page, has_more: more, response_metadata: { next_cursor: more ? String(from + limit) : "" } };
     }
     case "conversations.replies": {
+      // An agent's bot reads what a test put there (/_fake/history).
+      if (kind === "bot") return { ok: true, messages: history.get(p.ts ? `${p.channel}/${p.ts}` : p.channel) ?? [] };
       if (kind !== "user") return refused;
       const c = inbox[p.channel];
       if (!c) return { ok: false, error: "channel_not_found" };
@@ -386,6 +399,23 @@ const server = Bun.serve({
       const p = await req.json();
       const id = `TEST-env-${++envelopeN}`;
       send({ envelope_id: id, type: "events_api", accepts_response_payload: false, retry_attempt: 0, retry_reason: "", payload: { type: "event_callback", team_id: "T0TEST", api_app_id: "A0TEST", event: p.event, event_id: `Ev${envelopeN}`, event_time: clock } }, p.app);
+      return json({ envelope: id });
+    }
+    if (url.pathname === "/_fake/history" && req.method === "POST") {
+      const p = await req.json();
+      history.set(p.thread_ts ? `${p.channel}/${p.thread_ts}` : p.channel, p.messages);
+      return json({ ok: true });
+    }
+    if (url.pathname === "/_fake/action" && req.method === "POST") {
+      const p = await req.json();
+      const id = `TEST-env-${++envelopeN}`;
+      send({
+        envelope_id: id, type: "interactive", payload: {
+          type: "block_actions", team: { id: "T0TEST" }, api_app_id: "A0AGENT",
+          user: { id: p.user }, channel: { id: p.channel }, message: { ts: p.ts },
+          actions: [{ action_id: p.action, value: p.value }],
+        },
+      }, "agent");
       return json({ envelope: id });
     }
     if (url.pathname === "/_fake/event" && req.method === "POST") return json(await httpEvents(await req.json()));
