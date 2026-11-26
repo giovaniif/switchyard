@@ -1,6 +1,6 @@
 //! WebSocket API for the UI.
 
-use std::{collections::HashMap, path::Path, sync::Arc};
+use std::{collections::HashMap, path::{Path, PathBuf}, sync::Arc};
 
 use anyhow::{bail, Context, Result};
 use axum::{
@@ -238,18 +238,37 @@ fn list_dirs(path: &str) -> Result<Vec<Value>> {
     Ok(dirs.into_iter().map(|(name, git)| json!({ "name": name, "git": git })).collect())
 }
 
-/// The shortest prefix of an absolute `path` that does not exist. A typo can
-/// sit anywhere up the path, and the picker names the folder that is not
-/// there rather than an io error for the one it asked about.
-fn first_missing(path: &str) -> Option<String> {
+/// Why the picker cannot list a typed absolute path, in words it can show.
+enum Unlistable {
+    /// The first folder on the path that does not exist.
+    Missing(String),
+    /// The first entry on the path that is a file, not a folder.
+    File(String),
+}
+
+/// The shortest prefix of an absolute `path` that does not exist or is a
+/// file. A typo can sit anywhere up the path, and the picker names that
+/// prefix rather than an io error for the folder it asked about.
+fn first_unlistable(path: &str) -> Option<Unlistable> {
     let path = Path::new(path);
     if !path.is_absolute() {
         return None;
     }
-    let ancestors: Vec<&Path> = path.ancestors().collect();
-    // Only NotFound: a folder the daemon may not read still exists.
-    let gone = |p: &&Path| matches!(std::fs::metadata(p), Err(e) if e.kind() == std::io::ErrorKind::NotFound);
-    ancestors.into_iter().rev().find(gone).map(|p| p.to_string_lossy().into_owned())
+    // Rebuilt from components, so `README.md/` is checked as `README.md`:
+    // a trailing slash on a file reads as "not a directory", not as a file.
+    let mut prefix = PathBuf::new();
+    for part in path.components() {
+        prefix.push(part);
+        let named = || prefix.to_string_lossy().into_owned();
+        match std::fs::metadata(&prefix) {
+            Ok(meta) if meta.is_dir() => {}
+            Ok(_) => return Some(Unlistable::File(named())),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Some(Unlistable::Missing(named())),
+            // A folder the daemon may not read still exists: the io error says it best.
+            Err(_) => return None,
+        }
+    }
+    None
 }
 
 /// Start a session from a `session.create` message. `direct` gets `created`
@@ -464,8 +483,9 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             let path = str_field(msg, "path")?;
             let reply = match list_dirs(path) {
                 Ok(dirs) => json!({ "op": "fs.dirs", "path": path, "dirs": dirs }),
-                Err(e) => match first_missing(path) {
-                    Some(missing) => json!({ "op": "fs.dirs", "path": path, "missing": missing }),
+                Err(e) => match first_unlistable(path) {
+                    Some(Unlistable::Missing(missing)) => json!({ "op": "fs.dirs", "path": path, "missing": missing }),
+                    Some(Unlistable::File(file)) => json!({ "op": "fs.dirs", "path": path, "file": file }),
                     None => json!({ "op": "fs.dirs", "path": path, "error": format!("{e:#}") }),
                 },
             };

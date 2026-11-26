@@ -372,6 +372,8 @@ export interface DirList {
   dirs?: { name: string; git: boolean }[];
   /** The first folder on `path` that does not exist, when that is why there is no list. */
   missing?: string;
+  /** The first entry on `path` that is a file, not a folder, when that is why there is no list. */
+  file?: string;
   error?: string;
 }
 
