@@ -35,7 +35,7 @@ pub async fn begin(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value],
         return;
     }
     // A restricted session gets a fresh engine with each turn (agents::prepare).
-    if !crate::private::restricted(app, sid) {
+    if !crate::private::restricted(app, sid) && !app.meta(sid).is_some_and(|m| m.slack_place.is_some()) {
         if let Err(e) = start_engine(app, sid).await {
             record(app, sid, &items, false);
             fail_turn(app, sid, &e);
@@ -49,6 +49,11 @@ pub async fn begin(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value],
 /// else the next turn, with anything still queued going first.
 pub async fn send_message(app: &Arc<App>, sid: &str, text: &str, files: &[Value], origin: Option<&Value>) -> anyhow::Result<()> {
     let meta = app.meta(sid).ok_or_else(|| anyhow::anyhow!("no such session"))?;
+    if meta.slack_place.is_some() {
+        app.queue_message(sid, text, files, origin.filter(|o| crate::origins::is_tagged(Some(o))));
+        Box::pin(deliver(app, sid, Delivery::NextTurn)).await;
+        return Ok(());
+    }
     if meta.status == "running" || meta.status == "needs_approval" {
         app.queue_message(sid, text, files, origin.filter(|o| crate::origins::is_tagged(Some(o))));
         return Ok(());
@@ -127,7 +132,7 @@ pub async fn start_queued(app: &Arc<App>, sid: &str) {
         fail_turn(app, sid, &anyhow::anyhow!("the queued prompt was lost"));
         return;
     };
-    if !crate::private::restricted(app, sid) {
+    if !crate::private::restricted(app, sid) && !app.meta(sid).is_some_and(|m| m.slack_place.is_some()) {
         if let Err(e) = start_engine(app, sid).await {
             fail_turn(app, sid, &e);
             return;
@@ -135,6 +140,10 @@ pub async fn start_queued(app: &Arc<App>, sid: &str) {
     }
     let origin = queued.as_ref().map(|e| e["origin"].clone()).filter(Value::is_object);
     let attachments = queued.and_then(|e| e["attachments"].as_array().cloned()).unwrap_or_default();
+    if let Some(origin) = origin.as_ref().filter(|o| crate::origins::slack_guest(o)) {
+        crate::slack::guest_turn(app, sid, &text, origin);
+        return;
+    }
     start_turn(app, sid, &crate::origins::engine_text(&text, origin.as_ref()), &attachments).await;
 }
 
@@ -159,13 +168,20 @@ pub fn combine(items: &[Value]) -> (String, Vec<Value>) {
 pub async fn deliver(app: &Arc<App>, sid: &str, when: Delivery) {
     match when {
         Delivery::NextTurn => {
-            let items = app.take_all_queued(sid, |s| s == "idle");
+            let items = if app.meta(sid).is_some_and(|m| m.slack_place.is_some()) {
+                app.take_place_turn(sid).into_iter().collect()
+            } else {
+                app.take_all_queued(sid, |s| s == "idle")
+            };
             if items.is_empty() {
                 return;
             }
             send_turn(app, sid, &items).await;
         }
         Delivery::Steer | Delivery::SteerOne(_) => {
+            if app.meta(sid).is_some_and(|m| m.slack_place.is_some()) {
+                return;
+            }
             let engine = app.meta(sid).map(|m| m.engine).unwrap_or_default();
             // The engine cannot take input mid-turn: it waits for the next one.
             if !crate::engines::can_steer(&engine) {
@@ -220,6 +236,12 @@ pub async fn deliver(app: &Arc<App>, sid: &str, when: Delivery) {
 /// Record the messages and hand them to the session's engine as one turn.
 pub async fn send_turn(app: &Arc<App>, sid: &str, items: &[Value]) {
     record(app, sid, items, false);
+    if let [item] = items {
+        if crate::origins::slack_guest(&item["origin"]) {
+            crate::slack::guest_turn(app, sid, item["text"].as_str().unwrap_or(""), &item["origin"]);
+            return;
+        }
+    }
     let (text, attachments) = engine_input(items);
     start_turn(app, sid, &text, &attachments).await;
 }
@@ -243,6 +265,16 @@ fn origins_of(items: &[Value]) -> Vec<Value> {
 
 async fn start_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) {
     app.emit(sid, json!({ "type": "turn_started" }));
+    run_engine_turn(app, sid, text, attachments).await;
+}
+
+pub async fn resume_slack_access(app: &Arc<App>, sid: &str, text: &str, origin: Value) {
+    let input = crate::origins::engine_text(text, Some(&origin));
+    app.update_meta(sid, |m| m.answering = vec![origin]);
+    run_engine_turn(app, sid, &input, &[]).await;
+}
+
+async fn run_engine_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) {
     // The engines run it in Plan (origins::turn_permission); the owner sees why.
     if app.meta(sid).is_some_and(|m| m.permission != "plan" && m.answering.iter().any(crate::origins::read_only)) {
         let text = "This turn is read-only (Plan): it works on a notice from a watched Slack channel. Anything it wants to change waits for your approval.";
@@ -268,6 +300,15 @@ async fn start_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]
         }
     };
     let engine = app.meta(sid).map(|m| m.engine).unwrap_or_default();
+    let needs_engine = app.sessions.lock().unwrap().get(sid).is_some_and(|s| {
+        s.meta.slack_place.is_some() && s.engine_ref.is_none() && matches!(s.backend, Backend::Pending)
+    });
+    if needs_engine {
+        if let Err(e) = start_engine(app, sid).await {
+            fail_turn(app, sid, &e);
+            return;
+        }
+    }
     let mut sent = send_to(app, sid, &engine, &text, attachments).await;
     // An agent's conversation outlives its engine thread: one that cannot
     // be resumed is replaced, with the conversation so far, and tried again.
@@ -323,6 +364,9 @@ pub async fn interrupt(app: &Arc<App>, sid: &str) -> anyhow::Result<()> {
     let Some(turn) = running_turn(app, sid) else {
         return Ok(());
     };
+    if meta.slack_place.is_some() && crate::slack::stop_guest_turn(app, sid)? {
+        return Ok(());
+    }
     let asked = match meta.engine.as_str() {
         // A wedged app-server may never answer.
         "codex" => match tokio::time::timeout(STOP_GRACE, codex::interrupt(app, sid)).await {

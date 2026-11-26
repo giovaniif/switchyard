@@ -251,7 +251,7 @@ Scheduled work, built into yardd (`crates/yardd/src/automations.rs`, UI in `ui/s
   is granted to the loopback page.
 
 - Each session row has a menu (the … button or right-click) with Rename, Pin, Move to group, Remove from group, Archive or Restore, and Delete. `session.rename { sessionId, title, ref }` stores a trimmed, single-line title of up to 60 characters and answers with `session.renamed { ref }`. The title appears on the same session and worktree in every window. `session.update { pinned?, archived?, group? }` stores the flags and group name in the session's metadata. These changes survive restarts and route through the hub for remote sessions. Archiving unpins. `group` is a trimmed name of up to 60 characters. Null or blank clears it, and leaving the field out keeps it.
-- **Session names** (`crates/yardd/src/naming.rs`). A session starts titled with its task's first line (60 characters). Right after `session.create` sends the task, yardd names it from the task alone, so a long first turn no longer shows a fragment or a bare link in the sidebar. After its first completed turn, and again after its third, it names it again from the conversation; a session never named yet (one from before naming, or whose every try failed) is named after whichever turn it completes next. Each naming reads the task plus the latest messages (each cut to 900 characters, 6,000 bytes in all), with instructions for a 3–7 word title. The model is Codex `gpt-5.6-luna` at effort low, else Claude Haiku (`claude-haiku-5-5`) when Codex is not listed or its turn fails, each in a private tool-less thread on the Default account through Switchy's `switchy-` plumbing (Codex: ephemeral, read-only, approvals never; Claude: a fresh restricted sidecar), never saved or shown. This spends the plans a little, a few hundred tokens per name. `YARD_NAMING_CODEX_MODEL` and `YARD_NAMING_CLAUDE_MODEL` pick other models (a model the host does not list is skipped); `YARD_SESSION_NAMES=off` turns naming off (the test harness and `yv iso` with fake engines default to off, since naming adds engine turns; the sidebar map turns it on). One session is named at a time, each try limited to 60 s. The answer is cleaned (first line; quotes, markdown, a `Title:` prefix and a trailing period dropped; at most 12 words, cut at a word to 60 characters); when nothing usable comes back the title stays. OpenCode's free models were tried first and dropped: their anonymous free tier answered "Free usage limit reached" and OpenCode retries that forever. `Meta.titleSource` says where the title came from: absent (first line), `auto`, or `user`. `session.rename` sets `user`, and a `user` title is never replaced, even when the model answers after the rename. Automation runs (their `Loop <kind> · …` titles are looked up by the loops) and hand-offs (`parent`) are never named.
+- **Session names** (`crates/yardd/src/naming.rs`). A session starts titled with its task's first line (60 characters). Right after `session.create` sends the task, yardd names it from the task alone, so a long first turn no longer shows a fragment or a bare link in the sidebar. After its first completed turn, and again after its third, it names it again from the conversation; a session never named yet (one from before naming, or whose every try failed) is named after whichever turn it completes next. Each naming reads the task plus the latest messages (each cut to 900 characters, 6,000 bytes in all), with instructions for a 3–7 word title. The model is Codex `gpt-5.6-luna` at effort low, else Claude Haiku (`claude-haiku-5-5`) when Codex is not listed or its turn fails, each in a private restricted thread on the Default account through Switchy's `switchy-` plumbing (Codex: ephemeral, read-only, approvals never; Claude: a fresh restricted sidecar), never saved or shown. This spends the plans a little, a few hundred tokens per name. `YARD_NAMING_CODEX_MODEL` and `YARD_NAMING_CLAUDE_MODEL` pick other models (a model the host does not list is skipped); `YARD_SESSION_NAMES=off` turns naming off (the test harness and `yv iso` with fake engines default to off, since naming adds engine turns; the sidebar map turns it on). One session is named at a time, each try limited to 60 s. The answer is cleaned (first line; quotes, markdown, a `Title:` prefix and a trailing period dropped; at most 12 words, cut at a word to 60 characters); when nothing usable comes back the title stays. OpenCode's free models were tried first and dropped: their anonymous free tier answered "Free usage limit reached" and OpenCode retries that forever. `Meta.titleSource` says where the title came from: absent (first line), `auto`, or `user`. `session.rename` sets `user`, and a `user` title is never replaced, even when the model answers after the rename. Automation runs (their `Loop <kind> · …` titles are looked up by the loops) and hand-offs (`parent`) are never named.
 - **Drag and drop** (native HTML5, no library): a row dragged onto a group (its header or rows) moves into it, onto the ungrouped Sessions rows leaves its group, onto Pinned pins it. A group or Sessions drop also unpins, since those sections only show unpinned sessions. `dropUpdate` in `ui/src/sidebarDrop.ts` turns a drop into one `session.update { pinned?, group? }`, or nothing when the session is already there; such a section refuses the drop, so the cursor says no and nothing lights up. The dragged row dims; the section under the pointer is highlighted; a collapsed group opens after 600 ms over it; with no ungrouped rows a "Drop here to remove from group" slot appears while dragging; Escape cancels (the browser's own). The drag carries the session id as `application/x-yard-session`. Archived rows and rows on an unreachable host are not draggable, like the menu. No reordering: order comes from creation and activity and is not stored. Touch has no HTML5 drag, so in the phone drawer (below 700 px) rows are not draggable and the … menu is the way; it is also the keyboard path. The Mac app turns off Tauri's own drop handler (`disable_drag_drop_handler`), which is what lets drags inside the page work.
 - Groups have no record of their own: a group exists while a session names it. The sidebar lists Pinned, then ungrouped sessions (creation order), then one collapsible section per group (sorted by name, newest activity first inside; `sidebarLayout` in `store.ts`). Pinned and archived sessions are not shown inside groups. A group header shows name, count and chevron; collapsed, it also carries the Automations row's dot when a session in it waits for approval (amber) or works (green), since its rows are hidden. Its menu renames or ungroups every session that carries the name, archived ones included. Which groups are collapsed is per browser (`yard.groups.collapsed` in localStorage).
 - **Mark as unread/read** in a session row’s menu persists per browser in `yard.seen` (`-1` is an explicit unread mark). An unread chat gets a blue dot, bold title and Unread label. Opening it deliberately or choosing Mark as read clears it; reloading an already open chat preserves the explicit mark. Running, approval, queued and offline states keep their priority. Other windows follow through `storage`.
@@ -500,9 +500,9 @@ longer read.
 Named agents, after Orca's Bots: each has a display name ("Custom Domains
 Triage", spaces and all), a handle it is mentioned by (`@Custom-Domains-Triage`,
 made from the name), a colour, what it is for, how it runs, and two notes the user
-writes for it. **Each agent has exactly one conversation, for its whole
-life**, and agent conversations never mix with the owner's coding sessions in
-the sidebar. There is no built-in agent: Scout, the read-only host agent that
+writes for it. Each agent has a main Switchyard conversation and separate
+sessions for its Slack places. Agent conversations stay together under
+Agents in the sidebar. There is no built-in agent: Scout, the read-only host agent that
 had replaced Switchy, was removed on 2026-11-24 at the owner's request, with
 its evidence collector (`host_context.rs`, `context.collect`); a Scout record
 and its conversation left by an older yardd are deleted at start
@@ -586,10 +586,10 @@ the composer and session view in `App.tsx`.
   with its next message. Without the tools (no loopback bind) the first-run
   rules ask the owner to use Edit. The Edit form stays for changing things
   by hand.
-- **The one conversation.** Every message to an agent goes into its
-  conversation, queued while a turn runs (`sessions::send_message`): from its
-  page, from an `@mention` in any message box, from other agents
-  (`message_agent`) and from Slack (see Slack below). The first message makes it (a `session.create` in the agent's
+- **The main conversation.** The agent page, Switchyard mentions and
+  `message_agent` send here (`sessions::send_message`). Watched-channel
+  batches arrive here too. Slack DMs and thread requests use dedicated place
+  sessions. The first message makes it (a `session.create` in the agent's
   folder tagged `Meta.agent`); yardd answers `created { sessionId, ref }` as
   soon as it is known. In the agent's own folder it does not hold the folder;
   in a folder the user chose it runs in place, one writer at a time.
@@ -608,8 +608,8 @@ the composer and session view in `App.tsx`.
   description keep the thread and reach the agent with its next message
   (`<notes_changed>`, `Meta.notes_changed`); effort and permission apply from
   the next turn. The user sees one continuous thread.
-- **On a remote host.** An agent whose `host` is a remote runs its one
-  conversation as a session on that host, in its own folder there
+- **On a remote host.** An agent whose `host` is a remote runs its main
+  Switchyard conversation and Slack places on that host, in its own folder there
   (`<remote data dir>/agents/<id>/`, made with the first message) or a folder
   picked from that host's dirs. The hub hands the host a copy of the record
   (`agent.hosted.save`, with `hosted: true`; kept in the host's
@@ -983,7 +983,7 @@ the composer and session view in `App.tsx`.
 Two things: the owner's own Slack (his direct messages and the channels he
 picks, read and answered as him) and his agents in Slack, each with an app of
 its own. `crates/yardd/src/slack.rs`; UI `ui/src/SlackCard.tsx` (the
-Connectors card: his own Slack and who may talk to agents),
+Connectors card: his own Slack and who may request agent tool use),
 `ui/src/SlackSetup.tsx` (an agent's app), `ui/src/slack.ts` (status words,
 steps, the badge's words). Agents' messages and answers ride the shared
 origins and reply hook (see Agents, Origins): Slack adds the `slack` kind,
@@ -1108,24 +1108,55 @@ its engine framing and one arm in `origins::reply`.
   (aside, then renamed). They never leave yardd: the snapshot and the `slack`
   broadcast carry `xoxp-…WXYZ` only, and no log line or error names them (the
   Socket Mode address, which holds a ticket, is not logged either).
-- **Who may talk to agents:** an allowlist of Slack user ids. Whoever
-  approves an agent's app (or his own) is on it. Anyone else who writes to an
-  agent's app is ignored, gets one ephemeral "not allowed" note with their
-  member id, and shows on the card as a request (Allow, Dismiss). Bots, the
-  app's own included, and edits, joins and other subtypes are ignored. (Next,
-  per the owner: anyone may talk to agents, and any tool use for someone not
-  approved, reads included, waits for the owner's approval.)
-- **Routing.** A message to an agent's app goes to that agent, never by name
-  or default. In a channel, a message without its bot's mention counts only
-  as a follow-up in a thread already routed to *that* agent (saved as
-  `team/channel/thread_ts`, the newest 1,000; every app in the channel hears
-  it, and before this the first app's event took it), and not when it
-  @mentions a person, a user group or another bot; a mention arrives as both
-  `app_mention` and a channel message and is handled once. Slack markup reads
-  as text (`<url|label>` as `label (url)`, `<@U1>` as `@U1`). Files are not
-  passed on. Delivery is `agents::deliver`, the same path `message_agent`
-  uses: into the agent's one conversation, made if it has none, queued while
-  a turn runs.
+- **Who may request tools.** Human DMs, mentions and follow-ups reach an
+  agent’s app. The workspace’s app installer and people on the Slack
+  allowlist are trusted. Bot messages, edits and membership events are
+  ignored for this route. The Connectors card lists trusted members and
+  can revoke their allowlist entries. The app installer can always decide
+  for their own app.
+- **Place sessions.** A channel thread uses `team/channel/thread_ts`. A DM
+  uses `team/channel/` for the whole conversation. Each agent has its own
+  session for each key. In channels a plain follow-up reaches an agent
+  only in a thread routed to its app, and a message addressed to someone
+  else stays with that recipient. The router deduplicates mentions per app,
+  passes Slack markup as text and keeps file attachments in Slack. The
+  first delivery fetches up to 30 recent messages using the bot token
+  (`conversations.replies` or `conversations.history`). Slack API errors
+  leave the current request usable on its own. History is clipped, escaped
+  and framed as data. The current message is framed separately. The
+  owner’s chat stays on the agent page beside **Slack places**, where each
+  place shows its most recent message time and any pending approval.
+  An agent’s common setup and memory follow its place sessions. The hub
+  owns the Slack apps and calls `agent.hosted.slack` for a remote agent.
+  The session is created there and answers travel back through the hub.
+  Place messages queue one at a time; they never share a turn or steer one
+  in progress.
+- **Guest turns.** Claude uses a fresh restricted sidecar in a scratch
+  directory with the app’s conversation history and the agent’s setup
+  and memory. It starts with an empty tool list, a wildcard tool deny,
+  strict empty MCP config, empty settings sources, skills and plugins,
+  and no resume. The permission callback also denies tool requests.
+  Verbatim prompts skip CLI-side expansion. Switchyard’s own tools are
+  disabled for these turns because they can read or change state outside
+  Slack. A regular reply is posted in the place. A final reply consisting
+  of the access marker opens a request for the current message. Codex
+  0.171’s generated app-server schemas expose sandbox and approval
+  settings, while the empty allowlist in Codex’s internal `ToolPolicy`
+  is unavailable there. A read-only sandbox still permits file reads.
+  OpenCode, Grok and Gemini’s ACP modes also lack an enforced all-tools-off
+  profile. For those engines, Switchyard posts an explanation and opens
+  an approval before sending the guest’s message to the engine.
+- **Access approvals.** The place shows a needs-approval card and its bot
+  opens a DM to the installer containing the original request. On Socket
+  Mode apps, the manifest enables interactivity and the DM offers
+  **Approve once**, **Always allow** the requester, and **Deny**. Each
+  envelope is acknowledged. A button click must match the installer,
+  app, workspace and DM message for the pending request. Either surface
+  resolves the same card and updates the bot’s DM. Approval replays the
+  original message as a normal turn with the agent’s configured
+  permissions. Always allow also saves the person to the allowlist. A
+  denial is posted in the original place. HTTP-event apps get a DM that
+  points to the Switchyard card and use the card for decisions.
 - **Answers** (`slack::answer`, the reply hook's `slack` arm), through the
   app the message came in on. The message
   gets :eyes: when it reaches the agent (queued or not). When the turn that
@@ -1236,9 +1267,8 @@ its engine framing and one arm in `origins::reply`.
     `/slack/oauth`** on the public address (a Cloudflare Tunnel with a path
     rule, say); nothing else of yardd's may be public. An app keeps the way
     it was made: one on Socket Mode stays there when an address is set later.
-  - **Messages.** Everything it hears goes to its agent, never routed by
-    name or default; the allowlist, origins (with `app`: its agent),
-    reactions and answers are as above, posted with its own bot token. Its agent can also post on its own, at any time,
+  - **Messages.** The app routes to its agent’s place, using the app id,
+    origin details, reactions and answers above. Its agent can also post on its own, at any time,
     in a thread routed to it (`slack_reply`, see Agents' own tools).
   - **Watched channels** (owner request: On-call, Domain Triage and
     Firefighter only reacted when @mentioned, and every Datadog, PostHog or
@@ -1263,9 +1293,8 @@ its engine framing and one arm in `origins::reply`.
       own bots (every agent app's bot, by user id, bot id
       from `auth.test`, or app id), edits, deletions, joins, and thread
       replies, which keep the follow-up rules. A person's @mention of the
-      agent there is a request and goes the mention path (allowlist and
-      all). Watched messages are not gated by the allowlist: nobody is
-      asking anything, and the text arrives as data. The words are the
+      agent there is a request and goes the mention path. A watched notice is automatic triage the owner
+      configured, and the text arrives as data. The words are the
       text, else an integration's attachments (pretext, author, title, its
       link, text, fields) or, with neither, its blocks; Slack markup read as
       text; at most 3,000 bytes each.
@@ -1277,7 +1306,8 @@ its engine framing and one arm in `origins::reply`.
       turns per agent an hour (the agent tools' limiter): past that the batch
       waits, still collecting, until a turn is free, and the agent's
       conversation says once until when.
-    - **The turn** (`deliver_watched`, through `agents::deliver`): its text
+    - **The turn** (`deliver_watched`, through `agents::deliver`) stays in
+      the agent’s main Switchyard conversation. Its text
       is one `<watched n from at thread_ts link? repeated?>` tag per message,
       written by yardd (attributes one line without quotes, the message
       escaped, so it can neither close its tag nor forge one); the link is a
@@ -1313,8 +1343,8 @@ its engine framing and one arm in `origins::reply`.
       `readOnly: true`, as does the answer back (`origins::answer`), so
       handing a notice to an agent with full access gets it no access; both
       survive the trip to a remote host (`from_hub`). The owner's go-ahead
-      in an alert's thread (allowed person, routed thread) is a normal turn
-      with the agent's own permission.
+      in an alert’s thread is a normal turn in that thread’s place session,
+      with the agent’s own permission.
   - **Remove** (`slack.app.remove`, or deleting the agent) closes the
     connection and deletes the app (`apps.manifest.delete`, best effort) and
     its icon.
@@ -1324,9 +1354,11 @@ its engine framing and one arm in `origins::reply`.
   elsewhere: `verify/fakes/fake-slack` is a Bun fake of the Web API methods
   above and Socket Mode, with control endpoints to send a message, a
   `disconnect` or a drop and to read posts, reactions and acks.
-  `tests/slack.rs`: routing by name, default agent and thread, the allowlist
-  and its one ephemeral note, bots ignored, a channel mention handled once,
-  the engine framing, answers in the right thread with reactions, failure,
+  `tests/slack.rs` covers separate DM and channel-thread sessions, follow-ups,
+  escaped history, Claude’s restricted launch, Codex requests waiting before
+  launch, owner-only clicks and all three decisions, including a pending card
+  surviving restart. It also covers bots being ignored, a channel mention
+  handled once, the engine framing, answers in the right thread with reactions, failure,
   approval, stop and unread posts, every envelope acked, reconnects after a
   `disconnect` and a drop, a refused token shown, tokens in no snapshot,
   broadcast or log (file mode 0600), and a message to an agent on a remote
@@ -1369,8 +1401,8 @@ its engine framing and one arm in `origins::reply`.
   signatures (Slack's documented example) and their age, redirects, the
   public address and the icon check; UI tests the steps, the token count,
   the icon SVG and its key. The
-  `slack` feature map drives the card (empty, refused, connected, a request,
-  the default agent) and the badge in a conversation at both viewports,
+  `slack` feature map drives the Connectors card, Slack places, approvals
+  in Switchyard and the origin badge at both viewports,
   against the fake.
 - **Not checked:** a real Slack workspace. Nothing here has talked to
   slack.com: the manifest import and update (whether a new bot display name
@@ -1385,7 +1417,6 @@ its engine framing and one arm in `origins::reply`.
   whether `bot_profile.app_id` is set on our own posts, and a real Claude
   turn in Plan (how Claude Code treats Bash and MCP tools there; Codex MCP
   tools of other servers are not under its sandbox) are not checked. Slack connects from the hub only (Slack on a remote host is not
-  offered); an agent on a remote host is reached through the hub like any
-  `agents::deliver` (see Agents' own tools, On a remote host). A note about
+  offered). Remote delivery and approval are covered using a second daemon. A note about
   a Slack post that failed lands in a local conversation only: for a remote
   agent's it is logged on the hub instead.

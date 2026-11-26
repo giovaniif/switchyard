@@ -95,7 +95,8 @@ let firstTurn = true;
 // `user` lines are handled one after another: one may wait for a mode switch.
 let userLines: Promise<void> = Promise.resolve();
 
-async function run(start: { restricted?: boolean; cwd: string; model: string; effort?: string; permission?: string; resume?: string | null; tools?: Record<string, unknown> | null; mcp?: McpScope }) {
+async function run(start: { restricted?: boolean; slackGuest?: boolean; cwd: string; model: string; effort?: string; permission?: string; resume?: string | null; tools?: Record<string, unknown> | null; mcp?: McpScope }) {
+  if (start.slackGuest && !readOnly(start)) throw new Error("A Slack guest turn requires the restricted profile.");
   cwd = start.cwd;
   startMode = start.permission ?? "ask";
   const subagents = createSubagents(cwd);
@@ -158,7 +159,7 @@ async function run(start: { restricted?: boolean; cwd: string; model: string; ef
   if (scoped.env) Object.assign(env, scoped.env);
   Object.assign(options, restrictedProfile(start));
   if (start.effort && efforts.includes(start.effort)) options.effort = start.effort;
-  if (start.resume) options.resume = start.resume;
+  if (start.resume && !readOnly(start)) options.resume = start.resume;
   // Recent models omit thinking text unless asked; summarized is what Claude Code shows.
   options.extraArgs = { "thinking-display": "summarized" };
   const claudeBin = Bun.which("claude");

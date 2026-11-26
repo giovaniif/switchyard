@@ -1,7 +1,7 @@
 // The Slack connector on the Connectors page: the owner connects his own
 // Slack (an app of his with user scopes: a configuration token, Approve in
-// Slack, one connection token), sees its connection, and decides who may
-// talk to agents through their own apps. yardd keeps the tokens; this page
+// Slack, one connection token), sees its connection, and shows who may
+// request tool use from agents through their own apps. yardd keeps the tokens; this page
 // only ever sees their kind and last four characters.
 import { useState } from "react";
 import type { SlackChannel, SlackView } from "./protocol";
@@ -37,35 +37,15 @@ export function SlackCard({ state, actions }: { state: State; actions: Actions }
       {me?.step !== "ready" && <ConnectMe view={view} actions={actions} />}
       {me?.step === "ready" && <Channels actions={actions} />}
       <ul className="connector-list">
-        {view.requests.map((r) => (
-          <li key={r.id} className="connector">
-            <div className="connector-row">
-              <span className="connector-id">
-                <span className="dot connector-dot-needs-auth" aria-hidden="true" />
-                <span className="connector-name">{r.name}</span>
-                <span className="muted small connector-via">{r.place === "Direct message" ? "wrote to an agent directly" : `wrote to an agent in ${r.place}`} · {r.id}</span>
-              </span>
-              <span className="connector-side">
-                <span className="connector-status connector-status-needs-auth">Not allowed</span>
-                <button className="btn btn-small" onClick={() => actions.slack("slack.allow", { user: r.id })} aria-label={`Allow ${r.name}`}>
-                  Allow
-                </button>
-                <button className="btn-text btn-small" onClick={() => actions.slack("slack.dismiss", { user: r.id })} aria-label={`Dismiss ${r.name}`}>
-                  Dismiss
-                </button>
-              </span>
-            </div>
-          </li>
-        ))}
         {view.allowed.map((p) => (
           <AllowedRow key={p.id} person={p} onRemove={() => actions.slack("slack.disallow", { user: p.id })} />
         ))}
-        {!view.allowed.length && !view.requests.length && (
+        {!view.allowed.length && (
           <li className="connector">
             <div className="connector-row">
               <span className="connector-id">
                 <span className="dot connector-dot-pending" aria-hidden="true" />
-                <span className="connector-name">Who can talk to agents</span>
+                <span className="connector-name">Who can request tool use</span>
               </span>
             </div>
             <p className="muted small slack-hint">{allowedSummary(view)}</p>
@@ -183,7 +163,7 @@ function AllowedRow({ person, onRemove }: { person: { id: string; name: string }
           <span className="muted small connector-via">{person.id}</span>
         </span>
         <span className="connector-side">
-          <span className="connector-status">Can talk to agents</span>
+          <span className="connector-status">Can request tool use</span>
           <button
             className={`btn-text btn-small ${confirm ? "bad" : ""}`}
             onClick={() => (confirm ? onRemove() : setConfirm(true))}

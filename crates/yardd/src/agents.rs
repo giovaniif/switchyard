@@ -523,7 +523,26 @@ fn busy(status: &str) -> bool {
 /// account or folder cannot continue the engine thread, so the next turn
 /// starts a fresh one; effort and permission apply from the next turn.
 fn follow(app: &App, old: &Agent, a: &Agent) -> Result<()> {
-    let Some(meta) = old.chat.as_deref().and_then(|sid| app.meta(sid)) else { return Ok(()) };
+    let sessions = conversations(app, old);
+    let changes_run = old.engine != a.engine || old.model != a.model || old.account != a.account || old.cwd != a.cwd
+        || old.effort != a.effort || old.permission != a.permission;
+    if changes_run && sessions.iter().any(|m| busy(&m.status)) {
+        bail!("{} is in the middle of a turn. Change how it runs once the turn ends.", old.name);
+    }
+    for meta in sessions {
+        follow_session(app, old, a, &meta)?;
+    }
+    Ok(())
+}
+
+fn conversations(app: &App, a: &Agent) -> Vec<crate::state::Meta> {
+    app.sessions.lock().unwrap().values().filter(|s| {
+        a.chat.as_deref() == Some(&s.meta.id)
+            || (a.host == LOCAL && s.meta.agent.as_deref() == Some(&a.id) && s.meta.slack_place.is_some())
+    }).map(|s| s.meta.clone()).collect()
+}
+
+fn follow_session(app: &App, old: &Agent, a: &Agent, meta: &crate::state::Meta) -> Result<()> {
     // Its engine keeps the servers it started with: let it go once idle, so
     // the next turn resumes with the new list.
     if old.mcp != a.mcp {
@@ -538,9 +557,6 @@ fn follow(app: &App, old: &Agent, a: &Agent) -> Result<()> {
     }
     if !moved && old.effort == a.effort && old.permission == a.permission {
         return Ok(());
-    }
-    if busy(&meta.status) {
-        bail!("{} is in the middle of a turn. Change how it runs once the turn ends.", old.name);
     }
     let (engine, model, effort) = launch(app, a)?;
     let cwd = if a.cwd.is_empty() { home(&a.id).to_string_lossy().into_owned() } else { a.cwd.clone() };
@@ -649,10 +665,10 @@ async fn move_host(app: &Arc<App>, old: &Agent, a: &mut Agent) -> Result<()> {
     let mut recap_text = String::new();
     let mut why = format!("it moved to {to}");
     if old.host == LOCAL {
+        if conversations(app, old).iter().any(|m| busy(&m.status)) {
+            bail!("{} is in the middle of a turn. Move it once the turn ends.", old.name);
+        }
         if let Some(sid) = old.chat.as_deref() {
-            if app.meta(sid).is_some_and(|m| busy(&m.status)) {
-                bail!("{} is in the middle of a turn. Move it once the turn ends.", old.name);
-            }
             recap_text = recap_of(app, sid);
         }
     } else {
@@ -747,6 +763,11 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
                     hosts.push(h.to_string());
                 }
             }
+            for h in crate::slack::place_hosts(app, id) {
+                if !hosts.contains(&h) {
+                    hosts.push(h);
+                }
+            }
             for h in &hosts {
                 if let Reach::Offline(n) = reach(app, h) {
                     bail!("{}'s conversation is on {n}, which is offline. Delete {} once {n} is back.", a.name, a.name);
@@ -813,6 +834,9 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
             match crate::origins::from_hub(&msg["origin"]) {
                 // Another agent's message, or the answer to one, sent on by the hub.
                 Some(origin) => {
+                    if crate::origins::slack_place(&origin).is_some() {
+                        bail!("Use the hosted Slack place operation for this message.");
+                    }
                     let text = msg["text"].as_str().unwrap_or("").trim();
                     if text.is_empty() {
                         bail!("the message is empty");
@@ -822,6 +846,21 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
                 }
                 None => ask(app, direct, msg).await?,
             }
+        }
+        "agent.hosted.slack" => {
+            let id = msg["agentId"].as_str().context("missing agentId")?;
+            let a = app.agents.get(id).filter(|a| a.hosted).context("no such agent")?;
+            let origin = crate::origins::from_hub(&msg["origin"]).filter(|o| crate::origins::slack_place(o).is_some()).context("missing Slack place")?;
+            let text = msg["text"].as_str().filter(|s| !s.trim().is_empty()).context("the message is empty")?;
+            let sid = local_place(app, &a, text, &origin).await?;
+            reply(json!({ "op": "created", "sessionId": sid }));
+        }
+        "agent.hosted.slackAccess" => {
+            let sid = msg["sessionId"].as_str().context("missing sessionId")?;
+            let meta = app.meta(sid).context("no such session")?;
+            app.agents.get(meta.agent.as_deref().unwrap_or("")).filter(|a| a.hosted && msg["agentId"] == a.id).context("no such hosted agent")?;
+            crate::slack::resolve_on_host(app, sid, &msg["requestId"], &msg["decision"])?;
+            reply(json!({ "op": "agent.hosted.slackAccess.resolved" }));
         }
         "agent.hosted.seen" => {
             let id = msg["id"].as_str().context("missing `id`")?;
@@ -836,16 +875,17 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
         "agent.hosted.hub" => {
             let hub = msg["hub"].as_str().filter(|h| !h.is_empty() && h.len() <= 64 && h.chars().all(|c| c.is_ascii_alphanumeric())).context("invalid hub id")?;
             app.tools.hub_connected(hub, direct);
+            crate::slack::resume_approvals(app, Some(hub));
         }
         "agent.hosted.answer" => app.tools.answered(direct, msg),
         "agent.hosted.leave" => {
             let id = msg["id"].as_str().context("missing `id`")?;
             let mut recap_text = String::new();
             if let Some(a) = app.agents.get(id).filter(|a| a.hosted) {
+                if conversations(app, &a).iter().any(|m| busy(&m.status)) {
+                    bail!("{} is in the middle of a turn on {}. Move it once the turn ends.", a.name, crate::hosts::local_name());
+                }
                 if let Some(meta) = a.chat.as_deref().and_then(|sid| app.meta(sid)) {
-                    if busy(&meta.status) {
-                        bail!("{} is in the middle of a turn on {}. Move it once the turn ends.", a.name, crate::hosts::local_name());
-                    }
                     recap_text = recap_of(app, &meta.id);
                 }
                 // Its conversation stays, readable from the hub.
@@ -975,6 +1015,27 @@ pub async fn deliver(app: &Arc<App>, id: &str, text: &str, origin: &Value) -> Re
     start_chat(app, None, &a, text, &Value::Null, &Value::Null, Some(origin)).await
 }
 
+/// A place's working conversation lives on the same host as its agent.
+pub async fn deliver_place(app: &Arc<App>, id: &str, text: &str, origin: &Value) -> Result<String> {
+    let a = app.agents.get(id).filter(|a| !a.hosted).context("no such agent")?;
+    if a.host == LOCAL {
+        return local_place(app, &a, text, origin).await;
+    }
+    send_remote(app, &a, text, &Value::Null, Some(origin)).await
+}
+
+async fn local_place(app: &Arc<App>, a: &Agent, text: &str, origin: &Value) -> Result<String> {
+    let key = crate::origins::slack_place(origin).context("missing Slack place")?;
+    let _one = app.slack.place_creation.lock().await;
+    let existing = conversations(app, a).into_iter().find(|m| m.slack_place.as_deref() == Some(key));
+    if let Some(meta) = existing {
+        drop(_one);
+        crate::sessions::send_message(app, &meta.id, text, &[], Some(origin)).await?;
+        return Ok(meta.id);
+    }
+    start_chat(app, None, a, text, &Value::Null, &Value::Null, Some(origin)).await
+}
+
 /// Make the agent's conversation with its first message.
 async fn start_chat(
     app: &Arc<App>,
@@ -1004,7 +1065,8 @@ async fn start_chat(
         "account": if engine == a.engine { a.account.as_str() } else { crate::accounts::DEFAULT },
         "ref": reference,
     });
-    crate::ws::create_session(app, direct, &create, None, None, Some(&a.id), origin).await
+    let title = origin.and_then(|o| o["placeLabel"].as_str());
+    crate::ws::create_session(app, direct, &create, title, None, Some(&a.id), origin).await
 }
 
 /// New agent: one with a placeholder name, set up in its conversation. An
@@ -1294,36 +1356,49 @@ fn setup_rules(a: &Agent, tools: bool) -> String {
 /// The agent changes its own memory (`remember`, `set_memory`): `append`
 /// adds a line, else the text replaces it. Same cap as the form; every
 /// window hears of it. Its engine already knows, so this is no notes change.
-pub fn edit_memory(app: &App, id: &str, text: &str, append: bool) -> Result<String> {
+pub fn edit_memory(app: &App, id: &str, sid: &str, text: &str, append: bool) -> Result<String> {
     let text = text.trim();
-    let a = app.agents.get(id).context("no such agent")?;
-    let memory = if append {
-        if text.is_empty() {
-            bail!("Nothing to remember: the text is empty.");
-        }
-        if a.memory.is_empty() { text.to_string() } else { format!("{}\n{text}", a.memory) }
-    } else {
-        text.to_string()
-    };
-    if memory.len() > NOTES_MAX {
-        bail!("Memory is at most 20,000 characters; this would make it {}. Shorten it with set_memory first.", memory.len());
+    if append && text.is_empty() {
+        bail!("Nothing to remember: the text is empty.");
     }
-    app.agents.update(id, |a| {
+    let memory = {
+        let mut list = app.agents.list.lock().unwrap();
+        let a = list.iter_mut().find(|a| a.id == id).context("no such agent")?;
+        let memory = if append && !a.memory.is_empty() {
+            format!("{}\n{text}", a.memory)
+        } else {
+            text.to_string()
+        };
+        if memory.len() > NOTES_MAX {
+            bail!("Memory is at most 20,000 characters; this would make it {}. Shorten it with set_memory first.", memory.len());
+        }
         a.memory = memory.clone();
         a.updated_at = now_ms();
-    });
+        app.agents.persist(&list);
+        memory
+    };
+    mark_other_notes(app, id, sid);
     broadcast(app);
     Ok(memory)
 }
 
+fn mark_other_notes(app: &App, id: &str, sid: &str) {
+    if let Some(a) = app.agents.get(id) {
+        for meta in conversations(app, &a).into_iter().filter(|m| m.id != sid) {
+            app.update_meta(&meta.id, |m| m.notes_changed = true);
+        }
+    }
+}
+
 /// A hosted copy's memory, as the agent's tools changed it on the hub. Its
 /// engine already knows, so this is no notes change either.
-pub fn hosted_memory(app: &App, id: &str, memory: &str) {
+pub fn hosted_memory(app: &App, id: &str, sid: &str, memory: &str) {
     app.agents.update(id, |a| {
         if a.hosted {
             a.memory = memory.to_string();
         }
     });
+    mark_other_notes(app, id, sid);
 }
 
 /// A message for an agent on a remote host: its host runs the conversation,
@@ -1348,7 +1423,9 @@ async fn send_remote(app: &Arc<App>, a: &Agent, text: &str, attachments: &Value,
     if attached && crate::attachments::resolve(attachments).is_ok() {
         bail!("These files are on {}, not on {name}. Attach them in {}'s conversation instead.", crate::hosts::local_name(), a.name);
     }
-    let mut send = json!({ "op": "agent.hosted.ask", "agentId": a.id, "text": text, "attachments": attachments });
+    let place = origin.and_then(crate::origins::slack_place).is_some();
+    let op = if place { "agent.hosted.slack" } else { "agent.hosted.ask" };
+    let mut send = json!({ "op": op, "agentId": a.id, "text": text, "attachments": attachments });
     if let Some(origin) = origin {
         send["origin"] = origin.clone();
     }
@@ -1362,7 +1439,7 @@ async fn send_remote(app: &Arc<App>, a: &Agent, text: &str, attachments: &Value,
     };
     let remote_sid = reply["sessionId"].as_str().context("the host did not say which conversation")?;
     let sid = format!("{}{}{remote_sid}", a.host, crate::remote::SEP);
-    if a.chat.as_deref() != Some(sid.as_str()) {
+    if !place && a.chat.as_deref() != Some(sid.as_str()) {
         set_chat(app, &a.id, &sid);
     }
     Ok(sid)
@@ -1391,12 +1468,20 @@ pub async fn prepare(app: &Arc<App>, sid: &str, text: &str) -> Result<String> {
     let Some(agent) = meta.agent.as_deref().and_then(|id| app.agents.get(id)) else {
         return Ok(text.to_string());
     };
-    let (turns, history) = {
+    let (turns, has_engine, history) = {
         let map = app.sessions.lock().unwrap();
-        let events = map.get(sid).map(|s| s.events.as_slice()).unwrap_or_default();
-        (events.iter().filter(|e| e["type"] == "turn_started").count(), exchanges(events, true))
+        let session = map.get(sid);
+        let events = session.map(|s| s.events.as_slice()).unwrap_or_default();
+        // Guest input and replies never become messages in a toolful engine's
+        // context, even when rebuilding its transcript after a restart.
+        let history = if meta.slack_place.is_some() { Vec::new() } else { exchanges(events, true) };
+        (events.iter().filter(|e| e["type"] == "turn_started").count(), session.is_some_and(|s| s.engine_ref.is_some()), history)
     };
-    if turns <= 1 {
+    if meta.slack_place.is_some() && !has_engine && meta.fresh_context.is_none() {
+        let tools = crate::agent_tools::offered(app, sid);
+        return Ok(preamble(&agent, "", tools, &setup_part(app, &agent, tools), text));
+    }
+    if meta.slack_place.is_none() && turns <= 1 {
         // A conversation that takes over from one on another host starts
         // where that one ended.
         let seed = app.agents.take_seed(&agent.id);

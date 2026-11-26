@@ -5,7 +5,7 @@ import { allowedSummary, avatarIconSvg, iconKey, mySteps, setupSteps, slackStatu
 import { originLabel } from "./agents";
 import { initial, reduce } from "./store";
 
-const view = (extra: Partial<SlackView> = {}): SlackView => ({ me: null, allowed: [], requests: [], ...extra });
+const view = (extra: Partial<SlackView> = {}): SlackView => ({ me: null, allowed: [], ...extra });
 const me = (extra: Partial<SlackMe> = {}): SlackMe => ({
   step: "ready", appId: "A1", teamId: "T1", teamName: "Acme", userName: "Gio", canRedirect: true, userToken: "xoxp-…abcd", appToken: "xapp-…wxyz", ...extra,
 });
@@ -29,7 +29,7 @@ describe("the connection's status", () => {
     expect(mySteps(view({ me: me() })).at).toBe(3);
   });
 
-  test("says who may talk to agents", () => {
+  test("says whose requests can use tools", () => {
     expect(allowedSummary(view())).toContain("approves an agent's app");
     expect(allowedSummary(view({ allowed: [{ id: "U1", name: "Gio" }] }))).toBe("Only Gio.");
     expect(allowedSummary(view({ allowed: [{ id: "U1", name: "Gio" }, { id: "U2", name: "Ana" }] }))).toBe("2 people.");

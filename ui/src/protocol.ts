@@ -42,6 +42,8 @@ export interface SessionMeta {
   automation?: string | null;
   /** The agent this session is a chat with (see agents.ts). */
   agent?: string | null;
+  slackPlace?: string;
+  slackAccess?: { id: string };
   /** An agent's conversation: the start of its last answer, for its card. */
   lastMessage?: string | null;
   /** An agent's conversation starts a fresh engine thread with its next turn, and why. */
@@ -105,13 +107,20 @@ export interface SlackOrigin {
 
 /** The Slack connection and its settings (yardd's slack.rs). Tokens never
  *  come here: only their kind and last four characters. */
+export interface SlackPlace {
+  key: string;
+  agentId: string;
+  sessionId: string;
+  name: string;
+  at: number;
+}
+
 export interface SlackView {
   /** The owner's own Slack app: none until he starts connecting it (older yardds send none). */
   me?: SlackMe | null;
-  /** Who may talk to agents through their apps. */
+  /** People whose Slack requests may use tools. */
   allowed: { id: string; name: string }[];
-  /** People who wrote to an agent's app and are not allowed, newest first. */
-  requests: { id: string; name: string; place: string; at: number }[];
+  places?: SlackPlace[];
   /** Workspaces with a configuration token: an agent's own app there is one click (older yardds send none). */
   workspaces?: { teamId: string; teamName: string }[];
   /** Agents with a Slack app of their own, by agent id. */

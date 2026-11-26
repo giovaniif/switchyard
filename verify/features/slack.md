@@ -9,9 +9,8 @@ approved in Slack (which comes back to `https://yard.test/slack/oauth`, the
 https address yardd serves its page on, though the page is http), then one
 app-level token. Its steps show as Token, Approve, Connect; connected, the
 header reads "As @test-owner in TEST-workspace" and the footer shows only each
-token's kind and last four characters, with Disconnect. Below it, people who
-wrote to an agent's app and are not allowed (Allow, Dismiss) and people who
-may talk to agents (Remove). (The shared Switchyard bot, its default agent and
+token's kind and last four characters, with Disconnect. Below it, people
+trusted to request tool use are listed with Remove. (The shared Switchyard bot, its default agent and
 its channel rows were retired.)
 
 An agent has a Slack app of its own, so people @mention it by its name: Add
@@ -19,8 +18,8 @@ to Slack in its header walks through a configuration refresh token (`xoxe-…`,
 once per workspace), the app made from a manifest, its install (Approve in
 Slack, no bot token pasted) and its app-level token (one screen, Open Basic
 Information), then says "<Name> is in Slack" with its connection. A message
-from an allowed person reaches it; it shows in the agent's conversation with a
-Slack badge (an aubergine dot and "From TEST-Owner on Slack · #general") above
+from a person reaches its own session for that DM or channel thread. It shows
+with a Slack badge (an aubergine dot and "From TEST-Owner on Slack · #general") above
 the bubble, the shared origin badge of agents.md, and the answer is posted
 back in its Slack thread with :eyes: swapped for :white_check_mark:.
 With a public address for Slack (opt-in, `YARD_SLACK_PUBLIC_URL` or the
@@ -66,10 +65,10 @@ rm -rf "$D"
 Viewports: both
 Not connected, the card says what it is for, numbers three steps (Token
 first) and asks for the configuration refresh token, with Get config token
-opening Slack's app settings. Nobody may talk to agents yet.
+opening Slack's app settings. It explains who may request tool use.
 
 ```sh
-yv drive connectors --viewport desktop --steps '[{"expect":"role:heading:Messaging"},{"expect":{"css":".slack-card .connector-account-state"},"text":"Not connected"},{"expect":"css:.slack-card .slack-progress li","count":3},{"expect":{"css":".slack-card .slack-progress li[aria-current=\"step\"]","hasText":"Token"}},{"expect":{"css":".slack-card"},"text":"Your direct messages and the channels you choose"},{"expect":"label:Configuration refresh token"},{"eval":"document.querySelector(\".slack-card a.login-open\").href","equals":"https://api.slack.com/apps"},{"expect":{"css":".slack-card"},"text":"Who can talk to agents"},{"eval":"!document.querySelector(\".slack-card\").innerText.includes(\"Default agent\")","equals":true},{"eval":"(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), true)","equals":true},{"shot":"not-connected"}]'
+yv drive connectors --viewport desktop --steps '[{"expect":"role:heading:Messaging"},{"expect":{"css":".slack-card .connector-account-state"},"text":"Not connected"},{"expect":"css:.slack-card .slack-progress li","count":3},{"expect":{"css":".slack-card .slack-progress li[aria-current=\"step\"]","hasText":"Token"}},{"expect":{"css":".slack-card"},"text":"Your direct messages and the channels you choose"},{"expect":"label:Configuration refresh token"},{"eval":"document.querySelector(\".slack-card a.login-open\").href","equals":"https://api.slack.com/apps"},{"expect":{"css":".slack-card"},"text":"Who can request tool use"},{"eval":"!document.querySelector(\".slack-card\").innerText.includes(\"Default agent\")","equals":true},{"eval":"(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), true)","equals":true},{"shot":"not-connected"}]'
 yv drive connectors --viewport mobile --steps '[{"expect":"label:Configuration refresh token"},{"eval":"(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), document.documentElement.scrollWidth <= document.documentElement.clientWidth)","equals":true},{"shot":"not-connected"}]'
 ```
 
@@ -90,28 +89,40 @@ yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label
 TS=$(curl -sf -XPOST "$(v slack)/_fake/message" -d '{"app":"agent","user":"UOWNER","channel":"C0GENERAL","text":"<@UAGENT> TEST-from its own app"}' | jq -r .ts)
 for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '.reactions[$ts] == ["white_check_mark"]' > /dev/null && break; sleep 0.2; done
 curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '(.posts | map(select(.thread_ts == $ts)) | length == 1 and (.[0].text | contains("TEST-from its own app"))) and (.manifests[0].display_information.name == "TEST-Reviewer") and (.manifests[0].features.bot_user.display_name == "test-reviewer") and (.calls | any(.method == "oauth.v2.access" and .params.redirect_uri == "https://yard.test/slack/oauth"))'
-yv drive agents --viewport mobile --steps '[{"expect":{"css":".agent-card[aria-label=\"TEST-Reviewer\"]","hasText":"In Slack"}},{"click":"css:.agent-card[aria-label=\"TEST-Reviewer\"] .agent-message"},{"expect":{"css":".origin-badge.origin-slack","hasText":"From TEST-Owner on Slack · #general"}}]'
+yv drive agents --viewport mobile --steps '[{"expect":{"css":".agent-card[aria-label=\"TEST-Reviewer\"]","hasText":"In Slack"}},{"click":"css:.agent-card[aria-label=\"TEST-Reviewer\"] .agent-message"},{"expect":"role:heading:Slack places"},{"click":{"css":".agent-place","hasText":"#general · thread"}},{"expect":{"css":".origin-badge.origin-slack","hasText":"From TEST-Owner on Slack · #general"}}]'
 ```
 
 ### allow-from-an-agents-app
 Viewports: desktop
-Someone not on the list who writes to an agent's app is ignored, told once
-(ephemeral), and listed on the card with Allow; Allow moves them to "Can
-talk to agents", and Remove takes them off again.
+A guest's Codex request waits in its DM place. The app DMs its installer with
+all three decisions. A guest's own click is acknowledged and leaves the card
+open. Always allow in Switchyard approves this request and adds the person
+to the tool-use list, where Remove revokes future trust.
 
 ```sh
 yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","agentId":"{{reviewer}}","origin":"http://127.0.0.1","ref":"grant"}' --wait '{"op":"slack"}'
 yv api '{"op":"slack.app.botToken","agentId":"{{reviewer}}","token":"xoxb-agent-TEST","ref":"bot"}' --wait '{"op":"slack"}'
 yv api '{"op":"slack.app.appToken","agentId":"{{reviewer}}","token":"xapp-1-agent-TEST","ref":"app"}' --wait '{"op":"slack"}'
 for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e '.connections >= 1' > /dev/null && break; sleep 0.1; done
-curl -sf -XPOST "$(v slack)/_fake/message" -d '{"app":"agent","user":"USTRANGER","text":"TEST-hello"}' > /dev/null
-yv drive connectors --viewport desktop --steps '[{"expect":{"css":".slack-card .connector","hasText":"TEST-Stranger"},"text":"wrote to an agent directly · USTRANGER"},{"expect":{"css":".slack-card .connector","hasText":"TEST-Stranger"},"text":"Not allowed"},{"eval":"(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), true)","equals":true},{"shot":"request"},{"click":"role:button:Allow TEST-Stranger"},{"expect":{"css":".slack-card .connector","hasText":"TEST-Stranger"},"text":"Can talk to agents"},{"shot":"allowed"},{"click":"role:button:Remove TEST-Stranger"},{"click":"role:button:Confirm removing TEST-Stranger"},{"expect":{"css":".slack-card .connector","hasText":"TEST-Stranger"},"count":0}]'
-curl -sf "$(v slack)/_fake/state" | jq -e '(.ephemerals | map(select(.user == "USTRANGER")) | length) == 1'
+TS=$(curl -sf -XPOST "$(v slack)/_fake/message" -d '{"app":"agent","channel":"DSTRANGER","user":"USTRANGER","text":"TEST-read the release checklist and summarize the verification steps for this deployment"}' | jq -r .ts)
+for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e '.posts | any(.channel == "D0OWNER" and .blocks[1].type == "actions")' > /dev/null && break; sleep 0.1; done
+DM=$(curl -sf "$(v slack)/_fake/state" | jq -ec '.posts[] | select(.channel == "D0OWNER" and .blocks[1].type == "actions")')
+echo "$DM" | jq -e '.app == "agent" and ([.blocks[1].elements[].text.text] == ["Approve once", "Always allow TEST-Stranger", "Deny"])'
+CLICK=$(echo "$DM" | jq -c '{channel, ts, user:"USTRANGER", action:"slack_access_allow", value:.blocks[1].elements[0].value}')
+ACK=$(curl -sf -XPOST "$(v slack)/_fake/action" -d "$CLICK" | jq -r .envelope)
+for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e --arg ack "$ACK" '.acks | index($ack)' > /dev/null && break; sleep 0.1; done
+for vp in desktop mobile; do
+yv drive agents --viewport "$vp" --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Reviewer\"] .agent-message"},{"expect":"role:heading:Slack places"},{"expect":{"css":".agent-place","hasText":"DM with TEST-Stranger"},"text":"Needs approval"},{"expect":"css:.agent-place time"},{"shot":"places"},{"click":{"css":".agent-place","hasText":"DM with TEST-Stranger"}},{"expect":"css:.approval-title","text":"Approve tool access for this Slack request?"},{"expect":"css:.approval-what","text":"TEST-read the release checklist"},{"expect":"role:button:Approve once","enabled":true},{"expect":"role:button:Always allow TEST-Stranger","enabled":true},{"expect":"role:button:Deny","enabled":true},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"approval"}]'
+done
+yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Reviewer\"] .agent-message"},{"click":{"css":".agent-place","hasText":"DM with TEST-Stranger"}},{"click":"role:button:Always allow TEST-Stranger"},{"expect":"css:.approval","text":"Always allowed"},{"expect":"css:.thread","text":"Echo:"},{"shot":"approved"}]'
+for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '.reactions[$ts] == ["white_check_mark"]' > /dev/null && break; sleep 0.1; done
+curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '(.ephemerals | length == 0) and (.posts | any(.channel == "D0OWNER" and .blocks == [] and (.text | startswith("Always allowed")))) and .reactions[$ts] == ["white_check_mark"]'
+yv drive connectors --viewport desktop --steps '[{"expect":{"css":".slack-card .connector","hasText":"TEST-Stranger"},"text":"Can request tool use"},{"shot":"allowed"},{"click":"role:button:Remove TEST-Stranger"},{"click":"role:button:Confirm removing TEST-Stranger"},{"expect":{"css":".slack-card .connector","hasText":"TEST-Stranger"},"count":0}]'
 ```
 
 ### answer-in-the-slack-thread
 Viewports: both
-A mention of TEST-Reviewer's app in #general goes to its conversation; the
+A mention of TEST-Reviewer's app in #general goes to a new place session for that thread. The
 answer is posted in that thread through its app and the message ends with
 :white_check_mark:. The conversation shows the message with its Slack badge
 (aubergine dot) right-aligned over the bubble, then the answer.
@@ -126,7 +137,7 @@ TS=$(curl -sf -XPOST "$(v slack)/_fake/message" -d '{"app":"agent","user":"UOWNE
 for i in $(seq 100); do curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '.reactions[$ts] == ["white_check_mark"]' > /dev/null && break; sleep 0.2; done
 curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '(.posts | map(select(.thread_ts == $ts and .channel == "C0GENERAL" and .app == "agent")) | length == 1 and (.[0].text | contains("TEST-check the release notes"))) and .reactions[$ts] == ["white_check_mark"]'
 for vp in desktop mobile; do
-yv drive agents --viewport $vp --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Reviewer\"] .agent-message"},{"expect":{"css":".origin-badge.origin-slack","hasText":"From TEST-Owner on Slack · #general"}},{"eval":"getComputedStyle(document.querySelector(\".origin-slack .origin-dot\")).backgroundColor","equals":"rgb(74, 21, 75)"},{"expect":{"css":".user-message .bubble","hasText":"TEST-check the release notes"}},{"expect":{"css":".thread"},"text":"Echo:"},{"eval":"(() => { const all = document.querySelectorAll(\".origin-badge\"); const b = all[all.length - 1].getBoundingClientRect(); const m = all[all.length - 1].nextElementSibling.getBoundingClientRect(); return b.bottom <= m.top && Math.abs(b.right - m.right) <= 6 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()","equals":true},{"shot":"thread"}]'
+yv drive agents --viewport $vp --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Reviewer\"] .agent-message"},{"expect":"role:heading:Slack places"},{"click":{"css":".agent-place","hasText":"#general · thread","nth":0}},{"expect":{"css":".origin-badge.origin-slack","hasText":"From TEST-Owner on Slack · #general"}},{"eval":"getComputedStyle(document.querySelector(\".origin-slack .origin-dot\")).backgroundColor","equals":"rgb(74, 21, 75)"},{"expect":{"css":".user-message .bubble","hasText":"TEST-check the release notes"}},{"expect":{"css":".thread"},"text":"Echo:"},{"eval":"(() => { const all = document.querySelectorAll(\".origin-badge\"); const b = all[all.length - 1].getBoundingClientRect(); const m = all[all.length - 1].nextElementSibling.getBoundingClientRect(); return b.bottom <= m.top && Math.abs(b.right - m.right) <= 6 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()","equals":true},{"shot":"thread"}]'
 done
 ```
 
