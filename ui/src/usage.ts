@@ -166,13 +166,19 @@ export function metersFor(engine: Engine, usage: Usage, now?: number): Meter[] {
  *  reset" credits): how many, and when the first of them expires. */
 export function fullResets(engine: Engine, usage: Usage, now: number): { count: number; title: string; expiresAt: number | null } | null {
   if (engine !== "codex") return null;
-  const live = (usage.codex?.resetCredits?.credits ?? []).filter((c) => {
-    const expires = toMs(c?.expiresAt);
-    return c && (c.status ?? "available") === "available" && (expires == null || expires > now);
+  const summary = usage.codex?.resetCredits;
+  const listed = (summary?.credits ?? []).filter((c) => c && (c.status ?? "available") === "available");
+  const live = listed.filter((c) => {
+    const expires = toMs(c.expiresAt);
+    return expires == null || expires > now;
   });
-  if (!live.length) return null;
+  // Codex's rows are details only: null when just the count is known, and the
+  // backend may cap them below `availableCount`. The count is the total, less
+  // any listed credit that has expired since it was read.
+  const count = typeof summary?.availableCount === "number" ? summary.availableCount - (listed.length - live.length) : live.length;
+  if (count <= 0) return null;
   const expiries = live.map((c) => toMs(c.expiresAt)).filter((x): x is number => x != null);
-  return { count: live.length, title: live[0].title || "Full reset", expiresAt: expiries.length ? Math.min(...expiries) : null };
+  return { count, title: live[0]?.title || "Full reset", expiresAt: expiries.length ? Math.min(...expiries) : null };
 }
 
 /** "3 full resets available". */

@@ -133,7 +133,7 @@ pub struct Automation {
     /// Skip a scheduled run while the engine's 5-hour usage is above this percentage.
     #[serde(default)]
     pub max_five_hour: Option<f64>,
-    /// The same for the weekly window.
+    /// The same for the weekly window; for Grok, its credit allowance for the billing period.
     #[serde(default)]
     pub max_week: Option<f64>,
     #[serde(default = "yes")]
@@ -264,20 +264,33 @@ fn local_ms<Tz: TimeZone>(naive: NaiveDateTime, tz: &Tz) -> Option<u64> {
 }
 
 /// Why a run should not start on usage grounds, from yardd's usage figures.
-/// Claude reports fractions, Codex percentages. A window that has already
-/// reset is stale (yardd refreshes usage only during turns), not a reason.
+/// Claude and Grok report fractions, Codex percentages. A window that has
+/// already reset is stale (yardd refreshes usage only now and then), not a
+/// reason. OpenCode and Gemini report no limits, so nothing skips their runs:
+/// another engine's figures are not theirs.
 pub fn usage_reason(usage: &Value, engine: &str, five: Option<f64>, week: Option<f64>, now_secs: u64) -> Option<String> {
     let live = |reset: &Value| reset.as_u64().map_or(true, |r| now_secs <= r);
+    // The long window's name in the reason: Grok's allowance is weekly, monthly
+    // or for a billing period, all read by the weekly limit.
+    let mut long = "weekly";
     let (name, five_used, week_used) = match engine {
         "codex" => {
             let u = &usage["codex"];
-            (
-                "Codex",
-                u["primary"]["usedPercent"].as_f64().filter(|_| live(&u["primary"]["resetsAt"])),
-                u["secondary"]["usedPercent"].as_f64().filter(|_| live(&u["secondary"]["resetsAt"])),
-            )
+            // A window says how long it is; the main limit of a Pro account is
+            // a single week. Without a length, primary is the 5-hour one.
+            let windows = [&u["primary"], &u["secondary"]];
+            let length = |w: &Value| w["windowDurationMins"].as_u64();
+            let is_week = |w: &Value, i: usize| length(w).map_or(i == 1, |m| m >= 7 * 24 * 60);
+            let used = |want_week: bool| {
+                windows.iter().enumerate().find_map(|(i, w)| {
+                    (w.is_object() && is_week(w, i) == want_week)
+                        .then(|| w["usedPercent"].as_f64().filter(|_| live(&w["resetsAt"])))
+                        .flatten()
+                })
+            };
+            ("Codex", used(false), used(true))
         }
-        _ => {
+        "claude" => {
             let u = &usage["claude"];
             // The sidecar reports one entry per window (`windows.five_hour`, `windows.seven_day`),
             // each a fraction with its own reset; `fiveHour`/`sevenDay` is the older flat shape.
@@ -293,6 +306,19 @@ pub fn usage_reason(usage: &Value, engine: &str, five: Option<f64>, week: Option
             let five = window("five_hour", u["fiveHour"].as_f64().filter(|_| live(&u["resetsAt"])));
             ("Claude", five, window("seven_day", u["sevenDay"].as_f64()))
         }
+        "grok" => {
+            // One window for the billing period (`usage::grok_from_billing`); no 5-hour one.
+            let windows = &usage["grok"]["windows"];
+            let found = [("week", "weekly"), ("month", "monthly"), ("period", "billing-period")]
+                .into_iter()
+                .find_map(|(key, word)| windows[key]["utilization"].as_f64().map(|f| (word, f, &windows[key]["resetsAt"])));
+            let used = found.and_then(|(word, f, reset)| {
+                long = word;
+                live(reset).then_some(f * 100.0)
+            });
+            ("Grok", None, used)
+        }
+        _ => return None,
     };
     if let (Some(used), Some(max)) = (five_used, five) {
         if used > max {
@@ -301,7 +327,7 @@ pub fn usage_reason(usage: &Value, engine: &str, five: Option<f64>, week: Option
     }
     if let (Some(used), Some(max)) = (week_used, week) {
         if used > max {
-            return Some(format!("{name} weekly usage {used:.0}% is above {max:.0}%"));
+            return Some(format!("{name} {long} usage {used:.0}% is above {max:.0}%"));
         }
     }
     None

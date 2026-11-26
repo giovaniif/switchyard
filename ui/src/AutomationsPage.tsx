@@ -6,7 +6,7 @@ import { SelectPicker } from "./SelectPicker";
 import { useEffect, useMemo, useState } from "react";
 import type { Automation, AutomationWindow, Engine, Permission, Schedule, SessionMeta } from "./protocol";
 import { branchKey, homeOn, hostName, hostOf, hostOnline, modelsOn, usageOn, type Actions, type State } from "./store";
-import { cardStatus, describeSchedule, runLabel, runOutcome, runsOf, runSummary, runTook, RUN_LABEL, scheduleParts, scheduleProblem, stripRuns, type CardStatus, type RunOutcome } from "./automations";
+import { cardStatus, describeSchedule, runLabel, usageCaps, runOutcome, runsOf, runSummary, runTook, RUN_LABEL, scheduleParts, scheduleProblem, stripRuns, type CardStatus, type RunOutcome } from "./automations";
 import { duration } from "./thread";
 import { ENGINE_NAME, pickerEngines } from "./engines";
 import { metersFor } from "./usage";
@@ -303,6 +303,8 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
     return [...new Set([...readRecent(target), ...fromSessions])].slice(0, 12);
   }, [state.sessions, target]);
 
+  // A limit the engine has no figure for is not offered, and is saved as none.
+  const caps = usageCaps(choice.engine, metersFor(choice.engine, usageOn(state, target)).length > 0);
   const schedule: Schedule =
     kind === "interval" ? { kind, every: Number(every), unit } : kind === "daily" ? { kind, time } : kind === "weekly" ? { kind, day, time } : { kind };
   const window: AutomationWindow | null = kind === "interval" && limited ? { start, end, ...(days.length ? { days } : {}) } : null;
@@ -311,7 +313,7 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
     (!prompt.trim() && "Write the prompt it runs.") ||
     (!cwd && "Choose a folder.") ||
     scheduleProblem(schedule, window) ||
-    ([fiveHour, week].some((t) => t.trim() !== "" && !(Number(t) >= 0 && Number(t) <= 100)) ? "A usage limit is a percentage from 0 to 100." : null);
+    ([caps.fiveHour && fiveHour, caps.week && week].some((t) => t && t.trim() !== "" && !(Number(t) >= 0 && Number(t) <= 100)) ? "A usage limit is a percentage from 0 to 100." : null);
 
   const save = async () => {
     setSaving(true);
@@ -328,8 +330,8 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
       schedule,
       window,
       skipWhileRunning: skip,
-      maxFiveHour: percent(fiveHour),
-      maxWeek: percent(week),
+      maxFiveHour: caps.fiveHour ? percent(fiveHour) : null,
+      maxWeek: caps.week ? percent(week) : null,
       ...(!existing || mcpTouched ? { mcp: mcp ?? [] } : {}),
     });
     setSaving(false);
@@ -447,14 +449,14 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
             <div className="row automation-limits">
               <label>
                 When 5-hour usage is above
-                <input aria-label="5-hour usage limit percent" className="field" type="number" min={0} max={100} placeholder="no limit" value={fiveHour} onChange={(e) => setFiveHour(e.target.value)} />%
+                <input aria-label="5-hour usage limit percent" className="field" type="number" min={0} max={100} placeholder={caps.fiveHour ? "no limit" : "n/a"} disabled={!caps.fiveHour} value={caps.fiveHour ? fiveHour : ""} onChange={(e) => setFiveHour(e.target.value)} />%
               </label>
               <label>
-                When weekly usage is above
-                <input aria-label="Weekly usage limit percent" className="field" type="number" min={0} max={100} placeholder="no limit" value={week} onChange={(e) => setWeek(e.target.value)} />%
+                {caps.weekLabel}
+                <input aria-label={choice.engine === "grok" ? "Credit usage limit percent" : "Weekly usage limit percent"} className="field" type="number" min={0} max={100} placeholder={caps.week ? "no limit" : "n/a"} disabled={!caps.week} value={caps.week ? week : ""} onChange={(e) => setWeek(e.target.value)} />%
               </label>
             </div>
-            <span className="muted small">Applies to scheduled runs; Run now always starts one. The limits read the {ENGINE_NAME[choice.engine]} plan usage{metersFor(choice.engine, usageOn(state, target)).length ? "" : ", which it does not report, so they never skip a run"}.</span>
+            <span className="muted small">{caps.note}</span>
           </div>
           {(error || problem) && (
             <div className="small automation-reason" role="alert">

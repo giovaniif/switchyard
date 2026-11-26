@@ -350,7 +350,7 @@ export interface Usage {
     sevenDay?: number | null;
   };
   /** Codex's main limit, every limit by id (the main one included) and its free resets. */
-  codex?: CodexLimit & { byLimitId?: Record<string, CodexLimit> | null; resetCredits?: { availableCount?: number; credits?: CodexResetCredit[] } | null };
+  codex?: CodexLimit & { byLimitId?: Record<string, CodexLimit> | null; resetCredits?: { availableCount?: number; credits?: CodexResetCredit[] | null } | null };
   /** Grok's credit allowance for its billing period, one window ("week", "month" or "period"). */
   grok?: { windows?: Record<string, LimitWindow> };
   /** Added accounts' limits by account id, in the same shape as their engine's above. */
