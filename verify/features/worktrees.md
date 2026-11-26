@@ -56,6 +56,19 @@ sleep 1
 test ! -d "$(v think_cwd)"
 ```
 
+### sidebar-delete-refusal-names-the-session
+Viewports: both
+Deleting the edit session (uncommitted change) from the sidebar, with another
+session open, is refused, and the banner over the open session names the one
+it refused. (Before: "The worktree has uncommitted…", read as the open
+session's.) The refusal is an API error, hence `--allow-errors`.
+
+```sh
+yv drive 'session:{{sid_echo}}' --viewport desktop --allow-errors --steps '[{"click":"role:button:Actions for [edit] TEST-fix the greeting"},{"click":"role:menuitem:Delete…"},{"click":"role:menuitem:Delete and remove the worktree"},{"expect":"css:.banner-error","text":"\"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted"},{"shot":"refused"}]'
+yv drive 'session:{{sid_echo}}' --viewport mobile --allow-errors --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Actions for [edit] TEST-fix the greeting"},{"click":"role:menuitem:Delete…"},{"click":"role:menuitem:Delete and remove the worktree"},{"click":"role:button:Close sessions"},{"expect":"css:.banner-error","text":"\"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted"},{"shot":"refused"}]'
+yv state --expect '{"sessions":[{"id":"{{sid_edit}}"}]}'
+```
+
 ### dirty-worktree-is-kept
 Removing the edit session's worktree (it has an uncommitted change) is refused.
 
