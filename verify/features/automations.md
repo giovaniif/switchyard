@@ -147,6 +147,26 @@ yv api '{"op":"automation.save","automation":{"name":"TEST-Claude capped","promp
 yv api '{"op":"automation.run","id":"{{claude_capped}}","force":false}' --wait '{"op":"automation.ran"}' --expect '{"op":"automation.ran","outcome":"skipped","reason":"~Claude 5-hour usage 47% is above 10%"}'
 ```
 
+### usage-limits-read-the-engines-own-figures
+Each engine's limits read its own usage, never Claude's. A Grok automation's credit limit reads Grok's allowance (23% weekly after seed): with the limit at 20% a scheduled-style run skips and names Grok. An OpenCode one reports no limits, so even a 10% limit never skips it (Claude is at 47%). Daemon only.
+
+```sh
+yv api '{"op":"automation.save","automation":{"name":"TEST-Grok capped","prompt":"TEST-capped","cwd":"{{repo}}","engine":"grok","model":"fake-small","effort":"low","permission":"ask","enabled":false,"maxWeek":20,"schedule":{"kind":"daily","time":"09:30"}}}' --wait '{"op":"automation.saved"}' --save grok_capped=automation.id
+yv api '{"op":"automation.run","id":"{{grok_capped}}","force":false}' --wait '{"op":"automation.ran"}' --expect '{"op":"automation.ran","outcome":"skipped","reason":"Grok weekly usage 23% is above 20%"}'
+yv api '{"op":"automation.save","automation":{"name":"TEST-OpenCode capped","prompt":"TEST-capped","cwd":"{{repo}}","engine":"opencode","model":"opencode/fake-free","effort":"","permission":"ask","enabled":false,"maxFiveHour":10,"maxWeek":10,"schedule":{"kind":"daily","time":"09:30"}}}' --wait '{"op":"automation.saved"}' --save oc_capped=automation.id
+yv api '{"op":"automation.run","id":"{{oc_capped}}","force":false}' --wait '{"op":"automation.ran"}' --expect '{"op":"automation.ran","outcome":"started"}'
+```
+
+### usage-limits-say-when-they-cannot-apply
+The form offers only the limits an engine has figures for and says so. Editing the OpenCode automation: both limit fields are disabled and the note reads "OpenCode doesn't report usage limits, so these can't skip its runs." Editing the Grok one: the 5-hour field is disabled, the second is "When credit usage is above", and the note says Grok reports no 5-hour window. Both viewports. Needs the automations from usage-limits-read-the-engines-own-figures.
+
+```sh
+OC='[{"click":"role:button:Edit: TEST-OpenCode capped"},{"expect":"label:5-hour usage limit percent","enabled":false},{"expect":"label:Weekly usage limit percent","enabled":false},{"expect":{"css":".automation-field","hasText":"OpenCode doesn'"'"'t report usage limits, so these can'"'"'t skip its runs."}},{"shot":"opencode-limits"},{"click":"role:button:Cancel"}]'
+GROK='[{"click":"role:button:Edit: TEST-Grok capped"},{"expect":"label:5-hour usage limit percent","enabled":false},{"expect":"label:Credit usage limit percent","enabled":true,"value":"20"},{"expect":{"css":".automation-field","hasText":"Grok reports no 5-hour window"}},{"shot":"grok-limits"}]'
+yv drive new --viewport desktop --steps "$(jq -nc --argjson a "$OC" --argjson b "$GROK" '[{"click":"role:button:Automations"}] + $a + $b')"
+yv drive new --viewport mobile --steps "$(jq -nc --argjson a "$OC" --argjson b "$GROK" '[{"click":"role:button:Open sessions"},{"click":"role:button:Automations"}] + $a + $b')"
+```
+
 ### run-now-failure-says-why-once
 Run now on an automation whose folder has gone: the card's status line says "Failed" and gives the reason once, not a second time as "Failed: …" under it. Both viewports, one Run now each.
 

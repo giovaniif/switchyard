@@ -269,7 +269,8 @@ fn local_ms<Tz: TimeZone>(naive: NaiveDateTime, tz: &Tz) -> Option<u64> {
 /// reason. OpenCode and Gemini report no limits, so nothing skips their runs:
 /// another engine's figures are not theirs.
 pub fn usage_reason(usage: &Value, engine: &str, five: Option<f64>, week: Option<f64>, now_secs: u64) -> Option<String> {
-    let live = |reset: &Value| reset.as_u64().map_or(true, |r| now_secs <= r);
+    // Grok's period end is seconds with a fraction.
+    let live = |reset: &Value| reset.as_f64().map_or(true, |r| now_secs as f64 <= r);
     // The long window's name in the reason: Grok's allowance is weekly, monthly
     // or for a billing period, all read by the weekly limit.
     let mut long = "weekly";
@@ -933,6 +934,10 @@ mod tests {
         assert_eq!(usage_reason(&usage, "grok", Some(1.0), None, 1000), None);
         // Past the period's end the figure is stale.
         assert_eq!(usage_reason(&usage, "grok", None, Some(20.0), 6000), None);
+        // The end as yardd stores it, seconds with a fraction, goes stale too.
+        let fraction = json!({ "grok": { "windows": { "week": { "utilization": 0.23, "resetsAt": 5000.08, "label": "Week" } } } });
+        assert!(usage_reason(&fraction, "grok", None, Some(20.0), 5000).is_some());
+        assert_eq!(usage_reason(&fraction, "grok", None, Some(20.0), 5001), None);
         // A monthly allowance counts against the same limit, named as what it is.
         let monthly = json!({ "grok": { "windows": { "month": { "utilization": 0.6, "resetsAt": 5000, "label": "Month" } } } });
         assert_eq!(usage_reason(&monthly, "grok", None, Some(50.0), 1000).as_deref(), Some("Grok monthly usage 60% is above 50%"));
