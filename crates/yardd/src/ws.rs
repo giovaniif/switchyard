@@ -696,7 +696,10 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             let (Some(branch), Some(repo)) = (meta.branch.clone(), meta.repo.clone()) else {
                 bail!("this session has no worktree that yardd made");
             };
-            let top = git::removable_worktree(&meta.cwd, &repo).await?;
+            // The sidebar deletes any session, and its refusal shows over the
+            // one that is open, so it names the session it refused.
+            let refused = || format!("\"{}\" was not deleted", meta.title);
+            let top = git::removable_worktree(&meta.cwd, &repo).await.with_context(refused)?;
             // git prints the real path; a session may hold a symlinked spelling.
             let real = |p: &str| std::fs::canonicalize(p).unwrap_or_else(|_| p.into());
             let top_real = real(&top);
@@ -708,7 +711,7 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
                 .filter(|s| s.meta.id != sid && real(&s.meta.cwd).starts_with(&top_real))
                 .count();
             if others > 0 {
-                bail!("Another session still uses this worktree. Delete it first, or keep the worktree.");
+                bail!("{}: another session still uses its worktree. Delete that one first, or keep the worktree.", refused());
             }
             delete_session(app, sid, &meta).await;
             let removed = git::remove_worktree(&repo, &top, &branch).await;

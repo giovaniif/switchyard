@@ -315,7 +315,7 @@ pub async fn removable_worktree(cwd: &str, repo: &str) -> Result<String> {
     let dirty = status.lines().filter(|l| !l.trim().is_empty()).count();
     if dirty > 0 {
         bail!(
-            "The worktree has uncommitted or untracked changes ({dirty} file{}). Commit or discard them first. Nothing was deleted.",
+            "the worktree has uncommitted or untracked changes ({dirty} file{}). Commit or discard them first.",
             if dirty == 1 { "" } else { "s" }
         );
     }
