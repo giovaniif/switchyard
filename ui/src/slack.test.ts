@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AgentEvent, SlackAgentApp, SlackMe, SlackOrigin, SlackView } from "./protocol";
 import { applyEvent } from "./protocol";
-import { allowedSummary, avatarIconSvg, hostSlack, iconKey, mySteps, setupSteps, slackStatus, tokensNeeded } from "./slack";
+import { allowedSummary, avatarIconSvg, hostSlack, iconKey, mySteps, sendsIcon, setupSteps, slackStatus, tokensNeeded } from "./slack";
 import { originLabel } from "./agents";
 import { avatarSvg } from "./faces";
 import { initial, reduce } from "./store";
@@ -117,6 +117,15 @@ describe("an agent's own Slack app", () => {
     for (const id of ids) expect(styled("f_r_2_")).toContain(`#${id}`);
     // Another colour is another picture.
     expect(iconKey(drawn("f_r_2_", "teal"))).not.toBe(iconKey(drawn("f_r_2_")));
+  });
+
+  test("waits for an offline host instead of being refused on every page view", () => {
+    expect(sendsIcon("v1-new", "v1-old", "", true)).toBe(true);
+    expect(sendsIcon("v1-new", "v1-new", "", true)).toBe(false);
+    // Tried once in this window: a refusal is shown in its dialog, not retried.
+    expect(sendsIcon("v1-new", "v1-old", "v1-new", true)).toBe(false);
+    // Its host is offline: not sent, and not counted as tried, so it goes once the host is back.
+    expect(sendsIcon("v1-new", "v1-old", "", false)).toBe(false);
   });
 });
 

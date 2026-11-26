@@ -1446,7 +1446,12 @@ its engine framing and one arm in `origins::reply`.
     light (`avatarIconSvg`), draws it at 1024 px on a canvas and sends the PNG
     (`slack.app.icon { agentId, key, png }`). The key (`iconKey`, a hash of
     that SVG) is kept by yardd, so a window sends only when the face, colour
-    or drawing changed, once per picture per window. yardd checks the PNG's
+    or drawing changed, once per picture per window. The SVG's gradient and
+    clip ids are renamed in order (`stableIds`): the page's come from React's
+    `useId`, which differs with the window's size and page, and gave each
+    window size its own key and its own upload. An agent on an offline host
+    gets nothing until the host is back (the hub would refuse the op on every
+    page view); then the next window sends it. yardd checks the PNG's
     size, keeps it as `slack-icons/<agent>.png`, and sends it with the manifest
     update; a lapsed token leaves it waiting like a rename.
   - **Install.** The manifest lists as redirects every https origin yardd

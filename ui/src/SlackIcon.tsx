@@ -3,13 +3,15 @@
 // only a page can draw the face: so each agent with an app has its avatar
 // rendered out of sight here, as the page draws it, turned into a standalone
 // SVG, then a 1024-pixel PNG, and sent to yardd (`slack.app.icon`) whenever
-// its picture differs from the one Slack has (`iconKey`). Taking the picture
-// from the rendered avatar keeps the icon right when faces are redrawn.
+// its picture differs from the one Slack has (`iconKey`) and the agent's
+// host is online. Taking the picture from the rendered avatar keeps the icon
+// right when faces are redrawn.
 import { useEffect, useRef } from "react";
 import type { Agent } from "./protocol";
-import type { Actions, State } from "./store";
+import { hostOnline, type Actions, type State } from "./store";
 import { AgentAvatar } from "./AgentsPage";
-import { avatarIconSvg, iconKey } from "./slack";
+import { agentHost } from "./agents";
+import { avatarIconSvg, iconKey, sendsIcon } from "./slack";
 
 const PX = 1024;
 /** The styles that decide how a face looks, inlined so the SVG stands alone. */
@@ -63,7 +65,7 @@ async function rasterize(svg: string): Promise<string> {
   return btoa(bin);
 }
 
-function IconSource({ agent, has, actions }: { agent: Agent; has: string; actions: Actions }) {
+function IconSource({ agent, has, online, actions }: { agent: Agent; has: string; online: boolean; actions: Actions }) {
   const ref = useRef<HTMLSpanElement>(null);
   // One try per picture in this window: a refusal is shown in its dialog.
   const tried = useRef("");
@@ -72,12 +74,12 @@ function IconSource({ agent, has, actions }: { agent: Agent; has: string; action
     const svg = avatar && iconSvgOf(avatar);
     if (!svg) return;
     const key = iconKey(svg);
-    if (key === has || key === tried.current) return;
+    if (!sendsIcon(key, has, tried.current, online)) return;
     tried.current = key;
     rasterize(svg)
       .then((png) => actions.slackApp("slack.app.icon", { agentId: agent.id, key, png }))
       .catch(() => {});
-  }, [agent.id, agent.face, agent.color, has, actions]);
+  }, [agent.id, agent.face, agent.color, has, online, actions]);
   return (
     <span ref={ref}>
       <AgentAvatar agent={agent} size="xl" still />
@@ -94,7 +96,7 @@ export function SlackIcons({ state, actions }: { state: State; actions: Actions 
   return (
     <div className="slack-icon-source" aria-hidden="true">
       {agents.map((a) => (
-        <IconSource key={a.id} agent={a} has={apps[a.id].iconKey ?? ""} actions={actions} />
+        <IconSource key={a.id} agent={a} has={apps[a.id].iconKey ?? ""} online={hostOnline(state, agentHost(a))} actions={actions} />
       ))}
     </div>
   );

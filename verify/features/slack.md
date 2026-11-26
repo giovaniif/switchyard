@@ -286,7 +286,8 @@ UAGENT2), and TEST-Reviewer here (@test-reviewer, UAGENT). The reply box
 offers both, and one message calls both: each handle goes to Slack as a real
 mention of its own bot, and in his inbox each reads as its agent. With the
 host gone from this yardd, TEST-Far is still offered and still called: the
-mention goes through Slack to its app, not through this yardd.
+mention goes through Slack to its app, not through this yardd. Its app's
+icon is not sent to the offline host, so no window size gets a refusal.
 
 ```sh
 yv var set slack_remote_port "$(yv iso up --name map-slack-remote --env "YARD_SLACK_API=$(v slack)/api/,YARD_ALLOW_ORIGIN=https://yard.test" | jq -r .iso.port)"
@@ -413,13 +414,6 @@ yv api '{"op":"slack.app.remove","agentId":"{{oncall}}","ref":"rm"}' --wait '{"o
   field), so anything that grants one comes after it. Later recipes set up
   what they need through the API (a grant, TEST-Reviewer's app with its bot
   token pasted), so each also runs alone.
-- An agent's app icon key (`iconKey`, `SlackIcon.tsx`) comes out different
-  at the mobile and desktop viewports, so each window size that opens the
-  page uploads the face again (`slack.app.icon`), and for an agent on a host
-  that is offline that upload is refused ("TEST-slack-box is offline, so
-  TEST-Far can't be changed now"), an API error in the drive.
-  `call-an-agent-on-another-host` drives the offline step at the viewport of
-  the drive before it, so it is not that error's recipe. Found 2026-11-26.
 - Not covered here (no real Slack can be reached from tests): a real
   workspace's events, rate limits and Slack's own manifest import, update
   and icon upload. The install redirect to an https address from an http
