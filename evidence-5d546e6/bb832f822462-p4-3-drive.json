@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "95745ff1c03554b3fda00b2081d47fe999b8b143",
+    "short": "95745ff",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T15:37:40.191Z"
+  },
+  "dir": ".verify/evidence/slack-places-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 3245,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-places-head-desktop/places-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-places-head-desktop/approval-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 8,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

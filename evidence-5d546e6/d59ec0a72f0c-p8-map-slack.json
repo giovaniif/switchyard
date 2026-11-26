@@ -1,0 +1,77 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "slack",
+      "at": "2026-11-26T15:52:54.607Z",
+      "counts": {
+        "pass": 12
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "not-connected",
+          "status": "pass",
+          "ms": 5868
+        },
+        {
+          "label": "an-agents-own-slack-app",
+          "status": "pass",
+          "ms": 11855
+        },
+        {
+          "label": "allow-from-an-agents-app",
+          "status": "pass",
+          "ms": 16269
+        },
+        {
+          "label": "answer-in-the-slack-thread",
+          "status": "pass",
+          "ms": 7851
+        },
+        {
+          "label": "connect-your-slack",
+          "status": "pass",
+          "ms": 12712
+        },
+        {
+          "label": "tokens-stay-in-yardd",
+          "status": "pass",
+          "ms": 3007
+        },
+        {
+          "label": "your-direct-messages",
+          "status": "pass",
+          "ms": 10927
+        },
+        {
+          "label": "reply-react-and-read",
+          "status": "pass",
+          "ms": 19469
+        },
+        {
+          "label": "someone-new-writes",
+          "status": "pass",
+          "ms": 4007
+        },
+        {
+          "label": "import-a-channel",
+          "status": "pass",
+          "ms": 45467
+        },
+        {
+          "label": "one-token-with-a-public-address",
+          "status": "pass",
+          "ms": 9959
+        },
+        {
+          "label": "a-watched-channel",
+          "status": "pass",
+          "ms": 14124
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

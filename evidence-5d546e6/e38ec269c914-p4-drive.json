@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "bca9140d6ba9bd8fa39b58992fba71af446ca674",
+    "short": "bca9140",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T15:20:58.823Z"
+  },
+  "dir": "/home/giovani/.yard/wt/better-than-claude-code/codex-slack-agents/.verify/drives/2026-11-26T15-21-20-056Z",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2780,
+      "steps": 13,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/.yard/wt/better-than-claude-code/codex-slack-agents/.verify/drives/2026-11-26T15-21-20-056Z/places-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/.yard/wt/better-than-claude-code/codex-slack-agents/.verify/drives/2026-11-26T15-21-20-056Z/approval-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 11,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

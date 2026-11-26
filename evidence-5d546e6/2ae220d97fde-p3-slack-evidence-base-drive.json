@@ -1,0 +1,60 @@
+{
+  "command": "drive",
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "95fb42b76d37a01aafe9d6f6691d7be71865d17d",
+    "short": "95fb42b",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T15:20:26.756Z"
+  },
+  "dir": "/home/giovani/.yard/wt/better-than-claude-code/codex-slack-agents/.verify/drives/2026-11-26T15-20-27-950Z",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3661,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": "/home/giovani/.yard/wt/better-than-claude-code/codex-slack-agents/.verify/drives/2026-11-26T15-20-27-950Z/shared-conversation-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3015,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/.yard/wt/better-than-claude-code/codex-slack-agents/.verify/drives/2026-11-26T15-20-27-950Z/shared-conversation-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
