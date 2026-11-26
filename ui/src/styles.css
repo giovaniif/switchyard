@@ -1656,6 +1656,10 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .slack-workspaces .picker-item { width: 100%; }
 .slack-alt { gap: 6px; flex-wrap: wrap; align-items: center; }
 .slack-alt > .btn-text:first-child { margin-left: -10px; }
+.slack-mentions { display: flex; flex-direction: column; gap: 6px; }
+.slack-mentions form { gap: 6px; flex-wrap: wrap; }
+.slack-mention-list { list-style: none; margin: 0; padding: 0; }
+.slack-mention-list li { gap: 8px; align-items: center; }
 .slack-connection { display: flex; align-items: center; gap: 8px; color: var(--muted); overflow-wrap: anywhere; }
 .slack-connection.is-live { color: var(--ok-ink); }
 .slack-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }

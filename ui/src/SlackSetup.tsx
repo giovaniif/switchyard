@@ -201,6 +201,7 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
           </button>
           . {s.ownerName || "You"} {s.ownerName ? "is" : "are"} on that list. Anyone else who writes to {agent.name} shows there as a request.
         </p>
+        <Mentions agent={agent.name} people={s.mentions ?? []} busy={busy} run={run} />
         <div className="row slack-alt">
           {confirmRemove ? (
             <>
@@ -254,6 +255,53 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Who the agent's answers may @mention: anyone else stays plain text. */
+function Mentions({ agent, people, busy, run }: { agent: string; people: { id: string; name: string }[]; busy: boolean; run(op: SlackAppOp, fields: Record<string, unknown>): Promise<unknown> }) {
+  const [user, setUser] = useState("");
+  const [name, setName] = useState("");
+  const add = async () => {
+    const r = (await run("slack.app.mention", { user: user.trim(), name: name.trim() })) as { error?: string };
+    if (!r?.error) {
+      setUser("");
+      setName("");
+    }
+  };
+  return (
+    <div className="slack-mentions">
+      <p className="muted small">
+        {people.length === 0 ? `${agent} can't @mention anyone in Slack.` : `${agent} can @mention only these people in Slack:`}
+      </p>
+      {people.length > 0 && (
+        <ul className="slack-mention-list">
+          {people.map((p) => (
+            <li key={p.id} className="row">
+              <span>{p.name}</span>
+              <span className="muted small">{p.id}</span>
+              <span className="spacer" />
+              <button className="btn-text danger" disabled={busy} onClick={() => void run("slack.app.unmention", { user: p.id })}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add();
+        }}
+      >
+        <input className="field" aria-label="Slack member ID" placeholder="Member ID, U0123ABCD" value={user} onChange={(e) => setUser(e.target.value)} />
+        <input className="field" aria-label="Name" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="btn" type="submit" disabled={busy || user.trim() === ""}>
+          Allow
+        </button>
+      </form>
     </div>
   );
 }
