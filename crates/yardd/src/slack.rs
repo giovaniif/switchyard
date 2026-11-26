@@ -1637,8 +1637,9 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
     let known = linked(slack, &key);
     if kind == "message" && !im {
         // A mention comes as app_mention too; a plain channel message counts
-        // only as a follow-up in a thread an agent already has.
-        if raw.contains(&mention) || known.is_none() || ev["thread_ts"].is_null() {
+        // only as a follow-up in a thread an agent already has, and not when
+        // it is addressed to someone else (a teammate, another agent's bot).
+        if raw.contains(&mention) || known.is_none() || ev["thread_ts"].is_null() || addressed_elsewhere(raw, &me.bot_user) {
             return Ok(());
         }
     }
@@ -1846,6 +1847,21 @@ fn clip_line(text: &str, max: usize) -> String {
         return line;
     }
     format!("{}…", line.chars().take(max - 1).collect::<String>())
+}
+
+/// The message @mentions a person, a user group or another bot, and not this
+/// bot: in a thread it shares, it is for them.
+pub fn addressed_elsewhere(text: &str, bot_user: &str) -> bool {
+    let others = text.match_indices("<@").any(|(i, _)| {
+        let id = &text[i + 2..];
+        let end = id.find(['>', '|']).unwrap_or(id.len());
+        id[..end] != *bot_user
+    });
+    let mentioned = text.match_indices("<@").any(|(i, _)| {
+        let id = &text[i + 2..];
+        id.strip_prefix(bot_user).is_some_and(|r| r.starts_with(['>', '|']))
+    });
+    (others || text.contains("<!subteam^")) && !mentioned
 }
 
 /// The text without the bot's leading @mention(s).
@@ -2135,6 +2151,13 @@ mod tests {
         assert_eq!(strip_mention("<@UBOT|switchyard>   <@UBOT> hi", "UBOT"), "hi");
         assert_eq!(strip_mention("hi <@UBOT>", "UBOT"), "hi <@UBOT>");
         assert_eq!(strip_mention("<@UBOTX> hi", "UBOT"), "<@UBOTX> hi");
+        assert!(addressed_elsewhere("<@U0MARC> please double check the PR", "UBOT"));
+        assert!(addressed_elsewhere("thanks <@U0MARC|marc>", "UBOT"));
+        assert!(addressed_elsewhere("<!subteam^S1|oncall> look", "UBOT"));
+        assert!(addressed_elsewhere("<@UBOTX> hi", "UBOT"));
+        assert!(!addressed_elsewhere("so? did we fix it?", "UBOT"));
+        assert!(!addressed_elsewhere("<@U0MARC> and <@UBOT> both look", "UBOT"));
+        assert!(!addressed_elsewhere("<@UBOT|on-call> hi", "UBOT"));
         assert_eq!(
             from_slack("see <https://x.dev/a?b=1&amp;c=2|the docs> and <https://y.dev>, ask <@U1> in <#C1|ops> &lt;now&gt; <!here>"),
             "see the docs (https://x.dev/a?b=1&c=2) and https://y.dev, ask @U1 in #ops <now> @here"
