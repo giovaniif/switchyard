@@ -742,3 +742,143 @@ async fn an_agents_slack_app_follows_its_name_and_icon_and_says_when_it_cannot()
     assert_eq!(update["oauth_config"]["redirect_urls"], json!(["https://pub.test/slack/oauth"]));
     assert_eq!(update["settings"]["socket_mode_enabled"], true);
 }
+
+/// The calls the scripted engines made to one of the agents' tools, with
+/// their results (tests/fake-codex/agent-tools.mjs).
+fn tool_results(sb: &Sandbox, tool: &str) -> Vec<Value> {
+    std::fs::read_to_string(sb.fake_state().join("agent-tools.jsonl"))
+        .unwrap_or_default()
+        .lines()
+        .map(|l| serde_json::from_str::<Value>(l).unwrap())
+        .filter(|r| r["tool"] == tool)
+        .collect()
+}
+
+/// A message to an agent typed in Switchyard; its conversation.
+async fn ask(c: &mut Client, agent: &str, text: &str) -> String {
+    let from = c.mark();
+    let r = format!("ask-{from}");
+    c.send(json!({ "op": "agent.ask", "agentId": agent, "text": text, "ref": r })).await;
+    let reply = c.wait_after(from, "agent.ask reply", |m| m["ref"] == r.as_str() && (m["op"] == "created" || m["op"] == "error")).await;
+    assert_eq!(reply["op"], "created", "{reply}");
+    reply["sessionId"].as_str().unwrap().to_string()
+}
+
+fn slack_reply(args: Value) -> String {
+    format!("[[tool slack_reply {args}]]")
+}
+
+#[tokio::test]
+async fn an_agent_posts_later_only_in_slack_threads_routed_to_it_as_its_own_app() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-reply");
+    let d = sb.start_with(&[("YARD_SLACK_API", &fake.api())]);
+    let mut c = d.client().await;
+    ready(&mut c).await;
+    let id = reviewer(&mut c).await;
+
+    // Without a Slack app of its own: refused, nothing posted.
+    let sid = ask(&mut c, &id, &slack_reply(json!({ "text": "TEST-too early" }))).await;
+    c.wait_turn_done(&sid, 0).await;
+    let r = tool_results(&sb, "slack_reply");
+    assert_eq!(r[0]["isError"], true, "{r:?}");
+    assert!(r[0]["text"].as_str().unwrap().contains("no Slack app of your own"), "{r:?}");
+    assert!(fake.state()["posts"].as_array().unwrap().is_empty());
+
+    // Its app, installed and connected; the shared bot too, for another agent.
+    step(&mut c, json!({ "op": "slack.grant", "token": "xoxe-1-TEST-refresh", "agentId": id, "origin": "http://127.0.0.1" })).await.unwrap();
+    step(&mut c, json!({ "op": "slack.app.botToken", "agentId": id, "token": "xoxb-agent-TEST" })).await.unwrap();
+    step(&mut c, json!({ "op": "slack.app.appToken", "agentId": id, "token": "xapp-1-agent-TEST" })).await.unwrap();
+    slack_state(&mut c, "its app connected", |s| s["agentApps"][&id]["state"] == "connected").await;
+    connect(&mut c).await;
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "name": "Ada", "engine": "codex", "model": MODEL, "effort": EFFORT }, "ref": "ada" })).await;
+    let ada = c.wait_after(from, "Ada saved", |m| m["op"] == "agent.saved").await["agent"]["id"].as_str().unwrap().to_string();
+
+    // Installed, but nobody has asked it anything in Slack: no thread to post in.
+    let seq = c.next_seq(&sid);
+    ask(&mut c, &id, &slack_reply(json!({ "text": "TEST-anyone?" }))).await;
+    c.wait_turn_done(&sid, seq).await;
+    let r = tool_results(&sb, "slack_reply");
+    assert!(r[1]["isError"] == true && r[1]["text"].as_str().unwrap().contains("nobody has asked you anything in Slack"), "{r:?}");
+
+    // Someone asks it in #ops, through its app; another thread goes to Ada through the shared bot.
+    let seq = c.next_seq(&sid);
+    let ts = fake.say(json!({ "app": "agent", "user": "UOWNER", "channel": "C0OPS", "text": "<@UAGENT> TEST-tell us here when it is deployed" }));
+    c.wait_turn_done(&sid, seq).await;
+    fake.wait("its answer", |s| FakeSlack::posts(s, &ts).len() == 1).await;
+    let others = fake.say(json!({ "app": "shared", "user": "UOWNER", "channel": "C0GENERAL", "text": "<@UBOT> Ada TEST-hello" }));
+    fake.wait("Ada's answer", |s| FakeSlack::posts(s, &others).len() == 1).await;
+
+    // Later, from a turn started in Switchyard: the newest thread by default,
+    // or one named by channel and ts; never a thread that is not its own.
+    let seq = c.next_seq(&sid);
+    let calls = [
+        slack_reply(json!({ "text": "TEST-**deployed** to prod" })),
+        slack_reply(json!({ "text": "TEST-elsewhere", "channel": "C0GENERAL" })),
+        slack_reply(json!({ "text": "TEST-hijack", "channel": "C0GENERAL", "thread_ts": others })),
+        slack_reply(json!({ "text": "TEST-made up", "channel": "C0OPS", "thread_ts": "1.000100" })),
+        slack_reply(json!({ "text": "TEST-by name", "channel": "#ops", "thread_ts": ts })),
+        slack_reply(json!({ "text": "  " })),
+    ];
+    ask(&mut c, &id, &calls.join(" ")).await;
+    c.wait_turn_done(&sid, seq).await;
+    let r: Vec<Value> = tool_results(&sb, "slack_reply").into_iter().skip(2).collect();
+    assert_eq!(r.iter().map(|r| r["isError"] == true).collect::<Vec<_>>(), [false, true, true, true, false, true], "{r:?}");
+    assert_eq!(r[0]["text"], "Posted in the Slack thread in #ops as @reviewer.");
+    for refused in &r[1..4] {
+        let text = refused["text"].as_str().unwrap();
+        assert!(text.contains("not a Slack thread you were asked in"), "{text}");
+        // It names the threads it may post in, so the model can pick one.
+        assert!(text.contains(&format!("#ops (channel C0OPS, thread_ts {ts}")) && !text.contains(&others), "{text}");
+    }
+    assert!(r[5]["text"].as_str().unwrap().contains("empty"));
+    let st = fake.state();
+    let posts = FakeSlack::posts(&st, &ts);
+    assert_eq!(posts.len(), 3, "{posts:?}");
+    assert_eq!(posts[1], "TEST-*deployed* to prod");
+    assert_eq!(posts[2], "TEST-by name");
+    // Every post in its thread is its own app's, never the shared bot's.
+    assert!(st["posts"].as_array().unwrap().iter().filter(|p| p["thread_ts"] == ts.as_str()).all(|p| p["app"] == "agent" && p["channel"] == "C0OPS"), "{st:#}");
+    assert_eq!(FakeSlack::posts(&st, &others).len(), 1);
+    let all = st["posts"].to_string();
+    assert!(!all.contains("TEST-elsewhere") && !all.contains("TEST-hijack") && !all.contains("TEST-made up"), "{all}");
+    // The thread shows the call as a step.
+    let steps: Vec<Value> = c.events(&sid).into_iter().filter(|e| e["type"] == "tool_started" && e["title"] == "Posted in Slack").collect();
+    assert!(steps.iter().any(|e| e["detail"] == "TEST-**deployed** to prod"), "{steps:?}");
+
+    // A second ticket, in #dev: a turn that came from Slack posts in its own
+    // thread by default, not in the other ticket's.
+    let seq = c.next_seq(&sid);
+    let dev = fake.say(json!({ "app": "agent", "user": "UOWNER", "channel": "C0DEV", "text": format!("<@UAGENT> TEST-second ticket {}", slack_reply(json!({ "text": "TEST-dev news" }))) }));
+    c.wait_turn_done(&sid, seq).await;
+    fake.wait("the #dev answer", |s| FakeSlack::posts(s, &dev).len() == 2).await;
+    assert_eq!(FakeSlack::posts(&fake.state(), &dev)[0], "TEST-dev news");
+    assert!(!FakeSlack::posts(&fake.state(), &ts).iter().any(|p| p.contains("dev news")));
+
+    // From Switchyard with two threads active today, it must name one; named,
+    // only the people the owner chose can be tagged.
+    step(&mut c, json!({ "op": "slack.app.mention", "agentId": id, "user": "UOWNER", "name": "TEST-Owner" })).await.unwrap();
+    let seq = c.next_seq(&sid);
+    let calls = [slack_reply(json!({ "text": "TEST-which?" })), slack_reply(json!({ "text": "TEST-cc <@UOWNER> <@USTRANGER>", "thread_ts": dev }))];
+    ask(&mut c, &id, &calls.join(" ")).await;
+    c.wait_turn_done(&sid, seq).await;
+    let r = tool_results(&sb, "slack_reply");
+    let (which, named) = (&r[r.len() - 2], &r[r.len() - 1]);
+    let text = which["text"].as_str().unwrap();
+    assert!(which["isError"] == true && text.contains("did not come from Slack") && text.contains(&format!("thread_ts {dev}")) && text.contains(&format!("thread_ts {ts}")), "{which}");
+    assert_eq!(named["isError"], false, "{named}");
+    let posts = FakeSlack::posts(&fake.state(), &dev);
+    assert_eq!(posts.last().unwrap(), "TEST-cc <@UOWNER> &lt;@USTRANGER&gt;");
+    assert!(!fake.state()["posts"].to_string().contains("TEST-which?"));
+
+    // Ada has no app of her own: refused even for her own thread.
+    let ada_chat = chat_of(&mut c, &ada).await;
+    let seq = c.next_seq(&ada_chat);
+    ask(&mut c, &ada, &slack_reply(json!({ "text": "TEST-from Ada" }))).await;
+    c.wait_turn_done(&ada_chat, seq).await;
+    let r = tool_results(&sb, "slack_reply");
+    let last = r.last().unwrap();
+    assert!(last["isError"] == true && last["text"].as_str().unwrap().contains("no Slack app of your own"), "{last}");
+    assert!(!fake.state()["posts"].to_string().contains("TEST-from Ada"));
+}

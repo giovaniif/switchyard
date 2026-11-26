@@ -1479,7 +1479,7 @@ pub fn preamble(a: &Agent, earlier: &str, tools: bool, setup: &str, text: &str) 
         out.push_str(&format!("What you are for: {}\n", a.about));
     }
     if tools {
-        out.push_str("Switchyard's tools let you reach the user when you need them (notify_owner), message another agent and get its answer back (message_agent, list_agents), keep your memory up to date (remember, set_memory), and change your own setup when the user asks (update_setup: name, what you are for, instructions, look, model, folder, permission, Slack).\n");
+        out.push_str("Switchyard's tools let you reach the user when you need them (notify_owner), message another agent and get its answer back (message_agent, list_agents), keep your memory up to date (remember, set_memory), post in a Slack thread you were asked in, at any time, as your own Slack app (slack_reply), and change your own setup when the user asks (update_setup: name, what you are for, instructions, look, model, folder, permission, Slack).\n");
     }
     if !a.instructions.is_empty() {
         out.push_str(&format!("\n<instructions>\n{}\n</instructions>\n", a.instructions));

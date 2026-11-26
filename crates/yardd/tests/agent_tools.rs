@@ -146,7 +146,7 @@ async fn a_message_to_another_agent_comes_back_as_its_answer() {
     assert!(sent["text"].as_str().unwrap().starts_with("Sent to @Bea (hop 1 of 3)."), "{sent}");
     // The tool's description names the agents there are.
     let listed = calls(&sb).into_iter().find(|r| r["listed"].is_array()).unwrap();
-    assert_eq!(listed["listed"], json!(["notify_owner", "message_agent", "list_agents", "remember", "set_memory", "update_setup"]));
+    assert_eq!(listed["listed"], json!(["notify_owner", "message_agent", "list_agents", "remember", "set_memory", "update_setup", "slack_reply"]));
     assert!(listed["messageAgent"].as_str().unwrap().contains("Agents: @Bea."), "{listed}");
     assert_eq!(c.events(&ada_chat).iter().find(|e| e["type"] == "tool_started").unwrap()["title"], "Messaged @bea");
 

@@ -1,6 +1,7 @@
 //! Agents' own tools: reaching the owner (`notify_owner`), messaging another
-//! agent (`message_agent`, `list_agents`) and editing their own memory
-//! (`remember`, `set_memory`).
+//! agent (`message_agent`, `list_agents`), editing their own memory
+//! (`remember`, `set_memory`) and posting in a Slack thread they were asked
+//! in, as their own Slack app (`slack_reply`).
 //!
 //! One implementation for every engine: yardd is also a small stdio MCP
 //! server (`yardd agent-tools`). A user-made agent's conversation hands its
@@ -56,9 +57,11 @@ use crate::{
 
 /// The MCP server's name, as engines show it (`mcp__switchyard__remember`).
 pub const SERVER: &str = "switchyard";
-/// How often one agent may reach the owner, and message other agents, per hour.
+/// How often one agent may reach the owner, message other agents, and post
+/// in Slack on its own, per hour.
 pub const NOTIFY_PER_HOUR: usize = 3;
 pub const MESSAGES_PER_HOUR: usize = 30;
+pub const SLACK_PER_HOUR: usize = 20;
 const HOUR_MS: u64 = 3_600_000;
 const MESSAGE_BYTES: usize = 20_000;
 
@@ -287,7 +290,7 @@ pub fn launch(app: &App, sid: &str) -> Option<Launch> {
     })
 }
 
-pub const TOOLS: [&str; 6] = ["notify_owner", "message_agent", "list_agents", "remember", "set_memory", "update_setup"];
+pub const TOOLS: [&str; 7] = ["notify_owner", "message_agent", "list_agents", "remember", "set_memory", "update_setup", "slack_reply"];
 
 /// One of our tools, from the name an engine shows for an MCP call: Claude's
 /// `mcp__switchyard__remember`, OpenCode's `switchyard_remember`, or any other
@@ -310,6 +313,7 @@ pub fn label(tool: &str, args: &Value) -> Option<(String, String)> {
         "remember" => ("Remembered".into(), s("text")),
         "set_memory" => ("Updated memory".into(), s("text")),
         "update_setup" => ("Updated its setup".into(), args.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>().join(", ")).unwrap_or_default()),
+        "slack_reply" => ("Posted in Slack".into(), s("text")),
         _ => return None,
     })
 }
@@ -382,6 +386,20 @@ fn described(names: &str) -> Value {
             },
             "annotations": { "title": "Update its setup", "readOnlyHint": false, "destructiveHint": false, "openWorldHint": false },
         },
+        {
+            "name": "slack_reply",
+            "description": format!("Post a message in a Slack thread as your own Slack app, at any time: news you promised there (\"tell us here when it's deployed\"), after a long wait, or from a turn the user started in Switchyard. Without channel and thread_ts it goes to the Slack thread of the message this turn answers; in a turn that did not come from Slack, name the thread with thread_ts (unless only one of your threads was active in the last day). You can post only in Slack threads that were routed to you (someone wrote to you there); any other channel or thread is refused. Your final answer to a message from Slack is already posted in its thread, so do not repeat it with this. Needs a Slack app of your own. At most {SLACK_PER_HOUR} per hour."),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "text": text("The message, in Markdown."),
+                    "channel": text("Optional: the channel, by id (C0123ABC) or name (#ops), to pick among your threads; this turn's thread if it is there, else your newest thread there."),
+                    "thread_ts": text("Optional: the thread's ts, to pick one thread exactly. A refusal lists your threads with theirs."),
+                },
+                "required": ["text"],
+            },
+            "annotations": { "title": "Post in Slack", "readOnlyHint": false, "destructiveHint": false, "openWorldHint": true },
+        },
     ])
 }
 
@@ -394,7 +412,7 @@ fn others(app: &App, me: &crate::agents::Agent) -> Vec<crate::agents::Agent> {
     serde_json::from_value::<Vec<crate::agents::Agent>>(app.agents.list()).unwrap_or_default().into_iter().filter(|a| a.id != me.id).collect()
 }
 
-fn at_clock(ms: u64) -> String {
+pub fn at_clock(ms: u64) -> String {
     chrono::DateTime::from_timestamp_millis(ms as i64).map(|t| t.with_timezone(&chrono::Local).format("%H:%M").to_string()).unwrap_or_default()
 }
 
@@ -526,6 +544,19 @@ async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Resul
             Ok(Done { text, needs_you: None, memory: Some(memory) })
         }
         "update_setup" => Ok(crate::agents::apply_setup(app, &me.id, sid, args).await?.into()),
+        "slack_reply" => {
+            let text = arg("text");
+            if text.is_empty() {
+                bail!("Not posted: the text is empty.");
+            }
+            // The Slack message that started this turn, if one did.
+            let origin = caller.answering.iter().find(|o| origins::kind(o) == "slack");
+            let thread = crate::slack::thread_for(&app.slack, &me.id, &arg("channel"), &arg("thread_ts"), origin)?;
+            if let Err(until) = app.tools.take(&me.id, tool, SLACK_PER_HOUR, now_ms()) {
+                bail!("Not posted: you already posted {SLACK_PER_HOUR} times in Slack in the last hour. Try again after {}, or put it in your answer.", at_clock(until));
+            }
+            Ok(crate::slack::post_in(app, &thread, &clip(&text, MESSAGE_BYTES)).await?.into())
+        }
         other => bail!("Switchyard has no tool {other}."),
     }
 }
@@ -794,6 +825,8 @@ mod tests {
         assert_eq!(label("remember", &json!({ "text": "trunk is main" })).unwrap().0, "Remembered");
         assert_eq!(label("update_setup", &json!({ "name": "Deployer", "about": "x" })).unwrap(), ("Updated its setup".to_string(), "about, name".to_string()));
         assert_eq!(own_tool("switchyard_update_setup"), Some("update_setup"));
+        assert_eq!(label("slack_reply", &json!({ "text": "Deployed\nto prod" })), Some(("Posted in Slack".into(), "Deployed to prod".into())));
+        assert_eq!(own_tool("mcp__switchyard__slack_reply"), Some("slack_reply"));
         assert_eq!(label("other", &json!({})), None);
         assert_eq!(own_tool("mcp__switchyard__remember"), Some("remember"));
         assert_eq!(own_tool("switchyard_message_agent"), Some("message_agent"));
