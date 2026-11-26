@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "c36f3c936827365098a4d26b602b5cfa82cec4b8",
+    "short": "c36f3c9",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T10:14:23.981Z"
+  },
+  "dir": ".verify/evidence/hosts-follow-route-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4585,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/hosts-follow-route-head-desktop/popover-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/hosts-follow-route-head-desktop/after-sign-in-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 6,
+          "eval": "location.hash",
+          "value": "#/hosts?host=local&tab=engines"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

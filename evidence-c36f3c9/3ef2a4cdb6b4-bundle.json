@@ -1,0 +1,304 @@
+{
+  "v": 1,
+  "claim": "On Hosts, Sign in in the usage popover changed the URL to tab=engines but the page stayed on Sessions, so Sign in looked dead",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-2869",
+  "base": "a3eddf59494a7ba260d4387856f93e9fbd768f13",
+  "head": "c36f3c936827365098a4d26b602b5cfa82cec4b8",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/usage.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T10:13:33.023Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "ef228625d53c78408c9c5016a09bad596f44098e",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "ae71cd5b480c055e98419d7f432a2a2a4831aa8301960518d087c1ae5386830f"
+        },
+        {
+          "path": "p1-popover-desktop.png",
+          "sha256": "28a3549be2233774548833b6c84d095a2b7f152ff8068eeee914e79852fa4bdf"
+        },
+        {
+          "path": "p1-after-sign-in-desktop.png",
+          "sha256": "cce5539552cff95ab0c2762840f5f8fb449e032da9e0cb158b143002ad6b9701"
+        }
+      ],
+      "addedAt": "2026-11-26T10:13:59.239Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "ef228625d53c78408c9c5016a09bad596f44098e",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "14538c7e2f182a4c50bf7f16a14a88e6bc4b3cc621b4eacee9d2adac9c193900"
+        },
+        {
+          "path": "p2-popover-mobile.png",
+          "sha256": "b8e7c2839975ec5d295a640f10f550f2cb80c6fcd6e240352aa9c51f5c8e56e9"
+        },
+        {
+          "path": "p2-after-sign-in-mobile.png",
+          "sha256": "ba4a0245cb1ea7d265606c96cd646687f1e37c714e89dba98e3a662a3ccb9a51"
+        }
+      ],
+      "addedAt": "2026-11-26T10:13:59.293Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "ef228625d53c78408c9c5016a09bad596f44098e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "5ce043b7f24550ed9c5a5f8f83e69ca2652b8b30a1fbda830b5e9eccd17d759a"
+        }
+      ],
+      "addedAt": "2026-11-26T10:13:59.344Z",
+      "cmd": "verify/yv map run usage --recipe sign-in-from-usage-while-on-hosts",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "c36f3c936827365098a4d26b602b5cfa82cec4b8",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "177d38a872df95b0f367f629b2685afcdd7a0127fedda60ac863dcb902e8b635"
+        },
+        {
+          "path": "p4-popover-desktop.png",
+          "sha256": "9fd2674f7dc50b0e06d3bb325ad9f2d6697b90e22175295cea65747b836a20ff"
+        },
+        {
+          "path": "p4-after-sign-in-desktop.png",
+          "sha256": "bbac4b88dc3348131ad1ee95bd87e050ef2f38ec2f85484bea78afa6b200fec2"
+        }
+      ],
+      "addedAt": "2026-11-26T10:14:41.768Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "c36f3c936827365098a4d26b602b5cfa82cec4b8",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "1327053ac8f0241cbb09294501a25bc4fc515b0c5a79ec7ba08c12c56d02d294"
+        },
+        {
+          "path": "p5-popover-mobile.png",
+          "sha256": "131e09b469a45abd364952d45bbca1eaefd3937c2677bf28d2e5e4602fa4ce84"
+        },
+        {
+          "path": "p5-after-sign-in-mobile.png",
+          "sha256": "91852729cab67f74502883918eac2222ccc52ef66feea101e3f076b20b667874"
+        }
+      ],
+      "addedAt": "2026-11-26T10:14:41.815Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "c36f3c936827365098a4d26b602b5cfa82cec4b8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "eb5b22f511c44f5d6b974f5f9733775bdad7a63b49ab7411fc9adf8e2abbb7c6"
+        }
+      ],
+      "addedAt": "2026-11-26T10:14:41.863Z",
+      "cmd": "verify/yv map run usage --recipe sign-in-from-usage-while-on-hosts",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "test",
+      "at": "c36f3c936827365098a4d26b602b5cfa82cec4b8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-cmd.log",
+          "sha256": "db194d9b1545aad3b7e5daecc2744eadaf93542c8e02919766b4e4f1a4c97216"
+        }
+      ],
+      "addedAt": "2026-11-26T10:14:49.899Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "design",
+      "at": "c36f3c936827365098a4d26b602b5cfa82cec4b8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-design.json",
+          "sha256": "4a08469f99f60d987370b47472d808681e04d9ed1adfbaf08c1633b8e3d51232"
+        }
+      ],
+      "addedAt": "2026-11-26T10:14:50.336Z",
+      "cmd": "verify/yv design-check --base a3eddf59494a",
+      "exit": 0
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "regression",
+      "at": "c36f3c936827365098a4d26b602b5cfa82cec4b8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-map-hosts.json",
+          "sha256": "b30dc7f961e5eef83403dc319cbb6791f85e9841ffba132bf61bdaa90e93a5b9"
+        }
+      ],
+      "addedAt": "2026-11-26T10:14:54.168Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/processes-say-the-host-is-offline",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "regression",
+      "at": "c36f3c936827365098a4d26b602b5cfa82cec4b8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-map-focused-pages.json",
+          "sha256": "2daf3f71ded56856692cc09f693d56ddd0a33217078ff9eaf94939e44571464c"
+        }
+      ],
+      "addedAt": "2026-11-26T10:17:07.802Z",
+      "cmd": "verify/yv map run focused-pages",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "focused-pages/selected-host-tabs",
+        "focused-pages/compact-usage-popover",
+        "focused-pages/usage-popover-leads-with-trigger-account",
+        "focused-pages/usage-row-lines-up-with-host-rows",
+        "focused-pages/subscriptions-page",
+        "focused-pages/account-picker-separate-from-model",
+        "focused-pages/other-engine-account-and-fixed-session",
+        "focused-pages/sessions-search-and-archive",
+        "focused-pages/sessions-visibility-tabs",
+        "focused-pages/archived-waiting-session-says-needs-approval",
+        "focused-pages/sessions-search-no-match-says-so",
+        "focused-pages/sessions-search-finds-the-account",
+        "focused-pages/host-rows-line-up-with-the-page",
+        "focused-pages/session-rows-line-up-with-the-page",
+        "focused-pages/session-rows-have-straight-dividers",
+        "focused-pages/offline-host-and-selection-fallback",
+        "focused-pages/workspace-widths-and-views",
+        "focused-pages/manage-accounts-opens-logins",
+        "focused-pages/sidebar-skips-duplicate-page-links",
+        "focused-pages/subscriptions-page-signed-out-account"
+      ]
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "regression",
+      "at": "c36f3c936827365098a4d26b602b5cfa82cec4b8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-map-usage.json",
+          "sha256": "16ef28535e0771695936c9e9dd35e4f1c6760a8d0a841c1ef2289f49368d312e"
+        }
+      ],
+      "addedAt": "2026-11-26T10:19:07.721Z",
+      "cmd": "verify/yv map run usage",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "usage/usage-strip-in-sidebar",
+        "usage/usage-strip-claude",
+        "usage/picker-has-no-meters",
+        "usage/picker-other-engine-collapsed",
+        "usage/picker-current-model-marked",
+        "usage/meters-zero-after-reset",
+        "usage/claude-usage-after-restart",
+        "usage/strip-names-every-account",
+        "usage/picker-names-the-account",
+        "usage/subscriptions-note-names-every-silent-engine",
+        "usage/sign-in-from-usage-while-on-hosts"
+      ]
+    }
+  ]
+}

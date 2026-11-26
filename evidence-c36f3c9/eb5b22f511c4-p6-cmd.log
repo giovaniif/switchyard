@@ -1,0 +1,26 @@
+$ verify/yv map run usage --recipe sign-in-from-usage-while-on-hosts
+# exit 0 after 7987 ms at c36f3c936827365098a4d26b602b5cfa82cec4b8
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "usage",
+      "at": "2026-11-26T10:14:49.848Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "sign-in-from-usage-while-on-hosts",
+          "status": "pass",
+          "ms": 7107
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
