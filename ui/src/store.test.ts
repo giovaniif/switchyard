@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { AgentEvent, SessionMeta } from "./protocol";
-import { cleanGroupName, go, hostErrorText, hostName, initial, mcpAuthKey, mcpKey, parseHash, reduce, routeHash, sidebarLayout, type State } from "./store";
+import { cleanGroupName, go, historyLoaded, hostErrorText, hostName, initial, mcpAuthKey, mcpKey, parseHash, reduce, routeHash, sidebarLayout, type State } from "./store";
 
 const server = (state: State, msg: any) => reduce(state, { t: "server", msg });
 const event = (sessionId: string, seq: number, ev: AgentEvent) => ({ op: "event", sessionId, seq, event: ev });
@@ -62,6 +62,24 @@ describe("thread loading", () => {
     s = server(s, history("s1", [{ type: "user_message", text: "hi" }]));
     expect(texts(s, "s1")).toEqual(["hi"]);
     expect(s.threads.s1.next).toBe(1);
+  });
+
+  // A running session keeps streaming while its host relinks: its first event
+  // after the snapshot buffers into a thread that has no history yet, and
+  // that must still count as unloaded or the conversation stays blank.
+  test("a thread holding only early events still needs its history", () => {
+    let s = server(initial, { op: "host.snapshot", hostId: "h1", sessions: [meta("h1~a", "h1", "running")] });
+    s = server(s, history("h1~a", log));
+    expect(historyLoaded(s, "h1~a")).toBe(true);
+
+    s = server(s, { op: "host.snapshot", hostId: "h1", sessions: [meta("h1~a", "h1", "running")] });
+    s = server(s, event("h1~a", 6, { type: "turn_started" }));
+    expect(s.threads["h1~a"]).toBeDefined();
+    expect(historyLoaded(s, "h1~a")).toBe(false);
+
+    s = server(s, history("h1~a", log));
+    expect(historyLoaded(s, "h1~a")).toBe(true);
+    expect(texts(s, "h1~a")).toEqual(["hi", "Hello"]);
   });
 
   test("live events apply once each; repeats and old seqs are dropped", () => {
@@ -354,13 +372,3 @@ describe("connectors", () => {
   });
 });
 
-describe("Switchy conversation", () => {
-  test("keeps the hub conversation separate from sessions and ignores older updates", () => {
-    const conversation = { status: "idle", turns: [], engine: "codex", model: "fake-fast", scope: "all", revision: 2 };
-    const loaded = reduce(initial, { t: "server", msg: { op: "switchy.state", state: conversation, total: 0 } });
-    expect(loaded.switchy).toEqual(conversation);
-    expect(loaded.sessions).toEqual({});
-    expect(reduce(loaded, { t: "server", msg: { op: "switchy.state", state: { ...conversation, revision: 1 } } }).switchy).toEqual(conversation);
-    expect(reduce(loaded, { t: "server", msg: { op: "switchy.state", hostId: "remote", state: { ...conversation, revision: 99 } } }).switchy).toEqual(conversation);
-  });
-});

@@ -3356,6 +3356,7 @@ dependencies = [
  "rustls-platform-verifier",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
@@ -4151,7 +4152,7 @@ dependencies = [
 
 [[package]]
 name = "switchyard"
-version = "0.12.0"
+version = "0.22.0"
 dependencies = [
  "serde_json",
  "tauri",
@@ -4831,7 +4832,11 @@ checksum = "edc5f74e248dc973e0dbb7b74c7e0d6fcc301c694ff50049504004ef4d0cdcd9"
 dependencies = [
  "futures-util",
  "log",
+ "rustls",
+ "rustls-native-certs",
+ "rustls-pki-types",
  "tokio",
+ "tokio-rustls",
  "tungstenite",
 ]
 
@@ -5088,6 +5093,8 @@ dependencies = [
  "httparse",
  "log",
  "rand 0.8.8",
+ "rustls",
+ "rustls-pki-types",
  "sha1",
  "thiserror 1.0.69",
  "utf-8",
@@ -5944,7 +5951,7 @@ dependencies = [
 
 [[package]]
 name = "yardd"
-version = "0.12.0"
+version = "0.22.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -5952,7 +5959,10 @@ dependencies = [
  "chrono",
  "futures-util",
  "portable-pty",
+ "reqwest",
+ "ring",
  "rusqlite",
+ "rustls",
  "serde",
  "serde_json",
  "sysinfo",

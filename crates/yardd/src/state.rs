@@ -24,9 +24,16 @@ pub fn now_ms() -> u64 {
 pub struct Meta {
     pub id: String,
     pub title: String,
+    /// Where the title came from: absent for the task's first line, `auto`
+    /// when a model named the session from its conversation (see `naming`),
+    /// `user` when typed in. Only the first two are ever replaced.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_source: Option<String>,
     pub engine: String,
     pub model: String,
     pub effort: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub service_tier: Option<String>,
     pub cwd: String,
     pub status: String,
     pub host: String,
@@ -62,6 +69,29 @@ pub struct Meta {
     /// first turn ends.
     #[serde(default)]
     pub automation: Option<String>,
+    /// The agent this session is a chat with (see `agents`): its first turn
+    /// carries the agent's preamble, and the row and thread show who it is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
+    /// An agent's conversation needs a new engine thread before its next
+    /// turn, and why (see `agents::prepare`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fresh_context: Option<String>,
+    /// The agent's instructions or memory changed: its next turn carries them.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub notes_changed: bool,
+    /// The start of an agent's last answer, for its card.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_message: Option<String>,
+    /// An agent asked for the owner (`notify_owner`): `{ message, at }`, kept
+    /// until a window opens the conversation (`agent.seen`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub needs_you: Option<Value>,
+    /// Where the messages the running (or last) turn answers came from, when
+    /// the owner did not type them (see `origins`). Set when a turn starts,
+    /// grown by steered messages, handed to the reply hook when it ends.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub answering: Vec<Value>,
     /// When an automation run's first turn ended: the run took this minus
     /// `created_at`. `updated_at` is no good for that, it moves on any later
     /// change (a pin, a rename, a reply in the reopened run).
@@ -73,6 +103,11 @@ pub struct Meta {
     pub turn_ended_at: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_turn: Option<String>,
+    /// Subagents (Agent calls) still at work, by item id: they can outlive
+    /// the turn that started them (Claude runs them in the background), and
+    /// the row says the session is working until they report.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub background: Vec<String>,
     /// Messages sent while a turn ran and not yet given to the agent, oldest
     /// first: `{ id, text, attachments, at }`. Like Claude Code's queue, they
     /// go to the agent at its next step (see `Delivery`); Stop hands them back.
@@ -132,12 +167,13 @@ pub struct Session {
 }
 
 /// When queued messages reach the agent.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug)]
 pub enum Delivery {
     /// A step of the running turn ended: give them to the agent now, in this
     /// turn (Codex `turn/steer`; Claude Code folds a message that arrives
     /// mid-turn into it).
     Steer,
+    SteerOne(String),
     /// The turn completed with no step left to join: they are the next turn.
     NextTurn,
 }
@@ -159,17 +195,30 @@ pub struct App {
     pub terms: crate::pty::Terms,
     pub guard: crate::guard::Guard,
     pub store: crate::store::Store,
-    pub switchy: crate::switchy::Switchy,
+    /// Engine threads yardd runs for itself (see `private`).
+    pub private: crate::private::Private,
+    pub agents: crate::agents::Agents,
     pub remotes: crate::remote::Remotes,
     pub automations: crate::automations::Automations,
     pub logins: crate::login::Logins,
     /// Connectors processes and replies owed by sidecars (see mcp.rs).
     pub mcp: crate::mcp::Connectors,
     pub mobile: crate::mobile::Mobile,
+    /// Slack: the connection, its settings and posts owed to threads.
+    pub slack: crate::slack::Slack,
+    /// Agents' own tools: per-conversation keys and rate limits (see agent_tools).
+    pub tools: crate::agent_tools::Tools,
     /// Sessions with queued messages to deliver; drained by a task in main
     /// (emit cannot talk to an engine itself).
     next_turns: mpsc::UnboundedSender<(String, Delivery)>,
     next_turns_rx: Mutex<Option<mpsc::UnboundedReceiver<(String, Delivery)>>>,
+    /// Sessions to name from their conversation (see `naming`).
+    naming: mpsc::UnboundedSender<String>,
+    naming_rx: Mutex<Option<mpsc::UnboundedReceiver<String>>>,
+    /// Turns that ended owing an answer to where their messages came from
+    /// (see `origins::reply`); drained by a task in main.
+    replies: mpsc::UnboundedSender<crate::origins::Owed>,
+    replies_rx: Mutex<Option<mpsc::UnboundedReceiver<crate::origins::Owed>>>,
     next: AtomicU64,
 }
 
@@ -197,6 +246,8 @@ impl App {
     pub fn new(root: PathBuf, port: u16, store: crate::store::Store) -> Self {
         let (tx, _) = broadcast::channel(2048);
         let (next_turns, next_turns_rx) = mpsc::unbounded_channel();
+        let (naming, naming_rx) = mpsc::unbounded_channel();
+        let (replies, replies_rx) = mpsc::unbounded_channel();
         App {
             root,
             port,
@@ -212,13 +263,21 @@ impl App {
             terms: crate::pty::Terms::default(),
             guard: crate::guard::Guard::default(),
             store,
-            switchy: crate::switchy::Switchy::load(crate::store::data_dir()),            remotes: crate::remote::Remotes::new(crate::store::data_dir()),
+            private: crate::private::Private::default(),
+            agents: crate::agents::Agents::load(crate::store::data_dir()),
+            remotes: crate::remote::Remotes::new(crate::store::data_dir()),
             automations: crate::automations::Automations::load(crate::store::data_dir()),
             logins: crate::login::Logins::default(),
             mcp: crate::mcp::Connectors::default(),
             mobile: crate::mobile::Mobile::load(crate::store::data_dir()),
+            slack: crate::slack::Slack::load(crate::store::data_dir()),
+            tools: crate::agent_tools::Tools::default(),
             next_turns,
             next_turns_rx: Mutex::new(Some(next_turns_rx)),
+            naming,
+            naming_rx: Mutex::new(Some(naming_rx)),
+            replies,
+            replies_rx: Mutex::new(Some(replies_rx)),
             next: AtomicU64::new(1),
         }
     }
@@ -228,23 +287,54 @@ impl App {
         self.next_turns_rx.lock().unwrap().take().expect("next_turns taken twice")
     }
 
-    /// Queue a message sent while a turn runs.
-    pub fn queue_message(&self, sid: &str, text: &str, attachments: &[Value]) -> String {
+    /// The queue of sessions to name. Taken once, by main.
+    pub fn take_naming(&self) -> mpsc::UnboundedReceiver<String> {
+        self.naming_rx.lock().unwrap().take().expect("naming taken twice")
+    }
+
+    /// Queue a session to be named from its conversation (see `naming`).
+    pub fn name_later(&self, sid: &str) {
+        let _ = self.naming.send(sid.to_string());
+    }
+
+    /// Turns that owe an answer. Taken once, by main.
+    pub fn take_replies(&self) -> mpsc::UnboundedReceiver<crate::origins::Owed> {
+        self.replies_rx.lock().unwrap().take().expect("replies taken twice")
+    }
+
+    /// Hand an answer owed to messages' origins to the reply hook.
+    pub fn owe(&self, owed: crate::origins::Owed) {
+        let _ = self.replies.send(owed);
+    }
+
+    /// Queue a message sent while a turn runs. `origin`: where it came from,
+    /// when the owner did not type it (see `origins`).
+    pub fn queue_message(&self, sid: &str, text: &str, attachments: &[Value], origin: Option<&Value>) -> String {
         let id = self.id("q");
-        let item = json!({ "id": id, "text": text, "attachments": attachments, "at": now_ms() });
+        let mut item = json!({ "id": id, "text": text, "attachments": attachments, "at": now_ms() });
+        if let Some(origin) = origin {
+            item["origin"] = origin.clone();
+        }
         self.update_meta(sid, |m| m.pending.push(item));
         id
     }
 
     /// Take one queued message back, if it has not reached the agent yet.
-    pub fn take_queued(&self, sid: &str, id: &str) -> Option<Value> {
+    pub fn take_queued(&self, sid: &str, id: &str, only_running: bool) -> Option<Value> {
         let mut taken = None;
         self.update_meta(sid, |m| {
+            if only_running && m.status != "running" {
+                return;
+            }
             if let Some(i) = m.pending.iter().position(|p| p["id"] == id) {
                 taken = Some(m.pending.remove(i));
             }
         });
         taken
+    }
+
+    pub fn steer_queued(&self, sid: &str, id: &str) {
+        let _ = self.next_turns.send((sid.to_string(), Delivery::SteerOne(id.to_string())));
     }
 
     /// Take every queued message, when the session's status passes `ok`.
@@ -307,7 +397,7 @@ impl App {
         worktree: Option<Worktree>,
         account: &str,
     ) -> String {
-        self.insert_session(engine, model, effort, cwd, title, worktree, false, account, None)
+        self.insert_session(engine, model, effort, cwd, title, worktree, false, account, None, None)
             .expect("a non-exclusive insert cannot be refused")
     }
 
@@ -323,6 +413,7 @@ impl App {
         exclusive: bool,
         account: &str,
         automation: Option<&str>,
+        agent: Option<&str>,
     ) -> anyhow::Result<String> {
         let id = self.id("s");
         let now = now_ms();
@@ -333,9 +424,11 @@ impl App {
         let meta = Meta {
             id: id.clone(),
             title: title.to_string(),
+            title_source: None,
             engine: engine.to_string(),
             model: model.to_string(),
             effort: effort.to_string(),
+            service_tier: None,
             cwd: cwd.to_string(),
             status: "running".to_string(),
             host: "local".to_string(),
@@ -348,9 +441,16 @@ impl App {
             archived: false,
             group: None,
             automation: automation.map(str::to_string),
+            agent: agent.map(str::to_string),
+            fresh_context: None,
+            notes_changed: false,
+            last_message: None,
+            needs_you: None,
+            answering: Vec::new(),
             finished_at: None,
             turn_ended_at: None,
             last_turn: None,
+            background: Vec::new(),
             pending: Vec::new(),
             created_at: now,
             updated_at: now,
@@ -394,25 +494,26 @@ impl App {
         self.sessions.lock().unwrap().get(sid).map(|s| s.meta.clone())
     }
 
-    /// Change session fields and tell every client.
-    pub fn update_meta(&self, sid: &str, f: impl FnOnce(&mut Meta)) {
+    /// Change session fields and tell every client. Returns false if it was removed.
+    pub fn update_meta(&self, sid: &str, f: impl FnOnce(&mut Meta)) -> bool {
         let mut map = self.sessions.lock().unwrap();
-        let Some(s) = map.get_mut(sid) else { return };
+        let Some(s) = map.get_mut(sid) else { return false };
         f(&mut s.meta);
         s.meta.updated_at = now_ms();
         self.store.meta(&s.meta);
         // Under the lock, like `emit`: clients see changes in the order they were made.
         self.broadcast(json!({ "op": "session", "session": s.meta }));
+        true
     }
 
     /// Append a normalized event to the session log and fan it out.
     /// Session status is derived here so both engines behave the same.
     pub fn emit(&self, sid: &str, mut event: Value) {
-        if crate::switchy::internal(sid) {
+        if crate::private::internal(sid) {
             let mut map = self.sessions.lock().unwrap();
             let Some(session) = map.get_mut(sid) else { return };
             if event["type"] == "turn_completed" { session.meta.status = "idle".into(); }
-            let _ = self.switchy.events.send((sid.to_string(), event));
+            let _ = self.private.events.send((sid.to_string(), event));
             return;
         }
         // A widget's HTML and data go to a file; the log keeps its id.
@@ -448,17 +549,54 @@ impl App {
             // from another and leave the UI showing `running` on an idle session.
             self.store.event(sid, &event);
             self.broadcast(json!({ "op": "event", "sessionId": sid, "seq": seq, "event": event }));
+            // An agent's card quotes its last answer; a context that ran out
+            // is replaced before the conversation's next turn.
+            if s.meta.agent.is_some() {
+                if event["type"] == "assistant_message" {
+                    let line: String = event["text"].as_str().unwrap_or("").split_whitespace().collect::<Vec<_>>().join(" ");
+                    s.meta.last_message = Some(line.chars().take(160).collect());
+                } else if event["type"] == "error" && crate::agents::context_ran_out(event["message"].as_str().unwrap_or("")) {
+                    s.meta.fresh_context = Some("the engine's context was full".into());
+                }
+            }
+            // A subagent's own steps carry `parent`; only its Agent call counts.
+            let before = s.meta.background.len();
+            let item = event["itemId"].as_str().unwrap_or("").to_string();
+            if event["type"] == "tool_started" && event["agent"].is_string() && event["parent"].is_null() && !item.is_empty() && !s.meta.background.contains(&item) {
+                s.meta.background.push(item);
+            } else if event["type"] == "tool_completed" {
+                s.meta.background.retain(|i| *i != item);
+            } else if turn_completed && event["status"] != "completed" {
+                // Stop and a failure end the turn's subagents too.
+                s.meta.background.clear();
+            }
+            let background_moved = s.meta.background.len() != before;
             s.events.push(event);
             s.meta.updated_at = now_ms();
             if turn_completed {
                 s.meta.turn_ended_at = Some(s.meta.updated_at);
                 s.meta.last_turn = turn_end.clone();
+                // Whoever sent the messages this turn answered gets its answer.
+                if !s.meta.answering.is_empty() {
+                    let origins = std::mem::take(&mut s.meta.answering);
+                    let status = turn_end.clone().unwrap_or_else(|| "completed".into());
+                    let _ = self.replies.send(crate::origins::Owed::of_turn(sid, origins, &status, &s.events));
+                }
+            }
+            // Whoever waits in Slack hears, once a turn, that the turn waits on an approval.
+            if s.events.last().is_some_and(|e| e["type"] == "approval_request") {
+                let origins: Vec<Value> = s.meta.answering.iter().filter(|o| crate::origins::wants_approval_note(o)).cloned().collect();
+                let start = s.events.iter().rposition(|e| e["type"] == "turn_started").unwrap_or(0);
+                if !origins.is_empty() && s.events[start..].iter().filter(|e| e["type"] == "approval_request").count() == 1 {
+                    let text = s.events.last().and_then(|e| e["title"].as_str()).unwrap_or("").to_string();
+                    let _ = self.replies.send(crate::origins::Owed { sid: sid.to_string(), origins, status: "approval".into(), text });
+                }
             }
             let moved = status.is_some_and(|st| s.meta.status != st);
             if let Some(st) = status {
                 s.meta.status = st.to_string();
             }
-            if moved || turn_completed {
+            if moved || turn_completed || background_moved {
                 self.store.meta(&s.meta);
                 self.broadcast(json!({ "op": "session", "session": s.meta }));
             }
@@ -475,6 +613,16 @@ impl App {
                 }
                 self.store.meta(&s.meta);
                 self.broadcast(json!({ "op": "session", "session": s.meta }));
+            }
+            // What the agent asked to change in how it runs waits for this.
+            if turn_completed && s.meta.agent.is_some() {
+                self.agents.turn_ended(sid);
+            }
+            if completed {
+                let done = s.events.iter().filter(|e| e["type"] == "turn_completed" && e["status"] == "completed").count();
+                if crate::naming::due(&s.meta, done) {
+                    self.name_later(sid);
+                }
             }
             if s.meta.pending.is_empty() {
                 None
@@ -497,7 +645,10 @@ impl App {
         let Some(s) = map.get_mut(sid) else { return };
         if s.engine_ref.as_deref() != Some(engine_ref) {
             s.engine_ref = Some(engine_ref.to_string());
-            if !crate::switchy::internal(sid) { self.store.engine_ref(sid, engine_ref); }
+            // A restricted thread starts fresh every turn and never resumes.
+            if !crate::private::internal(sid) {
+                self.store.engine_ref(sid, engine_ref);
+            }
         }
     }
 
@@ -520,7 +671,9 @@ impl App {
         let mut queued = Vec::new();
         {
             let mut map = self.sessions.lock().unwrap();
-            for l in loaded {
+            for mut l in loaded {
+                // Their processes went with the yardd that ran them.
+                l.meta.background.clear();
                 if l.meta.status == "queued" {
                     queued.push((l.meta.created_at, l.meta.id.clone(), queued_reason(&l.events)));
                 } else if l.meta.status != "idle" {
@@ -594,7 +747,7 @@ impl App {
             .lock()
             .unwrap()
             .values()
-            .filter(|s| !crate::switchy::internal(&s.meta.id))
+            .filter(|s| !crate::private::internal(&s.meta.id))
             .map(|s| s.meta.clone())
             .collect();
         sessions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
@@ -612,7 +765,9 @@ impl App {
             "hosts": self.remotes.list(),
             "accounts": self.accounts.list(),
             "automations": self.automations.list(),
+            "agents": self.agents.list(),
             "mobile": self.mobile.status(),
+            "slack": self.slack.view(),
         })
     }
 }

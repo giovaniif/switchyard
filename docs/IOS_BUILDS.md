@@ -134,9 +134,11 @@ release is needed to use TestFlight.
 
 ## Build and upload
 
-The Linux server does not have Xcode. Run the build on the workflow's macOS 26
-runner, or on a Mac with Xcode 26+ selected. Apple requires an iOS 26+ SDK for
-uploads; the minimum supported device OS can still be iOS 16.
+The Linux server does not have Xcode. Run the build on the workflow's
+`xcode-27` runner (GitHub's Xcode 27 image, a public preview), or on a Mac with
+Xcode 27+ selected. `testflight.sh` refuses an SDK older than iOS 27: from
+April 2027 App Store Connect requires it (ITMS-90725). The app itself still
+runs on iOS 26 or later (Liquid Glass).
 
 ```sh
 # Simulator build and unit tests, without signing or uploading:
@@ -185,9 +187,11 @@ with English What to Test notes. This build also finishes native setup against
 older host UIs by recognizing their own valid hub snapshot. The host-page
 shortcuts and Workspace improvements still require deploying this PR's host UI.
 
-The current runner used Xcode 26.6 / iOS SDK 26.5. Apple's accepted upload
-warned that iOS 27 SDK / Xcode 27 becomes required in April 2027; update the
-runner and SDK guard before then.
+Builds up to 0.2.0 (23.1) used Xcode 26.6 / iOS SDK 26.5 on `macos-26`. Apple
+accepted them but emailed ITMS-90725: the iOS 27 SDK is required from April
+2027. The workflow moved to `xcode-27` and the SDK guard to 27. If the preview
+image queues for long, `macos-26` still builds, but its uploads draw that
+warning and stop being accepted in April 2027.
 
 The simulator artifact is **not** an installable iPhone/TestFlight build.
 Upload success is also not proof of installation: wait for Apple processing,

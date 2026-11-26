@@ -17,6 +17,9 @@ under it, so only the remote has Claude TEST-Work limits (the fake reports 91%
 for an added account) while This Mac has the seeded Default Claude (47%). The
 remote does not read its limits in the background
 (`YARD_CLAUDE_USAGE_EVERY_MS=0`), or it would report Default's 47% too.
+Setup logs TEST-Work in on the remote (the fake takes `good-code`): an added
+account reads logged out until then, and the popover shows a logged-out
+account as "Sign in" instead of its limits.
 
 ## Setup
 
@@ -27,6 +30,8 @@ yv var set remote_port "$(yv iso up --name map-settings-remote --host-name TEST-
 yv var set remote_work "$(yv var get work --iso map-settings-remote | jq -er .value)"
 yv api '{"op":"host.add","name":"TEST-server","kind":"direct","url":"ws://127.0.0.1:{{remote_port}}/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-server","status":"connected"}]}' --save remote_id='hosts[name=TEST-server].id'
 yv api '{"op":"account.add","engine":"claude","name":"TEST-Work","host":"{{remote_id}}"}' --wait '{"op":"accounts","hostId":"{{remote_id}}"}' --save work_acct='accounts[name=TEST-Work].id'
+yv api '{"op":"login.start","engine":"claude","account":"{{work_acct}}","host":"{{remote_id}}"}' --wait '{"op":"login"}'
+yv api '{"op":"login.code","engine":"claude","account":"{{work_acct}}","code":"good-code","host":"{{remote_id}}"}' --wait '{"op":"engines","hostId":"{{remote_id}}","accounts":{"{{work_acct}}":{"loggedIn":true}}}' --timeout 20000
 yv api '{"op":"session.create","host":"{{remote_id}}","engine":"claude","account":"{{work_acct}}","model":"claude-haiku-5-5","effort":"medium","cwd":"{{remote_work}}","text":"TEST-work on the server"}' --wait '{"op":"usage","hostId":"{{remote_id}}","usage":{"accounts":{"{{work_acct}}":{"status":"allowed"}}}}' --timeout 30000
 ```
 
@@ -61,11 +66,11 @@ yv drive settings --viewport mobile --steps '[{"click":"role:switch:Show iso-hos
 
 ### strip-from-shown-hosts
 Viewports: both
-The usage popover reads only shown hosts; the dedicated Subscriptions page keeps all accounts discoverable even when every sidebar host is hidden.
+The usage popover reads only shown hosts; the dedicated Subscriptions page keeps all accounts discoverable even when every sidebar host is hidden. The popover leads with one account (on Settings, with nothing selected, the one the trigger reads: TEST-Work since #323) and folds the rest under Other accounts (one meter each), so the recipe opens it and finds each account by its region, whichever leads; the Subscriptions page (page search, route `subscriptions`) has every window.
 
 ```sh
-yv drive 'settings' --viewport desktop --steps '[{"click":"role:button:Subscription usage"},{"expect":"role:dialog:Subscription usage","text":"47%"},{"expect":"role:dialog:Subscription usage","text":"91%"},{"press":"Escape"},{"click":"role:switch:Show iso-host in sidebar"},{"click":"role:button:Subscription usage"},{"expect":{"css":".compact-meter","hasText":"47%"},"count":0},{"expect":"role:region:Claude · TEST-Work","text":"91%"},{"expect":"role:region:Codex · Default","text":"12%"},{"expect":"role:region:Codex · Default","text":"34%"},{"shot":"usage-remote-only"},{"press":"Escape"},{"click":"role:switch:Show TEST-server in sidebar"},{"expect":"css:.host-row","count":0},{"click":"role:button:Subscription usage"},{"expect":"role:dialog:Subscription usage","text":"No subscription limits reported yet."},{"click":"role:button:View all"},{"expect":"role:heading:Subscriptions"},{"expect":"role:region:Claude · TEST-Work","text":"91% used"}]'
-yv drive 'settings' --viewport mobile --steps '[{"click":"role:switch:Show iso-host in sidebar"},{"click":"role:button:Open sessions"},{"click":"role:button:Subscription usage"},{"expect":"role:region:Claude · TEST-Work","text":"91%"},{"expect":{"css":".compact-meter","hasText":"47%"},"count":0},{"expect":"role:region:Codex · Default","text":"12%"},{"shot":"usage-remote-only"}]'
+yv drive 'settings' --viewport desktop --steps '[{"click":"role:button:Subscription usage"},{"click":"role:button:Other accounts"},{"expect":"role:region:Claude · Default","text":"47%"},{"expect":"role:region:Claude · TEST-Work","text":"91%"},{"press":"Escape"},{"click":"role:switch:Show iso-host in sidebar"},{"click":"role:button:Subscription usage"},{"expect":{"css":".compact-meter","hasText":"47%"},"count":0},{"click":"role:button:Other accounts"},{"expect":"role:region:Claude · TEST-Work","text":"91%"},{"expect":"role:region:Codex · Default","text":"12%"},{"shot":"usage-remote-only"},{"press":"Escape"},{"click":"role:switch:Show TEST-server in sidebar"},{"expect":"css:.host-row","count":0},{"click":"role:button:Subscription usage"},{"expect":"role:dialog:Subscription usage","text":"No subscription limits reported yet."},{"press":"Escape"},{"goto":"subscriptions"},{"expect":"role:heading:Subscriptions"},{"expect":"role:region:Claude · TEST-Work","text":"91% used"},{"expect":"role:region:Codex · Default","text":"34%"}]'
+yv drive 'settings' --viewport mobile --steps '[{"click":"role:switch:Show iso-host in sidebar"},{"click":"role:button:Open sessions"},{"click":"role:button:Subscription usage"},{"click":"role:button:Other accounts"},{"expect":"role:region:Claude · TEST-Work","text":"91%"},{"expect":{"css":".compact-meter","hasText":"47%"},"count":0},{"expect":"role:region:Codex · Default","text":"12%"},{"shot":"usage-remote-only"}]'
 ```
 
 ### long-host-name

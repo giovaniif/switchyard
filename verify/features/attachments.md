@@ -26,7 +26,7 @@ as a thumbnail, and reaches the engine as a localImage.
 
 ```sh
 printf 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' | base64 -d > "$(v work)/TEST-dot.png"
-yv drive new --viewport desktop --steps '[{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · Default"}},{"press":"Escape"},{"click":"role:button:work"},{"fill":"label:Folder","value":"{{repo}}"},{"press":"Enter"},{"upload":"input","files":["{{work}}/TEST-dot.png"]},{"expect":"css:.attachments","text":"TEST-dot.png"},{"fill":"label:Message","value":"TEST-look at this"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Echo: TEST-look at this"},{"expect":"role:img:TEST-dot.png"}]'
+yv drive new --viewport desktop --steps '[{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · Default"}},{"press":"Escape"},{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{repo}}"},{"press":"Enter"},{"upload":"input","files":["{{work}}/TEST-dot.png"]},{"expect":"css:.attachments","text":"TEST-dot.png"},{"fill":"label:Message","value":"TEST-look at this"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Echo: TEST-look at this"},{"expect":"role:img:TEST-dot.png"}]'
 grep -q localImage "$(v fake)/turn-inputs.jsonl"
 ```
 
@@ -64,7 +64,7 @@ only the text came back and the file was dropped.
 
 ```sh
 echo "TEST-note" > "$(v work)/TEST-queued.txt"
-steps='[{"fill":"label:Message","value":"[slow] TEST-long job"},{"click":"role:button:Send"},{"expect":{"role":"button","name":"Add to queue"}},{"upload":"input","files":["{{work}}/TEST-queued.txt"]},{"expect":"css:.composer .attachment","text":"TEST-queued.txt"},{"fill":"label:Message","value":"TEST-read this file"},{"click":{"role":"button","name":"Add to queue"}},{"expect":"css:.pending-row","text":"1 file"},{"expect":"css:.composer .attachment","count":0},{"click":"css:.pending-edit"},{"expect":"label:Message","value":"TEST-read this file"},{"expect":"css:.composer .attachment","text":"TEST-queued.txt"},{"click":{"role":"button","name":"Add to queue"}},{"expect":"css:.pending-row","text":"1 file"},{"click":{"role":"button","name":"Stop","exact":true}},{"expect":"label:Message","value":"TEST-read this file"},{"expect":"css:.composer .attachment","text":"TEST-queued.txt"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Echo: TEST-read this file"},{"expect":"css:.attachments-sent","text":"TEST-queued.txt"}]'
+steps='[{"fill":"label:Message","value":"[slow] TEST-long job"},{"click":"role:button:Send"},{"expect":{"role":"button","name":"Add to queue"}},{"upload":"input","files":["{{work}}/TEST-queued.txt"]},{"expect":"css:.composer .attachment","text":"TEST-queued.txt"},{"fill":"label:Message","value":"TEST-read this file"},{"click":{"role":"button","name":"Add to queue"}},{"expect":"css:.pending-row","text":"1 file"},{"expect":"css:.composer .attachment","count":0},{"click":{"css":".pending-row .pending-action","hasText":"Edit"}},{"expect":"label:Message","value":"TEST-read this file"},{"expect":"css:.composer .attachment","text":"TEST-queued.txt"},{"click":{"role":"button","name":"Add to queue"}},{"expect":"css:.pending-row","text":"1 file"},{"click":{"role":"button","name":"Stop","exact":true}},{"expect":"label:Message","value":"TEST-read this file"},{"expect":"css:.composer .attachment","text":"TEST-queued.txt"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Echo: TEST-read this file"},{"expect":"css:.attachments-sent","text":"TEST-queued.txt"}]'
 for vp in mobile desktop; do
   yv api '{"op":"session.interrupt","sessionId":"{{sid_echo}}"}'
   yv drive 'session:{{sid_echo}}' --viewport $vp --steps "$steps"
@@ -86,4 +86,8 @@ yv drive 'session:{{sid_echo}}' --steps '[{"upload":"input","files":["{{work}}/T
 Pasting an image and dropping a file on the composer add chips the same way.
 
 ## Gotchas
+- The queued row's Edit button has no class of its own since #294 (Steer and
+  Edit share `.pending-action`). Recipes find it by its text. `css:.pending-edit`
+  timed out, and the turn it left running made `many-files-keep-send-on-screen`
+  fail after it. Fixed on 2026-11-20.
 - The file input is hidden; the `upload` step sets its files directly.

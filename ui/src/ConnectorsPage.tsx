@@ -2,7 +2,10 @@
 // config files, ChatGPT apps) each engine account can use on each host, whether
 // it works, and a way to sign it in. Opening the page asks yardd to list them;
 // for Claude that starts Claude Code with no prompt, so it spends no usage.
-import { useEffect, useState } from "react";
+import { EngineIcon } from "./EngineIcon";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AnchoredPopover } from "./AnchoredPopover";
+import { SelectPicker } from "./SelectPicker";
 import { accountChoices, DEFAULT_ACCOUNT } from "./accounts";
 import { actionFor, CONNECTOR_PAGE_SIZE, filterServers, type ConnectorFilter, displayName, missingFromCatalog, newServerProblem, removable, shortError, sortServers, STATUS_LABEL, summary } from "./connectors";
 import type { Engine, McpServer } from "./protocol";
@@ -10,71 +13,97 @@ import { accountsOn, hostName, hostOnline, mcpAuthKey, mcpKey, type Actions, typ
 import { Icon, MenuButton, PLUS } from "./App";
 import { loadHost } from "./sessionDefaults";
 import { ENGINE_NAME } from "./engines";
+import { SlackCard } from "./SlackCard";
 
 const REFRESH = "M21 12a9 9 0 1 1-3-6.7M21 4v5h-5";
 const ENGINES: Engine[] = ["claude", "codex"];
 
-export function ConnectorsPage({ state, actions }: { state: State; actions: Actions }) {
-  const hosts = ["local", ...state.hosts.map((h) => h.id)].filter((h) => hostOnline(state, h));
-  const targets = hosts.flatMap((host) =>
-    ENGINES.filter((engine) => state.engines[host]?.[engine]?.installed !== false).flatMap((engine) =>
-      accountChoices(accountsOn(state, host), engine).map((a) => ({ host, engine, account: a.id, accountName: a.name })),
-    ),
-  );
+export function ConnectorsPage({ state, actions, usage }: { state: State; actions: Actions; usage: ReactNode }) {
+  const hosts = ["local", ...state.hosts.map((host) => host.id)];
   const [pickedHost, setHost] = useState(loadHost);
   const host = hosts.includes(pickedHost) ? pickedHost : hosts[0];
-  const accounts = targets.filter((t) => t.host === host);
-  const [pickedAccount, setAccount] = useState("");
-  const target = accounts.find((t) => mcpKey(t.host, t.engine, t.account) === pickedAccount) ?? accounts[0];
-  const key = target ? mcpKey(target.host, target.engine, target.account) : "";
-  const refresh = () => target && actions.mcpStatus(target.host, target.engine, target.account);
-  // Inspect only the selected account. Merely opening this page should not
-  // start connector discovery for every unused account on every host.
-  useEffect(() => { refresh(); }, [key]);
-  const loading = !!state.mcp[key]?.loading;
+  const online = hostOnline(state, host);
+  const [filter, setFilter] = useState<Engine | "all">("all");
+  const accounts = ENGINES.filter((engine) => state.engines[host]?.[engine]?.installed !== false).flatMap((engine) =>
+    accountChoices(accountsOn(state, host), engine).map((account) => ({
+      engine, account: account.id, accountName: account.name,
+      key: mcpKey(host, engine, account.id),
+      login: account.id === DEFAULT_ACCOUNT ? state.engines[host]?.[engine] : state.engines[host]?.accounts?.[account.id],
+    })),
+  );
+  const shown = accounts.filter((account) => filter === "all" || account.engine === filter);
+  const [recheck, setRecheck] = useState<string[]>([]);
+  const eligible = shown.filter((account) => account.login?.loggedIn !== false);
+  const pending = eligible.find((account) => !state.mcp[account.key] || recheck.includes(account.key));
+  const loading = eligible.some((account) => state.mcp[account.key]?.loading);
+  useEffect(() => {
+    if (!online || loading || !pending) return;
+    actions.mcpStatus(host, pending.engine, pending.account);
+    setRecheck((keys) => keys.filter((key) => key !== pending.key));
+  }, [actions, host, loading, online, pending?.key]);
 
+  const refresh = (
+    <button className="btn connector-refresh" aria-label={loading ? "Checking…" : "Check again"} disabled={!online || loading || !eligible.length} onClick={() => setRecheck(eligible.map((account) => account.key))}>
+      <Icon d={REFRESH} size={13} />
+      <span>{loading ? "Checking…" : "Check again"}</span>
+    </button>
+  );
   return (
     <div className="hosts connectors">
-      <header className="bar">
+      <header className="bar connectors-mobile-header">
         <MenuButton />
         <h1>Connectors</h1>
         <span className="spacer" />
-        <button className="btn" onClick={refresh} disabled={loading || !target}>
-          <Icon d={REFRESH} size={13} />
-          {loading ? "Checking…" : "Check again"}
-        </button>
+        {usage}
+        {refresh}
       </header>
       <div className="scroll">
         <div className="hosts-inner connectors-inner">
-          <p className="muted connectors-intro">Connected services are ready for your sessions. Browse Available when you need to connect something new.</p>
-          <div className="connector-scope">
-            <label className="automation-field">
-              <span className="small muted">Host</span>
-              <select className="field" aria-label="Connector host" value={host ?? ""} disabled={!hosts.length} onChange={(e) => setHost(e.target.value)}>
-                {hosts.map((id) => <option key={id} value={id}>{hostName(state, id)}</option>)}
-              </select>
-            </label>
-            <label className="automation-field">
-              <span className="small muted">Engine account</span>
-              <select className="field" aria-label="Connector account" value={key} disabled={!target} onChange={(e) => setAccount(e.target.value)}>
-                {accounts.map((t) => <option key={mcpKey(t.host, t.engine, t.account)} value={mcpKey(t.host, t.engine, t.account)}>{ENGINE_NAME[t.engine]} · {t.accountName}</option>)}
-              </select>
-            </label>
+          <div className="connector-page-head">
+            <h1>Connectors</h1>
+            {refresh}
+            <p className="muted connectors-intro">A session can only use the tools connected to the account it runs on.</p>
           </div>
-          {target ? <AccountCard key={key} state={state} actions={actions} {...target} /> : <p className="muted">Connect to a host to view its connectors.</p>}
+          <div className="connector-scope">
+            <div className="connector-engine-filters" role="group" aria-label="Connectors by engine">
+              <button className="btn-text btn-small" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All accounts</button>
+              {ENGINES.map((engine) => (
+                <button key={engine} className="btn-text btn-small" aria-pressed={filter === engine} onClick={() => setFilter(engine)}>{ENGINE_NAME[engine]}</button>
+              ))}
+            </div>
+            {hosts.length > 1 && (
+              <div className="connector-host-select">
+                <span className="small muted">Host</span>
+                <SelectPicker label="Connector host" value={host} onChange={setHost} options={hosts.map((id) => ({ value: id, label: hostName(state, id) }))} />
+              </div>
+            )}
+          </div>
+          <div className="connector-accounts">
+            {shown.map(({ key, engine, account, accountName }) => <AccountCard key={key} state={state} actions={actions} host={host} engine={engine} account={account} accountName={accountName} online={online} />)}
+            {!shown.length && <p className="muted">No accounts for this engine on {hostName(state, host)}.</p>}
+          </div>
+          {state.slack && (
+            <div className="connector-apps">
+              <div className="connector-section-head">
+                <h2>Messaging</h2>
+                <p className="muted small">Write to your agents from other apps. Each answer goes back where you asked.</p>
+              </div>
+              <SlackCard state={state} actions={actions} />
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function AccountCard(props: { state: State; actions: Actions; host: string; engine: Engine; account: string; accountName: string }) {
-  const { state, actions, host, engine, account } = props;
+function AccountCard(props: { state: State; actions: Actions; host: string; engine: Engine; account: string; accountName: string; online: boolean }) {
+  const { state, actions, host, engine, account, online } = props;
   const status = state.mcp[mcpKey(host, engine, account)];
   const engineState = account === DEFAULT_ACCOUNT ? state.engines[host]?.[engine] : state.engines[host]?.accounts?.[account];
   const servers = sortServers(status?.servers ?? []);
-  const added = account !== DEFAULT_ACCOUNT;
-  const [filter, setFilter] = useState<ConnectorFilter>("connected");
+  const [filter, setFilter] = useState<ConnectorFilter>("all");
+  const [showControls, setShowControls] = useState(false);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   // Keep an in-progress or completed sign-in visible until dismissed, even
@@ -91,36 +120,45 @@ function AccountCard(props: { state: State; actions: Actions; host: string; engi
     { id: "all", label: "All" },
   ];
   const reveal = (name: string) => {
+    setShowControls(true);
     setFilter("all");
     setQuery(name);
     setPage(0);
   };
+  const needsSignIn = engineState?.loggedIn === false;
+  const accountStatus = !online ? "Host offline" : needsSignIn ? "Needs sign-in"
+    : engineState?.loggedIn ? "Connected" : "Login not reported";
   return (
-    <div className="host-card connectors-card">
-      <div className="connectors-card-head">
-        <strong>{ENGINE_NAME[engine]}</strong>
-        <span className="muted">· {props.accountName}</span>
-        <span className="spacer" />
-        <span className="muted small">{status?.loading && !status.servers ? "Checking…" : status?.servers ? summary(servers) : ""}</span>
-      </div>
-      {engineState?.loggedIn === false && <div className="muted small connectors-note">Not logged in, so its connectors cannot be listed. Log in on the Hosts page first.</div>}
-      {status?.error && <div className="bad small connectors-note">{status.error}</div>}
-      {added && engine === "claude" && (
-        <details className="muted small connectors-note">
-          <summary>About this account’s connectors</summary>
-          Its claude.ai connectors come with its login. Plugins and config from Default are not shared; add the services you need here.
-        </details>
-      )}
-      {status?.servers && (
+    <section className={`host-card connectors-card ${needsSignIn ? "connectors-card-attention" : ""}`} aria-label={`${ENGINE_NAME[engine]} · ${props.accountName}`}>
+      <header className="connectors-card-head">
+        <span className={`connector-account-icon connector-account-${engine}`} aria-hidden="true">
+          <EngineIcon engine={engine} size={18} />
+        </span>
+        <div className="connector-account-name">
+          <strong>{props.accountName}</strong>
+          <span className="muted small">{ENGINE_NAME[engine]}{engineState?.account ? ` · ${engineState.account}` : ""}</span>
+        </div>
+        <span className={`connector-account-state ${needsSignIn ? "warn" : ""}`}>{accountStatus}</span>
+        <button className="btn btn-small" onClick={() => actions.go({ page: "hosts", host, tab: "engines" })}>{needsSignIn && online ? "Sign in" : "Manage"}</button>
+      </header>
+      {!online && <p className="muted small connectors-note">Connect to this host to view or change its connectors.</p>}
+      {online && needsSignIn && <p className="muted small connectors-note">Sign in to view this account’s connectors.</p>}
+      {online && !needsSignIn && !status?.servers && !status?.error && <p className="muted small connectors-note" role="status">Checking connectors…</p>}
+      {online && status?.error && <p className="bad small connectors-note">{status.error}</p>}
+      {online && !needsSignIn && status?.servers && (
         <>
-          <div className="connector-filters" role="group" aria-label="Show connectors">
-            {filters.map((f) => (
-              <button key={f.id} className="btn-text btn-small" aria-label={f.label} aria-pressed={filter === f.id} onClick={() => { setFilter(f.id); setPage(0); }}>
-                {f.label}<span className="muted">{filterServers(servers, "", f.id).length}</span>
-              </button>
-            ))}
-          </div>
-          <input className="field connector-search" aria-label="Search connectors" type="search" placeholder="Search connectors" value={query} onChange={(e) => { setQuery(e.target.value); setPage(0); }} />
+          {showControls && (
+            <div className="connector-filter-controls">
+              <div className="connector-filters" role="group" aria-label="Show connectors">
+                {filters.map((f) => (
+                  <button key={f.id} className="btn-text btn-small" aria-label={f.label} aria-pressed={filter === f.id} onClick={() => { setFilter(f.id); setPage(0); }}>
+                    {f.label}<span className="muted">{filterServers(servers, "", f.id).length}</span>
+                  </button>
+                ))}
+              </div>
+              <input className="field connector-search" aria-label="Search connectors" type="search" placeholder="Search connectors" value={query} onChange={(e) => { setQuery(e.target.value); setPage(0); }} />
+            </div>
+          )}
           {visible.length ? (
             <ul className="connector-list">
               {visible.map((s) => <ServerRow key={s.name} server={s} {...props} />)}
@@ -141,8 +179,17 @@ function AccountCard(props: { state: State; actions: Actions; host: string; engi
           )}
         </>
       )}
-      {status?.servers && engineState?.loggedIn !== false && <AddConnector {...props} servers={servers} onAdded={reveal} />}
-    </div>
+      {online && !needsSignIn && status?.servers && (
+        <footer className="connector-card-footer">
+          <span className="muted small">{summary(servers) || "No tools connected"}</span>
+          <button className="btn-text btn-small connector-filter-toggle" aria-expanded={showControls} onClick={() => {
+            if (showControls) { setFilter("all"); setQuery(""); setPage(0); }
+            setShowControls(!showControls);
+          }}>Filter tools</button>
+          <AddConnector {...props} servers={servers} onAdded={reveal} />
+        </footer>
+      )}
+    </section>
   );
 }
 
@@ -281,9 +328,12 @@ function SignIn(props: {
 
 /** "Add connector": a catalog server (Linear first) or any https address,
  *  added to this account's own config; its sign-in opens right after. */
-function AddConnector(props: { state: State; actions: Actions; host: string; engine: Engine; account: string; servers: McpServer[]; onAdded(name: string): void }) {
+function AddConnector(props: { state: State; actions: Actions; host: string; engine: Engine; account: string; accountName: string; servers: McpServer[]; onAdded(name: string): void }) {
   const { state, actions, host, engine, account } = props;
   const [open, setOpen] = useState(false);
+  const anchor = useRef<HTMLButtonElement>(null);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [service, setService] = useState<{ name: string; id: string; url: string } | null>(null);
   const [other, setOther] = useState(false);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -292,6 +342,8 @@ function AddConnector(props: { state: State; actions: Actions; host: string; eng
   const close = () => {
     setOpen(false);
     setOther(false);
+    setCatalogSearch("");
+    setService(null);
     setName("");
     setUrl("");
     if (pending) actions.mcpChangeClear(host, engine, account, pending);
@@ -313,50 +365,55 @@ function AddConnector(props: { state: State; actions: Actions; host: string; eng
   const missing = missingFromCatalog(props.servers);
   const problem = other && (name || url) ? newServerProblem(name.trim(), url.trim()) : null;
   const busy = change?.state === "adding";
-  if (!open)
-    return (
-      <button className="btn-text btn-small connector-add" onClick={() => setOpen(true)}>
+  return (
+    <div className="connector-add-slot">
+      <button ref={anchor} className="btn-text btn-small connector-add" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
         <Icon d={PLUS} size={12} />
         Add connector
       </button>
-    );
-  return (
-    <div className="connector-auth connector-add-panel small">
-      <span className="muted">Adds it to this account's own {engine === "claude" ? "Claude Code" : "Codex"} config, then opens its sign-in.</span>
-      <div className="connector-catalog">
-        {missing.map((c) => (
-          <button key={c.id} className="btn btn-small" disabled={busy} title={c.url} onClick={() => add(c.id, c.url)}>
-            {c.name}
-            {c.note && <span className="muted">&nbsp;· {c.note}</span>}
-          </button>
-        ))}
-        <button className="btn btn-small" disabled={busy} aria-expanded={other} onClick={() => setOther(!other)}>
-          Other address…
-        </button>
-      </div>
-      {other && (
-        <form
-          className="connector-paste"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!newServerProblem(name.trim(), url.trim())) add(name.trim(), url.trim());
-          }}
-        >
-          <div className="row">
-            <input className="field connector-name-field" aria-label="Connector name" placeholder="metabase" value={name} onChange={(e) => setName(e.target.value)} />
-            <input className="field" aria-label="Connector address" placeholder="https://metabase.example.com/api/mcp" value={url} onChange={(e) => setUrl(e.target.value)} />
-            <button className="btn btn-small" disabled={busy || !name.trim() || !url.trim() || !!problem}>
-              Add
-            </button>
+      {open && (
+        <AnchoredPopover anchor={anchor} label="Add connector" variant="connector-add-popover" onClose={close}>
+          <div className="popover-heading"><strong>{service ? `Connect ${service.name}` : "Add a connector"}</strong></div>
+          {service ? (
+            <div className="connector-add-step">
+              <p className="muted">Add this tool to {ENGINE_NAME[engine]} · {props.accountName} on {hostName(state, host)}.</p>
+              <div className="row">
+                <button className="btn-text" disabled={busy} onClick={() => setService(null)}>Back</button>
+                <button className="btn-primary" disabled={busy} onClick={() => add(service.id, service.url)}>Connect</button>
+              </div>
+            </div>
+          ) : (
+            <div className="connector-add-step">
+              <input className="field" type="search" aria-label="Search available connectors" placeholder="Search available connectors" value={catalogSearch} onChange={(event) => setCatalogSearch(event.target.value)} />
+              <div className="connector-catalog">
+                {missing.filter((entry) => entry.name.toLowerCase().includes(catalogSearch.trim().toLowerCase())).map((entry) => (
+                  <button key={entry.id} className="btn-quiet picker-item" disabled={busy} onClick={() => setService(entry)}>
+                    <span>{entry.name}</span>{entry.note && <span className="muted small">{entry.note}</span>}
+                  </button>
+                ))}
+                {!missing.some((entry) => entry.name.toLowerCase().includes(catalogSearch.trim().toLowerCase())) && <p className="muted small">No available connectors match.</p>}
+                <button className="btn-quiet picker-item" disabled={busy} aria-expanded={other} onClick={() => setOther(!other)}>Other address…</button>
+              </div>
+              {other && (
+                <form className="connector-add-step" onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!newServerProblem(name.trim(), url.trim())) setService({ name: name.trim(), id: name.trim(), url: url.trim() });
+                }}>
+                  <input className="field" aria-label="Connector name" placeholder="Name" value={name} onChange={(event) => setName(event.target.value)} />
+                  <input className="field" aria-label="Connector address" placeholder="HTTPS address" value={url} onChange={(event) => setUrl(event.target.value)} />
+                  {problem && <span className="muted small">{problem}</span>}
+                  <button className="btn" disabled={busy || !name.trim() || !url.trim() || !!problem}>Continue</button>
+                </form>
+              )}
+            </div>
+          )}
+          {busy && <p className="muted small" role="status">Adding {pending}…</p>}
+          {change?.state === "failed" && <p className="bad small" role="alert">{change.error}</p>}
+          <div className="popover-footer">
+            <button className="btn-text" onClick={close}>Cancel</button>
           </div>
-          {problem && <span className="muted">{problem}</span>}
-        </form>
+        </AnchoredPopover>
       )}
-      {busy && <span className="muted">Adding {pending}…</span>}
-      {change?.state === "failed" && <span className="bad">{change.error}</span>}
-      <button className="btn-text" onClick={close}>
-        Cancel
-      </button>
     </div>
   );
 }

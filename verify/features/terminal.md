@@ -2,8 +2,9 @@
 
 The Terminal tab runs the user's shell in the session folder through yardd's
 PTY. Several terminals per session ("1", "2"...), 256 KB of scrollback replayed
-after a reload, and Attach (terminal output as a card in the reply box). Desktop only (the pane
-is hidden below 1100 px).
+after a reload, and Attach (terminal output as a card in the reply box). On
+desktop it is the Terminal tab of the right pane; on phones it is inside the
+Workspace sheet.
 
 ## Setup
 
@@ -75,6 +76,15 @@ attach at xterm's default 80 columns made the shell redraw into the scrollback.
 yv drive 'session:{{sid_edit}}' --viewport desktop --steps '[{"click":"role:button:Terminal"},{"expect":"css:.xterm","text":"$"},{"type":"echo TEST-first\n","target":"label:Terminal input"},{"expect":"css:.xterm","text":"TEST-first"},{"reload":true},{"goto":"session:{{sid_edit}}"},{"click":"role:button:Terminal"},{"expect":"css:.xterm","text":"TEST-first"},{"wait":1500},{"type":"for i in 1 2 3; do echo TEST-row-$i-$(printf ab%.0s $(seq 1 40)); done; echo TEST-done-$((5*5))\n","target":"label:Terminal input"},{"expect":"css:.xterm","text":"TEST-done-25"},{"wait":1000},{"eval":"(() => { const t = document.querySelector(\".xterm-rows\").innerText.split(\"\\n\").map((l) => l.trimEnd()).join(\"\\n\").trimEnd(); localStorage.setItem(\"yv-term\", t); return t.length > 0; })()","equals":true},{"reload":true},{"goto":"session:{{sid_edit}}"},{"click":"role:button:Terminal"},{"expect":"css:.xterm","text":"TEST-done-25"},{"wait":2000},{"eval":"document.querySelector(\".xterm-rows\").innerText.split(\"\\n\").map((l) => l.trimEnd()).join(\"\\n\").trimEnd() === localStorage.getItem(\"yv-term\")","equals":true},{"reload":true},{"goto":"session:{{sid_edit}}"},{"click":"role:button:Terminal"},{"expect":"css:.xterm","text":"TEST-done-25"},{"wait":2000},{"eval":"document.querySelector(\".xterm-rows\").innerText.split(\"\\n\").map((l) => l.trimEnd()).join(\"\\n\").trimEnd() === localStorage.getItem(\"yv-term\")","equals":true}]'
 ```
 
+### scrollback-does-not-reply-to-old-probes
+Viewports: desktop
+The emulator answers a live device query once. Reloading retains the output
+and the next byte to reach the waiting shell comes from the keyboard.
+
+```sh
+yv drive 'session:{{sid_echo}}' --viewport desktop --steps '[{"click":"role:button:Terminal"},{"expect":"css:.xterm","text":"$"},{"type":"saved=$(stty -g); stty -icanon -echo; printf '"'"'\\033[c'"'"'; IFS= read -r -t 3 -d c reply; stty \"$saved\"; if [ \"$reply\" = \"$(printf '"'"'\\033[?1;2'"'"')\" ]; then label=OK; else label=FAILED; fi; printf '"'"'\\nTEST-device-reply-%s\\n'"'"' \"$label\"; IFS= read -r -s -n 1 -t 12 next; if [ \"$next\" = x ]; then label=OK; else label=UNEXPECTED; fi; printf '"'"'\\nTEST-next-input-%s\\n'"'"' \"$label\"\n","target":"label:Terminal input"},{"expect":"css:.xterm-rows","text":"TEST-device-reply-OK"},{"reload":true},{"goto":"session:{{sid_echo}}"},{"click":"role:button:Terminal"},{"expect":"css:.xterm-rows","text":"TEST-device-reply-OK"},{"wait":500},{"type":"x","target":"label:Terminal input"},{"expect":"css:.xterm-rows","text":"TEST-next-input-OK","timeout":3500},{"shot":"clean-scrollback"}]'
+```
+
 ### last-terminal-closed-offers-a-new-one
 Viewports: desktop
 Closing the only tab leaves an empty state that says so, with a button that
@@ -107,16 +117,16 @@ yv api '{"op":"term.list","sessionId":"{{sid_fail}}"}' --wait '{"op":"term.list"
 ```
 
 ### folder-gone
-Viewports: desktop
-When the session's folder was removed outside Switchyard, the Changes pane and
-the terminal say the folder no longer exists. Before, the pane said "Not a git
-repository." and the terminal quietly opened a shell in the home folder. The
-refused terminal is an API error, hence `--allow-errors`.
+Viewports: both
+If a worktree is gone, the terminal explains it in Workspace. Conversation
+history remains visible without a global banner. The expected failure on the
+wire is confined to the terminal pane.
 
 ```sh
 yv state --save cmd_cwd='sessions[id={{sid_cmd}}].cwd'
 rm -rf "$(v cmd_cwd)"
-yv drive 'session:{{sid_cmd}}' --viewport desktop --allow-errors --steps '[{"expect":{"role":"region","name":"Workspace"},"text":"no longer exists"},{"expect":"text:Not a git repository.","count":0},{"click":"role:button:Terminal"},{"expect":"css:.banner-error","text":"no longer exists"},{"expect":{"role":"tab","name":"1"},"count":0},{"shot":"folder-gone"}]'
+yv drive 'session:{{sid_cmd}}' --viewport desktop --allow-errors --steps '[{"expect":"role:heading:[cmd] TEST-run the migration"},{"expect":{"role":"region","name":"Workspace"},"text":"no longer exists"},{"expect":"css:.banner-error","count":0},{"expect":{"role":"tab","name":"1"},"count":0},{"shot":"missing-folder"}]'
+yv drive 'session:{{sid_cmd}}' --viewport mobile --allow-errors --steps '[{"expect":"css:.banner-error","count":0},{"click":"role:button:Workspace"},{"expect":{"role":"region","name":"Workspace"},"text":"no longer exists"},{"expect":"role:button:Try again"},{"click":"role:button:Back to conversation"},{"expect":"css:.banner-error","count":0},{"shot":"history-without-banner"}]'
 yv api '{"op":"term.list","sessionId":"{{sid_cmd}}"}' --wait '{"op":"term.list"}' | jq -e '.reply.terms | length == 0'
 ```
 
@@ -134,11 +144,31 @@ yv drive 'session:{{sid_claude}}' --viewport desktop --steps '[{"click":"role:bu
 yv api '{"op":"session.open","sessionId":"{{sid_claude}}"}' --wait '{"op":"history"}' | jq -e '[.reply.events[] | select(.type=="user_message") | .text] | last | test("^Terminal 1, [0-9]+ lines:\\n\\x60{3}text\\n(.|\\n)*TEST-row-3\\n(.|\\n)*\\x60{3}\\n\\nTEST-what failed\\?$")'
 ```
 
+### first-terminal-opens-at-the-pane-size
+Viewports: mobile, desktop
+The first terminal of a session shows one shell prompt, sized to its pane: the
+phone Workspace sheet and the desktop right pane (about 50 columns) are both
+narrower than 80. Found 2026-11-21 (#376): the terminal was opened at 80
+columns before anything measured the pane, so readline redrew after the resize
+and a stale, cut-off copy of the prompt sat above the real one (the count read 2).
+Each viewport uses its own new session: a seeded one may already have a
+terminal from an earlier recipe, and then nothing opens at the default size.
+
+```sh
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-first terminal phone"}' --wait '{"op":"created"}' --save first_term_sid=sessionId
+yv api '{"op":"term.list","sessionId":"{{first_term_sid}}"}' --wait '{"op":"term.list"}' | jq -e '.reply.terms | length == 0'
+yv drive 'session:{{first_term_sid}}' --viewport mobile --steps '[{"click":"role:button:Workspace"},{"expect":"css:.xterm","text":"$"},{"wait":1500},{"eval":"(document.querySelector(\".xterm-rows\").innerText.match(/@[^:\\s]+:/g) || []).length","equals":1}]'
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-first terminal desktop"}' --wait '{"op":"created"}' --save first_term_desk_sid=sessionId
+yv api '{"op":"term.list","sessionId":"{{first_term_desk_sid}}"}' --wait '{"op":"term.list"}' | jq -e '.reply.terms | length == 0'
+yv drive 'session:{{first_term_desk_sid}}' --viewport desktop --steps '[{"click":"role:button:Terminal"},{"expect":"css:.xterm","text":"$"},{"wait":1500},{"eval":"(document.querySelector(\".xterm-rows\").innerText.match(/@[^:\\s]+:/g) || []).length","equals":1}]'
+```
+
 ### attach-terminal-selection (manual: needs a mouse selection inside xterm)
 Select text in the terminal, open Attach, pick Selection: the card holds the
 selection. Selecting through xterm's renderer is not scripted yet.
 
 ## Gotchas
 - Fixed 2026-11-15: the scrollback replayed after a reload used to be written at xterm's default 80 columns before the first fit and then reflowed, garbling wrapped lines and overwriting output. scrollback-after-reload and scrollback-keeps-wrapped-lines guard it.
+- Fixed 2026-11-24 (#376): the first terminal of a session showed the shell prompt twice, a stale copy cut off at the right edge above the real one, whenever its pane was narrower than 80 columns and the prompt wrapped (the phone Workspace sheet and the desktop right pane alike): `TerminalPane` sent `term.open` at 80x24 before any view had fitted. A placeholder view now fits the pane and opens the terminal at that size; a shell is started only once its pane is shown. first-terminal-opens-at-the-pane-size guards it.
 - Wait for the prompt (`expect` text `$`) before typing: keys sent before the shell is ready are echoed out of order.
 - xterm ignores `fill`; use the `type` step with `target: "label:Terminal input"`.

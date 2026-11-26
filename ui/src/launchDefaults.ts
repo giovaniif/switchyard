@@ -1,7 +1,8 @@
 import type { Choice } from "./sessionDefaults";
 import { ENGINES } from "./engines";
 
-export type DefaultTarget = "sessions" | "switchy";
+/** Switchy had its own defaults until the host agent replaced it; the agent keeps its settings in yardd. */
+export type DefaultTarget = "sessions";
 export interface LaunchDefaults {
   host: string;
   choice: Choice;
@@ -23,8 +24,6 @@ export function loadDefaults(target: DefaultTarget): LaunchDefaults | null {
     )
       return null;
     if (target === "sessions" && saved.host === "all") return null;
-    if (target === "switchy" && !["claude", "codex"].includes(c.engine))
-      return null;
     return {
       host: saved.host,
       choice: { engine: c.engine, model: c.model, effort: c.effort },

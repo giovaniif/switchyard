@@ -23,8 +23,8 @@ const HELP = `verify/yv <command> [args]   (every command prints one JSON object
   var set|get|ls [name] [value] [--iso n]
 
   shot <route> [--viewport mobile|desktop|both] [--iso n] [--out dir] [--name label]
-  drive <route> --steps '<json>' [--viewport ...] [--iso n] [--video]
-        routes: new | hosts | subscriptions | sessions | settings | connectors | switchy | session:<id or title text> | session:{{var}}
+  drive <route> --steps '<json>' [--viewport ...] [--iso n] [--video] [--show-scrollbars]
+        routes: new | hosts | subscriptions | sessions | settings | connectors | agents | automations | session:<id or title text> | session:{{var}}
         steps: goto click hover tap fill select type press drag wait expect upload shot aria eval reload
 
   map status [area]
@@ -53,7 +53,7 @@ const HELP = `verify/yv <command> [args]   (every command prints one JSON object
   selftest [--smoke]
 `;
 
-const BOOLS = ["force", "all", "keep", "logged-out", "pressure", "no-build", "full", "video", "dry-run", "resolve", "smoke", "allow-spend", "help", "json", "fix-hint", "keep-open", "allow-errors", "no-fetch", "no-checkout", "apply"];
+const BOOLS = ["force", "all", "keep", "logged-out", "pressure", "no-build", "full", "video", "show-scrollbars", "dry-run", "resolve", "smoke", "allow-spend", "help", "json", "fix-hint", "keep-open", "allow-errors", "no-fetch", "no-checkout", "apply"];
 
 async function main(argv: string[]): Promise<[string, Result]> {
   const [cmd, ...rest] = argv;

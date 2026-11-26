@@ -1,2 +1,0 @@
-#!/bin/sh
-printf 'PID Status Label\n42 0 TEST-api\n'

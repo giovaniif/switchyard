@@ -10,8 +10,11 @@ export type Row =
   | { type: "item"; key: string; item: Item }
   /** Consecutive tool calls and thinking. `live` while the turn is still adding to it. */
   | { type: "work"; key: string; entries: WorkItem[]; live: boolean }
-  /** Everything a finished turn did before its answer. */
-  | { type: "fold"; key: string; rows: Row[]; ms: number | null; status: string; summary: string }
+  /** Everything a finished turn did before its answer. `inline`: the turn
+   *  wrote messages between its steps, which stay in view after this line,
+   *  each run of steps folded to one line; this one only says how long and
+   *  what it did, and folds nothing. */
+  | { type: "fold"; key: string; rows: Row[]; ms: number | null; status: string; summary: string; inline?: boolean }
   /** A tool call's widget (MCP Apps: a chart, a table). It stays in view
    *  when its turn folds, between the fold and the answer. */
   | { type: "widget"; key: string; tool: ToolItem }
@@ -42,6 +45,10 @@ function nest(items: Item[]): Item[] {
     else top.push(copy);
   }
   return top;
+}
+
+export function sessionSubagents(items: Item[]): ToolItem[] {
+  return nest(items).filter((it): it is ToolItem => it.kind === "tool" && !!it.agent);
 }
 
 const widgetRow = (t: ToolItem): Row => ({ type: "widget", key: `widget-${t.key}`, tool: t });
@@ -114,6 +121,13 @@ export function layout(items: Item[], running: boolean): Row[] {
       rows.push(...group(body, false), ...stoppedMark());
       return;
     }
+    // Messages written between the steps are part of the answer to the
+    // reader (owner: folded away, only the last summary was left to read).
+    if (folded.some((it) => it.kind === "assistant")) {
+      rows.push({ type: "fold", key: `fold-${folded[0]?.key ?? body[0].key}`, rows: [], ms, status: marker?.status ?? "completed", summary: summarize(work), inline: true });
+      rows.push(...group(body, false));
+      return;
+    }
     rows.push({
       type: "fold",
       key: `fold-${folded[0]?.key ?? body[0].key}`,
@@ -156,18 +170,43 @@ const PLURAL: Record<string, [string, string, string]> = {
   edit: ["Edited", "file", "files"],
   command: ["Ran", "command", "commands"],
   search: ["Searched", "time", "times"],
+  // The host agent reading its evidence (yardd agents.rs).
+  context: ["Read", "host snapshot", "host snapshots"],
+  // An Agent call: engines give it no kind of its own, its `agent` marks it.
+  subagent: ["Ran", "subagent", "subagents"],
 };
 
 /** A call whose approval was denied or never answered: it did not run. */
 export const didNotRun = (e: WorkItem) => e.kind === "tool" && e.state !== "ok" && (e.asked === "denied" || e.asked === "unanswered");
 
+/** What did not happen, per kind: a denied edit left the file "not edited",
+ *  a denied search is a search, not a "time". */
+const SKIPPED: Record<string, [string, string, string]> = {
+  read: ["file", "files", "not read"],
+  edit: ["file", "files", "not edited"],
+  command: ["command", "commands", "not run"],
+  search: ["search", "searches", "not run"],
+  context: ["host snapshot", "host snapshots", "not read"],
+};
+
+/** A row's verb. Engines title a call by its outcome ("Ran", "Edited") from
+ *  the start; until it is allowed and done, it has not happened. */
+export function toolLabel(entry: ToolItem): string {
+  const verbs = entry.title === "Ran" ? ["Waiting to run", "Did not run", "Running"] : entry.title === "Edited" ? ["Waiting to edit", "Did not edit", "Editing"] : null;
+  if (!verbs) return entry.title;
+  if (entry.asked === "waiting") return verbs[0];
+  if (didNotRun(entry)) return verbs[1];
+  return entry.state === "running" ? verbs[2] : entry.title;
+}
+
 /** "Read 3 files, ran 2 commands", from the two biggest kinds of work. Calls
- *  that were not allowed to run are counted apart: "1 command not run". */
+ *  that were not allowed to run are counted apart: "1 command not run",
+ *  "1 file not edited". */
 export function summarize(entries: WorkItem[]): string {
   const ran = entries.filter((e) => !didNotRun(e));
   const counts = new Map<string, number>();
   for (const e of ran) {
-    const kind = e.kind === "reasoning" ? "think" : PLURAL[e.toolKind] ? e.toolKind : "other";
+    const kind = e.kind === "reasoning" ? "think" : e.agent ? "subagent" : PLURAL[e.toolKind] ? e.toolKind : "other";
     counts.set(kind, (counts.get(kind) ?? 0) + 1);
   }
   const parts = [...counts.entries()]
@@ -182,8 +221,8 @@ export function summarize(entries: WorkItem[]): string {
   const failed = ran.filter((e) => e.kind === "tool" && e.state === "failed").length;
   const skipped = entries.filter(didNotRun) as ToolItem[];
   const kinds = new Set(skipped.map((e) => e.toolKind));
-  const noun = kinds.size === 1 && PLURAL[skipped[0]?.toolKind] ? PLURAL[skipped[0].toolKind] : ["", "step", "steps"];
-  const notRun = skipped.length ? `${skipped.length} ${skipped.length === 1 ? noun[1] : noun[2]} not run` : "";
+  const [one, many, not] = (kinds.size === 1 && SKIPPED[skipped[0]?.toolKind]) || ["step", "steps", "not run"];
+  const notRun = skipped.length ? `${skipped.length} ${skipped.length === 1 ? one : many} ${not}` : "";
   if (!parts.length && !notRun) return counts.has("think") ? "Thought" : "";
   const text = parts.join(", ");
   const head = text ? text[0].toUpperCase() + text.slice(1) + (failed ? ` · ${failed} failed` : "") : "";
@@ -199,6 +238,18 @@ export function thoughtLine(text: string): string {
   const sentence = /^(.{1,140}?[.!?])(\s|$)/.exec(plain);
   const line = sentence ? sentence[1] : plain;
   return line.length > 140 ? `${line.slice(0, 137)}…` : line;
+}
+
+/** Whether the thread stays pinned to its bottom after a scroll event, given
+ *  the scroll position before and after it and the distance left to the
+ *  bottom. Only a move up unpins. A diagram or thumbnail is inserted before it
+ *  has a height and grows a moment later; the browser then moves `scrollTop`
+ *  down to keep the view steady and fires a scroll event far from the bottom.
+ *  That is not the user leaving, and the resize that follows must still
+ *  bring the bottom back. */
+export function stillPinned(pinned: boolean, before: number, after: number, gap: number): boolean {
+  if (gap < 80) return true;
+  return after < before ? false : pinned;
 }
 
 /** "45s", "1m 12s", "2h 3m". */
