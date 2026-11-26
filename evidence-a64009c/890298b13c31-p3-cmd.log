@@ -1,0 +1,53 @@
+$ verify/yv map run new-session --recipe typed-path-under-a-missing-folder-names-it
+# exit 1 after 32042 ms at e02e03638794d828fec861ed6a204af4b7664b4e
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "new-session",
+      "at": "2026-11-26T01:04:30.355Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "typed-path-under-a-missing-folder-names-it",
+          "status": "fail",
+          "ms": 26647,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 2 {\"expect\":\"css:.picker-empty\",\"text\":\"TEST-gone doesn’t exist.\"}: expected \"css:.picker-empty\" to contain \"TEST-gone doesn’t exist.\", got \"cannot read /tmp/yv-map-new-session-841625-mwwunejo/work/TEST-gone/TEST-deeper: No such file or directory (os error 2)\"",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-fb24/.verify/drives/2026-11-26T01-04-03-911Z/fail-mobile-step2.png and the aria snapshot"
+            },
+            {
+              "code": "errors",
+              "msg": "mobile: 0 console, 0 page, 1 API, 0 HTTP errors"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 2 {\"expect\":\"css:.picker-empty\",\"text\":\"TEST-gone doesn’t exist.\"}: expected \"css:.picker-empty\" to contain \"TEST-gone doesn’t exist.\", got \"cannot read /tmp/yv-map-new-session-841625-mwwunejo/work/TEST-gone/TEST-deeper: No such file or directory (os error 2)\"",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-fb24/.verify/drives/2026-11-26T01-04-03-911Z/fail-desktop-step2.png and the aria snapshot"
+            },
+            {
+              "code": "errors",
+              "msg": "desktop: 0 console, 0 page, 1 API, 0 HTTP errors"
+            }
+          ],
+          "tail": "host 3% · 30%\\\"\\n- separator \\\"Resize the sessions sidebar\\\"\\n- banner:\\n  - button \\\"Set up iPhone app\\\"\\n- heading \\\"What should we work on?\\\" [level=1]\\n- textbox \\\"Message\\\":\\n  - /placeholder: Describe the task\\n- button \\\"Attach files\\\"\\n- button \\\"Dictate\\\"\\n- button \\\"Voice mode\\\"\\n- button \\\"Model Opus 5.5\\\": Opus 5.5\\n- 'button \\\"Account: Claude, Default\\\"'\\n- button \\\"Effort High\\\": High\\n- button \\\"Ask first\\\"\\n- button \\\"Send\\\" [disabled]\\n- button \\\"iso-host\\\"\\n- button \\\"work\\\" [expanded]\\n- text: Works in the folder itself\\n- dialog \\\"Folders\\\":\\n  - textbox \\\"Folder\\\":\\n    - /placeholder: Search folders, or type a path\\n    - text: /tmp/yv-map-new-session-841625-mwwunejo/work/TEST-gone/TEST-deeper/b\\n  - listbox: \\\"cannot read /tmp/yv-map-new-session-841625-mwwunejo/work/TEST-gone/TEST-deeper: No such file or directory (os error 2)\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [\n        {\n          \"op\": \"fs.dirs\",\n          \"message\": \"cannot read /tmp/yv-map-new-session-841625-mwwunejo/work/TEST-gone/TEST-deeper: No such file or directory (os error 2)\"\n        }\n      ],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 2 {\\\"expect\\\":\\\"css:.picker-empty\\\",\\\"text\\\":\\\"TEST-gone doesn’t exist.\\\"}: expected \\\"css:.picker-empty\\\" to contain \\\"TEST-gone doesn’t exist.\\\", got \\\"cannot read /tmp/yv-map-new-session-841625-mwwunejo/work/TEST-gone/TEST-deeper: No such file or directory (os error 2)\\\"\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-fb24/.verify/drives/2026-11-26T01-04-03-911Z/fail-mobile-step2.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"errors\",\n      \"msg\": \"mobile: 0 console, 0 page, 1 API, 0 HTTP errors\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 2 {\\\"expect\\\":\\\"css:.picker-empty\\\",\\\"text\\\":\\\"TEST-gone doesn’t exist.\\\"}: expected \\\"css:.picker-empty\\\" to contain \\\"TEST-gone doesn’t exist.\\\", got \\\"cannot read /tmp/yv-map-new-session-841625-mwwunejo/work/TEST-gone/TEST-deeper: No such file or directory (os error 2)\\\"\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-fb24/.verify/drives/2026-11-26T01-04-03-911Z/fail-desktop-step2.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"errors\",\n      \"msg\": \"desktop: 0 console, 0 page, 1 API, 0 HTTP errors\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "new-session/typed-path-under-a-missing-folder-names-it",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

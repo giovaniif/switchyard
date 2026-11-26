@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "6da786e17b0338194a1c5bed53f79553fbd1cdb5",
+    "short": "6da786e",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T01:01:43.192Z"
+  },
+  "dir": ".verify/evidence/missing-folder-base-d",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 3689,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/missing-folder-base-d/missing-folder-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "fs.dirs",
+          "message": "cannot read /nonexistent/TEST-a: No such file or directory (os error 2)"
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,192 @@
+{
+  "v": 1,
+  "claim": "New session folder picker: a typed path under a missing folder showed yardd's raw 'cannot read …: No such file or directory (os error 2)' and offered 'Use <the missing folder>'; it should name the folder that is not there and offer nothing to pick",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-fb24",
+  "base": "6da786e17b0338194a1c5bed53f79553fbd1cdb5",
+  "head": "a64009c5f7a779ea41a94dca99d6a7d190982686",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/new-session.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T01:03:41.198Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "6da786e17b0338194a1c5bed53f79553fbd1cdb5",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "61de8ca18ca7f9459bf4aac49adae215c80a5feb1605fd250c2dcfee4410b2ac"
+        },
+        {
+          "path": "p1-missing-folder-mobile.png",
+          "sha256": "ff4f7a2bf69ad36c0f5e8ae24188c18d2c68322ec8ad4b8b9b46da06daf7754d"
+        }
+      ],
+      "addedAt": "2026-11-26T01:03:41.239Z",
+      "failedApi": [
+        "fs.dirs: cannot read /nonexistent/TEST-a: No such file or directory (os error 2)"
+      ]
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "6da786e17b0338194a1c5bed53f79553fbd1cdb5",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "213b7247358dfe4eecc5dcd9e1167d3e451426e44c20cb0474880c3e49126692"
+        },
+        {
+          "path": "p2-missing-folder-desktop.png",
+          "sha256": "8e173a0a48d17fc066c9ddc49d763f99bdb0923b0117ab28b82d1c667f485c98"
+        }
+      ],
+      "addedAt": "2026-11-26T01:03:41.285Z",
+      "failedApi": [
+        "fs.dirs: cannot read /nonexistent/TEST-a: No such file or directory (os error 2)"
+      ]
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "e02e03638794d828fec861ed6a204af4b7664b4e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "890298b13c313b04f2e9d7db5f37e9a5dfc38f3742870e66c0e2c723978abb85"
+        }
+      ],
+      "addedAt": "2026-11-26T01:03:58.317Z",
+      "cmd": "verify/yv map run new-session --recipe typed-path-under-a-missing-folder-names-it",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "a64009c5f7a779ea41a94dca99d6a7d190982686",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "0be4067b71e9dd02e7f5411b8a798fb0b1f6627e62b05e757c6689ac81c0a634"
+        },
+        {
+          "path": "p4-missing-parent-mobile.png",
+          "sha256": "33736b5409e9bb3cb9284eda3c20372a2edaaf5b814538253dca4b3251b5e248"
+        },
+        {
+          "path": "p4-no-use-row-mobile.png",
+          "sha256": "e844459eafd3d3da285391648d45ecd3caa27eb8ecd2768061c37d345ea52086"
+        },
+        {
+          "path": "p4-existing-folder-mobile.png",
+          "sha256": "571eb2ad486fdc71e547569ffdd613be5568810b1d96a8e7c5827154b55abb28"
+        }
+      ],
+      "addedAt": "2026-11-26T01:05:04.356Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "a64009c5f7a779ea41a94dca99d6a7d190982686",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "86e383807b3fe4bee2809b88906583879ffd2aa49d4a610bad536806a0aee24d"
+        },
+        {
+          "path": "p5-missing-parent-desktop.png",
+          "sha256": "0a0628d8ca9fe2bc14ab35eeb9ffe1210150b405cf2377763ab3b0e9234e6d40"
+        },
+        {
+          "path": "p5-no-use-row-desktop.png",
+          "sha256": "3723be287decb3c59b9c334bd460faae5b272ab4f8578592e7cd88a20d86b766"
+        },
+        {
+          "path": "p5-existing-folder-desktop.png",
+          "sha256": "33a08c10244e6b13fb94ae8e7d4fc776cbaad7d5c23a5693cfcf742e9cd1629d"
+        }
+      ],
+      "addedAt": "2026-11-26T01:05:04.399Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "a64009c5f7a779ea41a94dca99d6a7d190982686",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "11ffe5ee3eb125a28200393c3d778c3455c39ac141e7287b7eeafd538d529f6f"
+        }
+      ],
+      "addedAt": "2026-11-26T01:05:04.443Z",
+      "cmd": "verify/yv design-check --base 6da786e17b03",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "test",
+      "at": "a64009c5f7a779ea41a94dca99d6a7d190982686",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-cmd.log",
+          "sha256": "109ac96418eb46aea9c827f79c149d90f59259f5e9072add2bd3f27dbca54911"
+        }
+      ],
+      "addedAt": "2026-11-26T01:05:07.663Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd && (cd ui && bun test) && verify/yv map run new-session --recipe typed-path-under-a-missing-folder-names-it",
+      "exit": 0
+    }
+  ]
+}

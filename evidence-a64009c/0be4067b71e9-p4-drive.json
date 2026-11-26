@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "a64009c5f7a779ea41a94dca99d6a7d190982686",
+    "short": "a64009c",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T01:04:43.860Z"
+  },
+  "dir": ".verify/evidence/missing-folder-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4759,
+      "steps": 12,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/missing-folder-head-mobile/missing-parent-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/missing-folder-head-mobile/no-use-row-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/missing-folder-head-mobile/existing-folder-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
