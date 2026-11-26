@@ -120,6 +120,24 @@ yv api '{"op":"session.update","sessionId":"{{sid_think}}","archived":false}'
 yv state --expect '{"sessions":[{"id":"{{sid_think}}","archived":false}]}'
 ```
 
+### archived-waiting-session-says-needs-approval
+Viewports: both
+Archived sessions still open and run, so an archived row keeps its status:
+one waiting for approval reads "Archived · Needs approval", not only
+"Archived" (its dot was amber, the word hid why). An idle archived row still
+reads "Archived". The Hosts page's session list uses the same rows.
+
+```sh
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","status":"needs_approval"}]}'
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","archived":true}' --wait '{"op":"session","session":{"id":"{{sid_cmd}}","archived":true}}'
+yv api '{"op":"session.update","sessionId":"{{sid_think}}","archived":true}' --wait '{"op":"session","session":{"id":"{{sid_think}}","archived":true}}'
+yv drive 'sessions' --steps '[{"click":{"role":"button","name":"Archived","exact":true}},{"expect":{"css":".focused-session-row","hasText":"[cmd] TEST-run the migration"},"text":"Archived · Needs approval"},{"expect":{"css":".focused-session-row","hasText":"TEST-plan the refactor"},"text":"Archived"},{"eval":"[...document.querySelectorAll(\".focused-session-row\")].find((r) => r.textContent.includes(\"TEST-plan the refactor\")).querySelector(\".focused-session-state\").textContent.trim()","equals":"Archived"},{"shot":"archived-waiting"}]'
+yv drive hosts --viewport desktop --steps '[{"expect":{"css":".focused-session-row","hasText":"[cmd] TEST-run the migration"},"text":"Archived · Needs approval"}]'
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","archived":false}' --wait '{"op":"session","session":{"id":"{{sid_cmd}}","archived":false}}'
+yv api '{"op":"session.update","sessionId":"{{sid_think}}","archived":false}' --wait '{"op":"session","session":{"id":"{{sid_think}}","archived":false}}'
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","status":"needs_approval","archived":false}]}'
+```
+
 ### sessions-search-no-match-says-so
 Viewports: both
 A search that matches nothing says so and offers to clear it. It used to say
