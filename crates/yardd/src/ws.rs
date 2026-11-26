@@ -136,7 +136,8 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
                     // An op for a session on another host goes to that host, as
                     // does one for an agent that host owns, unless it moves the
                     // agent away (the hub hands it over: `agents::transfer`).
-                    if let Some(host) = remote::route(&msg).filter(|h| !crate::agents::moves_away(&msg, h)) {
+                    let host = if crate::slack::is_access_approval(&msg) { crate::slack::approval_host(&app, &msg) } else { remote::route(&msg) };
+                    if let Some(host) = host.filter(|h| !crate::agents::moves_away(&msg, h)) {
                         let sent = match crate::agents::refusal(&app, &msg, &host) {
                             Some(why) => Err(anyhow::anyhow!(why)),
                             None => match pipes.get(&host) {

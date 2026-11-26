@@ -737,20 +737,19 @@ the composer and session view in `App.tsx`.
   build does not know included, `Agent::extra`; `chat` and `previous` the
   host's own ids; others dropped), its own id (`hub`) and its Slack app
   (`slack::export_app`: the whole `AgentApp` record, fields this build does
-  not know included; its workspace's configuration token; the Slack threads
-  its own app heard, so `slack_reply` still posts there; its icon). The host
+  not know included; its workspace's configuration token; its icon; not
+  its Slack threads, places or approvals, which are the hub's). The host
   turns its hidden copy into its own (`hosted` and `hub` cleared; its
   conversation the copy's or the record's), keeping instructions, memory,
   look, request and setup as sent; a folder or account it lacks falls back
   to the agent's own folder and Default rather than refusing; a name or
   handle another of its agents has gets a number. Its app connects from
   there. Only whoever installed the app joins the host's allowlist, as at an
-  install there: the Mac's other allowed people are its shared bot's and
-  stay on the Mac. Only after the host answers `agent.adopted` does the hub
-  point the shared bot's default agent, channel defaults and routed
-  threads at the new id (`slack::moved`), and let go (its record removed,
-  the app's connection closed, never deleting the app in Slack, the agent's
-  old conversations here ordinary sessions), then send `agent.settled`.
+  install there: the Mac's other allowed people stay on the Mac. Only after
+  the host answers `agent.adopted` does the hub let go (its record removed,
+  the app's connection closed, its Slack threads and places here dropped,
+  never deleting the app in Slack, the agent's old conversations here
+  ordinary sessions), then send `agent.settled`.
   It tries on every connection, and every 15 s after a refusal for now,
   doubling up to 5 minutes. A refusal for good is not tried again until the
   next connection, and the agent's page says why (`handOverError`). While
@@ -783,9 +782,8 @@ the composer and session view in `App.tsx`.
   transfer) and finished if it is there, abandoned if not; when the new
   host cannot be asked the abandon is `unsure`, and the old host's app
   stays undeletable in Slack (`slack::protect`), since the new host may run
-  it too. The release and `agent.settled` are owed before the hub points the
-  shared bot at the new id, so a failed note there (logged) never leaves
-  two owners.
+  it too. The release and `agent.settled` are owed as soon as the new host
+  answers, so nothing after that can leave two owners.
   A record an older hub kept is moved the old way to this yardd or to an
   older host (`move_host`), and handed over like this to a host that owns
   agents. The form says what will happen before saving.
@@ -1103,8 +1101,8 @@ the composer and session view in `App.tsx`.
   carried, refused mid-turn and while offline, the old conversation an
   ordinary session), the hand-over of a record an older hub kept (notes,
   look, request, conversation and the whole Slack app record with a field
-  this build does not know; backups; the shared bot's default agent
-  following; the same conversation going on; twice is safe), a host too old
+  this build does not know; no Slack threads; backups; the same
+  conversation going on; twice is safe), a host too old
   to own agents keeping the copy (and refusing new agents and moves there),
   backups taken before the first change on either side and kept to ten, a
   hand-over that waits for a turn running on its host with no backup
@@ -1117,13 +1115,15 @@ the composer and session view in `App.tsx`.
   window refused the hand-over ops even through the hub, fields this build
   does not know kept through saves and moves, an agent deleted on its host
   mid-hand-over staying deleted (release failing, or the adopt answer
-  lost), a lost export answer abandoned, a failed note of the shared bot
-  still letting the old host go, a lost adopt answer between hosts found
+  lost), a lost export answer abandoned, an agent's own app moving whole and
+  once with no thread, a lost adopt answer between hosts found
   and finished, one backup per hand-over however often it is tried, an
   adopt whose app cannot be kept keeping nothing, a second export refused
-  while the first is under way, and an app being handed over
-  left in Slack on delete until it settles or the move is abandoned
-  (`tests/slack.rs`),
+  while the first is under way, an app being handed over
+  left in Slack on delete until it settles or the move is abandoned, and a
+  moved agent's Slack places and approvals staying on the host they were
+  made on (a remote agent's places listed on the hub, an approval from
+  before a move only deniable, even after a move back) (`tests/slack.rs`),
   the queue, and Scout retired with its conversation. `tests/naming.rs`
   covers the private restricted thread with Codex's null config fields. The
   `agents` feature map drives the page, card alignment, living faces, New
@@ -1322,9 +1322,20 @@ its engine framing and one arm in `origins::reply`.
   and framed as data. The current message is framed separately. The
   owner’s chat stays on the agent page beside **Slack places**, where each
   place shows its most recent message time and any pending approval.
-  An agent’s common setup and memory follow its place sessions. The hub
-  owns the Slack apps and calls `agent.hosted.slack` for a remote agent.
-  The session is created there and answers travel back through the hub.
+  An agent’s common setup and memory follow its place sessions. An
+  agent’s app runs on the agent’s host (below), so its places, approvals
+  and routed threads are that host’s, in its `slack.json`. A hub lists a
+  host’s places under the prefixed ids (`slack::view`) and sends a
+  window’s approval for one to that host (`slack::approval_host`). A
+  record a hub keeps for an older host is the exception: the hub runs its
+  app and calls `agent.hosted.slack`; the session is created on the host
+  and answers travel back through the hub. **A move carries none of
+  them.** The old host drops the agent’s places and threads
+  (`slack::release_app`) and keeps its pending approvals, which can then
+  only be denied. A place or approval counts only while its conversation
+  is still the agent’s where it runs (`places::on_current_host`), so
+  nothing kept from before a move routes a message again, even after a
+  move back: the agent’s next Slack message starts a new conversation.
   Place messages queue one at a time; they never share a turn or steer one
   in progress.
 - **Guest turns.** Claude uses a fresh restricted sidecar in a scratch
@@ -1377,7 +1388,7 @@ its engine framing and one arm in `origins::reply`.
   tokens' kinds and Disconnect. Ops: `slack.me.*`, `slack.allow`,
   `slack.disallow`, `slack.dismiss`; each broadcasts `slack`. His own Slack
   lives on the hub: a remote's own (`me`, its inbox) is not shown, only its
-  agents' apps (`slack::view`, below).
+  agents' apps and Slack places (`slack::view`, below).
 - **An agent's own app** (after Orca's bots: "I can't tag it" was the owner's
   complaint about the shared bot). Each agent can have a Slack app of its
   own, named after it, so people @mention it by name. It lives **on the

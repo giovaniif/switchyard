@@ -828,7 +828,8 @@ pub fn pipe(app: &Arc<App>, host_id: &str, direct: mpsc::UnboundedSender<String>
 
 /// Which host an op is for, when it is not for this yardd.
 pub fn route(msg: &Value) -> Option<String> {
-    // The app owner and Slack DM live on the hub, even for remote sessions.
+    // A Slack approval goes where the agent's app keeps it
+    // (`slack::approval_host`).
     if crate::slack::is_access_approval(msg) {
         return None;
     }

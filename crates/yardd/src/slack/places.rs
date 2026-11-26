@@ -20,12 +20,16 @@ pub(super) struct Place {
     pub at: u64,
 }
 
+/// Whether a place's or approval's conversation still belongs to the agent
+/// where it runs now. A local one must still be tagged with it: a move
+/// leaves its conversations here as ordinary sessions, so what was kept
+/// from before never counts again, even once the agent comes back.
 pub(super) fn on_current_host(app: &App, agent: &str, sid: &str) -> bool {
     app.agents
         .get(agent)
         .is_some_and(|a| match sid.split_once(crate::remote::SEP) {
             Some((host, _)) => a.host == host,
-            None => a.host == "local" && app.meta(sid).is_some(),
+            None => a.host == "local" && app.meta(sid).is_some_and(|m| m.agent.as_deref() == Some(agent)),
         })
 }
 
