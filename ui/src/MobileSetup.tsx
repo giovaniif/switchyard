@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { encode } from "uqr";
 import { Icon } from "./App";
-import { inMobileApp, mobileHost, mobileLink, phoneState, testFlightLink, type MobileStatus, type PhoneTarget } from "./mobile";
+import { inMobileApp, mobileHost, mobileLink, phonePageLink, phoneState, testFlightLink, type MobileStatus, type PhoneTarget } from "./mobile";
 
 const PHONE = "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2ZM11 18h2";
 const COPY = "M9 9h11v11H9zM5 15H4V4h11v1";
@@ -16,7 +16,7 @@ export function MobileSetupButton({ mobile, hostMobile, open }: { mobile: Mobile
   return <button className="btn-icon mobile-setup-button" aria-label="Set up iPhone app" title="Set up iPhone app" onClick={open}><Icon d={PHONE} size={16} /></button>;
 }
 
-/** A QR code drawn as one SVG path: the iPhone's camera opens the link in the app. */
+/** A QR code drawn as one SVG path: the iPhone's Camera opens the link in Safari. */
 function QrCode({ text, label }: { text: string; label: string }) {
   const { size, path } = useMemo(() => {
     const qr = encode(text, { ecc: "M", border: 2 });
@@ -25,7 +25,7 @@ function QrCode({ text, label }: { text: string; label: string }) {
     return { size: qr.size, path: d };
   }, [text]);
   return (
-    <svg className="phone-qr-code" viewBox={`0 0 ${size} ${size}`} role="img" aria-label={label} shapeRendering="crispEdges">
+    <svg className="phone-qr-code" viewBox={`0 0 ${size} ${size}`} role="img" aria-label={label} data-href={text} shapeRendering="crispEdges">
       <rect width={size} height={size} />
       <path d={path} />
     </svg>
@@ -51,6 +51,7 @@ export function MobileSetup({ mobile, targets }: { mobile: MobileStatus; targets
   const link = origin ? mobileLink(origin) : null;
   const state = phoneState(status, now);
   const invite = testFlightLink(mobile.testFlightUrl ?? picked?.status.testFlightUrl ?? undefined);
+  const page = origin ? phonePageLink(origin, invite) : null;
   // On a phone the camera cannot scan its own screen: offer the link instead.
   const touch = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
   const where = origin ? new URL(origin).host : "";
@@ -82,9 +83,9 @@ export function MobileSetup({ mobile, targets }: { mobile: MobileStatus; targets
         </span>
       </div>
       <div className="mobile-setup-body">
-        {link && !touch && (
+        {page && !touch && (
           <figure className="phone-qr">
-            <QrCode text={link} label={`QR code that opens Switchyard on your iPhone with ${where}`} />
+            <QrCode text={page} label={`QR code that opens Switchyard on your iPhone with ${where}`} />
             <figcaption className="muted small">Scan with the iPhone Camera</figcaption>
           </figure>
         )}
@@ -94,13 +95,13 @@ export function MobileSetup({ mobile, targets }: { mobile: MobileStatus; targets
               {invite ? (
                 <a className="btn-primary login-open" href={invite} target="_blank" rel="noreferrer">Install with TestFlight</a>
               ) : (
-                <><strong>Install the app from TestFlight.</strong> <span className="muted">Accept the invitation on your iPhone first.</span></>
+                <><strong>Install the app from TestFlight.</strong> <span className="muted">Open the invitation Apple emailed you on your iPhone.</span></>
               )}
             </li>
             <li>Turn on Tailscale (or your private network) on the iPhone.</li>
             <li>
               {link ? (
-                touch ? <>Open the app with this host: <a className="btn login-open mobile-open" href={link}>Open in Switchyard</a></> : <>Point the Camera at the code. Switchyard opens with <strong>{where}</strong> filled in; tap Connect.</>
+                touch ? <>Open the app with this host: <a className="btn login-open mobile-open" href={link}>Open in Switchyard</a></> : <>Point the Camera at the code and open the link. It opens Switchyard with <strong>{where}</strong> filled in, or shows how to install it first.</>
               ) : (
                 <>Enter the HTTPS address you open this host at on your phone.</>
               )}

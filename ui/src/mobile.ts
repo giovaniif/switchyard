@@ -76,6 +76,29 @@ export function mobileLink(value: string): string | null {
   return host ? `switchyard://connect?host=${encodeURIComponent(host)}` : null;
 }
 
+/** What the setup QR code opens: the host's own page, which hands over to the
+ *  app. The Camera offers nothing for a `switchyard://` code when the app is
+ *  not installed yet, but it always opens an https link in Safari. */
+export function phonePageLink(value: string, invite?: string | null): string | null {
+  const host = mobileHost(value);
+  if (!host) return null;
+  const url = new URL(`${host}/`);
+  url.searchParams.set("phone", "");
+  const tf = testFlightLink(invite ?? undefined);
+  if (tf) url.searchParams.set("testflight", tf);
+  return url.href.replace("phone=", "phone");
+}
+
+/** The page the QR code opened, read from its own address; null for any other page. */
+export function phonePage(href: string): { app: string | null; invite: string | null; browser: string } | null {
+  const url = new URL(href);
+  if (!url.searchParams.has("phone")) return null;
+  return { app: mobileLink(url.origin), invite: testFlightLink(url.searchParams.get("testflight") ?? undefined), browser: `${url.origin}/` };
+}
+
+/** TestFlight in the App Store, for an invitation that came by email. */
+export const TESTFLIGHT_APP = "https://apps.apple.com/app/testflight/id899247664";
+
 export function testFlightLink(value?: string): string | null {
   return value && /^https:\/\/testflight\.apple\.com\/join\/[A-Za-z0-9]{8}$/.test(value) ? value : null;
 }
