@@ -127,6 +127,55 @@ for vp in desktop mobile; do
 done
 ```
 
+### claude-question-answered
+Claude's AskUserQuestion is a question card, not "Allow this?", even in Full
+access: options to pick (one choice or several), Send stays off until every
+question has an answer, and Claude hears the answers. (It used to show the
+raw JSON with Allow once, and allowing it told Claude "The user did not
+answer the questions.") The fake asks two: a database (one choice) and
+checks (several).
+
+```sh
+for vp in desktop mobile; do
+  yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","effort":"low","cwd":"{{repo}}","permission":"full","text":"[question] TEST-pick a stack '$vp'"}' --wait '{"op":"event","event":{"type":"approval_request"}}' --save q_sid=sessionId
+  yv state --expect '{"sessions":[{"id":"{{q_sid}}","status":"needs_approval"}]}'
+  yv drive 'session:{{q_sid}}' --viewport $vp --steps '[{"expect":"text:Claude has 2 questions"},{"expect":"css:.thread","text":"Asked"},{"expect":"role:button:Send answers","enabled":false},{"click":"role:radio:SQLite"},{"expect":"role:button:Send answers","enabled":false},{"click":"role:checkbox:Unit tests"},{"click":"role:checkbox:Lint"},{"shot":"question-'$vp'"},{"click":"role:button:Send answers"},{"expect":"css:.thread","text":"Answered: Which database should TEST-app use? → SQLite | Which checks should run before merging? → Unit tests, Lint"},{"click":"role:button:Worked for"},{"expect":"css:.question-answer","text":"SQLite"},{"shot":"answered-'$vp'"}]'
+  yv state --expect '{"sessions":[{"id":"{{q_sid}}","status":"idle"}]}'
+done
+```
+
+### claude-question-something-else-and-skip
+"Something else" answers in the user's own words (it replaces a picked
+option for a one-choice question); Skip tells Claude the user chose not to
+answer and the card says "Skipped".
+
+```sh
+yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","effort":"low","cwd":"{{repo}}","permission":"full","text":"[question] TEST-own words"}' --wait '{"op":"event","event":{"type":"approval_request"}}' --save own_sid=sessionId
+yv drive 'session:{{own_sid}}' --viewport desktop --steps '[{"click":"role:radio:Postgres"},{"fill":"label:Something else: Which database should TEST-app use?","value":"DuckDB"},{"expect":"role:radio:Postgres","text":"Postgres"},{"click":"role:checkbox:End-to-end"},{"click":"role:button:Send answers"},{"expect":"css:.thread","text":"Which database should TEST-app use? → DuckDB | Which checks should run before merging? → End-to-end"}]'
+yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","effort":"low","cwd":"{{repo}}","permission":"full","text":"[question] TEST-skip it"}' --wait '{"op":"event","event":{"type":"approval_request"}}' --save skip_sid=sessionId
+yv drive 'session:{{skip_sid}}' --viewport desktop --steps '[{"click":{"role":"button","name":"Skip","exact":true}},{"expect":"css:.thread","text":"Skipped the questions."},{"click":"role:button:Worked for"},{"expect":"css:.question-card","text":"Skipped"}]'
+```
+
+### codex-question-answered
+Codex's request_user_input is the same card, titled "Codex has 2 questions",
+in Full access too. (Codex used to get "not supported", and outside Plan mode
+it never asked: yardd now starts it with
+`features.default_mode_request_user_input`.) The fake asks a color (options,
+plus its own answer) and a secret token (typed only, hidden); the token never
+shows on the card or in the log (the fake's reply repeats it, to prove Codex
+got it). Codex's question has no tool row, so a turn with no other steps has
+no "Worked for" fold: the answered card stays in place.
+
+```sh
+for vp in desktop mobile; do
+  yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{repo}}","permission":"full","text":"[question] TEST-codex asks '$vp'"}' --wait '{"op":"event","event":{"type":"approval_request"}}' --save cq_sid=sessionId
+  yv state --expect '{"sessions":[{"id":"{{cq_sid}}","status":"needs_approval"}]}'
+  yv drive 'session:{{cq_sid}}' --viewport $vp --steps '[{"expect":"text:Codex has 2 questions"},{"expect":"role:button:Send answers","enabled":false},{"click":"role:radio:Blue"},{"expect":"role:button:Send answers","enabled":false},{"fill":"label:Answer: Paste the TEST-app deploy token.","value":"s3cret-TEST"},{"expect":"css:.question-card input[type=password]"},{"shot":"codex-question-'$vp'"},{"click":"role:button:Send answers"},{"expect":"css:.thread","text":"Answered: color=Blue | token=s3cret-TEST"},{"expect":"css:.question-answer","text":"Blue"},{"expect":"css:.question-card","text":"••••••"},{"shot":"codex-answered-'$vp'"}]'
+  yv state --expect '{"sessions":[{"id":"{{cq_sid}}","status":"idle"}]}'
+done
+```
+
 ## Gotchas
 - A decided approval folds into the turn's "Worked for … · Ran 1 command" row; open it to read "Allowed", "Always allowed" or "Denied". One the turn ended on (Stop, a failure, a yardd restart) reads "Not answered before the turn ended".
 - `role:button:Allow` matches "Allow once" and "Always allow"; name buttons in full or use `exact`.
+- A question card (Claude's AskUserQuestion, Codex's request_user_input) has no Allow buttons: its options are `role:radio` (one choice) or `role:checkbox` (several), the field is labelled "Something else: <question>", and Send reads "Send answer" or "Send answers". A Codex question with no options has only a field, labelled "Answer: <question>"; one whose options exclude other answers has no field.

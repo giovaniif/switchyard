@@ -145,6 +145,10 @@ describe("noticeText", () => {
     expect(noticeText("approval", "Fix login").title).toBe("Fix login");
     expect(noticeText("approval", "Fix login").body).toBe("Needs your approval");
     expect(noticeText("finished", "Fix login").body).toBe("Done");
+    // Claude's AskUserQuestion: a question, not an approval.
+    const w = new StatusWatcher(() => 0);
+    w.event("q", { type: "approval_request", requestId: "r", kind: "question", title: "Which **database**?", detail: "and 1 more" });
+    expect(noticeText("approval", "Pick a stack", w.info("q")).body).toBe("Has a question · Which database?");
     expect(noticeText("failed", "Fix login").body).toBe("Failed");
   });
   test("says what the turn did", () => {

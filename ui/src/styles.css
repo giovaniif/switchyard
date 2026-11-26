@@ -1708,3 +1708,23 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
   .copy-block .copy-corner { align-self: flex-end; margin-top: 2px; }
   .copy-block > .tool-output { margin-bottom: 0; }
 }
+
+/* The agent's questions (Claude's AskUserQuestion, Codex's request_user_input), inside the approval card. */
+.question-card { gap: 14px; }
+.question { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.question-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.question-chip { padding: 1px 7px; border-radius: 6px; background: var(--fill-strong); color: var(--muted); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.question-text { font-weight: 500; overflow-wrap: anywhere; }
+.question-options { display: flex; flex-direction: column; gap: 6px; }
+.question-option { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--bg); color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+.question-option:hover:not(:disabled) { background: var(--fill); }
+.question-option[aria-checked="true"] { border-color: var(--ink); background: var(--fill); }
+.question-option:disabled { cursor: default; opacity: 0.6; }
+.question-mark { flex: none; width: 14px; height: 14px; margin-top: 2px; border: 1.5px solid var(--off); border-radius: 50%; }
+.question-mark-box { border-radius: 4px; }
+.question-option[aria-checked="true"] .question-mark { border: 4px solid var(--ink); }
+.question-option[aria-checked="true"] .question-mark-box { border: 0; background: var(--ink); box-shadow: inset 0 0 0 3px var(--bg); }
+.question-option-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.question-option-label { font-weight: 500; }
+.question-other { font-family: inherit; }
+.question-answer { padding: 7px 12px; border-radius: 9px; background: var(--fill); overflow-wrap: anywhere; white-space: pre-wrap; }

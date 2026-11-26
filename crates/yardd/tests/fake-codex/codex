@@ -4,6 +4,10 @@
 // CLI and no turn ever reaches a model.
 //
 // A turn's behaviour is picked by a marker in the prompt:
+//   [question] Codex's request_user_input (`item/tool/requestUserInput`,
+//           shaped like a real one): a single choice with options and a
+//           secret free-text question; the reply is "Answered: <id>=<answer>
+//           | …" for the answers it got, or "No answers." (Skip)
 //   [cmd]   a command that needs approval, then runs or is declined; after
 //           an allowed run it waits 400 ms, and names steered input
 //           (turn/steer) in its answer
@@ -509,6 +513,34 @@ async function runTurn(threadId, cwd, turn, text) {
     notify("item/reasoning/summaryTextDelta", { threadId, turnId, itemId, summaryIndex: 1, delta: "Then the fix" });
     item("item/completed", { type: "reasoning", id: itemId, summary: ["Reading the tests", "Then the fix"], content: [] });
     say("Thought it through.", ["Thought it through."]);
+    return finish("completed");
+  }
+
+  if (behaviorText.includes("[question]")) {
+    const answer = await ask("item/tool/requestUserInput", {
+      threadId,
+      turnId,
+      itemId: newId("call"),
+      isBlocking: false,
+      autoResolutionMs: null,
+      questions: [
+        {
+          id: "color",
+          header: "Color",
+          question: "Which color should TEST-app use?",
+          isOther: true,
+          isSecret: false,
+          options: [
+            { label: "Red", description: "Warm." },
+            { label: "Blue", description: "Calm." },
+          ],
+        },
+        { id: "token", header: "Token", question: "Paste the TEST-app deploy token.", isOther: false, isSecret: true, options: null },
+      ],
+    });
+    const got = Object.entries(answer?.result?.answers ?? {}).map(([id, a]) => `${id}=${a.answers.join(", ")}`);
+    const text = got.length ? `Answered: ${got.join(" | ")}` : "No answers.";
+    say(text, [text]);
     return finish("completed");
   }
 

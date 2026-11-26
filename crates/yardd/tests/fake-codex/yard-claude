@@ -21,6 +21,12 @@
 //   [background-agents] the owner's shape: a command, two background Agent
 //           calls, a message between steps, then the turn completes; the
 //           two keep taking steps (`parent`) and report 20 s later
+//   [question] Claude's AskUserQuestion: a tool call and its approval_request
+//           of kind "question" with two questions (one single choice, one
+//           multi-select), as the real sidecar sends them; the answer
+//           (`permission` with `answers`) ends it with "Answered: <question> →
+//           <answer> | …", "The user did not answer the questions." when
+//           allowed without answers, or a failed call when denied (Skip)
 //   [wakeup] / [cron] / [cron-delete]  a ScheduleWakeup / CronCreate /
 //           CronDelete call, labelled by the real sidecar's toolStarted (so it
 //           carries `keepsAlive` / `endsCron`), then "Echo: <prompt>"
@@ -64,6 +70,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 import { CHART_URI, chartCall, rpc } from "./chart.mjs";
 import { afterCalls, callTools, toolMarkers } from "./agent-tools.mjs";
 import { describe as describeTool, toolStarted } from "../../../../sidecar/yard-claude/src/tools.ts";
+import { answeredInput, questionRequest } from "../../../../sidecar/yard-claude/src/questions.ts";
 
 // The connector scope `start` gave (see sidecar/yard-claude/src/scope.ts), for the log.
 const mcpScope = (m) => (m?.only ? ` mcp=only:${m.only.join(",")}` : m?.except ? ` mcp=except:${m.except.join(",")}` : "");
@@ -250,6 +257,53 @@ async function runSteps(text) {
   emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: `Echo: ${text}${also}` });
   emit({ type: "turn_completed", status: "completed" });
 }
+// A [question] waiting for its answer.
+let question = null;
+const QUESTIONS = [
+  {
+    question: "Which database should TEST-app use?",
+    header: "Database",
+    multiSelect: false,
+    options: [
+      { label: "Postgres", description: "Relational, what the app has now." },
+      { label: "SQLite", description: "One file, no server to run." },
+    ],
+  },
+  {
+    question: "Which checks should run before merging?",
+    header: "Checks",
+    multiSelect: true,
+    options: [
+      { label: "Unit tests", description: "Fast, on every push." },
+      { label: "Lint", description: "Style and obvious mistakes." },
+      { label: "End-to-end", description: "Slow, drives the real app." },
+    ],
+  },
+];
+function askQuestion() {
+  const itemId = `tool-${process.pid}-${++n}`;
+  const requestId = `claude-${process.pid}-${++n}`;
+  const input = { questions: QUESTIONS };
+  const d = describeTool("AskUserQuestion", input, "/");
+  emit({ type: "tool_started", itemId, kind: d.kind, title: d.title, detail: d.detail });
+  emit(questionRequest(requestId, input, itemId));
+  question = { requestId, itemId, input };
+}
+function answerQuestion(msg) {
+  const { itemId, input } = question;
+  question = null;
+  if (msg.decision === "deny") {
+    emit({ type: "tool_completed", itemId, ok: false, output: "The user chose not to answer these questions." });
+    emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: "Skipped the questions." });
+  } else {
+    const { answers } = answeredInput(input, msg.answers);
+    const got = input.questions.filter((q) => typeof answers[q.question] === "string");
+    const text = got.length ? `Answered: ${got.map((q) => `${q.question} → ${answers[q.question]}`).join(" | ")}` : "The user did not answer the questions.";
+    emit({ type: "tool_completed", itemId, ok: true, output: text });
+    emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text });
+  }
+  emit({ type: "turn_completed", status: "completed" });
+}
 let sleeper = null;
 async function runBackgroundAgent(text) {
   const id = `tool-${process.pid}-${++n}`;
@@ -392,6 +446,10 @@ for await (const line of console) {
       runSubagent(text);
       continue;
     }
+    if (behaviorText.includes("[question]")) {
+      askQuestion();
+      continue;
+    }
     // A tool that leaves work in the process after the turn, flagged as the
     // real sidecar flags it (`keepsAlive`, `endsCron`).
     const keeper = { "[wakeup]": ["ScheduleWakeup", { delaySeconds: 600, prompt: "check again" }], "[cron]": ["CronCreate", { cron: "*/5 * * * *", prompt: "poll" }], "[cron-delete]": ["CronDelete", { id: "c1" }] };
@@ -423,6 +481,12 @@ for await (const line of console) {
     if (!tool) out({ type: "reply", ref: msg.ref, error: `${msg.server} has no tool ${msg.tool}` });
     else if (!tool.annotations?.readOnlyHint) out({ type: "reply", ref: msg.ref, error: `The tool did not run: Claude requested permissions to use ${msg.tool}, but you haven't granted it yet.` });
     else out({ type: "reply", ref: msg.ref, result: await rpc("tools/call", { name: msg.tool, arguments: msg.arguments ?? {} }) });
+  } else if (msg.type === "permission" && question?.requestId === msg.requestId) {
+    log(`answer ${JSON.stringify({ decision: msg.decision, answers: msg.answers ?? null })}`);
+    answerQuestion(msg);
+  } else if (msg.type === "interrupt" && question) {
+    question = null;
+    emit({ type: "turn_completed", status: "interrupted" });
   } else if (msg.type === "interrupt" && steps) {
     steps.interrupted = true;
   } else if (msg.type === "interrupt" && !stuck) {
