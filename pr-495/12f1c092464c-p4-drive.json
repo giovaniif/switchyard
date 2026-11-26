@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "route": "session:s1a21823dc052",
+  "build": {
+    "sha": "e1da30935b9f3259e219f1410c33f1c357f359f4",
+    "short": "e1da309",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T13:55:32.807Z"
+  },
+  "dir": ".verify/evidence/copy-v2-head-cmd-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4173,
+      "steps": 13,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/copy-v2-head-cmd-desktop/approval-copied-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/copy-v2-head-cmd-desktop/step-copied-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 0,
+          "eval": "(Object.defineProperty(navigator, \"clipboard\", { configurable: true, value: { writeText: (t) => { window.__copied = t; return Promise.resolve(); } } }), 1)",
+          "value": 1
+        },
+        {
+          "step": 3,
+          "eval": "window.__copied",
+          "value": "echo approved"
+        },
+        {
+          "step": 8,
+          "eval": "(window.__copied = null, 1)",
+          "value": 1
+        },
+        {
+          "step": 10,
+          "eval": "window.__copied",
+          "value": "echo approved"
+        },
+        {
+          "step": 11,
+          "eval": "(() => { const row = document.querySelector('.tool-line .tool-row'); return row.getBoundingClientRect().width > row.closest('.tool').getBoundingClientRect().width - 40; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

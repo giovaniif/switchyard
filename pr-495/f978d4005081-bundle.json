@@ -1,0 +1,306 @@
+{
+  "v": 1,
+  "claim": "Commands an engine asks to run, its code blocks and tool output have no Copy button: copying means selecting by hand, which drags in the step's label and is fiddly on a phone",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-about-the-phone-connection-we-f866",
+  "base": "41aed8c556db8ef34c3847e45d5d3dfa95437de0",
+  "head": "e1da30935b9f3259e219f1410c33f1c357f359f4",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/CopyButton.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/MobileSetup.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/thread.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/thread.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/thread.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T13:55:07.730Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "41aed8c556db8ef34c3847e45d5d3dfa95437de0",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "f29b0b6a12c0e3f17d627633b3f5d77da5633104894f6ad3cbcd068d22bbc9a9"
+        },
+        {
+          "path": "p1-base-approval-mobile.png",
+          "sha256": "2f189347a50bbee3a41ccbbbfe1e8ee6816af7f2c615062e9d85d638f3dd9c11"
+        },
+        {
+          "path": "p1-base-approval-desktop.png",
+          "sha256": "392d6cb8d2f14bf2350103dd6aa54f9986916c8a830a3c391335565406b0313b"
+        }
+      ],
+      "addedAt": "2026-11-26T13:55:20.970Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "41aed8c556db8ef34c3847e45d5d3dfa95437de0",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "7fdb965d45298259be146fb44da2eb6ae35a8bac63fbc5278147ce472489717f"
+        },
+        {
+          "path": "p2-base-code-mobile.png",
+          "sha256": "2949c3884a18dfa1bfa1e46626a5ff6d77ba78f525c1c5ca82909627f5e08c90"
+        },
+        {
+          "path": "p2-base-code-desktop.png",
+          "sha256": "a71df1e07e436c9b283190408403c1bd94e8e15b67001e747865e73b877d83ab"
+        }
+      ],
+      "addedAt": "2026-11-26T13:55:27.049Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "41aed8c556db8ef34c3847e45d5d3dfa95437de0",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "78790560b80cc9cdb80c837efb6c65f01a878b23ddda03317d99391990b70098"
+        }
+      ],
+      "addedAt": "2026-11-26T13:55:27.089Z",
+      "cmd": "cd ui && git show e1da30935b9f3259e219f1410c33f1c357f359f4:ui/src/thread.test.ts > src/zz-head-thread.test.ts; bun test src/zz-head-thread.test.ts; rc=$?; rm -f src/zz-head-thread.test.ts; exit $rc",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "e1da30935b9f3259e219f1410c33f1c357f359f4",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "12f1c092464ca1ed5ab3abbe8ffae8e3d5f58cf1d2e7f5b62c68e59f6daf835b"
+        },
+        {
+          "path": "p4-approval-copied-desktop.png",
+          "sha256": "874fe45a607e106b18889a096725fa853853dbb848da8528fe0d2b35b76342da"
+        },
+        {
+          "path": "p4-step-copied-desktop.png",
+          "sha256": "2183914cf2a34e63b23898fee8e60fc43d0b564cbe406514b192653ed793620f"
+        }
+      ],
+      "addedAt": "2026-11-26T13:55:37.769Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "e1da30935b9f3259e219f1410c33f1c357f359f4",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "ab232fdbbd34d18f9e2d3a2b814ad487b17e4b77b684245019b15a0d4cf807ab"
+        },
+        {
+          "path": "p5-approval-copied-mobile.png",
+          "sha256": "6c81741b49a17c9a285d1a4cc906c17d3641739e458369c5edabb539a78198dd"
+        },
+        {
+          "path": "p5-step-copied-mobile.png",
+          "sha256": "42df78c2e3817a9289892e27ce28556af77f6152f6b913e0948dcd0ae5d3ff02"
+        }
+      ],
+      "addedAt": "2026-11-26T13:55:43.059Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "e1da30935b9f3259e219f1410c33f1c357f359f4",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p6-drive.json",
+          "sha256": "0a3cf4b9a7d6f6c3dceb76b77d643c132441bb0e9808e7279941ecd480db00ad"
+        },
+        {
+          "path": "p6-code-copied-desktop.png",
+          "sha256": "083ae5b831a4b827f12251621f02bf53b46b3d77abc8f998fef0ca9f2cd45228"
+        },
+        {
+          "path": "p6-long-code-scrolled-desktop.png",
+          "sha256": "e6cf213031a24aad0e3e71f8ad07609a5be846d2870423f20f4b198d110f5a7d"
+        }
+      ],
+      "addedAt": "2026-11-26T13:55:46.535Z",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "fix",
+      "at": "e1da30935b9f3259e219f1410c33f1c357f359f4",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p7-drive.json",
+          "sha256": "a615d04c1e2bcbb02474042867763da8d5a2148ae1665430677477f32189165a"
+        },
+        {
+          "path": "p7-code-copied-mobile.png",
+          "sha256": "6aaf0265d5042243e125c47799ffa591bfdcde7b4b0348cde5fb468fb44f2bbd"
+        },
+        {
+          "path": "p7-long-code-scrolled-mobile.png",
+          "sha256": "fe384f058e5dcefbc9bff83c9c51c2c348ac9956449c211ac3b3be075e301a10"
+        }
+      ],
+      "addedAt": "2026-11-26T13:55:49.525Z",
+      "failedApi": []
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "test",
+      "at": "e1da30935b9f3259e219f1410c33f1c357f359f4",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-cmd.log",
+          "sha256": "6191691960ca673787a824cbc670e37e5a8d504a435bc388e5d64f8cebbe57e4"
+        }
+      ],
+      "addedAt": "2026-11-26T13:55:49.568Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "design",
+      "at": "e1da30935b9f3259e219f1410c33f1c357f359f4",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-design.json",
+          "sha256": "d486789a270aa9e751b86191c2248a9c88f0de8d2ea5c0d93e5de1a11365da5c"
+        }
+      ],
+      "addedAt": "2026-11-26T13:55:49.932Z",
+      "cmd": "verify/yv design-check --base 41aed8c556db",
+      "exit": 0
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "regression",
+      "at": "e1da30935b9f3259e219f1410c33f1c357f359f4",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-map-thread.json",
+          "sha256": "2a2a7c7ed1930c0ac3755612de174464b7411dc64207f00c508ccd3477fc46e6"
+        }
+      ],
+      "addedAt": "2026-11-26T13:55:50.017Z",
+      "cmd": "verify/yv map run thread",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "thread/reply-renders",
+        "thread/markdown-table-renders",
+        "thread/markdown-blocks-without-blank-lines",
+        "thread/web-links-open-outside-the-thread",
+        "thread/thinking-folds",
+        "thread/edit-shows-diff",
+        "thread/failed-turn-shows-error",
+        "thread/follow-up-turn",
+        "thread/claude-session-renders",
+        "thread/reply-to-part-of-answer",
+        "thread/comments-go-with-their-parts",
+        "thread/no-reply-on-own-message",
+        "thread/queue-a-message-while-working",
+        "thread/remove-a-queued-message",
+        "thread/steer-a-running-turn",
+        "thread/steer-a-selected-queued-message",
+        "thread/stop-returns-the-queue",
+        "thread/edit-a-queued-message",
+        "thread/edit-a-queued-reply-keeps-its-quotes",
+        "thread/draft-survives-switching-sessions",
+        "thread/workspace-subagents",
+        "thread/workspace-subagents-line-up",
+        "thread/subagent-nests-and-expands",
+        "thread/fold-names-the-subagent",
+        "thread/working-line-stays-in-view",
+        "thread/pr-link-hover-card",
+        "thread/pr-link-card-states",
+        "thread/pr-link-card-error",
+        "thread/pr-link-keyboard-and-touch",
+        "thread/links-inside-bold-text",
+        "thread/file-links-download",
+        "thread/file-viewer-kinds",
+        "thread/file-reload-reads-it-again",
+        "thread/numbered-steps-across-code-blocks",
+        "thread/history-reloads-after-resync",
+        "thread/copy-commands-code-and-output"
+      ]
+    }
+  ]
+}

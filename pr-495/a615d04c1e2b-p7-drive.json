@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "route": "session:s1a2182391dd6",
+  "build": {
+    "sha": "e1da30935b9f3259e219f1410c33f1c357f359f4",
+    "short": "e1da309",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T13:55:32.807Z"
+  },
+  "dir": ".verify/evidence/copy-v2-head-code-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2481,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/copy-v2-head-code-mobile/code-copied-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/copy-v2-head-code-mobile/long-code-scrolled-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 0,
+          "eval": "(Object.defineProperty(navigator, \"clipboard\", { configurable: true, value: { writeText: (t) => { window.__copied = t; return Promise.resolve(); } } }), 1)",
+          "value": 1
+        },
+        {
+          "step": 2,
+          "eval": "window.__copied",
+          "value": "bunx vite build --mode copy"
+        },
+        {
+          "step": 4,
+          "eval": "(() => { const pre = [...document.querySelectorAll('pre.code')].find((p) => p.textContent.includes('scroll_sideways')); pre.scrollIntoView(); pre.scrollLeft = 1e6; const b = pre.parentElement.querySelector('.copy-btn').getBoundingClientRect(); const p = pre.getBoundingClientRect(); return b.right <= p.left || b.left >= p.right || b.bottom <= p.top || b.top >= p.bottom; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
