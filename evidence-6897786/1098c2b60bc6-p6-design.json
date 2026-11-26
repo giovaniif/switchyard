@@ -1,0 +1,74 @@
+{
+  "command": "design-check",
+  "ok": true,
+  "base": "1b71af95acfcc214c188a06aafa33d0851e4a593",
+  "ui": true,
+  "touched": [
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/App.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/notify.test.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/notify.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/protocol.test.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/protocol.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "paths": [
+        "ui/src/questions.test.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "paths": [
+        "ui/src/questions.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/store.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/styles.css"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "rule": "raw-button",
+      "severity": "warn",
+      "file": "ui/src/App.tsx",
+      "line": 3884,
+      "text": "<button",
+      "hint": "give it a design-system button class: btn, btn-text, btn-icon, btn-primary, btn-quiet"
+    }
+  ],
+  "problems": [],
+  "hint": "screenshot the reference screen next to your after-shots, and cover empty, loading, error and long-text states at both viewports"
+}
