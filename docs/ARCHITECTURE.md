@@ -964,7 +964,9 @@ its engine framing and one arm in `origins::reply`.
   included, and edits, joins and other subtypes are ignored.
 - **Routing.** A DM or an @mention goes to: the agent of its Slack thread (a
   follow-up stays with the agent the thread's first routed message went to,
-  saved as `team/channel/thread_ts`, the newest 1,000); else the agent whose
+  saved as `team/channel/thread_ts`, the newest 1,000; a follow-up without
+  the bot's mention that @mentions a person, a user group or another bot is
+  theirs, and the agent stays out of it); else the agent whose
   handle or name starts the text (`Reviewer …`, `@Reviewer …`, `Reviewer: …`,
   `@Custom-Domains …`, `Custom Domains, …`, any case, the longest that fits;
   it is dropped); else the channel's default agent, then the default
