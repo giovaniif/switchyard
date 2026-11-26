@@ -1,6 +1,8 @@
 // Words for automations: schedules, next and last run, and which sessions are runs.
-import type { Automation, AutomationWindow, LastRun, Schedule, SessionMeta } from "./protocol";
+import type { Automation, AutomationWindow, Engine, LastRun, Schedule, SessionMeta } from "./protocol";
 import { duration } from "./thread";
+import { ENGINE_NAME } from "./engines";
+import { reportsLimits } from "./usage";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -180,8 +182,32 @@ export function scheduleParts(a: Automation, now: number): [string, string] {
 /** yardd's skip reasons, cut to what fits a card's line; the tooltip keeps the whole one. */
 function shortReason(reason: string): string {
   if (reason.startsWith("the previous run is still going")) return "previous run busy";
-  const usage = reason.match(/^\S+ (5-hour|weekly) usage (\d+%) is above/);
+  const usage = reason.match(/^\S+ (5-hour|weekly|monthly|billing-period) usage (\d+%) is above/);
   return usage ? `${usage[1]} usage ${usage[2]}` : reason;
+}
+
+/** Which usage limits can skip a run of an engine, and the form's words for
+ *  them. yardd reads the same figures (`automations::usage_reason`): Grok has
+ *  one credit allowance and no 5-hour window; OpenCode and Gemini report none.
+ *  `reported`: the host has the engine's usage figures. */
+export function usageCaps(engine: Engine, reported: boolean): { fiveHour: boolean; week: boolean; weekLabel: string; note: string } {
+  const name = ENGINE_NAME[engine];
+  if (!reportsLimits(engine)) return { fiveHour: false, week: false, weekLabel: "When weekly usage is above", note: `${name} doesn't report usage limits, so these can't skip its runs.` };
+  const applies = "Applies to scheduled runs; Run now always starts one.";
+  if (engine === "grok") {
+    return {
+      fiveHour: false,
+      week: true,
+      weekLabel: "When credit usage is above",
+      note: `${applies} ${name} reports no 5-hour window, only its credit allowance for the billing period, which the credit limit reads.${reported ? "" : " It has not reported it yet, so until it does the limit skips nothing."}`,
+    };
+  }
+  return {
+    fiveHour: true,
+    week: true,
+    weekLabel: "When weekly usage is above",
+    note: `${applies} The limits read the ${name} plan usage${reported ? "" : ", which it has not reported yet, so until it does they skip nothing"}.`,
+  };
 }
 
 export interface CardStatus {

@@ -933,6 +933,7 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .automation-limits { gap: 16px; }
 .automation-limits label { display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .automation-limits .field { width: 120px; }
+.automation-limits .field:disabled { background: var(--fill); border-color: var(--line); cursor: default; }
 /* An agent's or automation's connectors: one checkbox each, wrapping; a long server name wraps inside its own item. */
 .connector-picks { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 .connector-picks .check { white-space: normal; min-width: 0; }

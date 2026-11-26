@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Automation, SessionMeta } from "./protocol";
 import { describeSchedule, describeNext, describeLast, runsOf, hiddenFromSidebar, runsAttention, scheduleProblem, runTime, runOutcome, RUN_LABEL, runSummary, runTag, runLabel, stripRuns, scheduleLine, scheduleParts, cardStatus } from "./automations";
+import * as A from "./automations";
 import { initial, reduce } from "./store";
 
 const MIN = 60_000;
@@ -257,11 +258,44 @@ describe("the card at a glance", () => {
       runId: null,
     });
     expect(cardStatus(a({ lastRun: { at: now - 3 * 3600_000, outcome: "skipped", reason: "Claude 5-hour usage 47% is above 10%" } }), [], now).text).toBe("Skipped 3 h ago · 5-hour usage 47%");
+    // Grok's allowance is weekly, monthly or for a billing period.
+    expect(cardStatus(a({ lastRun: { at: now - 3 * 3600_000, outcome: "skipped", reason: "Grok monthly usage 60% is above 50%" } }), [], now).text).toBe("Skipped 3 h ago · monthly usage 60%");
+    expect(cardStatus(a({ lastRun: { at: now - 3 * 3600_000, outcome: "skipped", reason: "Grok billing-period usage 60% is above 50%" } }), [], now).text).toBe("Skipped 3 h ago · billing-period usage 60%");
     const failed = cardStatus(a({ lastRun: { at: now - 20_000, outcome: "failed", reason: "/w/moved is not a folder" } }), [], now);
     expect(failed).toEqual({ tone: "bad", text: "Failed · /w/moved is not a folder", title: "Failed just now: /w/moved is not a folder", runId: null });
   });
 
   test("never run", () => {
     expect(cardStatus(a(), [], now)).toEqual({ tone: "quiet", text: "No runs yet", title: "No runs yet", runId: null });
+  });
+});
+
+// Read through the module so each claim fails on its own before the change.
+const usageCaps = (...args: unknown[]) => (A as any).usageCaps(...args);
+
+describe("usage limits name the engine's figures, or say they cannot apply", () => {
+  const SKIP = "Applies to scheduled runs; Run now always starts one.";
+  test("Claude and Codex: both limits apply to their plan usage", () => {
+    expect(usageCaps("claude", true)).toEqual({ fiveHour: true, week: true, weekLabel: "When weekly usage is above", note: `${SKIP} The limits read the Claude plan usage.` });
+    expect(usageCaps("codex", true).note).toBe(`${SKIP} The limits read the Codex plan usage.`);
+  });
+
+  test("not reported yet: they skip nothing until it is", () => {
+    expect(usageCaps("codex", false).note).toBe(`${SKIP} The limits read the Codex plan usage, which it has not reported yet, so until it does they skip nothing.`);
+  });
+
+  test("Grok: only its credit allowance, no 5-hour window", () => {
+    const g = usageCaps("grok", true);
+    expect(g).toMatchObject({ fiveHour: false, week: true, weekLabel: "When credit usage is above" });
+    expect(g.note).toBe(`${SKIP} Grok reports no 5-hour window, only its credit allowance for the billing period, which the credit limit reads.`);
+    expect(usageCaps("grok", false).note).toContain("It has not reported it yet, so until it does the limit skips nothing.");
+  });
+
+  test("OpenCode and Gemini report no limits: neither applies, and the form says so", () => {
+    for (const [engine, name] of [["opencode", "OpenCode"], ["gemini", "Gemini"]]) {
+      const c = usageCaps(engine, false);
+      expect(c).toMatchObject({ fiveHour: false, week: false });
+      expect(c.note).toBe(`${name} doesn't report usage limits, so these can't skip its runs.`);
+    }
   });
 });

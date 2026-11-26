@@ -133,7 +133,7 @@ pub struct Automation {
     /// Skip a scheduled run while the engine's 5-hour usage is above this percentage.
     #[serde(default)]
     pub max_five_hour: Option<f64>,
-    /// The same for the weekly window.
+    /// The same for the weekly window; for Grok, its credit allowance for the billing period.
     #[serde(default)]
     pub max_week: Option<f64>,
     #[serde(default = "yes")]
@@ -264,20 +264,34 @@ fn local_ms<Tz: TimeZone>(naive: NaiveDateTime, tz: &Tz) -> Option<u64> {
 }
 
 /// Why a run should not start on usage grounds, from yardd's usage figures.
-/// Claude reports fractions, Codex percentages. A window that has already
-/// reset is stale (yardd refreshes usage only during turns), not a reason.
+/// Claude and Grok report fractions, Codex percentages. A window that has
+/// already reset is stale (yardd refreshes usage only now and then), not a
+/// reason. OpenCode and Gemini report no limits, so nothing skips their runs:
+/// another engine's figures are not theirs.
 pub fn usage_reason(usage: &Value, engine: &str, five: Option<f64>, week: Option<f64>, now_secs: u64) -> Option<String> {
-    let live = |reset: &Value| reset.as_u64().map_or(true, |r| now_secs <= r);
+    // Grok's period end is seconds with a fraction.
+    let live = |reset: &Value| reset.as_f64().map_or(true, |r| now_secs as f64 <= r);
+    // The long window's name in the reason: Grok's allowance is weekly, monthly
+    // or for a billing period, all read by the weekly limit.
+    let mut long = "weekly";
     let (name, five_used, week_used) = match engine {
         "codex" => {
             let u = &usage["codex"];
-            (
-                "Codex",
-                u["primary"]["usedPercent"].as_f64().filter(|_| live(&u["primary"]["resetsAt"])),
-                u["secondary"]["usedPercent"].as_f64().filter(|_| live(&u["secondary"]["resetsAt"])),
-            )
+            // A window says how long it is; the main limit of a Pro account is
+            // a single week. Without a length, primary is the 5-hour one.
+            let windows = [&u["primary"], &u["secondary"]];
+            let length = |w: &Value| w["windowDurationMins"].as_u64();
+            let is_week = |w: &Value, i: usize| length(w).map_or(i == 1, |m| m >= 7 * 24 * 60);
+            let used = |want_week: bool| {
+                windows.iter().enumerate().find_map(|(i, w)| {
+                    (w.is_object() && is_week(w, i) == want_week)
+                        .then(|| w["usedPercent"].as_f64().filter(|_| live(&w["resetsAt"])))
+                        .flatten()
+                })
+            };
+            ("Codex", used(false), used(true))
         }
-        _ => {
+        "claude" => {
             let u = &usage["claude"];
             // The sidecar reports one entry per window (`windows.five_hour`, `windows.seven_day`),
             // each a fraction with its own reset; `fiveHour`/`sevenDay` is the older flat shape.
@@ -293,6 +307,19 @@ pub fn usage_reason(usage: &Value, engine: &str, five: Option<f64>, week: Option
             let five = window("five_hour", u["fiveHour"].as_f64().filter(|_| live(&u["resetsAt"])));
             ("Claude", five, window("seven_day", u["sevenDay"].as_f64()))
         }
+        "grok" => {
+            // One window for the billing period (`usage::grok_from_billing`); no 5-hour one.
+            let windows = &usage["grok"]["windows"];
+            let found = [("week", "weekly"), ("month", "monthly"), ("period", "billing-period")]
+                .into_iter()
+                .find_map(|(key, word)| windows[key]["utilization"].as_f64().map(|f| (word, f, &windows[key]["resetsAt"])));
+            let used = found.and_then(|(word, f, reset)| {
+                long = word;
+                live(reset).then_some(f * 100.0)
+            });
+            ("Grok", None, used)
+        }
+        _ => return None,
     };
     if let (Some(used), Some(max)) = (five_used, five) {
         if used > max {
@@ -301,7 +328,7 @@ pub fn usage_reason(usage: &Value, engine: &str, five: Option<f64>, week: Option
     }
     if let (Some(used), Some(max)) = (week_used, week) {
         if used > max {
-            return Some(format!("{name} weekly usage {used:.0}% is above {max:.0}%"));
+            return Some(format!("{name} {long} usage {used:.0}% is above {max:.0}%"));
         }
     }
     None
@@ -891,5 +918,58 @@ mod tests {
         assert_eq!(usage_reason(&usage, "claude", Some(10.0), None, 3000), None);
         assert_eq!(usage_reason(&usage, "claude", None, Some(80.0), 9500), None);
         assert!(usage_reason(&usage, "claude", None, Some(80.0), 3000).is_some(), "the week has not reset yet");
+    }
+
+    #[test]
+    fn grok_limits_read_its_credit_allowance() {
+        // The shape `usage::grok_from_billing` stores: one window for the billing period.
+        let usage = json!({
+            "claude": { "windows": { "five_hour": { "utilization": 0.9, "resetsAt": 9000 }, "seven_day": { "utilization": 0.9, "resetsAt": 9000 } } },
+            "grok": { "windows": { "week": { "utilization": 0.23, "resetsAt": 5000, "label": "Week" } } },
+        });
+        // Claude's figures are not Grok's.
+        assert_eq!(usage_reason(&usage, "grok", Some(50.0), Some(50.0), 1000), None);
+        assert_eq!(usage_reason(&usage, "grok", None, Some(20.0), 1000).as_deref(), Some("Grok weekly usage 23% is above 20%"));
+        // Grok has no 5-hour window: that limit cannot apply.
+        assert_eq!(usage_reason(&usage, "grok", Some(1.0), None, 1000), None);
+        // Past the period's end the figure is stale.
+        assert_eq!(usage_reason(&usage, "grok", None, Some(20.0), 6000), None);
+        // The end as yardd stores it, seconds with a fraction, goes stale too.
+        let fraction = json!({ "grok": { "windows": { "week": { "utilization": 0.23, "resetsAt": 5000.08, "label": "Week" } } } });
+        assert!(usage_reason(&fraction, "grok", None, Some(20.0), 5000).is_some());
+        assert_eq!(usage_reason(&fraction, "grok", None, Some(20.0), 5001), None);
+        // A monthly allowance counts against the same limit, named as what it is.
+        let monthly = json!({ "grok": { "windows": { "month": { "utilization": 0.6, "resetsAt": 5000, "label": "Month" } } } });
+        assert_eq!(usage_reason(&monthly, "grok", None, Some(50.0), 1000).as_deref(), Some("Grok monthly usage 60% is above 50%"));
+        let period = json!({ "grok": { "windows": { "period": { "utilization": 0.6, "resetsAt": null, "label": "Billing period" } } } });
+        assert_eq!(usage_reason(&period, "grok", None, Some(50.0), 1000).as_deref(), Some("Grok billing-period usage 60% is above 50%"));
+        assert_eq!(usage_reason(&json!({}), "grok", Some(1.0), Some(1.0), 1000), None, "unknown usage does not skip");
+    }
+
+    #[test]
+    fn engines_without_limits_never_skip_on_usage() {
+        // OpenCode and Gemini report no plan usage; another engine's is not theirs.
+        let usage = json!({
+            "claude": { "windows": { "five_hour": { "utilization": 0.9, "resetsAt": 9000 }, "seven_day": { "utilization": 0.9, "resetsAt": 9000 } } },
+            "codex": { "primary": { "usedPercent": 90, "resetsAt": 9000 }, "secondary": { "usedPercent": 90, "resetsAt": 9000 } },
+        });
+        for engine in ["opencode", "gemini"] {
+            assert_eq!(usage_reason(&usage, engine, Some(1.0), Some(1.0), 1000), None, "{engine}");
+        }
+    }
+
+    #[test]
+    fn a_codex_window_counts_by_its_length() {
+        // A Pro account's main limit is one 10080-minute week (codex 0.171), with no
+        // second window: that is the weekly figure, not the 5-hour one.
+        let usage = json!({ "codex": { "primary": { "usedPercent": 52, "windowDurationMins": 10080, "resetsAt": 9000 }, "secondary": null } });
+        assert_eq!(usage_reason(&usage, "codex", Some(10.0), None, 1000), None);
+        assert_eq!(usage_reason(&usage, "codex", None, Some(50.0), 1000).as_deref(), Some("Codex weekly usage 52% is above 50%"));
+        let both = json!({ "codex": {
+            "primary": { "usedPercent": 30, "windowDurationMins": 300, "resetsAt": 9000 },
+            "secondary": { "usedPercent": 70, "windowDurationMins": 10080, "resetsAt": 9000 },
+        } });
+        assert_eq!(usage_reason(&both, "codex", Some(20.0), None, 1000).as_deref(), Some("Codex 5-hour usage 30% is above 20%"));
+        assert_eq!(usage_reason(&both, "codex", Some(40.0), Some(60.0), 1000).as_deref(), Some("Codex weekly usage 70% is above 60%"));
     }
 }
