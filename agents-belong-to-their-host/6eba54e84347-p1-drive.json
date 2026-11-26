@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "4c18673bab8742ac0deff9f3c62da2c9896b9966",
+    "short": "4c18673",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T13:20:38.960Z"
+  },
+  "dir": ".verify/evidence/agents-own-host-base",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 3411,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agents-own-host-base/second-mac-agents-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/agents-own-host-base/second-mac-plain-session-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

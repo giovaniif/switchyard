@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "8c81036db3d80941bbc46fbb740a8f72dc6795ed",
+    "short": "8c81036",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T13:21:09.430Z"
+  },
+  "dir": ".verify/evidence/agents-own-host-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3334,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agents-own-host-head-mobile/second-mac-agents-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/agents-own-host-head-mobile/second-mac-conversation-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 1,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        },
+        {
+          "step": 6,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
