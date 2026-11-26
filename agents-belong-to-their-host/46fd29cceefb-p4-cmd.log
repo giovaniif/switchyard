@@ -1,0 +1,22 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents fields_this_build_does_not_know && CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd unknown_fields_round_trip
+# exit 0 after 16083 ms at 8c81036db3d80941bbc46fbb740a8f72dc6795ed
+
+
+running 1 test
+test fields_this_build_does_not_know_survive_saves_and_hand_overs ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.60s
+
+
+running 1 test
+test agents::tests::unknown_fields_round_trip_and_known_ones_never_land_with_them ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 106 filtered out; finished in 0.00s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 12.91s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 2.47s
+     Running unittests src/main.rs (target/debug/build/yardd/7902cb21fd3fec33/out/yardd-7902cb21fd3fec33)

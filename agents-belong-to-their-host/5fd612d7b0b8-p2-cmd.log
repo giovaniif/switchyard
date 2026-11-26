@@ -1,0 +1,30 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents fields_this_build_does_not_know
+# exit 101 after 12992 ms at 12341f0a066b1413a81c308322bf1ec427c4524d
+
+
+running 1 test
+test fields_this_build_does_not_know_survive_saves_and_hand_overs ... FAILED
+
+failures:
+
+---- fields_this_build_does_not_know_survive_saves_and_hand_overs stdout ----
+
+thread 'fields_this_build_does_not_know_survive_saves_and_hand_overs' (2004663) panicked at crates/yardd/tests/agents.rs:993:5:
+assertion `left == right` failed: {"about":"","account":"default","chat":null,"color":"blue","createdAt":1,"cwd":"","effort":"low","engine":"codex","face":"","handle":"Tooled","host":"local","id":"g-tooled","instructions":"","mcp":["TEST-github"],"memory":"TEST-edited","model":"fake-fast","name":"Tooled","permission":"ask","updatedAt":1795699873075}
+  left: (Array [String("TEST-github")], Null, String("TEST-edited"))
+ right: (Array [String("TEST-github")], Object {"x": Number(1)}, String("TEST-edited"))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-2004662-agents-extra-hub-1 for inspection
+kept /tmp/yardd-test-2004662-agents-extra-remote-0 for inspection
+
+
+failures:
+    fields_this_build_does_not_know_survive_saves_and_hand_overs
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.30s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 12.63s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+error: test failed, to rerun pass `-p yardd --test agents`

@@ -1,0 +1,218 @@
+{
+  "v": 1,
+  "claim": "A yardd that did not know a field of an agent record (one a newer yardd added) dropped it on its next save or hand-over.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224",
+  "base": "41aed8c556db8ef34c3847e45d5d3dfa95437de0",
+  "head": "8c81036db3d80941bbc46fbb740a8f72dc6795ed",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/origins.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/AgentsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackSetup.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/agents.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/agents.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/agents.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T13:31:00.171Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "12341f0a066b1413a81c308322bf1ec427c4524d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T13:31:00.233Z",
+      "text": "no-repro: a field of the saved record with no screen of its own; reproduced by the regression test run below at this commit"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "12341f0a066b1413a81c308322bf1ec427c4524d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "5fd612d7b0b83ba1570762693ee17933b09dfc9ab4a591a45b82f8123debfc4b"
+        }
+      ],
+      "addedAt": "2026-11-26T13:31:00.277Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents fields_this_build_does_not_know",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "8c81036db3d80941bbc46fbb740a8f72dc6795ed",
+      "dirty": false,
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "c0a2a8f7cca967ecbbe23e233d2c4abdb4cb8502ce71c09101de0496bbe5bce8"
+        },
+        {
+          "path": "p3-second-mac-agents-desktop.png",
+          "sha256": "8de71af4e3ac8bd9438d95dda4b43641e7709749677ad5b46435b4a17c94383e"
+        },
+        {
+          "path": "p3-second-mac-conversation-desktop.png",
+          "sha256": "63ec9e8de2b1516642a35c6f988df9fc3adcf7532b85f5d824820d94f2d679a5"
+        },
+        {
+          "path": "p3-second-mac-sidebar-desktop.png",
+          "sha256": "0232531e109372d3abce21eb82396be57e17f4532248525ec6e411872dad4518"
+        },
+        {
+          "path": "p3-2-drive.json",
+          "sha256": "3cefe2e6d7f484e31162df849e9983e8cc33b5924d237a5c03276f261319e087"
+        },
+        {
+          "path": "p3-second-mac-agents-mobile.png",
+          "sha256": "e5df95b65c5fc2a2fcca837dfe0e2cad234dc66bf9bb6a447a219309a9273ce4"
+        },
+        {
+          "path": "p3-second-mac-conversation-mobile.png",
+          "sha256": "d1f69db21674aad62fdeefd63e51aa78de8437bb44dabdc549b8d32268d1fb51"
+        }
+      ],
+      "addedAt": "2026-11-26T13:31:13.341Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "8c81036db3d80941bbc46fbb740a8f72dc6795ed",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "46fd29cceefb92dc400bb9c62ea8fcc6e9df31018ec8c78248728d35726bc76b"
+        }
+      ],
+      "addedAt": "2026-11-26T13:31:13.389Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents fields_this_build_does_not_know && CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd unknown_fields_round_trip",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "8c81036db3d80941bbc46fbb740a8f72dc6795ed",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "40a3e70f5ea243b1c8d62021b3d7918dca54f93c2b31c452ffb0fbbb2252bc51"
+        }
+      ],
+      "addedAt": "2026-11-26T13:31:29.516Z",
+      "cmd": "verify/yv design-check --base 41aed8c556db",
+      "exit": 0
+    }
+  ]
+}
