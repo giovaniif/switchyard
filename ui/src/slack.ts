@@ -64,10 +64,19 @@ export function setupSteps(view: SlackView | null | undefined, app: SlackAgentAp
   return http ? ["Token", "Approve"] : ["Token", "Approve", "Connect"];
 }
 
+/** The part of the Slack view that holds for a host: this yardd's own, or
+ *  a remote host's workspaces and addresses (an agent's own app is made and
+ *  runs on the agent's host). */
+export function hostSlack(view: SlackView | null | undefined, host: string): Pick<SlackView, "workspaces" | "canRedirect" | "publicUrl"> | null {
+  if (!view) return null;
+  if (host === "local") return view;
+  return view.hosts?.[host] ?? { workspaces: [], canRedirect: false, publicUrl: "" };
+}
+
 /** How many tokens a new agent app takes here: the configuration token,
  *  the bot token when Slack cannot send the browser back to Switchyard, and
  *  the app-level token when its events come over Socket Mode. */
-export function tokensNeeded(view: SlackView | null | undefined): number {
+export function tokensNeeded(view: Pick<SlackView, "canRedirect" | "publicUrl"> | null | undefined): number {
   return 1 + (view?.canRedirect ? 0 : 1) + (view?.publicUrl ? 0 : 1);
 }
 

@@ -1120,6 +1120,29 @@ async fn foreign_origins_are_refused() {
 }
 
 #[tokio::test]
+async fn a_window_cannot_ask_for_an_agents_hand_over() {
+    use futures_util::{SinkExt, StreamExt};
+    let sb = Sandbox::new("handover-origin");
+    let d = sb.start();
+    let mut req = d.url().into_client_request().unwrap();
+    req.headers_mut().insert("Origin", HeaderValue::from_str(&format!("http://127.0.0.1:{}", d.port)).unwrap());
+    let (mut ws, _) = tokio_tungstenite::connect_async(req).await.unwrap();
+    // A hand-over carries an agent's Slack tokens: a window never gets one.
+    for op in ["agent.export", "agent.adopt", "agent.release", "agent.deliver"] {
+        ws.send(tokio_tungstenite::tungstenite::Message::Text(json!({ "op": op, "id": "g1", "ref": op }).to_string())).await.unwrap();
+        let reply = loop {
+            let tokio_tungstenite::tungstenite::Message::Text(t) = ws.next().await.unwrap().unwrap() else { continue };
+            let v: Value = serde_json::from_str(&t).unwrap();
+            if v["ref"] == op {
+                break v;
+            }
+        };
+        assert_eq!(reply["op"], "error", "{reply}");
+        assert!(reply["message"].as_str().unwrap().contains("only another Switchyard"), "{reply}");
+    }
+}
+
+#[tokio::test]
 async fn allow_origin_takes_a_list() {
     let sb = Sandbox::new("origins");
     let d = sb.start_with(&[("YARD_ALLOW_ORIGIN", " https://yard.example.com/ , http://100.64.0.9:47717")]);

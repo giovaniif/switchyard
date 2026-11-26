@@ -841,9 +841,12 @@ impl App {
             "hosts": self.remotes.list(),
             "accounts": self.accounts.list(),
             "automations": self.automations.list(),
-            "agents": self.agents.list(),
+            "agents": crate::agents::shown(self),
+            // Agents live on the yardd they run on: a hub hands this one
+            // those it kept for it (`agents::migrate`).
+            "ownAgents": !crate::agents::hosted_only(),
             "mobile": self.mobile.status(),
-            "slack": self.slack.view(),
+            "slack": crate::slack::view(self),
             "slackInbox": crate::slack::inbox::snapshot(self),
         })
     }

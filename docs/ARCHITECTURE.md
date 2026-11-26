@@ -198,6 +198,7 @@ The local yardd is a hub. The UI keeps its one WebSocket to it.
 - An `ssh` host gets one `ssh -N -L` tunnel shared by all clients, on a free loopback port, restarted with backoff up to 30 s and killed when the host is removed or yardd stops. The destination is passed after `--` and may not start with `-`.
 - A `direct` host is a plain `ws://` URL, for local testing.
 - Remote sessions stay listed but offline while their host is down.
+- **Agents belong to the host they run on** (see Agents): the hub lists each host's own agents with its own, ids `<hostId>~<id>` like sessions, from what its own connection to the host hears (`remote::HostAgents`; the snapshot's `ownAgents` says the host can own agents, shown on the host as `ownAgents` in `hosts`). An agent op naming such an id (`agent.ask`, `agent.save`, `agent.delete`, `agent.request`, `agent.seen`, and `slack.app.*` / `slack.grant` with `agentId`), or `agent.save` / `agent.new` for a new agent with a remote `host`, goes to that host like a session op; `agent.saved`, `agent.deleted`, `created` and a Slack op's answer come back prefixed. A host's own `agents` and `slack` broadcasts are not piped: the hub merges them into its own (`agents::shown`, `slack::view`).
 - **The Hosts page** uses compact full-width host rows, this machine first, then remotes. Selecting a row opens one inspector below the list. Sessions shows running/queued activity with links to conversations; Engine logins manages each engine's accounts, login, providers and removal; System contains resource detail/history, queue policy and remote Update/Remove. Offline errors and install progress stay visible above the tabs. The host list stays the same size regardless of login text or activity. Add host opens its form above the list. `#/sessions` provides searchable active/all/archived conversations. Workspace opens on Terminal and also offers Subagents and Processes. Pull requests open on GitHub from the conversation header.
 - **The web version as a host:** its compose file publishes the container's 47717 on the server's loopback, so an `ssh` host for that server reaches the same yardd as the web page. The installer refuses to install over a yardd it did not set up.
 - **Install from the app:** when the ssh tunnel is up but no yardd answers behind it, the host reports `noDaemon` and its card offers "Install Switchyard". The hub runs `scripts/remote-install.sh` (compiled into yardd) over the host's ssh as `bash -s -- <port>`, streaming each line to every client as `host.install`. The script downloads `switchyard-linux-{x64,arm64}.tar.gz` from the `latest` release (built by `.github/workflows/linux-host.yml`), swaps it into `~/.local/share/switchyard`, runs yardd as a systemd user service with lingering (or detached where there is no user systemd), checks `/health`, and reports whether `claude` and `codex` are installed and logged in, and `opencode` and `grok` where installed (`@@engine` lines). The same card offers "Update Switchyard" on a connected SSH host. `YARD_SSH` and `YARD_RELEASE_URL` exist for the tests.
@@ -523,14 +524,17 @@ the composer and session view in `App.tsx`.
   picks another; Full access only when picked), `instructions` (who it is:
   Orca's SOUL.md), `memory` (what to keep in mind: MEMORY.md), `chat` (its
   conversation's session id, made with its first message; `<hostId>~<id>`
-  for one on a remote), `host` (`local`, or a remote host's id), `previous` (conversations it left on a host it moved
-  away from) and `seed` (what its next conversation starts from after a
-  move; never sent to the UI), `setup` (made with New agent, not yet named
-  by itself) and `request` (what it asked for and the owner has not
-  answered: `cwd`, `permission`, `slack`). The record always lives on the hub; a remote
-  yardd's own `agents` broadcast is dropped by the hub. The UI knows a
-  remote session as an agent's by id (`chat` or `previous`), not by the
-  remote's `agent` tag, which may name one of the remote's own; a local
+  as a hub lists a host's agent), `host` (`local` on the yardd that owns it;
+  a host's id in a hub's list, and in a record an older hub kept for a host),
+  `previous` (conversations it left on this host when it moved away from it
+  and back) and `seed` (what its next conversation starts from after a move;
+  never sent to the UI), `setup` (made with New agent, not yet named by
+  itself) and `request` (what it asked for and the owner has not answered:
+  `cwd`, `permission`, `slack`). Fields this build does not know (a field a newer yardd added, say) are kept as they are through every load, save and hand-over (`#[serde(flatten)] extra`); a save from a window cannot add one. **The record lives on the host the agent
+  runs on**, with its own Slack app (since 2026-11-25; owner: "Agents should
+  be shared by the env. I want to access them anywhere."): see Every host
+  owns its agents, below. The UI knows a remote session as an agent's by id
+  (`chat` or `previous`, prefixed), not by the remote's `agent` tag; a local
   session tagged with an agent the window does not know is an ordinary one.
 - **Names and handles.** The owner asked for "display names with spaces,
   dashes and whatever" (2026-11-24); a mention needs one word. So the name is
@@ -556,7 +560,12 @@ the composer and session view in `App.tsx`.
   last model used; an earlier one nobody has written to is answered instead
   of a second), `agent.request { id, part, allow }` (the owner's click on
   what it asked for). Every change broadcasts `agents`; the snapshot carries
-  the list.
+  the list (`agents::shown`: this yardd's own, then each host's). Between
+  yardds: `agent.deliver { agentId, text, origin }` (a hub's mention, agent
+  message or Slack message for a host's own agent), `agent.adopt { agent,
+  slack }`, `agent.export { id }` and `agent.release { id }` (hand-overs,
+  below), and the older hosted-copy ops `agent.hosted.*`, kept so an older
+  hub still runs its agents on a newer host.
 - **Set up by talking to it.** New agent opens the new agent's conversation,
   no form: its face large, "Hi! What should I do?", ideas to start from, Add
   it to Slack and Discard; nothing runs until the owner writes. While
@@ -608,42 +617,160 @@ the composer and session view in `App.tsx`.
   description keep the thread and reach the agent with its next message
   (`<notes_changed>`, `Meta.notes_changed`); effort and permission apply from
   the next turn. The user sees one continuous thread.
-- **On a remote host.** An agent whose `host` is a remote runs its main
-  Switchyard conversation and Slack places on that host, in its own folder there
-  (`<remote data dir>/agents/<id>/`, made with the first message) or a folder
-  picked from that host's dirs. The hub hands the host a copy of the record
-  (`agent.hosted.save`, with `hosted: true`; kept in the host's
-  `agents.json`, never listed, mentioned or edited there), so the host's own
-  `agents::prepare` adds the preamble, changed notes and a fresh context
-  exactly as for a local agent, also for a reply sent straight to the session
-  through the hub; the host checks the folder and the account (accounts are
-  per host) and refuses a change mid-turn. A message (`agent.ask` from the
-  page or a mention) goes from the hub to the host as `agent.hosted.ask`
-  over a daemon-owned connection (`remote::request`, so no window has to be
-  open), answered with `created`; the hub prefixes the id and keeps it as
-  `chat`. A host that lost its copy gets it again and the message is retried
-  once. Files attached on another host are refused with a message (they are
-  not on that host). **Offline:** sending, editing and deleting are refused
-  with a message that says so ("Far runs on box, which is offline. Your
-  message was not sent."); nothing is queued on the hub. The card's status
-  line says "<host> is offline", the header names the host with "· offline",
-  the start page and the conversation's dock say so, Send is disabled, and
-  the form cannot save. **A host from before remote agents** answers
-  `unknown op`: the hub says to use Update Switchyard on its card.
-- **Moving between hosts** (the host picker in Edit). A conversation cannot
-  cross hosts, so the agent leaves it where it is, readable, in `previous`,
-  and its next message starts a new one on the new host with the preamble and
-  the latest exchanges (`seed`, the same recap as a fresh context) and the
-  note "Started a fresh context: it moved to <host>." Refused while a turn
-  runs (a remote answers `agent.hosted.leave` with the recap only when idle,
-  then drops its copy). The new host must be online; an offline old host
-  keeps its conversation unread and the note says so. The agent's page shows
-  "Earlier messages with <name> are on <host>. Open them" above the thread;
-  that conversation opens read-only, its dock saying the agent moved, with a
-  link back. The form says what will happen before saving. Deleting an agent
-  deletes every conversation it had, on every host (`agent.hosted.delete`),
-  and is refused while one of those hosts is offline; yardd answers
-  `agent.deleted` and the form shows a refusal.
+- **Every host owns its agents.** An agent belongs to the yardd it runs on:
+  its record in that yardd's `agents.json`, its own Slack app in its
+  `slack.json`, its conversation there, and its tools acting there. So an
+  agent on the always-on server answers from Slack while every Mac sleeps,
+  and any Mac that adds the server as a host sees, messages, edits and
+  deletes it. A record's `host` is `local` on its owner.
+  - **Listed by every hub.** The hub's own connection to each host
+    (`remote::monitor`) keeps what the host says about its agents: its
+    snapshot's `agents` and `slack`, then each broadcast (entries that are
+    the host's own remotes', ids with `~`, are left out). The hub's `agents`
+    list is its own agents, then each host's in the order hosts were added,
+    with ids, `chat` and `previous` prefixed `<hostId>~` and `host` the host's
+    id, as for sessions (`agents::shown`, `remote::prefixed_agent`); its
+    Slack view adds the hosts' agents' apps under the same ids and, per host,
+    its workspaces and addresses (`slack::view`, `hosts`), so the Add to
+    Slack dialog makes an agent's app with its own host's configuration
+    token. A host that goes offline keeps its agents listed, offline, from
+    the last thing it said (in memory, like its last snapshot). The UI needs
+    nothing else: such an agent reads as an agent on a remote host always
+    did (card, header, sidebar row and Cmd-K name its host).
+  - **Routed to it.** Every op on such an agent goes to its host through the
+    asking window's own pipe, the prefix removed (`remote::route`,
+    `outgoing`); a new agent on a remote host is made there (`agent.save`
+    without an `id`, or `agent.new`, with `host`). While the host is
+    offline the hub answers instead, as before: "Far runs on box, which is
+    offline. Your message was not sent.", "box is offline, so Far can't be
+    changed now.", "Delete Far once box is back." (`agents::refusal`); files
+    uploaded to the hub are refused for an agent on another host ("These
+    files are on This Mac, not on box").
+  - **Mentions across hosts.** A mention the hub resolves (a leading
+    `@handle` in any window's box becomes `agent.ask` with the prefixed id;
+    another agent's `message_agent`; a message to the shared Slack bot)
+    reaches the agent where it lives: `agents::deliver` sends a prefixed id
+    to its host as `agent.deliver` with the message's origin and the hub's
+    id (`origin.hub`). The host keeps only the kinds and fields yardd makes
+    (`origins::from_hub`, `hub` included). When its turn ends, origins whose
+    `hub` is another yardd are answered on that hub (`agent.hub.owed` over
+    the hub's connection, kept up to 200 while it is away;
+    `origins::reply`), which runs its own reply hook with the host's agent
+    as `<hostId>~<id>`: another agent hears "Reply from @Far", Slack gets
+    the post. An agent on a host messages the agents on that host; one on
+    the server cannot reach an agent that lives on a Mac (the server cannot
+    dial the Mac). **Handles are unique per host.** When two hosts' agents
+    share one, the agent listed first (this yardd's, then hosts in order)
+    keeps it and the other is listed with its host's name after it
+    (`@Reviewer-box`), so a mention, `message_agent` and Slack always name
+    one agent; a name two agents share reaches the first in Slack. Names
+    are unique per host too (the form checks the agent's own host).
+  - **Older hosts.** A host whose snapshot lacks `ownAgents` cannot own
+    agents: making one there, or moving one there, is refused with "box
+    runs an older Switchyard … Use Update Switchyard on its card in Hosts".
+    Records an older hub kept for it stay on the hub and run there as
+    hidden copies (the hosted path, below); the agent's page says to update
+    the host (`keptNote`).
+- **Hand-overs.** Every hand-over of an agent from one yardd to another is
+  one named `transfer`, and every step names it: `agent.export` (the old
+  side marks the record `leaving` it), `agent.adopt` (the new side keeps it
+  as the record's `transfer`), `agent.release` (the old side lets go only of
+  the copy that is `leaving` by that transfer), `agent.settled` (the new
+  side's Slack app is its own) and `agent.abandon` (the old side stays after
+  all). So every step is safe to repeat, and a step left over from an
+  earlier hand-over does nothing to a copy that came back since. Steps
+  that do not happen at once are kept in `agents-pending.json` and tried
+  again every 15 s (`run_pending`, `keep_settling`).
+  - **Checked before written.** The new side checks everything before it
+    writes anything, so a refusal leaves no trace, not even a backup:
+    refused for now while the agent's conversation has a turn going (an
+    answer it owes goes back where it was asked), or while it is still
+    letting go of an earlier copy; refused for good for a hidden copy
+    another hub put there, or an agent of its own from another hand-over.
+    The same transfer sent again changes nothing. Each side backs up
+    `agents.json` and `slack.json` (`.bak-<time>`, the newest ten kept;
+    `slack.json`'s hold tokens) right before its first change and saves
+    with checked writes: a failed backup or save stops the step with an
+    error and leaves its lists as they were.
+  - **Release waits for a turn.** The old side refuses to let go while the
+    agent's conversation has a turn going (a Slack message to its app, which
+    still runs there until the release, say) and the release is tried again.
+  - **Slack while it settles.** The app is never deleted in Slack when its
+    agent is deleted on the side that is `leaving`, nor on the side that took
+    it until `agent.settled` (`handOver`): another yardd may run it. Both
+    sides may hold its Socket Mode connection between the adopt and the
+    release.
+- **Handed over to its host (migration).** A hub from before this kept every
+  agent's record itself, even one that ran on the server (a hidden copy
+  there, `hosted: true`). When a hub that holds records with `host` set to a
+  host sees that host connect and say `ownAgents`, it hands each over
+  (`agents::migrate`, one at a time). The transfer is named from the hub,
+  the agent and the record's last change (`kept_transfer`), so every try is
+  the same one. It sends `agent.adopt` with the whole record (fields this
+  build does not know included, `Agent::extra`; `chat` and `previous` the
+  host's own ids; others dropped), its own id (`hub`) and its Slack app
+  (`slack::export_app`: the whole `AgentApp` record, fields this build does
+  not know included; its workspace's configuration token; the Slack threads
+  its own app heard, so `slack_reply` still posts there; its icon). The host
+  turns its hidden copy into its own (`hosted` and `hub` cleared; its
+  conversation the copy's or the record's), keeping instructions, memory,
+  look, request and setup as sent; a folder or account it lacks falls back
+  to the agent's own folder and Default rather than refusing; a name or
+  handle another of its agents has gets a number. Its app connects from
+  there. Only whoever installed the app joins the host's allowlist, as at an
+  install there: the Mac's other allowed people are its shared bot's and
+  stay on the Mac. Only after the host answers `agent.adopted` does the hub
+  back up, point the shared bot's default agent, channel defaults and routed
+  threads at the new id (`slack::moved`), and let go (its record removed,
+  the app's connection closed, never deleting the app in Slack, the agent's
+  old conversations here ordinary sessions), then send `agent.settled`.
+  It tries on every connection, and every 15 s after a refusal for now,
+  doubling up to 5 minutes. A refusal for good is not tried again until the
+  next connection, and the agent's page says why (`handOverError`). While
+  the host owns the agent and the hub has yet to let go, a message to it
+  goes to the host's own agent of that hand-over. Nothing deletes a
+  conversation. An app on HTTP events keeps its events address, which
+  points at the hub: point it at the host (not built). A configuration
+  token copied to the host works once on whichever yardd rotates it first;
+  the other then asks for a new one in the dialog. The host rotates it at
+  its next start if its wanted manifest (its own redirect addresses)
+  differs from the kept one (`sync_app`), which also rewrites the app's
+  install redirects to the host's: harmless for an installed app, and the
+  Mac's copy of the token then needs a new one.
+- **Moving between hosts** (the host picker in Edit or in the box) is a
+  hand-over the hub orchestrates (`agents::transfer`): the old host gives
+  the agent's record, the latest exchanges of its conversation and its
+  Slack app (`agent.export`, refused while a turn runs); the new host takes
+  them with the save's other changes and the recap as `seed`, so its next
+  conversation starts with the preamble, the latest exchanges and the note
+  "Started a fresh context: it moved to <host>." (`agent.adopt`); then the
+  old host lets go (`agent.release`: its conversations there ordinary
+  sessions, readable) and the new host hears its app is its own. The agent
+  keeps its id; the hub names it `<hostId>~<id>` on a remote, so its page
+  follows it (`relocated`). Refused while either host is offline or cannot
+  own agents. A record leaving this yardd is first saved here pointing at
+  its new host, so a lost answer is finished like a migration, by the same
+  transfer; one from another host whose adopt failed gets `agent.abandon`.
+  A record an older hub kept is moved the old way to this yardd or to an
+  older host (`move_host`), and handed over like this to a host that owns
+  agents. The form says what will happen before saving.
+- **Only yardds hand over.** `agent.export`, `agent.adopt`,
+  `agent.release`, `agent.settled`, `agent.abandon`, `agent.deliver` and
+  the hosted-copy ops (`agent.hosted.*`) carry Slack tokens or speak for a
+  hub: a window (a client that sends `Origin`) is refused them before
+  routing, so no id in the op sends one on to a host either
+  (`agents::window_may_send`).
+- **The hosted path (older hubs).** A hub from before this hands a host a
+  copy of the record (`agent.hosted.save`, with `hosted: true`; kept in the
+  host's `agents.json`, never listed, mentioned or edited there), so the
+  host's own `agents::prepare` adds the preamble, changed notes and a fresh
+  context exactly as for a local agent; a message goes to the host as
+  `agent.hosted.ask` over a daemon-owned connection (`remote::request`),
+  answered with `created`; moving away asks `agent.hosted.leave` for the
+  recap; deleting sends `agent.hosted.delete`. A newer host keeps all of
+  these, so an older hub's agents keep running on it, and a newer hub uses
+  them for records it still keeps for an older host. Offline, these say so
+  as above.
 - **The preamble:** the first turn hands the engine "You are <name>, an agent
   the user set up in Switchyard…", what it is for, its instructions and
   memory, then "The user's message:" and the text (`agents::prepare`, called
@@ -873,10 +1000,17 @@ the composer and session view in `App.tsx`.
     character cap, refused past it) and broadcast `agents`. The engine knows
     already, so it is not a notes change. An open form follows the new memory
     unless the user has typed in it, and Save leaves an untouched memory out.
-  - **On a remote host.** A remote agent's engine runs on its host, but
-    everything its tools act on is on the hub: the record and its memory, the
-    other agents, the owner's windows. So the host's engine gets the same
-    stdio server and talks to the host's own yardd, over the host's loopback,
+  - **On a remote host.** An agent a host owns has its tools on that host,
+    like any agent there: its memory lands in its record there (the hubs
+    hear it in the next `agents`), `notify_owner` reaches every window of
+    every hub connected to that host (the `notify` broadcast is piped, its
+    conversation id prefixed), and `message_agent` and `list_agents` name
+    that host's agents. A hub's `list_agents` names the hosts' agents too,
+    so an agent on a Mac messages one on the server (see Mentions across
+    hosts). **Hosted copies** (an older hub's agents, or records a newer hub
+    still keeps for an older host) keep the older way: everything their
+    tools act on is on the hub, so the host's engine gets the same stdio
+    server and talks to the host's own yardd, over the host's loopback,
     with a key the host made for that one conversation; the host's
     `/agent-tools` sees that the conversation belongs to a hosted copy and
     passes the call to the hub instead of running it. The way back is the
@@ -890,30 +1024,17 @@ the composer and session view in `App.tsx`.
     on the same connection with `agent.hosted.answer { ref, result,
     needsYou?, memory? }` (an answer from any other connection is ignored).
     The hub runs it only for an agent whose `host` is the remote asking
-    (`agent_tools::from_host`), as the conversation `<host>~<id>`: the
-    notification names that id, the rate caps and hop count are the hub's,
-    `message_agent` lists the hub's agents, and memory lands in the hub's
-    record. The host then sets `needsYou` on its session (the hub's
-    `agent.seen` clears it there with `agent.hosted.seen`) and the copy's
-    memory, without a notes change. Messages and answers between agents, and
-    Slack's, go through the hub too: the hub's `agents::deliver` sends one to a remote
-    agent as `agent.hosted.ask` with its `origin` (the host keeps only the
-    kinds and fields yardd makes, `origins::from_hub`), and a hosted agent's
-    turn that owes answers (to agents or Slack, the approval note included)
-    passes them to the hub as `agent.hub.owed`, which runs the reply hook
-    there, so Slack reaches a remote agent like a local one; answers owed while the hub is away wait in
-    memory (up to 200) until it says hello again. Security: the engine still
+    (`agent_tools::from_host`), as the conversation `<host>~<id>`. Answers
+    such a copy owes go to the hub as `agent.hub.owed` (the same op a host's
+    own agent uses for messages a hub delivered). Security: the engine still
     reaches only loopback on its own host with a per-conversation key; no
     port is opened (the hub dials the host, as before); and the hub acts
-    only for the agents it placed on that host, which that host already
-    runs. **Version skew:** a hub from before this does not name itself, so
-    its copies have no `hub` and get no tools (the preamble does not mention
-    them); an older host answers the hello with `unknown op`, which the hub
-    ignores, and it cannot run remote agents at all (`agent.hosted.save`
-    is refused with "Use Update Switchyard"). While the hub is not connected,
-    a call waits up to 5 s for it, then fails with a line the model reads
-    ("…is not connected to this host right now"); `tools/list` then names
-    no agents.
+    only for agents on that host. **Version skew:** a hub from before
+    hosted copies does not name itself, so its copies have no `hub` and get
+    no tools; an older host answers the hello with `unknown op`, which the
+    hub ignores. While the hub is not connected, a call waits up to 5 s for
+    it, then fails with a line the model reads ("…is not connected to this
+    host right now"); `tools/list` then names no agents.
 - **Slack (built, step 3; see Slack below).** A Slack thread is not a session
   of its own: a message from Slack goes into the agent's one conversation
   with origin `{ kind: "slack", … }` (the team, channel, thread and message it
@@ -936,21 +1057,42 @@ the composer and session view in `App.tsx`.
 - Tests (`tests/agents.rs`, scripted engines): the registry and its refusals,
   the preamble on the first turn only, one conversation per agent, deleting
   an agent with its conversation, a fresh context after a full context, a
-  model change, an account change and a lost thread, changed notes reaching the thread,
-  an agent on a remote (the record on the hub and a hosted copy there, the folder and account
-  checked there, the preamble on the remote's first turn, replies and mentions in the same
-  conversation, notes and a model change there, files from the hub refused, sending, editing and
-  deleting refused offline), moving to a remote and back (the recap carried, refused mid-turn,
-  the old conversations kept, then deleted with the agent), the queue, and
-  Scout retired with its conversation. `tests/naming.rs` covers the private
-  restricted thread with Codex's null config fields. The `agents`
-  feature map drives the page, card alignment, living faces, New agent's
-  conversation and setup, requests, the aligned colours, the form (with the
-  host and account pickers and the note about a move), mentions (also to a
-  remote agent), the one conversation, a remote agent's card, conversation
-  and offline state, Add to Slack, and the Agents row's mark at both
-  viewports. Not proven: a real model's answer to a preamble, or whether it
-  calls update_setup well from the first-run rules.
+  model change, an account change and a lost thread, changed notes reaching
+  the thread, an agent that belongs to a remote (made there, the folder and
+  account checked there, the record only there, listed by the hub with the
+  prefix, the preamble on the remote's first turn, replies and mentions in
+  the same conversation, notes and a model change there, files from the hub
+  refused, listed and refused offline), a second hub adding the same host
+  and asking, editing and deleting its agent (the first hub hearing each
+  change), moving to a remote and back (the record handed over, the recap
+  carried, refused mid-turn and while offline, the old conversation an
+  ordinary session), the hand-over of a record an older hub kept (notes,
+  look, request, conversation and the whole Slack app record with a field
+  this build does not know; backups; the shared bot's default agent
+  following; the same conversation going on; twice is safe), a host too old
+  to own agents keeping the copy (and refusing new agents and moves there),
+  backups taken before the first change on either side and kept to ten, a
+  hand-over that waits for a turn running on its host with no backup
+  meanwhile, a hidden copy another Mac runs left alone and its page saying
+  why, an agent sent again (the same transfer changing nothing, another
+  refused), a hand-over that cannot be saved answering an error, an owed
+  release from another hand-over leaving the agent alone, an agent moved
+  back before its old host let go ending up in one place, a release
+  refused mid-turn, a message to a kept record reaching its host's own, a
+  window refused the hand-over ops even through the hub, fields this build
+  does not know kept through saves and moves, and an app being handed over
+  left in Slack on delete until it settles or the move is abandoned
+  (`tests/slack.rs`),
+  the queue, and Scout retired with its conversation. `tests/naming.rs`
+  covers the private restricted thread with Codex's null config fields. The
+  `agents` feature map drives the page, card alignment, living faces, New
+  agent's conversation and setup, requests, the aligned colours, the form
+  (with the host and account pickers and the note about a move), mentions
+  (also to an agent on a remote host), the one conversation, a remote
+  agent's card, conversation and offline state, a second hub listing a
+  host's agents at both viewports, Add to Slack, and the Agents row's mark
+  at both viewports. Not proven: a real model's answer to a preamble, or
+  whether it calls update_setup well from the first-run rules.
 - Tests for the tools (`tests/agent_tools.rs`): the scripted engines call the
   real `yardd agent-tools` over stdio for a `[[tool NAME {json}]]` marker
   (`tests/fake-codex/agent-tools.mjs`, on Codex, the Claude sidecar and ACP):
@@ -960,12 +1102,14 @@ the composer and session view in `App.tsx`.
   unasked, a new agent setting itself up with update_setup (direct fields,
   the model after the turn, requests and the owner's answers, a refused
   name), plain sessions without them, the endpoint's key
-  check, a remote agent's tools acting on the hub (two daemons: `remember`
-  in the hub's record and the host's copy, `message_agent` both ways with
-  the answers back, `notify_owner` on the hub's windows and its mark
-  cleared by `agent.seen`), and a hosted copy without a hub (no tools) or
-  with its hub away (the call says so), then answered only on the hub's
-  own connection, and `slack_reply` (in `tests/slack.rs`). The `agents` map drives the badges, the Needs-you card and row, and
+  check, a host's own agent's tools acting on its host (two daemons:
+  `remember` in its record there and the hub's list, `message_agent` to an
+  agent on the same host, `notify_owner` on the hub's windows and its mark
+  cleared by `agent.seen`) and an agent on the hub messaging it with the
+  answer back, a kept record's tools acting on the hub while its host is
+  older (`remember` in the hub's record and the copy, `message_agent` both
+  ways), and a hosted copy without a hub (no tools) or with its hub away
+  (the call says so), then answered only on the hub's own connection, and `slack_reply` (in `tests/slack.rs`). The `agents` map drives the badges, the Needs-you card and row, and
   memory in the form at both viewports, and a remote agent's tools. Checked against the real CLIs
   without a turn: Codex 0.171 takes the `mcp_servers.switchyard` override,
   starts the server and runs `mcpServer/tool/call` through it; the real
@@ -975,8 +1119,10 @@ the composer and session view in `App.tsx`.
   seen live), and how OpenCode, Grok and Gemini name the calls (matched by
   `switchyard` plus the tool name).
 - Not built yet: one thread across a move between hosts (the earlier
-  conversation is linked instead), files attached on one host sent to an
-  agent on another.
+  conversation stays on the old host as an ordinary session), files
+  attached on one host sent to an agent on another, an agent on the server
+  messaging an agent that lives on a Mac, and keeping a host's agents listed
+  across a hub restart while the host is offline.
 
 ## Slack
 
@@ -1188,11 +1334,18 @@ its engine framing and one arm in `origins::reply`.
   (Token, Approve, Connect) until it is ready, then "As @gio in Acme" (or the
   error with Retry); the requests and the people allowed; a footer with his
   tokens' kinds and Disconnect. Ops: `slack.me.*`, `slack.allow`,
-  `slack.disallow`, `slack.dismiss`; each broadcasts `slack`. Slack lives on
-  the hub: a remote's `slack` broadcast is dropped.
+  `slack.disallow`, `slack.dismiss`; each broadcasts `slack`. His own Slack
+  lives on the hub: a remote's own (`me`, its inbox) is not shown, only its
+  agents' apps (`slack::view`, below).
 - **An agent's own app** (after Orca's bots: "I can't tag it" was the owner's
   complaint about the shared bot). Each agent can have a Slack app of its
-  own, named after it, so people @mention it by name. Its dialog (`SlackSetup.tsx`) opens from Add to Slack in the
+  own, named after it, so people @mention it by name. It lives **on the
+  agent's host**: kept in that yardd's `slack.json`, its Socket Mode
+  connection run from there, so a server agent answers in Slack while every
+  Mac sleeps. Set up from any window: the steps route to the agent's host
+  like its other ops, with that host's workspaces. A move or a hand-over
+  carries the whole record, its watched channels and mention list included
+  (see Agents). Its dialog (`SlackSetup.tsx`) opens from Add to Slack in the
   agent's header, from its start page, and from its request card.
   - **Token.** The owner pastes a Slack App Configuration *Refresh* Token
     (`xoxe-`), once per workspace (`slack.grant`; with `agentId` it also
@@ -1400,7 +1553,9 @@ its engine framing and one arm in `origins::reply`.
   thread, `remember` and `update_setup` refused, and `message_agent` to a
   Claude agent with full access making her turn Plan, `turn permission=plan`
   on the sidecar, her answer back read-only, her next owner turn full
-  again). The fake knows
+  again), and an agent's own app moving with it to another host, watched
+  channels and all, and answering from there with the hub stopped. The fake
+  knows
   `tooling.tokens.rotate`, `apps.manifest.create`/`update`/`delete`,
   `apps.icon.set` (multipart), `oauth.v2.access`, a second bot @agent, signed
   HTTP events (`/_fake/event`, `/_fake/challenge`), a lapsed token
@@ -1425,7 +1580,12 @@ its engine framing and one arm in `origins::reply`.
   shapes (only Slack's documented attachment and block fields are read),
   whether `bot_profile.app_id` is set on our own posts, and a real Claude
   turn in Plan (how Claude Code treats Bash and MCP tools there; Codex MCP
-  tools of other servers are not under its sandbox) are not checked. Slack connects from the hub only (Slack on a remote host is not
-  offered). Remote delivery and approval are covered using a second daemon. A note about
-  a Slack post that failed lands in a local conversation only: for a remote
-  agent's it is logged on the hub instead.
+  tools of other servers are not under its sandbox) are not checked. The
+  owner's own Slack connects from the hub only; an agent's own app runs on
+  the agent's host. Remote delivery and approval are covered using a
+  second daemon. A note about a Slack post that failed lands in a local
+  conversation only: for a remote agent's it is logged instead. Not tried
+  against real Slack: an app's Socket Mode connection moving from one yardd
+  to another (the fake takes it), and whether a configuration token copied
+  to the host and rotated by one yardd leaves the other's needing a new one
+  (by Slack's docs it does).

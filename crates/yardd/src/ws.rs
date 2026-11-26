@@ -28,9 +28,11 @@ pub async fn handler(ws: WebSocketUpgrade, headers: HeaderMap, State(app): State
     }
     let agent = headers.get("user-agent").and_then(|v| v.to_str().ok()).unwrap_or("none");
     eprintln!("yardd: client connected, origin {origin}, agent {agent}");
+    // Browsers always send Origin; another yardd sends none.
+    let browser = headers.contains_key("origin");
     ws.max_message_size(attachments::WS_MAX_MESSAGE)
         .max_frame_size(attachments::WS_MAX_MESSAGE)
-        .on_upgrade(move |socket| client(socket, app))
+        .on_upgrade(move |socket| client(socket, app, browser))
 }
 
 /// This socket can run commands, so a web page in the user's browser must not
@@ -66,7 +68,7 @@ fn parse_origins(list: &str) -> Vec<String> {
         .collect()
 }
 
-async fn client(socket: WebSocket, app: Arc<App>) {
+async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
     let (mut sink, mut stream) = socket.split();
     let mut rx = app.tx.subscribe();
     // Replies meant for this client only.
@@ -123,14 +125,31 @@ async fn client(socket: WebSocket, app: Arc<App>) {
             incoming = stream.next() => match incoming {
                 Some(Ok(Message::Text(text))) => {
                     let msg: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
-                    // An op for a session on another host goes to that host.
-                    if let Some(host) = remote::route(&msg) {
-                        let sent = match pipes.get(&host) {
-                            Some(pipe) => pipe.send(msg.clone()),
-                            None => Err(anyhow::anyhow!("no such host")),
+                    // A hand-over carries an agent's Slack tokens, and the
+                    // hosted-copy ops speak for a hub: only another yardd (no
+                    // Origin) sends them. Checked before routing, so no id in
+                    // the op can send one on to a host either.
+                    if browser && !msg["op"].as_str().is_none_or(crate::agents::window_may_send) {
+                        let _ = direct.send(error_reply(&msg, &anyhow::anyhow!("only another Switchyard may ask for that")));
+                        continue;
+                    }
+                    // An op for a session on another host goes to that host, as
+                    // does one for an agent that host owns, unless it moves the
+                    // agent away (the hub hands it over: `agents::transfer`).
+                    if let Some(host) = remote::route(&msg).filter(|h| !crate::agents::moves_away(&msg, h)) {
+                        let sent = match crate::agents::refusal(&app, &msg, &host) {
+                            Some(why) => Err(anyhow::anyhow!(why)),
+                            None => match pipes.get(&host) {
+                                Some(pipe) => pipe.send(msg.clone()),
+                                None => Err(anyhow::anyhow!("no such host")),
+                            },
                         };
+                        // A window opening an agent's conversation while its host
+                        // is away has nothing to clear yet: not an error to show.
                         if let Err(e) = sent {
-                            let _ = direct.send(error_reply(&msg, &e));
+                            if msg["op"] != "agent.seen" {
+                                let _ = direct.send(error_reply(&msg, &e));
+                            }
                         }
                         continue;
                     }

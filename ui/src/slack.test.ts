@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AgentEvent, SlackAgentApp, SlackMe, SlackOrigin, SlackView } from "./protocol";
 import { applyEvent } from "./protocol";
-import { allowedSummary, avatarIconSvg, iconKey, mySteps, setupSteps, slackStatus, tokensNeeded } from "./slack";
+import { allowedSummary, avatarIconSvg, hostSlack, iconKey, mySteps, setupSteps, slackStatus, tokensNeeded } from "./slack";
 import { originLabel } from "./agents";
 import { initial, reduce } from "./store";
 
@@ -98,5 +98,17 @@ describe("an agent's own Slack app", () => {
     expect(iconKey(a)).toBe(iconKey(a));
     expect(iconKey(a)).not.toBe(iconKey(b));
     expect(iconKey(a)).toMatch(/^v1-[0-9a-f]{16}$/);
+  });
+});
+
+describe("an agent's own app on its host", () => {
+  test("is made with that host's workspaces and addresses", () => {
+    const view = { configured: false, workspaces: [{ teamId: "T1", teamName: "Mac's" }], canRedirect: true, publicUrl: "", hosts: { h1: { workspaces: [{ teamId: "T2", teamName: "Server's" }], canRedirect: false, publicUrl: "" } } } as unknown as SlackView;
+    expect(hostSlack(view, "local")?.workspaces?.[0].teamId).toBe("T1");
+    expect(hostSlack(view, "h1")?.workspaces?.[0].teamId).toBe("T2");
+    expect(tokensNeeded(hostSlack(view, "h1"))).toBe(3);
+    // A host that has said nothing yet offers no workspace.
+    expect(hostSlack(view, "h2")?.workspaces).toEqual([]);
+    expect(hostSlack(null, "h1")).toBeNull();
   });
 });

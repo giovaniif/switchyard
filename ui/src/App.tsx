@@ -616,7 +616,9 @@ function AgentRow({ state, actions, agent, active, seenAt }: { state: State; act
   // What it waits on from the owner reads as an approval does on a session row.
   const asks = !!(agent.request?.cwd || agent.request?.permission || agent.request?.slack) || !!chat?.needsYou;
   const mark: RowState = !chat ? (online ? "idle" : "offline") : asks && online ? "approval" : rowState(chat, seenAt(chat.id), online);
-  const detail = [agent.about, asks ? "Asks you for something" : status.text].filter(Boolean).join(" · ");
+  // Which host it lives on, as a remote session's row says it.
+  const where = host === "local" ? "" : `On ${hostName(state, host)}`;
+  const detail = [agent.about, where, asks ? "Asks you for something" : status.text].filter(Boolean).join(" · ");
   return (
     <div className="session-item agent-item">
       <button
@@ -633,6 +635,7 @@ function AgentRow({ state, actions, agent, active, seenAt }: { state: State; act
           <span className="sr-only">
             {" · "}
             <span className={`row-status row-status-${mark}`}>{asks ? "Asks you for something" : ROW_LABEL[mark]}</span>
+            {where && ` · ${where}`}
           </span>
         </span>
       </button>

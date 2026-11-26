@@ -31,7 +31,7 @@ const PAGES: NavigationEntry[] = [
 /** Search the whole session catalog, including archived conversations and runs.
  *  The empty query lists recent sessions the sidebar shows: an hourly
  *  automation's archived runs would otherwise be all of them. */
-export function navigationEntries(sessions: SessionMeta[], context: { localName: string; hosts: Pick<HostEntry, "id" | "name">[]; agents?: Pick<Agent, "id" | "name" | "handle" | "about" | "chat" | "previous">[] }, query: string): NavigationEntry[] {
+export function navigationEntries(sessions: SessionMeta[], context: { localName: string; hosts: Pick<HostEntry, "id" | "name">[]; agents?: Pick<Agent, "id" | "name" | "handle" | "about" | "chat" | "previous" | "host">[] }, query: string): NavigationEntry[] {
   const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
   const matches = (e: NavigationEntry) => words.every((word) => `${e.title} ${e.detail} ${e.search ?? ""}`.toLowerCase().includes(word));
   // Agents' conversations are reached through their agent, below.
@@ -51,7 +51,11 @@ export function navigationEntries(sessions: SessionMeta[], context: { localName:
     };
   }).filter(matches).slice(0, words.length ? 40 : 8);
   const agents = (context.agents ?? [])
-    .map((a): NavigationEntry => ({ id: `agent-${a.id}`, title: a.name, detail: a.about || "Agent", search: `@${handleOf(a)} agent`, group: "Agents", route: { page: "agent", id: a.id } }))
+    .map((a): NavigationEntry => {
+      // A host's agent names its host, as a remote session's row does.
+      const host = a.host && a.host !== "local" ? (context.hosts.find((h) => h.id === a.host)?.name ?? a.host) : "";
+      return { id: `agent-${a.id}`, title: a.name, detail: [a.about || "Agent", host].filter(Boolean).join(" · "), search: `@${handleOf(a)} agent ${host}`, group: "Agents", route: { page: "agent", id: a.id } };
+    })
     .filter(matches);
   const pages = PAGES.filter(matches);
   return words.length ? [...pages, ...agents, ...rows] : [...rows, ...agents, ...pages];

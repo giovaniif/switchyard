@@ -182,6 +182,16 @@ struct AgentApp {
     /// Channels whose top-level messages and alerts reach the agent as data,
     /// chosen by the owner (the agent has no tool to change this).
     watched: Vec<Watch>,
+    /// Being handed over to another yardd, which may run it too until the
+    /// hand-over settles (`settled`): deleting this copy then leaves the app
+    /// in Slack.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    hand_over: bool,
+    /// Fields this build does not know (from a newer yardd, say), kept as
+    /// they are so the record travels whole when its agent moves to another
+    /// host (`export_app`, `adopt_app`).
+    #[serde(flatten)]
+    extra: serde_json::Map<String, Value>,
 }
 
 /// A channel an agent's app watches.
@@ -539,6 +549,19 @@ impl Slack {
         }
     }
 
+    /// `change`, saying whether it reached the disk; a failed save leaves
+    /// the settings as they were. For hand-overs, which answer only once saved.
+    fn try_change(&self, f: impl FnOnce(&mut Config)) -> Result<()> {
+        let mut cfg = self.cfg.lock().unwrap();
+        let before = cfg.clone();
+        f(&mut cfg);
+        if let Err(e) = save(&self.file, &cfg) {
+            *cfg = before;
+            bail!("could not save {}: {e}", self.file.display());
+        }
+        Ok(())
+    }
+
     fn set_status(&self, app: &App, f: impl FnOnce(&mut Status)) {
         {
             let mut status = self.status.lock().unwrap();
@@ -706,8 +729,178 @@ fn save(file: &std::path::Path, cfg: &Config) -> std::io::Result<()> {
     std::fs::rename(&tmp, file)
 }
 
-fn broadcast(app: &App) {
-    app.broadcast(json!({ "op": "slack", "slack": app.slack.view() }));
+pub fn broadcast(app: &App) {
+    app.broadcast(json!({ "op": "slack", "slack": view(app) }));
+}
+
+/// What the windows see: this yardd's Slack, plus each host's agents' own
+/// apps (keyed `<hostId>~<agent>`, as their agents are) and what a host's
+/// agent needs to get one there (`hosts`: its workspaces and addresses).
+/// The shared bot and its allowlist stay this yardd's.
+pub fn view(app: &App) -> Value {
+    let mut v = app.slack.view();
+    let mut hosts = serde_json::Map::new();
+    for h in app.remotes.host_agents() {
+        let theirs = prefixed_view(&h.id, &h.agents.slack);
+        if let (Some(mine), Some(apps)) = (v["agentApps"].as_object_mut(), theirs["agentApps"].as_object()) {
+            for (k, a) in apps {
+                mine.insert(k.clone(), a.clone());
+            }
+        }
+        if theirs.is_object() {
+            hosts.insert(h.id.clone(), json!({ "workspaces": theirs["workspaces"], "canRedirect": theirs["canRedirect"], "publicUrl": theirs["publicUrl"] }));
+        }
+    }
+    v["hosts"] = Value::Object(hosts);
+    v
+}
+
+/// A host's Slack view as the hub shows it: its agents' apps under their
+/// prefixed ids. Apps of the host's own hosts are not its own to show.
+pub fn prefixed_view(host: &str, v: &Value) -> Value {
+    let mut v = v.clone();
+    if let Some(apps) = v["agentApps"].as_object() {
+        let apps: serde_json::Map<String, Value> =
+            apps.iter().filter(|(k, _)| !k.contains(crate::remote::SEP)).map(|(k, a)| (format!("{host}{}{k}", crate::remote::SEP), a.clone())).collect();
+        v["agentApps"] = Value::Object(apps);
+    }
+    if let Some(o) = v.as_object_mut() {
+        o.remove("hosts");
+    }
+    v
+}
+
+/// `slack.json` beside it, before a hand-over changes it (`agents::backup_all`).
+pub fn backup(app: &App) -> Result<()> {
+    crate::agents::backup_file(&app.slack.file)
+}
+
+/// An agent leaving this host takes its Slack app: the whole record (every
+/// field, those this build does not know too), its workspace's configuration
+/// token, the Slack threads its own app heard and its icon. Null without
+/// one. Nothing changes here: while the agent is leaving (`agents::leaving`)
+/// deleting it leaves the app in Slack. The shared bot's allowlist stays.
+pub fn export_app(app: &App, agent: &str) -> Value {
+    let slack = &app.slack;
+    let Some(rec) = slack.app_of(agent) else { return Value::Null };
+    let (workspace, threads) = {
+        let cfg = slack.cfg.lock().unwrap();
+        // The threads its own app heard, so `slack_reply` can still post there.
+        let threads: Vec<Link> = cfg.threads.iter().filter(|l| l.agent == agent && l.app).cloned().collect();
+        (cfg.workspaces.iter().find(|w| w.team_id == rec.team_id).cloned(), threads)
+    };
+    use base64::Engine;
+    let icon = std::fs::read(icon_path(slack, agent)).ok().map(|png| base64::engine::general_purpose::STANDARD.encode(png));
+    json!({ "app": rec, "workspace": workspace, "threads": threads, "icon": icon })
+}
+
+/// An agent coming to this host brings its Slack app (`export_app`): kept
+/// here as it was, still marked as handed over until the host it left lets
+/// go (`settled`); its workspace's token kept unless this host has one for
+/// that workspace already; its threads added; and its connection started
+/// from here. Only whoever installed the app joins this yardd's allowlist,
+/// as at an install here: the other host's allowlist is that host's. The
+/// caller backs up first; a failed save answers an error.
+pub fn adopt_app(app: &Arc<App>, agent: &str, v: &Value) -> Result<()> {
+    if v["app"].is_null() {
+        return Ok(());
+    }
+    let slack = &app.slack;
+    let mut rec: AgentApp = serde_json::from_value(v["app"].clone()).map_err(|e| anyhow!("its Slack app could not be read: {e}"))?;
+    rec.agent = agent.to_string();
+    rec.hand_over = true;
+    let workspace: Option<Workspace> = serde_json::from_value(v["workspace"].clone()).ok();
+    let threads: Vec<Link> = serde_json::from_value(v["threads"].clone()).unwrap_or_default();
+    let installer = (!rec.owner.is_empty() && user_id_ok(&rec.owner)).then(|| Person { id: rec.owner.clone(), name: if rec.owner_name.is_empty() { rec.owner.clone() } else { rec.owner_name.clone() } });
+    let ready = rec.step() == "ready";
+    slack.try_change(|c| {
+        if let Some(w) = workspace.filter(|w| !w.team_id.is_empty() && !c.workspaces.iter().any(|x| x.team_id == w.team_id)) {
+            c.workspaces.push(w);
+        }
+        if let Some(p) = installer {
+            if !c.allowed.iter().any(|x| x.id == p.id) {
+                c.allowed.push(p);
+            }
+        }
+        for mut l in threads {
+            l.agent = agent.to_string();
+            if !c.threads.iter().any(|x| x.key == l.key) {
+                c.threads.push(l);
+            }
+        }
+        if c.threads.len() > MAX_THREADS {
+            let extra = c.threads.len() - MAX_THREADS;
+            c.threads.drain(..extra);
+        }
+        c.apps.retain(|a| a.agent != rec.agent);
+        c.apps.push(rec);
+    })?;
+    if let Some(png) = v["icon"].as_str().and_then(|b| {
+        use base64::Engine;
+        base64::engine::general_purpose::STANDARD.decode(b).ok()
+    }) {
+        let path = icon_path(slack, agent);
+        if let Some(dir) = path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        if let Err(e) = std::fs::write(&path, png) {
+            eprintln!("yardd: cannot keep the Slack icon of {agent}: {e}");
+        }
+    }
+    if ready {
+        start_app(app, agent);
+    }
+    broadcast(app);
+    Ok(())
+}
+
+/// The host the agent left has let go: its app is this yardd's alone, and
+/// deleting the agent here deletes it in Slack again.
+pub fn settled(app: &App, agent: &str) -> Result<()> {
+    if app.slack.app_of(agent).is_some_and(|a| a.hand_over) {
+        app.slack.try_change(|c| {
+            if let Some(a) = c.apps.iter_mut().find(|a| a.agent == agent) {
+                a.hand_over = false;
+            }
+        })?;
+        broadcast(app);
+    }
+    Ok(())
+}
+
+/// The agent now lives on another host, which runs its Slack app: its
+/// connection here closes and the record goes, with the threads its own app
+/// heard. The app itself stays in Slack, untouched. The caller backs up first.
+pub fn release_app(app: &App, agent: &str) -> Result<()> {
+    stop_app(app, agent);
+    if !app.slack.has_app(agent) {
+        return Ok(());
+    }
+    app.slack.try_change(|c| {
+        c.apps.retain(|a| a.agent != agent);
+        // The threads its own app heard went with it.
+        c.threads.retain(|l| !(l.agent == agent && l.app));
+    })?;
+    let _ = std::fs::remove_file(icon_path(&app.slack, agent));
+    broadcast(app);
+    Ok(())
+}
+
+/// The agent is known here by a new id now (it moved, or its host owns it):
+/// the threads the retired shared bot routed to it follow it.
+pub fn moved(app: &App, from: &str, to: &str) -> Result<()> {
+    if from == to || !app.slack.cfg.lock().unwrap().threads.iter().any(|l| l.agent == from && !l.app) {
+        return Ok(());
+    }
+    app.slack.try_change(|c| {
+        for l in &mut c.threads {
+            if l.agent == from && !l.app {
+                l.agent = to.to_string();
+            }
+        }
+    })?;
+    broadcast(app);
+    Ok(())
 }
 
 /// `U…` or `W…` (an Enterprise Grid user).
@@ -925,7 +1118,7 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
         other => bail!("unknown op `{other}`"),
     }
     broadcast(app);
-    let _ = direct.send(json!({ "op": "slack", "slack": slack.view(), "ref": msg["ref"] }).to_string());
+    let _ = direct.send(json!({ "op": "slack", "slack": view(app), "ref": msg["ref"] }).to_string());
     Ok(())
 }
 
@@ -1358,7 +1551,11 @@ async fn installed(app: &Arc<App>, mut rec: AgentApp) {
 pub async fn remove_app(app: &Arc<App>, agent: &str) {
     stop_app(app, agent);
     let Some(rec) = app.slack.app_of(agent) else { return };
-    if let Ok(token) = config_token(&app.slack, &rec.team_id).await {
+    if rec.hand_over || crate::agents::leaving(app, agent) {
+        // Another yardd may run this app until the hand-over settles: the
+        // app stays in Slack, only this copy goes.
+        eprintln!("yardd: left Slack app {} in Slack: it was being handed over to another Switchyard", rec.app_id);
+    } else if let Ok(token) = config_token(&app.slack, &rec.team_id).await {
         if let Err(e) = app.slack.api(&token, "apps.manifest.delete", &[("app_id", &rec.app_id)]).await {
             eprintln!("yardd: could not delete Slack app {}: {e:#}", rec.app_id);
         }
@@ -2890,6 +3087,24 @@ mod tests {
         for bad in ["http://example.com", "https://", "https://a b", "https://x.test/?q=1", "https://u@x.test", "example.com"] {
             assert!(public_address(bad).is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn an_agents_app_travels_whole_with_fields_this_build_does_not_know() {
+        let sent = json!({ "agent": "g1", "appId": "A1", "botToken": "xoxb-1", "mentions": [{ "id": "U1", "name": "Gio" }], "watchedChannels": ["C1"], "future": { "x": 1 } });
+        let rec: AgentApp = serde_json::from_value(sent.clone()).unwrap();
+        assert_eq!(rec.app_id, "A1");
+        let back = serde_json::to_value(&rec).unwrap();
+        for k in ["agent", "appId", "botToken", "mentions", "watchedChannels", "future"] {
+            assert_eq!(back[k], sent[k], "{k}");
+        }
+    }
+
+    #[test]
+    fn a_hosts_apps_are_listed_under_its_agents_prefixed_ids() {
+        let v = prefixed_view("h1", &json!({ "agentApps": { "g1": { "step": "ready" }, "h9~g2": {} }, "hosts": {}, "workspaces": [] }));
+        assert_eq!(v["agentApps"], json!({ "h1~g1": { "step": "ready" } }));
+        assert!(v.get("hosts").is_none());
     }
 
     #[test]

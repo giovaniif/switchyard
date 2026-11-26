@@ -77,6 +77,30 @@ struct Entry {
     /// The host's last snapshot, kept current by its session updates, so a
     /// page opened while the host is down still lists its sessions (offline).
     last: Arc<Mutex<Option<Value>>>,
+    /// The host's own agents and Slack apps, as its broadcasts last said,
+    /// kept while it is down so they stay listed (offline).
+    agents: Arc<Mutex<HostAgents>>,
+}
+
+/// What a host says about the agents it owns, as the hub's own connection
+/// to it hears (`monitor`). Ids are the host's own, without the prefix.
+#[derive(Clone, Default)]
+pub struct HostAgents {
+    /// Whether the host owns agents itself (its snapshot says `ownAgents`):
+    /// `None` until it has said hello once.
+    pub own: Option<bool>,
+    /// Its `agents` list (its own agents only).
+    pub list: Vec<Value>,
+    /// Its `slack` view (for its agents' own apps and its workspaces).
+    pub slack: Value,
+}
+
+/// A host's agents as the hub knows them, for listing and routing.
+pub struct HostAgentsView {
+    pub id: String,
+    pub name: String,
+    pub connected: bool,
+    pub agents: HostAgents,
 }
 
 impl Drop for Entry {
@@ -126,6 +150,10 @@ impl Remotes {
                 if conn.no_daemon {
                     v["noDaemon"] = json!(true);
                 }
+                if let Some(own) = e.agents.lock().unwrap().own {
+                    // Whether its agents live there, or it needs Update Switchyard first.
+                    v["ownAgents"] = json!(own);
+                }
                 v
             })
             .collect();
@@ -136,6 +164,25 @@ impl Remotes {
         let entries = self.entries.lock().unwrap();
         let e = entries.iter().find(|e| e.config.id == id)?;
         Some((e.conn.subscribe(), e.config.name.clone(), e.last.clone()))
+    }
+
+    /// Every host's agents, in the order the hosts were added.
+    pub fn host_agents(&self) -> Vec<HostAgentsView> {
+        let entries = self.entries.lock().unwrap();
+        entries
+            .iter()
+            .map(|e| HostAgentsView {
+                id: e.config.id.clone(),
+                name: e.config.name.clone(),
+                connected: e.conn.borrow().status == "connected",
+                agents: e.agents.lock().unwrap().clone(),
+            })
+            .collect()
+    }
+
+    /// One host's agents, if it is a host.
+    pub fn agents_of(&self, host: &str) -> Option<HostAgentsView> {
+        self.host_agents().into_iter().find(|h| h.id == host)
     }
 
     fn publish_ids(&self, entries: &[Entry]) {
@@ -211,8 +258,9 @@ fn spawn_host(app: &Arc<App>, config: HostConfig) -> Entry {
         let port = config.remote_port.unwrap_or(DEFAULT_REMOTE_PORT);
         tasks.push(tokio::spawn(tunnel(app.clone(), conn.clone(), destination, port, ssh_pid.clone())));
     }
-    tasks.push(tokio::spawn(monitor(app.clone(), conn.clone(), config.id.clone())));
-    Entry { config, conn, tasks, ssh_pid, last: Default::default() }
+    let agents: Arc<Mutex<HostAgents>> = Default::default();
+    tasks.push(tokio::spawn(monitor(app.clone(), conn.clone(), config.id.clone(), agents.clone())));
+    Entry { config, conn, tasks, ssh_pid, last: Default::default(), agents }
 }
 
 /// `host.add`: check the fields, save, and start connecting.
@@ -293,6 +341,9 @@ pub fn remove(app: &Arc<App>, host_id: &str) -> Result<()> {
     };
     drop(removed);
     broadcast_hosts(app);
+    // Its agents are no longer listed here.
+    crate::agents::broadcast(app);
+    crate::slack::broadcast(app);
     Ok(())
 }
 
@@ -439,7 +490,7 @@ async fn connect(
 /// (clients get their own connections in `pipe`), and it is the way back
 /// for this hub's agents that run there: it says which hub it is, and the
 /// host passes their tool calls and owed answers to it (`agent_tools`).
-async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>, host: String) {
+async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>, host: String, agents: Arc<Mutex<HostAgents>>) {
     let mut rx = conn.subscribe();
     let mut backoff = Backoff::new(Duration::from_secs(10));
     loop {
@@ -455,7 +506,7 @@ async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>, host: String) {
                     c.no_daemon = false;
                 });
                 backoff.reset();
-                serve_host(&app, ws, &host).await;
+                serve_host(&app, ws, &host, &agents).await;
                 set(&app, &conn, |c| {
                     c.status = "error";
                     c.error = Some("Connection lost. Retrying.".into());
@@ -472,10 +523,18 @@ async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>, host: String) {
     }
 }
 
-/// Until the connection drops: say which hub this is, and answer what the
-/// host passes back for this hub's agents. A host from before remote agents
-/// answers the hello with an error, which is ignored like everything else.
-async fn serve_host(app: &Arc<App>, ws: tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>, host: &str) {
+/// Until the connection drops: say which hub this is, keep the host's own
+/// agents and Slack apps as it broadcasts them (the hub lists them with its
+/// own), hand the host the agents this hub still keeps for it (`agents::
+/// migrate`), and answer what the host passes back for this hub's agents. A
+/// host from before remote agents answers the hello with an error, which is
+/// ignored like everything else.
+async fn serve_host(
+    app: &Arc<App>,
+    ws: tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+    host: &str,
+    agents: &Arc<Mutex<HostAgents>>,
+) {
     let (mut sink, mut stream) = ws.split();
     let hello = json!({ "op": "agent.hosted.hub", "hub": app.tools.hub_id() });
     if sink.send(Message::Text(hello.to_string())).await.is_err() {
@@ -486,6 +545,12 @@ async fn serve_host(app: &Arc<App>, ws: tokio_tungstenite::WebSocketStream<tokio
         tokio::select! {
             incoming = stream.next() => match incoming {
                 Some(Ok(Message::Text(text))) => {
+                    if text.contains("\"op\":\"snapshot\"") || text.contains("\"op\":\"agents\"") || text.contains("\"op\":\"slack\"") {
+                        if let Ok(msg) = serde_json::from_str::<Value>(&text) {
+                            hear_agents(app, host, agents, &msg);
+                        }
+                        continue;
+                    }
                     // Everything the host broadcasts comes here too: parse only what is ours.
                     if !text.contains("\"agent.hub.") {
                         continue;
@@ -510,6 +575,55 @@ async fn serve_host(app: &Arc<App>, ws: tokio_tungstenite::WebSocketStream<tokio
                 }
             }
         }
+    }
+}
+
+/// What the hub's own connection hears about the host's agents: its
+/// snapshot (with whether it owns agents at all), then each `agents` and
+/// `slack` broadcast. Entries that are the host's own remotes' (an id with
+/// the separator) are not the host's to show. The hub's windows get the
+/// merged lists again; a host that owns agents gets the ones this hub still
+/// keeps for it (`agents::migrate`).
+fn hear_agents(app: &Arc<App>, host: &str, agents: &Mutex<HostAgents>, msg: &Value) {
+    let own_list = |v: &Value| -> Vec<Value> { v.as_array().map(|l| l.iter().filter(|a| a["id"].as_str().is_some_and(|id| !id.contains(SEP))).cloned().collect()).unwrap_or_default() };
+    let mut migrate = false;
+    let (agents_changed, slack_changed) = {
+        let mut cache = agents.lock().unwrap();
+        match msg["op"].as_str() {
+            Some("snapshot") => {
+                let own = msg["ownAgents"] == true;
+                migrate = own;
+                cache.own = Some(own);
+                cache.list = own_list(&msg["agents"]);
+                cache.slack = msg["slack"].clone();
+                (true, true)
+            }
+            Some("agents") if msg["ref"].is_null() => {
+                let list = own_list(&msg["agents"]);
+                let changed = list != cache.list;
+                cache.list = list;
+                (changed, false)
+            }
+            Some("slack") if msg["ref"].is_null() => {
+                let changed = msg["slack"] != cache.slack;
+                cache.slack = msg["slack"].clone();
+                (false, changed)
+            }
+            _ => (false, false),
+        }
+    };
+    if agents_changed {
+        crate::agents::broadcast(app);
+    }
+    if slack_changed {
+        crate::slack::broadcast(app);
+    }
+    if msg["op"] == "snapshot" {
+        broadcast_hosts(app);
+    }
+    if migrate {
+        let (app, host) = (app.clone(), host.to_string());
+        tokio::spawn(async move { crate::agents::migrate(&app, &host, true).await });
     }
 }
 
@@ -724,13 +838,56 @@ pub fn route(msg: &Value) -> Option<String> {
             return host;
         }
     }
+    // An agent another host owns: its ops go there (see `agents`).
+    if let Some(id) = agent_ref(msg) {
+        return id.split_once(SEP).map(|(h, _)| h.to_string());
+    }
+    if msg["op"] == "agent.new" || (msg["op"] == "agent.save" && msg["agent"]["id"].is_null()) {
+        let host = if msg["op"] == "agent.new" { &msg["host"] } else { &msg["agent"]["host"] };
+        return host.as_str().filter(|h| !h.is_empty() && *h != "local").map(str::to_string);
+    }
     ["sessionId", "termId"]
         .iter()
         .find_map(|key| msg[key].as_str().and_then(|s| s.split_once(SEP)).map(|(h, _)| h.to_string()))
 }
 
+/// The agent an agent op, or an agent's own Slack app op, names: `agentId`,
+/// or `id` (`agent.delete`, `agent.request`), or the saved agent's `id`.
+pub fn agent_ref(msg: &Value) -> Option<&str> {
+    let op = msg["op"].as_str()?;
+    let slot = match op {
+        "agent.ask" | "agent.seen" => &msg["agentId"],
+        "agent.delete" | "agent.request" => &msg["id"],
+        "agent.save" => &msg["agent"]["id"],
+        _ if op.starts_with("slack.app.") || op == "slack.grant" => &msg["agentId"],
+        _ => return None,
+    };
+    slot.as_str()
+}
+
+fn strip(slot: &mut Value) {
+    if let Some((_, rest)) = slot.as_str().and_then(|s| s.split_once(SEP)) {
+        *slot = Value::String(rest.to_string());
+    }
+}
+
 /// Strip the host prefix from ids on an op headed for the host.
 fn outgoing(mut msg: Value) -> Value {
+    // An agent op: the agent's id is the host's own there, and the host is
+    // that host itself (`local`).
+    match msg["op"].as_str() {
+        Some("agent.delete" | "agent.request") => strip(&mut msg["id"]),
+        Some("agent.save") => {
+            if msg["agent"]["id"].is_string() {
+                strip(&mut msg["agent"]["id"]);
+            }
+            if msg["agent"]["host"].is_string() {
+                msg["agent"]["host"] = json!("local");
+            }
+        }
+        _ if agent_ref(&msg).is_some() => strip(&mut msg["agentId"]),
+        _ => {}
+    }
     if let Some(obj) = msg.as_object_mut() {
         obj.remove("host");
         for key in ["sessionId", "termId"] {
@@ -750,6 +907,30 @@ fn prefix(host: &str, obj: &mut Value, key: &str) {
             *slot = Value::String(format!("{host}{SEP}{id}"));
         }
     }
+}
+
+/// A host's agent as the hub shows it: its id and conversations carry the
+/// host, and its host is that host. Nothing of the hosted-copy plumbing.
+pub fn prefixed_agent(host: &str, agent: &Value) -> Value {
+    let mut a = agent.clone();
+    prefix(host, &mut a, "id");
+    prefix(host, &mut a, "chat");
+    if let Some(list) = a.get_mut("previous").and_then(Value::as_array_mut) {
+        for p in list {
+            if let Some(id) = p.as_str() {
+                *p = Value::String(format!("{host}{SEP}{id}"));
+            }
+        }
+    }
+    if let Some(o) = a.as_object_mut() {
+        o.insert("host".into(), json!(host));
+        o.remove("hub");
+        o.remove("hosted");
+        o.remove("seed");
+        o.remove("transfer");
+        o.remove("leaving");
+    }
+    a
 }
 
 fn rewrite_session(host: &str, s: &mut Value) {
@@ -833,9 +1014,25 @@ fn rewrite(host: &str, name: &str, text: &str) -> Option<Value> {
             });
         }
         // A remote's own remotes are not ours to show.
-        // Agents live on the hub: a remote's own are not offered here.
-        // So does Slack: only the hub's connection is shown.
-        "hosts" | "host.snapshot" | "host.down" | "switchy.state" | "agents" | "slack" | "slack.inbox" | "slack.inbox.message" | "slack.inbox.messages" => return None,
+        // Its agents and Slack apps reach the windows merged with the hub's
+        // (`agents::shown`, `slack::view`), from the hub's own connection.
+        "hosts" | "host.snapshot" | "host.down" | "switchy.state" | "agents" => return None,
+        // The owner's own Slack is the hub's: a remote's is not shown.
+        "slack.inbox" | "slack.inbox.message" | "slack.inbox.messages" => return None,
+        // The answer to a Slack op this window sent for one of its agents.
+        "slack" if !msg["ref"].is_null() => {
+            msg["hostId"] = json!(host);
+            msg["slack"] = crate::slack::prefixed_view(host, &msg["slack"]);
+        }
+        "slack" => return None,
+        "agent.saved" => {
+            msg["hostId"] = json!(host);
+            msg["agent"] = prefixed_agent(host, &msg["agent"]);
+        }
+        "agent.deleted" => {
+            msg["hostId"] = json!(host);
+            prefix(host, &mut msg, "id");
+        }
         "session" => rewrite_session(host, &mut msg["session"]),
         "host" => {
             rewrite_stats(host, name, &mut msg["host"]);
@@ -858,6 +1055,8 @@ fn rewrite(host: &str, name: &str, text: &str) -> Option<Value> {
         _ => {
             prefix(host, &mut msg, "sessionId");
             prefix(host, &mut msg, "termId");
+            // An agent's conversation was opened (`created`).
+            prefix(host, &mut msg, "agentId");
             // A hand-off note names a session on the same host.
             rewrite_event(host, &mut msg["event"]);
             if let Some(events) = msg["events"].as_array_mut() {
@@ -957,6 +1156,40 @@ mod tests {
         assert_eq!(v["sessions"][0]["host"], "h1");
         assert_eq!(v["host"]["name"], "box");
         assert_eq!(v["host"]["sessions"][0]["id"], "h1~s1");
+    }
+
+    #[test]
+    fn a_hosts_agents_ops_go_there_with_its_own_ids_and_come_back_prefixed() {
+        assert_eq!(route(&json!({ "op": "agent.ask", "agentId": "h1~g1" })).as_deref(), Some("h1"));
+        assert_eq!(route(&json!({ "op": "agent.ask", "agentId": "g1" })), None);
+        assert_eq!(route(&json!({ "op": "agent.delete", "id": "h1~g1" })).as_deref(), Some("h1"));
+        assert_eq!(route(&json!({ "op": "agent.save", "agent": { "id": "h1~g1" } })).as_deref(), Some("h1"));
+        assert_eq!(route(&json!({ "op": "agent.save", "agent": { "name": "x", "host": "h1" } })).as_deref(), Some("h1"));
+        assert_eq!(route(&json!({ "op": "agent.save", "agent": { "id": "g1", "host": "h1" } })), None, "a move is the hub's");
+        assert_eq!(route(&json!({ "op": "agent.new", "host": "h1" })).as_deref(), Some("h1"));
+        assert_eq!(route(&json!({ "op": "slack.app.icon", "agentId": "h1~g1" })).as_deref(), Some("h1"));
+        assert_eq!(route(&json!({ "op": "slack.route", "agent": "h1~g1" })), None, "the shared bot is the hub's");
+        let out = outgoing(json!({ "op": "agent.save", "agent": { "id": "h1~g1", "host": "h1", "memory": "m" } }));
+        assert_eq!(out["agent"], json!({ "id": "g1", "host": "local", "memory": "m" }));
+        assert!(outgoing(json!({ "op": "agent.save", "agent": { "name": "x", "host": "h1" } }))["agent"].get("id").is_none());
+        assert_eq!(outgoing(json!({ "op": "agent.request", "id": "h1~g1" }))["id"], "g1");
+        assert_eq!(outgoing(json!({ "op": "slack.app.appToken", "agentId": "h1~g1" }))["agentId"], "g1");
+        assert_eq!(outgoing(json!({ "op": "automation.delete", "id": "a1", "host": "h1" }))["id"], "a1");
+        let saved: Value = serde_json::from_str(&rewrite_incoming("h1", "box", r#"{"op":"agent.saved","ref":"r","agent":{"id":"g1","chat":"s1","previous":["s0"],"host":"local","hosted":false}}"#).unwrap()).unwrap();
+        assert_eq!(saved["agent"]["id"], "h1~g1");
+        assert_eq!(saved["agent"]["chat"], "h1~s1");
+        assert_eq!(saved["agent"]["previous"], json!(["h1~s0"]));
+        assert_eq!(saved["agent"]["host"], "h1");
+        assert!(saved["agent"].get("hosted").is_none());
+        let created: Value = serde_json::from_str(&rewrite_incoming("h1", "box", r#"{"op":"created","sessionId":"s1","agentId":"g1","ref":"r"}"#).unwrap()).unwrap();
+        assert_eq!((created["sessionId"].as_str(), created["agentId"].as_str()), (Some("h1~s1"), Some("h1~g1")));
+        // Its broadcasts reach the windows merged by the hub, not piped.
+        assert!(rewrite_incoming("h1", "box", r#"{"op":"agents","agents":[]}"#).is_none());
+        assert!(rewrite_incoming("h1", "box", r#"{"op":"slack","slack":{}}"#).is_none());
+        let answer: Value = serde_json::from_str(&rewrite_incoming("h1", "box", r#"{"op":"slack","ref":"r","slack":{"agentApps":{"g1":{}}}}"#).unwrap()).unwrap();
+        assert!(answer["slack"]["agentApps"]["h1~g1"].is_object());
+        // No `previous` stays none.
+        assert!(prefixed_agent("h1", &json!({ "id": "g1" })).get("previous").is_none());
     }
 
     #[test]

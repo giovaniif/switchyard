@@ -191,7 +191,7 @@ pub fn resume_approvals(app: &App, hub: Option<&str>) {
         if let Some(a) = app.agents.get(&agent) {
             let owed = access.owed(sid);
             match hub {
-                Some(hub) if a.hosted && a.hub == hub => crate::agent_tools::owed_to_hub(app, &a, &owed),
+                Some(hub) if a.hosted && a.hub == hub => crate::agent_tools::owed_to_hub(app, hub, &a, &owed),
                 None if !a.hosted => app.owe(owed),
                 _ => {}
             }
