@@ -32,6 +32,12 @@
 // PNG's size, never its bytes. The app's signing secret is
 // TEST-signing-secret: /_fake/event signs with it.
 //
+// The owner's own app (slack.rs `slack.me.*`): a manifest with user scopes
+// and no bot user is made as A0YOU (client C0YOU); oauth.v2.access for it
+// installs a user token `xoxp-you-TEST` for UOWNER (@test-owner), with no bot
+// token. Its app-level token has "you" in it and opens the `you` socket. A
+// user token works for auth.test, users.info and conversations.info.
+//
 // Control, for tests:
 //   POST /_fake/message {user, text, channel?, thread_ts?, bot_id?, subtype?, mention?,
 //                        username?, bot_profile?, attachments?, blocks?}
@@ -84,6 +90,7 @@ const tokenKind = (auth) => {
   const token = (auth || "").replace(/^Bearer\s+/i, "");
   if (token.startsWith("xoxb-")) return "bot";
   if (token.startsWith("xoxe.xoxp-")) return "config";
+  if (token.startsWith("xoxp-")) return "user";
   if (token.startsWith("xapp-")) return "app";
   return token ? "other" : "none";
 };
@@ -116,13 +123,14 @@ function api(method, p, auth, port) {
   const refused = { ok: false, error: kind === "none" ? "not_authed" : "invalid_auth" };
   switch (method) {
     case "auth.test":
+      if (kind === "user" && !token.includes("bad")) return { ok: true, url: "https://test-workspace.slack.com/", team: "TEST-workspace", user: "test-owner", team_id: "T0TEST", user_id: "UOWNER" };
       if (kind !== "bot" || token.includes("bad")) return refused;
       if (token.includes("agent")) return { ok: true, url: "https://test-workspace.slack.com/", team: "TEST-workspace", user: "agent", team_id: "T0TEST", user_id: AGENT_BOT, bot_id: "BAGENT" };
       return { ok: true, url: "https://test-workspace.slack.com/", team: "TEST-workspace", user: "switchyard", team_id: "T0TEST", user_id: BOT, bot_id: "BBOT" };
     case "apps.connections.open":
       if (kind !== "app" || token.includes("bad")) return refused;
       state.opens++;
-      return { ok: true, url: `ws://127.0.0.1:${port}/socket?ticket=TEST-ticket-${state.opens}&app=${token.includes("agent") ? "agent" : "shared"}` };
+      return { ok: true, url: `ws://127.0.0.1:${port}/socket?ticket=TEST-ticket-${state.opens}&app=${token.includes("agent") ? "agent" : token.includes("you") ? "you" : "shared"}` };
     case "tooling.tokens.rotate": {
       if (!(p.refresh_token ?? "").startsWith("xoxe-") || p.refresh_token.includes("bad") || lapsed(p.refresh_token)) return { ok: false, error: "invalid_refresh_token" };
       // Already expired (clock is in 2023): yardd rotates before each use.
@@ -133,6 +141,10 @@ function api(method, p, auth, port) {
       if (kind !== "config" || lapsed(token)) return refused;
       const manifest = JSON.parse(p.manifest ?? "{}");
       state.manifests.push(manifest);
+      if (manifest.oauth_config?.scopes?.user && !manifest.features?.bot_user) {
+        const scopes = manifest.oauth_config.scopes.user.join(",");
+        return { ok: true, app_id: "A0YOU", credentials: { client_id: "C0YOU", client_secret: "TEST-secret", verification_token: "v", signing_secret: SIGNING_SECRET }, oauth_authorize_url: `https://slack.test/oauth/v2/authorize?client_id=C0YOU&scope=&user_scope=${scopes}` };
+      }
       return { ok: true, app_id: "A0AGENT", credentials: { client_id: "C0AGENT", client_secret: "TEST-secret", verification_token: "v", signing_secret: SIGNING_SECRET }, oauth_authorize_url: "https://slack.test/oauth/v2/authorize?client_id=C0AGENT&scope=app_mentions:read,chat:write" };
     }
     case "apps.manifest.update": {
@@ -156,6 +168,7 @@ function api(method, p, auth, port) {
       return { ok: true };
     case "oauth.v2.access":
       if (p.code !== "TEST-code" || p.client_secret !== "TEST-secret") return { ok: false, error: "invalid_code" };
+      if (p.client_id === "C0YOU") return { ok: true, app_id: "A0YOU", team: { id: "T0TEST", name: "TEST-workspace" }, authed_user: { id: "UOWNER", scope: "im:history,im:read", access_token: "xoxp-you-TEST", token_type: "user" } };
       return { ok: true, access_token: "xoxb-agent-TEST", token_type: "bot", bot_user_id: AGENT_BOT, app_id: "A0AGENT", team: { id: "T0TEST", name: "TEST-workspace" }, authed_user: { id: "UOWNER" } };
     case "chat.postMessage": {
       if (kind !== "bot") return refused;
@@ -184,12 +197,12 @@ function api(method, p, auth, port) {
       return { ok: true };
     }
     case "users.info": {
-      if (kind !== "bot") return refused;
+      if (kind !== "bot" && kind !== "user") return refused;
       const name = USERS[p.user] ?? `TEST-${p.user}`;
       return { ok: true, user: { id: p.user, name: name.toLowerCase(), real_name: name, profile: { display_name: name, real_name: name } } };
     }
     case "conversations.info": {
-      if (kind !== "bot") return refused;
+      if (kind !== "bot" && kind !== "user") return refused;
       const id = p.channel ?? "";
       if (id.startsWith("D")) return { ok: true, channel: { id, is_im: true, user: "UOWNER" } };
       return { ok: true, channel: { id, name: CHANNELS[id] ?? id.toLowerCase(), is_channel: true } };
