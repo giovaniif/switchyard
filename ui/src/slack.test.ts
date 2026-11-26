@@ -70,6 +70,9 @@ describe("a message from Slack in the thread", () => {
     expect(originLabel({ ...origin, channelName: "Direct message" })?.text).toBe("From Gio on Slack · Direct message");
     expect(originLabel({ ...origin, channelName: "", userName: "" })?.text).toBe("From U1 on Slack · C1");
     expect(originLabel({ kind: "slack" })?.text).toBe("From someone on Slack");
+    // A watched channel's notice: where it came from and how many.
+    expect(originLabel({ ...origin, channelName: "#alerts", userName: "Datadog", watched: true, count: 3 })?.text).toBe("Watched on Slack · #alerts · 3 messages");
+    expect(originLabel({ ...origin, channelName: "#alerts", userName: "Datadog", watched: true, count: 1 })?.text).toBe("Watched on Slack · #alerts · from Datadog");
     const [mine] = applyEvent([], { type: "user_message", text: "hi", origin: { kind: "user" } }, 0);
     expect(mine.kind === "user" && mine.origin).toBeUndefined();
   });

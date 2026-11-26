@@ -7,7 +7,8 @@
 //
 // The workspace is TEST-workspace (T0TEST); the bot is @switchyard (UBOT,
 // BBOT). Users: UOWNER "TEST-Owner", USTRANGER "TEST-Stranger", any other id
-// "TEST-<id>". Channels: C0GENERAL #general, C0OPS #ops, C0DEV #dev; a D… id is a DM.
+// "TEST-<id>". Channels: C0GENERAL #general, C0OPS #ops, C0DEV #dev, C0INCIDENT
+// #incidents; a D… id is a DM.
 // A token containing "bad" is refused (invalid_auth).
 //
 // Web API (form or JSON bodies, bearer token): auth.test,
@@ -32,10 +33,12 @@
 // TEST-signing-secret: /_fake/event signs with it.
 //
 // Control, for tests:
-//   POST /_fake/message {user, text, channel?, thread_ts?, bot_id?, subtype?, mention?}
+//   POST /_fake/message {user, text, channel?, thread_ts?, bot_id?, subtype?, mention?,
+//                        username?, bot_profile?, attachments?, blocks?}
 //        Slack's events for a message: in a DM `message` (channel_type im);
 //        in a channel `message`, plus `app_mention` when the text mentions
-//        <@UBOT> (as Slack sends both). Answers {ts, envelopes}.
+//        <@UBOT> (as Slack sends both). `user: null` leaves the user out, as
+//        an integration's `bot_message` does. Answers {ts, envelopes}.
 //   POST /_fake/disconnect {reason?}   a `disconnect` envelope, then a close
 //   POST /_fake/drop                   closes every socket at once
 //   POST /_fake/event {url, user, text, channel?, thread_ts?, sign?, retry?, event_id?}
@@ -57,7 +60,7 @@ const arg = (name) => {
 const BOT = "UBOT";
 const AGENT_BOT = "UAGENT";
 const USERS = { UOWNER: "TEST-Owner", USTRANGER: "TEST-Stranger" };
-const CHANNELS = { C0GENERAL: "general", C0OPS: "ops", C0DEV: "dev" };
+const CHANNELS = { C0GENERAL: "general", C0OPS: "ops", C0DEV: "dev", C0INCIDENT: "incidents" };
 
 let clock = 1_700_000_000;
 const nextTs = () => `${++clock}.000100`;
@@ -206,9 +209,10 @@ function eventsFor(p) {
   const ts = p.ts ?? nextTs();
   const im = channel.startsWith("D");
   const base = { user: p.user ?? "UOWNER", text: p.text ?? "", channel, ts, event_ts: ts, team: "T0TEST" };
+  // An integration's post (`subtype: bot_message`) often has no user at all.
+  if (p.user === null) delete base.user;
   if (p.thread_ts) base.thread_ts = p.thread_ts;
-  if (p.bot_id) base.bot_id = p.bot_id;
-  if (p.subtype) base.subtype = p.subtype;
+  for (const k of ["bot_id", "subtype", "username", "bot_profile", "attachments", "blocks"]) if (p[k]) base[k] = p[k];
   const list = [{ ...base, type: "message", channel_type: im ? "im" : channel.startsWith("G") ? "group" : "channel" }];
   if (!im && (base.text.includes(`<@${BOT}>`) || base.text.includes(`<@${AGENT_BOT}>`))) list.unshift({ ...base, type: "app_mention" });
   return { ts, list };

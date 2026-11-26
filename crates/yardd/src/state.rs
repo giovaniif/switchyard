@@ -343,6 +343,27 @@ impl App {
         let _ = self.next_turns.send((sid.to_string(), Delivery::SteerOne(id.to_string())));
     }
 
+    /// Take the queued messages that may join the running turn: all but the
+    /// read-only ones (a watched channel's notice), which wait for the next.
+    pub fn take_steerable(&self, sid: &str) -> Vec<Value> {
+        {
+            let map = self.sessions.lock().unwrap();
+            match map.get(sid) {
+                Some(s) if s.meta.status == "running" && s.meta.pending.iter().any(|p| !crate::origins::read_only(&p["origin"])) => {}
+                _ => return Vec::new(),
+            }
+        }
+        let mut taken = Vec::new();
+        self.update_meta(sid, |m| {
+            if m.status == "running" {
+                let (ro, rest): (Vec<Value>, Vec<Value>) = std::mem::take(&mut m.pending).into_iter().partition(|p| crate::origins::read_only(&p["origin"]));
+                m.pending = ro;
+                taken = rest;
+            }
+        });
+        taken
+    }
+
     /// Take every queued message, when the session's status passes `ok`.
     pub fn take_all_queued(&self, sid: &str, ok: impl Fn(&str) -> bool) -> Vec<Value> {
         {
@@ -649,7 +670,8 @@ impl App {
                 None
             } else if completed {
                 Some(Delivery::NextTurn)
-            } else if step && s.meta.status == "running" {
+            } else if step && s.meta.status == "running" && s.meta.pending.iter().any(|p| !crate::origins::read_only(&p["origin"])) {
+                // A read-only message waits for a turn of its own (see origins).
                 Some(Delivery::Steer)
             } else {
                 None

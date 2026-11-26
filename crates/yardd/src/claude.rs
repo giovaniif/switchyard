@@ -247,7 +247,7 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
             "cwd": meta.cwd,
             "model": meta.model,
             "effort": meta.effort,
-            "permission": meta.permission,
+            "permission": crate::origins::turn_permission(&meta.permission, &meta.answering),
             "resume": resume,
             "tools": tools,
             "mcp": mcp,
@@ -283,7 +283,11 @@ pub fn send(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) -> Res
     if let Some(resume) = pending {
         spawn(app, sid, resume)?;
     }
-    line(app, sid, json!({ "type": "user", "text": text, "attachments": attachments }))
+    // Each turn names its mode, so a turn on a watched channel's notice runs
+    // in Plan and the next one goes back to the session's (the sidecar
+    // switches before the message reaches Claude Code).
+    let permission = app.meta(sid).map(|m| crate::origins::turn_permission(&m.permission, &m.answering)).unwrap_or_default();
+    line(app, sid, json!({ "type": "user", "text": text, "attachments": attachments, "permission": permission }))
 }
 
 /// A message for the running turn: Claude Code folds input that arrives

@@ -171,9 +171,18 @@ pub async fn deliver(app: &Arc<App>, sid: &str, when: Delivery) {
             if !crate::engines::can_steer(&engine) {
                 return;
             }
-            let items = match when {
-                Delivery::SteerOne(id) => app.take_queued(sid, &id, true).into_iter().collect(),
-                _ => app.take_all_queued(sid, |s| s == "running"),
+            let items: Vec<Value> = match when {
+                Delivery::SteerOne(id) => {
+                    // A watched channel's notice never joins a turn that may act:
+                    // it stays queued for a read-only turn of its own.
+                    let one: Vec<Value> = app.take_queued(sid, &id, true).into_iter().collect();
+                    if one.iter().any(|i| crate::origins::read_only(&i["origin"])) {
+                        app.requeue(sid, one);
+                        return;
+                    }
+                    one
+                }
+                _ => app.take_steerable(sid),
             };
             if items.is_empty() {
                 return;
@@ -234,6 +243,11 @@ fn origins_of(items: &[Value]) -> Vec<Value> {
 
 async fn start_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) {
     app.emit(sid, json!({ "type": "turn_started" }));
+    // The engines run it in Plan (origins::turn_permission); the owner sees why.
+    if app.meta(sid).is_some_and(|m| m.permission != "plan" && m.answering.iter().any(crate::origins::read_only)) {
+        let text = "This turn is read-only (Plan): it works on a notice from a watched Slack channel. Anything it wants to change waits for your approval.";
+        app.emit(sid, json!({ "type": "note", "text": text }));
+    }
     // The sweep removes a merged PR's worktree under an idle session. An
     // engine started there fails its own way: Claude Code's SDK reports
     // ENOENT as a libc mismatch, which sends the user after the wrong thing.
