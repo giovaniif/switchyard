@@ -1,0 +1,207 @@
+{
+  "v": 1,
+  "claim": "In a Slack conversation in Switchyard, typing @reviewer posted plain text, so the agent never heard it; now @ offers the agents with an app in that workspace and the message carries a real mention of the agent's bot",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a",
+  "base": "810abe587610c193d6de87890b063191b53a1181",
+  "head": "ecaf3a7de041f83198004d58681f09e846a39d3d",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack/inbox.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slackInbox.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slackInbox.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T15:59:55.884Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "ccbd8ef80c94739da22f0b13abe81e1f02e1a588",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "14d3439900869dd571532d594acb50251487def3572f64cbd47bc09213c0f916"
+        },
+        {
+          "path": "p1-base-no-agents-desktop.png",
+          "sha256": "193e003e551cdc8eff79fb32c0049a5b75ff65dac7498638604dacea4c21307a"
+        }
+      ],
+      "addedAt": "2026-11-26T16:00:17.758Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "ccbd8ef80c94739da22f0b13abe81e1f02e1a588",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "5f89a13e932a1a8f11e27925d230bc6f0e7ce90200ceb3dfbcd7e4e90ebfb817"
+        }
+      ],
+      "addedAt": "2026-11-26T16:00:17.803Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack the_owner_calls_an_agent_from_his_reply_box",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "ecaf3a7de041f83198004d58681f09e846a39d3d",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "1ecfcbde85c8d1cf3131202497b5a1f3260c17198b69a022198eca20b576ff00"
+        },
+        {
+          "path": "p3-suggest-desktop.png",
+          "sha256": "b47c1102b13b3dea41171a52eacef21a1e91936cbabee0bd3a080b77693120f0"
+        },
+        {
+          "path": "p3-called-desktop.png",
+          "sha256": "bc8cb7e97074cf5afa88f161e11bea48a39621736510cbeb9330661d0ff3590f"
+        }
+      ],
+      "addedAt": "2026-11-26T16:00:45.818Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "ecaf3a7de041f83198004d58681f09e846a39d3d",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "3da1ae8ae7b5393c283e175e32b16bd9d83c57cceee7d39b7d833196f95b65e6"
+        },
+        {
+          "path": "p4-suggest-mobile.png",
+          "sha256": "cdfcb0534e0a44fed1840667849516237359b54b785bb74107568a6d352ce1b6"
+        },
+        {
+          "path": "p4-called-mobile.png",
+          "sha256": "383a4a5c02ea49d4c97e94652bd9e411b23bf959a2ccf20daceab932b49554ab"
+        }
+      ],
+      "addedAt": "2026-11-26T16:00:50.493Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "ecaf3a7de041f83198004d58681f09e846a39d3d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "e666296238b7117cc28c2b1e3247effc2babc07af2f8d1ab6dd6b3f3f7bbcbe0"
+        }
+      ],
+      "addedAt": "2026-11-26T16:00:50.672Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack && CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd inbox && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "ecaf3a7de041f83198004d58681f09e846a39d3d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "c0fd698bf802360ebcf7b88a93c164615345951dd1e9b3f0d8b5fbb72cc26510"
+        }
+      ],
+      "addedAt": "2026-11-26T16:01:16.722Z",
+      "cmd": "verify/yv design-check --base 810abe587610",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "ecaf3a7de041f83198004d58681f09e846a39d3d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-slack.json",
+          "sha256": "29d40825d82ae153105681898edda9137d7c23e7be1ab8895d9f8af0135e549c"
+        }
+      ],
+      "addedAt": "2026-11-26T16:01:16.807Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/not-connected",
+        "slack/an-agents-own-slack-app",
+        "slack/allow-from-an-agents-app",
+        "slack/answer-in-the-slack-thread",
+        "slack/connect-your-slack",
+        "slack/tokens-stay-in-yardd",
+        "slack/your-direct-messages",
+        "slack/reply-react-and-read",
+        "slack/someone-new-writes",
+        "slack/import-a-channel",
+        "slack/call-an-agent-from-slack",
+        "slack/one-token-with-a-public-address",
+        "slack/a-watched-channel"
+      ]
+    }
+  ]
+}
