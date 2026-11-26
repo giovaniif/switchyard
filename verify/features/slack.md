@@ -307,10 +307,13 @@ yv drive 'slack:TEST-Stranger' --viewport $vp --steps '[{"click":"label:Message 
 done
 curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and (.text | startswith("<@UAGENT2> and <@UAGENT> look")))] | length == 2'
 yv iso down --name map-slack-remote
-for i in $(seq 100); do yv state --full 2>/dev/null | jq -e '.hosts | any(.name == "TEST-slack-box" and .status != "connected")' > /dev/null && break; sleep 0.2; done
-yv state --full | jq -e '.hosts | any(.name == "TEST-slack-box" and .status != "connected")'
-yv drive 'slack:TEST-Stranger' --viewport desktop --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@test-f"},{"click":{"role":"option","name":"TEST-Far @test-far"}},{"type":"still there?"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Far"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"still there?"},{"shot":"called-offline"}]'
+for i in $(seq 100); do yv state --full 2>/dev/null | jq -e '.snapshot.hosts | any(.name == "TEST-slack-box" and .status != "connected")' > /dev/null && break; sleep 0.2; done
+yv state --full | jq -e '.snapshot.hosts | any(.name == "TEST-slack-box" and .status != "connected")'
+# Mobile, as the last drive was: see Gotchas (an icon's key per viewport).
+yv drive 'slack:TEST-Stranger' --viewport mobile --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@test-f"},{"click":{"role":"option","name":"TEST-Far @test-far"}},{"type":"still there?"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Far"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"still there?"},{"shot":"called-offline"}]'
 curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and .text == "<@UAGENT2> still there?")] | length == 1'
+# The recipes after this one know no such host.
+yv api '{"op":"host.remove","hostId":"{{slack_box}}"}' --wait '{"op":"hosts"}'
 ```
 
 ### one-token-with-a-public-address
@@ -383,6 +386,13 @@ yv api '{"op":"slack.app.remove","agentId":"{{oncall}}","ref":"rm"}' --wait '{"o
   field), so anything that grants one comes after it. Later recipes set up
   what they need through the API (a grant, TEST-Reviewer's app with its bot
   token pasted), so each also runs alone.
+- An agent's app icon key (`iconKey`, `SlackIcon.tsx`) comes out different
+  at the mobile and desktop viewports, so each window size that opens the
+  page uploads the face again (`slack.app.icon`), and for an agent on a host
+  that is offline that upload is refused ("TEST-slack-box is offline, so
+  TEST-Far can't be changed now"), an API error in the drive.
+  `call-an-agent-on-another-host` drives the offline step at the viewport of
+  the drive before it, so it is not that error's recipe. Found 2026-11-26.
 - Not covered here (no real Slack can be reached from tests): a real
   workspace's events, rate limits and Slack's own manifest import, update
   and icon upload. The install redirect to an https address from an http
