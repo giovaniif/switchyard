@@ -115,5 +115,19 @@ added (#226), as if Gemini's limits were shown above.
 yv drive 'subscriptions' --steps '[{"expect":"role:heading:Subscriptions"},{"expect":"css:.subscription-note","text":"OpenCode, Grok and Gemini don\u0027t report subscription limits."},{"shot":"subscriptions-note"}]'
 ```
 
+### sign-in-from-usage-while-on-hosts
+Viewports: both
+Sign in on a signed-out account in the usage popover opens Engine logins,
+also when Hosts is already open on another tab. Before the fix, the URL
+changed to `tab=engines` but the page stayed on Sessions, so Sign in looked
+dead.
+
+```sh
+yv api '{"op":"account.add","engine":"claude","name":"TEST-Away"}' --wait '{"op":"accounts","accounts":[{"name":"TEST-Away"}]}' --save away_acct='accounts[name=TEST-Away].id'
+yv drive hosts --viewport desktop --steps '[{"expect":"css:[role=tab][aria-selected=true]","text":"Sessions"},{"click":"role:button:Subscription usage"},{"click":"role:button:Other accounts"},{"click":"role:button:Sign in — Claude · TEST-Away"},{"expect":"css:[role=tab][aria-selected=true]","text":"Engine logins"},{"expect":{"css":".account-row","hasText":"TEST-Away"},"text":"not logged in"},{"shot":"signed-out-account"}]'
+yv drive hosts --viewport mobile --steps '[{"expect":"css:[role=tab][aria-selected=true]","text":"Sessions"},{"click":"role:button:Open sessions"},{"click":"role:button:Subscription usage"},{"click":"role:button:Other accounts"},{"click":"role:button:Sign in — Claude · TEST-Away"},{"expect":"css:[role=tab][aria-selected=true]","text":"Engine logins"},{"expect":"css:.host-inspector-heading","inViewport":true},{"expect":{"css":".account-row","hasText":"TEST-Away"},"text":"not logged in"},{"shot":"signed-out-account"}]'
+yv api '{"op":"account.remove","id":"{{away_acct}}"}' --wait '{"op":"accounts"}'
+```
+
 ## Gotchas
 - The 5-hour and week limits come from the engines (Claude's `rate_limit_event` during a turn and its usage report, read without a turn at start, every 10 minutes and when an account is added or logs in; Codex's `account/rateLimits`). A yardd started with `YARD_CLAUDE_USAGE_EVERY_MS=0` (the daemon tests) shows no Claude meters until a session has run (later restarts keep the last ones, from `usage.json`).
