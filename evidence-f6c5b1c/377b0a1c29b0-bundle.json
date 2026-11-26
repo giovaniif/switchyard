@@ -1,0 +1,210 @@
+{
+  "v": 1,
+  "claim": "New session folder picker: a typed path through a file (README.md/) shows yardd's raw 'cannot read …: Not a directory (os error 20)' instead of saying the file is not a folder",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-2617",
+  "base": "5551b1304d6e4d1408c38dc09e5e9f555c41e3f6",
+  "head": "f6c5b1c3e5d2ede7e96a3c45662cb6e8f10fd1ff",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/new-session.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T02:19:53.222Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "6023654acb5279a8bcfdb72aaee468dcafe512ad",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "f14774fd8af56fd5a95bb9f2d85ac31c0b13e50886368ec5d68f48443e7cb0c8"
+        },
+        {
+          "path": "p1-base3-through-a-file-mobile.png",
+          "sha256": "d3fc4d223c99dc7dee4838163e50cfe52d7c0fc0e1fcf76e41c33b622b266548"
+        },
+        {
+          "path": "p1-base3-through-a-file-desktop.png",
+          "sha256": "6035969cc877f14a02bce15cf8e78c82465b14cfc671c227e705f2676d041287"
+        }
+      ],
+      "addedAt": "2026-11-26T02:20:06.917Z",
+      "failedApi": [
+        "fs.dirs: cannot read /tmp/yv-default-1219512-mwwwq4o8/work/TEST-demo-app/README.md: Not a directory (os error 20)",
+        "fs.dirs: cannot read /tmp/yv-default-1219512-mwwwq4o8/work/TEST-demo-app/README.md: Not a directory (os error 20)"
+      ]
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "6023654acb5279a8bcfdb72aaee468dcafe512ad",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "722a297ce622b5e522b53fce6a2bb7fd33b01630fa9572e19182827d0a69e23d"
+        }
+      ],
+      "addedAt": "2026-11-26T02:20:06.970Z",
+      "cmd": "verify/yv map run new-session --recipe typed-path-through-a-file-names-the-file",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "6023654acb5279a8bcfdb72aaee468dcafe512ad",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "f4c89ddce7b3bac2f925aa9b5f1981fe1377f6a0f47a08be1b54240dcd00a4da"
+        }
+      ],
+      "addedAt": "2026-11-26T02:20:34.574Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd --test daemon folders_are_listed_for_the_picker",
+      "exit": 101
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "f6c5b1c3e5d2ede7e96a3c45662cb6e8f10fd1ff",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "37a51e4e1ab82669a7e0af5484d6788035f724c955546879775e1d8bc0ac0ed8"
+        },
+        {
+          "path": "p4-head3-through-a-file-mobile.png",
+          "sha256": "1845dd509e056d19d5a149e989b0f742d7834868dcb2d55160407bdeefcc2a33"
+        },
+        {
+          "path": "p4-head3-through-a-file-deeper-mobile.png",
+          "sha256": "e9ce58b59759b3257435d1652180dfb4e600d8618c5b801b54c2e069542fab30"
+        },
+        {
+          "path": "p4-head3-real-folder-mobile.png",
+          "sha256": "680daaa3c729a725f33b77dae8b80a453316287d6292eae02839ce4201880256"
+        },
+        {
+          "path": "p4-head3-through-a-file-desktop.png",
+          "sha256": "9d6a0c65fbab4b7be7dfbf12179e5af8f272df6d4a74404d80d789f68c280dbc"
+        },
+        {
+          "path": "p4-head3-through-a-file-deeper-desktop.png",
+          "sha256": "4c071e99eb5940d881d0a38ff6ba1962358a7a4add5f0c27e09247896d3f722f"
+        },
+        {
+          "path": "p4-head3-real-folder-desktop.png",
+          "sha256": "3522c9ba5b5e14d4ad11a075a01530cd1fed0e5191436dcc537894de6dc325b4"
+        }
+      ],
+      "addedAt": "2026-11-26T02:20:58.247Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "f6c5b1c3e5d2ede7e96a3c45662cb6e8f10fd1ff",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "dda7429ee0518ce3b00295c7740f7a349775a917b9ba674d3febea753765e779"
+        }
+      ],
+      "addedAt": "2026-11-26T02:20:58.295Z",
+      "cmd": "verify/yv design-check --base 5551b1304d6e",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "f6c5b1c3e5d2ede7e96a3c45662cb6e8f10fd1ff",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "6e4a6962dad9e9b6ed4d2ec4eddc3fbb040945cc5b06ba7eeb3eab3a47c93494"
+        }
+      ],
+      "addedAt": "2026-11-26T02:20:58.385Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "f6c5b1c3e5d2ede7e96a3c45662cb6e8f10fd1ff",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-new-session.json",
+          "sha256": "8a81f068e4a99fb72dc39290d4fd0fa32bfbcaa333293c2474e3985609c2fcab"
+        }
+      ],
+      "addedAt": "2026-11-26T02:22:06.230Z",
+      "cmd": "verify/yv map run new-session",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "new-session/page-renders",
+        "new-session/send-creates-session",
+        "new-session/long-prompt-titled-at-a-word",
+        "new-session/long-second-word-is-cut-not-dropped",
+        "new-session/empty-prompt-cannot-send",
+        "new-session/worktree-note",
+        "new-session/base-branch-picker",
+        "new-session/typed-path-with-no-match-says-so",
+        "new-session/typed-path-under-a-missing-folder-names-it",
+        "new-session/typed-path-through-a-file-names-the-file",
+        "new-session/remembered-folder-that-is-gone-says-so",
+        "new-session/long-folder-keeps-its-chip-icon",
+        "new-session/folder-menu-stays-on-screen",
+        "new-session/recent-folder-opens-with-tab",
+        "new-session/refused-send-names-the-session-in-the-way",
+        "new-session/task-draft-survives-opening-a-session"
+      ]
+    }
+  ]
+}
