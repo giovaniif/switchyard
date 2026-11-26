@@ -264,6 +264,31 @@ describe("subagents", () => {
     expect(shape(rows)).toEqual(["user", "work(1)", "assistant"]);
     expect(tool(rows).state).toBe("running");
   });
+
+  test("agents still running stay apart from the commands around them, in a turn that wrote between its steps", () => {
+    const items = fold([
+      { type: "user_message", text: "look into both" },
+      { type: "turn_started", at: 1_000 },
+      { type: "tool_started", itemId: "c0", kind: "command", title: "Ran", detail: "free -h" },
+      { type: "tool_completed", itemId: "c0", ok: true },
+      { type: "tool_started", itemId: "a1", kind: "other", title: "Agent", detail: "read the logs", agent: "general-purpose" },
+      { type: "tool_started", itemId: "a2", kind: "other", title: "Agent", detail: "measure memory", agent: "general-purpose" },
+      { type: "tool_started", itemId: "c1", kind: "command", title: "Ran", detail: "gh pr list" },
+      { type: "tool_completed", itemId: "c1", ok: true },
+      { type: "assistant_message", itemId: "m1", text: "Meanwhile I'll review the PRs." },
+      { type: "tool_started", itemId: "c2", kind: "command", title: "Ran", detail: "git diff" },
+      { type: "tool_completed", itemId: "c2", ok: true },
+      { type: "assistant_message", itemId: "m2", text: "Waiting on the two agents." },
+      { type: "turn_completed", status: "completed", at: 9_000 },
+    ]);
+    const rows = layout(items, false);
+    expect(shape(rows)).toEqual(["user", "fold(Ran 3 commands)", "work(1)", "work(1)", "work(1)", "work(1)", "assistant", "work(1)", "assistant"]);
+    const agents = rows.flatMap((r) => (r.type === "work" ? r.entries : [])).filter((e) => e.kind === "tool" && e.agent);
+    expect(agents.map((a) => [a.kind === "tool" && a.detail, a.kind === "tool" && a.state])).toEqual([
+      ["read the logs", "running"],
+      ["measure memory", "running"],
+    ]);
+  });
 });
 
 describe("handoffLinks", () => {
