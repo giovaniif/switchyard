@@ -36,12 +36,12 @@ export async function copyText(text: string): Promise<boolean> {
 /** A small Copy button that confirms with a check for a moment. */
 export function CopyButton({ text, label = "Copy", className = "" }: { text: string; label?: string; className?: string }) {
   const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <button
       type="button"
-      className={`copy-btn ${copied ? "copied" : ""} ${className}`}
+      className={`btn-icon copy-btn ${copied ? "copied" : ""} ${className}`}
       aria-label={copied ? "Copied" : label}
       title={copied ? "Copied" : label}
       onClick={async (e) => {

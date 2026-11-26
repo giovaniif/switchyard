@@ -1686,23 +1686,25 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .phone-welcome-open { display: flex; align-items: center; justify-content: center; height: 44px; font-size: 16px; text-decoration: none; }
 .phone-welcome .login-steps a { color: var(--ink); text-decoration: underline; }
 .phone-welcome-browser { align-self: center; display: inline-flex; align-items: center; color: var(--muted); text-decoration: none; }
-/* Copy on code, commands and their output. Shown on hover where there is
-   one; always on touch screens, which have none. */
-.copy-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
+/* Copy on code, commands and their output. It sits beside the text, never
+   over it: a long first line scrolls under nothing. Shown on hover where
+   there is one; on touch screens, which have none, always, under the block
+   so the code keeps the phone's whole width. */
+.btn-icon.copy-btn { flex: none; width: 26px; height: 24px; padding: 0; border-radius: 6px; }
 .copy-btn:hover { background: var(--fill); color: var(--ink); }
 .copy-btn.copied { color: var(--ok-ink); }
 .tool-line { display: flex; align-items: center; gap: 2px; min-width: 0; }
-.tool-line .tool-row { min-width: 0; }
+.tool-line .tool-row { flex: 1 1 auto; min-width: 0; }
+.copy-block { display: flex; align-items: flex-start; gap: 2px; min-width: 0; }
+.copy-block > pre { flex: 1 1 auto; min-width: 0; }
 .tool-line .copy-btn, .copy-block .copy-corner, .approval-what-row .copy-btn { opacity: 0; transition: opacity 0.1s; }
 .tool-line:hover .copy-btn, .copy-block:hover .copy-corner, .approval-what-row:hover .copy-btn,
 .copy-btn:focus-visible, .copy-btn.copied { opacity: 1; }
-.copy-block { position: relative; }
-.copy-block .copy-corner { position: absolute; top: 4px; right: 4px; background: var(--bg); border: 1px solid var(--line); }
-.tool-output-block .copy-corner { right: 4px; }
-.tool-output-block { margin: 0 0 8px 20px; }
-.tool-output-block .tool-output { margin: 0; }
 .approval-what-row { display: flex; align-items: flex-start; gap: 6px; }
 .approval-what-row .approval-what { flex: 1; min-width: 0; }
 @media (hover: none) {
   .tool-line .copy-btn, .copy-block .copy-corner, .approval-what-row .copy-btn { opacity: 1; }
+  .copy-block { flex-direction: column; align-items: stretch; gap: 0; }
+  .copy-block .copy-corner { align-self: flex-end; margin-top: 2px; }
+  .copy-block > .tool-output { margin-bottom: 0; }
 }

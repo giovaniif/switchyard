@@ -504,6 +504,9 @@ in an approval card, the command on its step (inside "Worked for"), and every
 code block in an answer. Before, the only way was selecting the text by hand,
 which picked up the step's label too and is fiddly on a phone. The clipboard
 is stubbed so the drive can read what was copied.
+Copy sits beside a block (under it on touch screens), never over it: the end
+of a long line that scrolls sideways stays readable. A step's row still opens
+from its whole width, and output under a subagent keeps its indent.
 
 ```sh
 yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{repo}}","worktree":true,"permission":"ask","text":"[cmd] TEST-copy the command desktop"}' --wait '{"op":"created"}' --save copy_cmd_desktop=sessionId
@@ -512,8 +515,11 @@ yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"lo
 yv drive 'session:{{copy_cmd_mobile}}' --viewport mobile --steps '[{"eval":"(Object.defineProperty(navigator, \"clipboard\", { configurable: true, value: { writeText: (t) => { window.__copied = t; return Promise.resolve(); } } }), 1)"},{"expect":"text:Allow this command?"},{"click":"role:button:Copy command"},{"eval":"window.__copied","equals":"echo approved"},{"shot":"approval"},{"click":"role:button:Allow once"},{"expect":"css:.thread","text":"Ran it."},{"click":"role:button:Worked for"},{"eval":"(window.__copied = null, 1)"},{"click":{"role":"button","name":"Copy command","within":{"css":".tool-line"}}},{"eval":"window.__copied","equals":"echo approved"},{"shot":"step"}]'
 yv api '{"op":"session.send","sessionId":"{{sid_echo}}","text":"TEST-copy code\n\n\u0060\u0060\u0060sh\nbunx vite build --mode copy\n\u0060\u0060\u0060"}' --wait '{"op":"event","event":{"type":"turn_completed"}}'
 yv drive 'session:{{sid_echo}}' --steps '[{"eval":"(Object.defineProperty(navigator, \"clipboard\", { configurable: true, value: { writeText: (t) => { window.__copied = t; return Promise.resolve(); } } }), 1)"},{"click":{"role":"button","name":"Copy code","within":{"css":".copy-block","hasText":"--mode copy"}}},{"eval":"window.__copied","equals":"bunx vite build --mode copy"},{"shot":"code"}]'
+yv api '{"op":"session.send","sessionId":"{{sid_echo}}","text":"TEST-long code\n\n\u0060\u0060\u0060sh\ncargo test -p yardd --test agents a_turn_owes_its_last_answer_and_this_line_is_long_enough_to_scroll_sideways\n\u0060\u0060\u0060"}' --wait '{"op":"event","event":{"type":"turn_completed"}}'
+yv drive 'session:{{sid_echo}}' --steps '[{"expect":{"css":"pre.code","hasText":"scroll_sideways"}},{"eval":"(() => { const pre = [...document.querySelectorAll(\"pre.code\")].find((p) => p.textContent.includes(\"scroll_sideways\")); pre.scrollLeft = 1e6; const b = pre.parentElement.querySelector(\".copy-btn\").getBoundingClientRect(); const p = pre.getBoundingClientRect(); return b.right <= p.left || b.left >= p.right || b.bottom <= p.top || b.top >= p.bottom; })()","equals":true},{"shot":"long-code"}]'
+yv drive 'session:{{copy_cmd_desktop}}' --viewport desktop --steps '[{"click":"role:button:Worked for"},{"eval":"(() => { const row = document.querySelector(\".tool-line .tool-row\"); return row.getBoundingClientRect().width > row.closest(\".tool\").getBoundingClientRect().width - 40; })()","equals":true}]'
+yv drive 'session:{{copy_cmd_mobile}}' --viewport mobile --steps '[{"click":"role:button:Worked for"},{"eval":"(() => { const row = document.querySelector(\".tool-line .tool-row\"); return row.getBoundingClientRect().width > row.closest(\".tool\").getBoundingClientRect().width - 40; })()","equals":true}]'
 ```
-
 
 ## Gotchas
 - Recipes share one isolated yardd and run in order, and several send to `sid_echo`: by `reply-to-part-of-answer` its first answer is scrolled out of view at 390 px, so that recipe scrolls the paragraph into view before selecting it (a user only selects what they see).
