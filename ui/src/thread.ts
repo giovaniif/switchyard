@@ -193,6 +193,12 @@ const SKIPPED: Record<string, [string, string, string]> = {
 
 /** A row's verb. Engines title a call by its outcome ("Ran", "Edited") from
  *  the start; until it is allowed and done, it has not happened. */
+/** What Copy on a step puts on the clipboard: the command a step ran, as
+ *  both engines report it (`detail`); other steps offer none. */
+export function stepCommand(entry: ToolItem): string | null {
+  return entry.toolKind === "command" && entry.detail.trim() ? entry.detail : null;
+}
+
 export function toolLabel(entry: ToolItem): string {
   const verbs = entry.title === "Ran" ? ["Waiting to run", "Did not run", "Running"] : entry.title === "Edited" ? ["Waiting to edit", "Did not edit", "Editing"] : null;
   if (!verbs) return entry.title;

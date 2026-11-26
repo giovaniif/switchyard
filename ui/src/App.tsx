@@ -36,10 +36,11 @@ import { WidgetFrame } from "./WidgetFrame";
 import { hiddenFromSidebar, runsAttention } from "./automations";
 import { dragHasSession, dropUpdate, SESSION_DRAG_TYPE, type DropTarget } from "./sidebarDrop";
 import { addsProviders, canSteer, ENGINES, ENGINE_ACCOUNT, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, pickerEngines, queuedHint, shownEffort } from "./engines";
-import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinned, summarize, thoughtLine, toolLabel, type Row, type WorkItem } from "./thread";
+import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinned, summarize, stepCommand, thoughtLine, toolLabel, type Row, type WorkItem } from "./thread";
 import { voiceCue, type Cue } from "./voice";
 import { useVoice } from "./useVoice";
 import { MobileSetup, MobileSetupButton } from "./MobileSetup";
+import { CopyButton } from "./CopyButton";
 import { phoneTargets } from "./mobile";
 import { isAgentHome, loadChoice, loadFolder, loadHost, readRecent, rememberSession, validChoice, type Choice } from "./sessionDefaults";
 export { isAgentHome, loadChoice, readRecent } from "./sessionDefaults";
@@ -3705,8 +3706,10 @@ function WorkEntry({ entry }: { entry: WorkItem }) {
   }
   if (entry.agent || entry.steps?.length) return <AgentEntry entry={entry} />;
   const expandable = !!entry.output;
+  const command = stepCommand(entry);
   return (
     <div className="tool">
+      <div className="tool-line">
       <button className="tool-row" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
         <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
           <Icon d={CHEVRON_RIGHT} size={12} />
@@ -3723,7 +3726,19 @@ function WorkEntry({ entry }: { entry: WorkItem }) {
           entry.state === "failed" && <span className="bad">· failed</span>
         )}
       </button>
-      {open && entry.output && <pre className="tool-output">{entry.output}</pre>}
+      {command && <CopyButton text={command} label="Copy command" />}
+      </div>
+      {open && entry.output && <CopyBlock text={entry.output} className="tool-output" label="Copy output" />}
+    </div>
+  );
+}
+
+/** Preformatted text with Copy in its corner: code, commands' output. */
+export function CopyBlock({ text, className, label = "Copy" }: { text: string; className: string; label?: string }) {
+  return (
+    <div className={`copy-block ${className}-block`}>
+      <pre className={className}>{text}</pre>
+      <CopyButton text={text} label={label} className="copy-corner" />
     </div>
   );
 }
@@ -3784,7 +3799,7 @@ function AgentEntry({ entry, card = false }: { entry: ToolItem; card?: boolean }
               ))}
             </div>
           )}
-          {entry.output && <pre className="tool-output">{entry.output}</pre>}
+          {entry.output && <CopyBlock text={entry.output} className="tool-output" label="Copy output" />}
         </div>
       )}
     </div>
@@ -3798,7 +3813,10 @@ export function ApprovalCard({ item, onDecide }: {
   return (
         <div className="approval">
           <div className="approval-title">{item.approvalKind === "command" ? "Allow this command?" : "Allow this?"}</div>
-          <code className="approval-what">{item.title}</code>
+          <div className="approval-what-row">
+            <code className="approval-what">{item.title}</code>
+            {item.approvalKind === "command" && item.title.trim() && <CopyButton text={item.title} label="Copy command" />}
+          </div>
           {item.detail && <div className="muted small">{item.detail}</div>}
           {item.decision === null && !item.unanswered ? (
             <div className="row">
@@ -4112,11 +4130,7 @@ export function Markdown({ text, quotable }: { text: string; quotable?: boolean 
       {blocks.map((block, i) => {
         if (block.kind === "code") {
           if (block.language === "mermaid") return <MermaidDiagram key={i} source={block.body} complete={block.complete} />;
-          return (
-            <pre key={i} className="code">
-              {block.body}
-            </pre>
-          );
+          return <CopyBlock key={i} text={block.body} className="code" label="Copy code" />;
         }
         return block.text
           .split(/\n{2,}/)
