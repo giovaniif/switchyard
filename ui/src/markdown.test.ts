@@ -84,7 +84,7 @@ describe("blockSegments", () => {
 describe("blockSegments: headings and lists without a blank line", () => {
   test("a heading over its text, a list under its lead-in", () => {
     expect(blockSegments(["## Summary", "Fixed the parser."])).toEqual([
-      { kind: "heading", text: "Summary" },
+      { kind: "heading", text: "Summary", level: 2 },
       { kind: "text", lines: ["Fixed the parser."] },
     ]);
     expect(blockSegments(["Changes:", "- src/a.ts", "* src/b.ts"])).toEqual([
@@ -115,8 +115,21 @@ describe("blockSegments: headings and lists without a blank line", () => {
   test("not headings or lists", () => {
     expect(blockSegments(["#hashtag", "**bold** start", "-1 degrees"])).toEqual([{ kind: "text", lines: ["#hashtag", "**bold** start", "-1 degrees"] }]);
   });
+  test("a heading keeps its level", () => {
+    expect(blockSegments(["# Report", "###### Fine print"])).toEqual([
+      { kind: "heading", text: "Report", level: 1 },
+      { kind: "heading", text: "Fine print", level: 6 },
+    ]);
+  });
+  test("lines starting with > are one quote; a > later in a line is text", () => {
+    expect(blockSegments(["Note:", "> Registrar names lag", ">by a day.", "Echo: > say hello"])).toEqual([
+      { kind: "text", lines: ["Note:"] },
+      { kind: "quote", lines: ["Registrar names lag", "by a day."] },
+      { kind: "text", lines: ["Echo: > say hello"] },
+    ]);
+  });
   test("closing hashes are dropped from a heading", () => {
-    expect(blockSegments(["### Notes ###"])).toEqual([{ kind: "heading", text: "Notes" }]);
-    expect(blockSegments(["## Use C#"])).toEqual([{ kind: "heading", text: "Use C#" }]);
+    expect(blockSegments(["### Notes ###"])).toEqual([{ kind: "heading", text: "Notes", level: 3 }]);
+    expect(blockSegments(["## Use C#"])).toEqual([{ kind: "heading", text: "Use C#", level: 2 }]);
   });
 });

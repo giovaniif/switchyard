@@ -29,7 +29,7 @@ Viewports: both
 Only one inspector appears. Engine logins and queue policy are in separate tabs.
 
 ```sh
-yv drive 'hosts' --steps '[{"expect":"role:button:Select iso-host"},{"expect":"css:.host-inspector","count":1},{"expect":"role:tab:Sessions"},{"expect":"css:.engines","count":0},{"click":"role:tab:Engine logins"},{"expect":"css:.engine-row","text":"Claude Code"},{"expect":"css:.account-row","text":"TEST-Work"},{"click":"role:tab:System"},{"expect":"css:.host-system","text":"Session capacity"},{"expect":"css:.host-inspector-panel","text":"New sessions are queued while load is above"},{"expect":"css:.engines","count":0},{"eval":"document.documentElement.scrollWidth === innerWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"host-system"},{"click":"role:tab:Sessions"},{"shot":"host-sessions"}]'
+yv drive 'hosts' --steps '[{"expect":"role:button:Select iso-host"},{"expect":"css:.host-inspector","count":1},{"expect":"role:tab:Sessions"},{"expect":"css:.engines","count":0},{"click":"role:tab:Engine logins"},{"expect":"css:.engine-row","text":"Claude Code"},{"expect":"css:.account-row","text":"TEST-Work"},{"click":"role:tab:System"},{"expect":"css:.host-system","text":"Session capacity"},{"expect":"css:.host-inspector-panel","text":"New sessions are queued while load is above"},{"expect":"css:.engines","count":0},{"eval":"document.documentElement.scrollWidth === document.documentElement.clientWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"host-system"},{"click":"role:tab:Sessions"},{"shot":"host-sessions"}]'
 ```
 
 ### compact-usage-popover
@@ -73,7 +73,7 @@ Viewports: both
 Accounts appear once, with reset times and source host badges. Reload preserves the route.
 
 ```sh
-yv drive 'subscriptions' --steps '[{"expect":"role:heading:Subscriptions"},{"expect":"role:region:Claude · TEST-Work","text":"91% used"},{"expect":"role:region:Claude · Default","count":1},{"expect":"role:region:Codex · Default","text":"34% used"},{"expect":"css:.subscription-hosts","text":"iso-host"},{"expect":"css:.subscription-row","text":"resets in"},{"eval":"document.documentElement.scrollWidth === innerWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"subscriptions"},{"reload":true},{"expect":"role:heading:Subscriptions"}]'
+yv drive 'subscriptions' --steps '[{"expect":"role:heading:Subscriptions"},{"expect":"role:region:Claude · TEST-Work","text":"91% used"},{"expect":"role:region:Claude · Default","count":1},{"expect":"role:region:Codex · Default","text":"34% used"},{"expect":"css:.subscription-hosts","text":"iso-host"},{"expect":"css:.subscription-row","text":"resets in"},{"eval":"document.documentElement.scrollWidth === document.documentElement.clientWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"subscriptions"},{"reload":true},{"expect":"role:heading:Subscriptions"}]'
 ```
 
 ### account-picker-separate-from-model
@@ -81,8 +81,8 @@ Viewports: both
 Choosing a named account updates a separate chip, preserves the task draft, and the model menu contains models without segmented account buttons.
 
 ```sh
-yv drive 'new' --viewport desktop --steps '[{"fill":"label:Message","value":"TEST-keep this draft"},{"click":"css:.account-trigger"},{"expect":"role:dialog:Engine account identity","text":"Choose an account"},{"click":{"role":"menuitemradio","name":"Claude · TEST-Work"}},{"expect":"role:button:Account: Claude, TEST-Work"},{"expect":"label:Message","value":"TEST-keep this draft"},{"click":"role:button:Model Opus 5.5"},{"expect":"css:.picker-accounts","count":0},{"expect":{"css":".picker-model","hasText":"Sonnet 5.5"}},{"press":"Escape"},{"eval":"document.documentElement.scrollWidth === innerWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"separate-account"}]'
-yv drive 'new' --viewport mobile --steps '[{"click":"role:button:Session setup"},{"fill":"label:Message","value":"TEST-keep this draft"},{"click":"css:.account-trigger"},{"expect":"role:dialog:Engine account identity","text":"Choose an account"},{"click":{"role":"menuitemradio","name":"Claude \u00b7 TEST-Work"}},{"expect":"role:button:Account: Claude, TEST-Work"},{"expect":"label:Message","value":"TEST-keep this draft"},{"click":"role:button:Model Opus 5.5"},{"expect":"css:.picker-accounts","count":0},{"expect":{"css":".picker-model","hasText":"Sonnet 5.5"}},{"press":"Escape"},{"eval":"document.documentElement.scrollWidth === innerWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"separate-account"}]'
+yv drive 'new' --viewport desktop --steps '[{"fill":"label:Message","value":"TEST-keep this draft"},{"click":"css:.account-trigger"},{"expect":"role:dialog:Engine account identity","text":"Choose an account"},{"click":{"role":"menuitemradio","name":"Claude · TEST-Work"}},{"expect":"role:button:Account: Claude, TEST-Work"},{"expect":"label:Message","value":"TEST-keep this draft"},{"click":"role:button:Model Opus 5.5"},{"expect":"css:.picker-accounts","count":0},{"expect":{"css":".picker-model","hasText":"Sonnet 5.5"}},{"press":"Escape"},{"eval":"document.documentElement.scrollWidth === document.documentElement.clientWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"separate-account"}]'
+yv drive 'new' --viewport mobile --steps '[{"click":"role:button:Session setup"},{"fill":"label:Message","value":"TEST-keep this draft"},{"click":"css:.account-trigger"},{"expect":"role:dialog:Engine account identity","text":"Choose an account"},{"click":{"role":"menuitemradio","name":"Claude \u00b7 TEST-Work"}},{"expect":"role:button:Account: Claude, TEST-Work"},{"expect":"label:Message","value":"TEST-keep this draft"},{"click":"role:button:Model Opus 5.5"},{"expect":"css:.picker-accounts","count":0},{"expect":{"css":".picker-model","hasText":"Sonnet 5.5"}},{"press":"Escape"},{"eval":"document.documentElement.scrollWidth === document.documentElement.clientWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"separate-account"}]'
 ```
 
 ### other-engine-account-and-fixed-session
@@ -120,6 +120,24 @@ yv api '{"op":"session.update","sessionId":"{{sid_think}}","archived":false}'
 yv state --expect '{"sessions":[{"id":"{{sid_think}}","archived":false}]}'
 ```
 
+### archived-waiting-session-says-needs-approval
+Viewports: both
+Archived sessions still open and run, so an archived row keeps its status:
+one waiting for approval reads "Archived · Needs approval", not only
+"Archived" (its dot was amber, the word hid why). An idle archived row still
+reads "Archived". The Hosts page's session list uses the same rows.
+
+```sh
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","status":"needs_approval"}]}'
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","archived":true}' --wait '{"op":"session","session":{"id":"{{sid_cmd}}","archived":true}}'
+yv api '{"op":"session.update","sessionId":"{{sid_think}}","archived":true}' --wait '{"op":"session","session":{"id":"{{sid_think}}","archived":true}}'
+yv drive 'sessions' --steps '[{"click":{"role":"button","name":"Archived","exact":true}},{"expect":{"css":".focused-session-row","hasText":"[cmd] TEST-run the migration"},"text":"Archived · Needs approval"},{"expect":{"css":".focused-session-row","hasText":"TEST-plan the refactor"},"text":"Archived"},{"eval":"[...document.querySelectorAll(\".focused-session-row\")].find((r) => r.textContent.includes(\"TEST-plan the refactor\")).querySelector(\".focused-session-state\").textContent.trim()","equals":"Archived"},{"shot":"archived-waiting"}]'
+yv drive hosts --viewport desktop --steps '[{"expect":{"css":".focused-session-row","hasText":"[cmd] TEST-run the migration"},"text":"Archived · Needs approval"}]'
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","archived":false}' --wait '{"op":"session","session":{"id":"{{sid_cmd}}","archived":false}}'
+yv api '{"op":"session.update","sessionId":"{{sid_think}}","archived":false}' --wait '{"op":"session","session":{"id":"{{sid_think}}","archived":false}}'
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","status":"needs_approval","archived":false}]}'
+```
+
 ### sessions-search-no-match-says-so
 Viewports: both
 A search that matches nothing says so and offers to clear it. It used to say
@@ -128,6 +146,17 @@ session button, as if there were no sessions at all.
 
 ```sh
 yv drive 'sessions' --steps '[{"expect":"role:heading:Sessions"},{"expect":{"css":".focused-session-row","hasText":"TEST-say hello"}},{"fill":"label:Search sessions","value":"TEST-matches-nothing"},{"expect":"css:.focused-session-row","count":0},{"expect":"css:.focused-empty","text":"No sessions match your search."},{"expect":{"css":".focused-empty button","hasText":"New session"},"count":0},{"shot":"no-match"},{"click":{"css":".focused-empty button","hasText":"Clear search"}},{"expect":"label:Search sessions","value":""},{"expect":{"css":".focused-session-row","hasText":"TEST-say hello"}}]'
+```
+
+### sessions-search-finds-the-account
+Viewports: both
+Each row names the account its session runs on, so searching for that name
+lists the session. Until 2026-11-24 the search skipped the account and said
+"No sessions match your search." (#394).
+
+```sh
+yv api '{"op":"session.create","engine":"codex","account":"{{codex_acct}}","model":"fake-fast","effort":"low","cwd":"{{repo}}","text":"TEST-on the codex account"}' --wait '{"op":"created"}' --save acct_search_sid=sessionId
+yv drive 'sessions' --steps '[{"expect":{"css":".focused-session-row","hasText":"TEST-on the codex account"},"text":"TEST-Codex"},{"fill":"label:Search sessions","value":"test-codex"},{"expect":{"css":".focused-session-row","hasText":"TEST-on the codex account"}},{"expect":{"css":".focused-session-row","hasText":"TEST-say hello"},"count":0},{"expect":"css:.focused-empty","count":0},{"shot":"search-by-account"}]'
 ```
 
 ### host-rows-line-up-with-the-page
@@ -167,9 +196,9 @@ An unreachable host shows its problem, retains System actions, and removing it r
 
 ```sh
 yv api '{"op":"host.add","name":"TEST-offline","kind":"ssh","destination":"test@unreachable.invalid"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-offline","status":"error"}]}'
-yv drive 'hosts' --viewport desktop --steps '[{"click":"role:button:Select TEST-offline"},{"expect":"css:.host-problem"},{"expect":"css:.host-inspector-panel","text":"reconnects"},{"click":"role:tab:System"},{"eval":"document.documentElement.scrollWidth === innerWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"offline-system"},{"click":"role:button:Remove host"},{"click":"role:button:Click again to remove"},{"expect":"role:button:Select TEST-offline","count":0},{"expect":"role:button:Select iso-host"},{"expect":"css:.host-inspector-heading","text":"iso-host"}]'
+yv drive 'hosts' --viewport desktop --steps '[{"click":"role:button:Select TEST-offline"},{"expect":"css:.host-problem"},{"expect":"css:.host-inspector-panel","text":"reconnects"},{"click":"role:tab:System"},{"eval":"document.documentElement.scrollWidth === document.documentElement.clientWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"offline-system"},{"click":"role:button:Remove host"},{"click":"role:button:Click again to remove"},{"expect":"role:button:Select TEST-offline","count":0},{"expect":"role:button:Select iso-host"},{"expect":"css:.host-inspector-heading","text":"iso-host"}]'
 yv api '{"op":"host.add","name":"TEST-offline","kind":"ssh","destination":"test@unreachable.invalid"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-offline","status":"error"}]}'
-yv drive 'hosts' --viewport mobile --steps '[{"click":"role:button:Select TEST-offline"},{"expect":"css:.host-problem"},{"expect":"css:.host-inspector-panel","text":"reconnects"},{"click":"role:tab:System"},{"eval":"document.documentElement.scrollWidth === innerWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"offline-system"},{"click":"role:button:Remove host"},{"click":"role:button:Click again to remove"},{"expect":"role:button:Select TEST-offline","count":0},{"expect":"role:button:Select iso-host"},{"expect":"css:.host-inspector-heading","text":"iso-host"}]'
+yv drive 'hosts' --viewport mobile --steps '[{"click":"role:button:Select TEST-offline"},{"expect":"css:.host-problem"},{"expect":"css:.host-inspector-panel","text":"reconnects"},{"click":"role:tab:System"},{"eval":"document.documentElement.scrollWidth === document.documentElement.clientWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"offline-system"},{"click":"role:button:Remove host"},{"click":"role:button:Click again to remove"},{"expect":"role:button:Select TEST-offline","count":0},{"expect":"role:button:Select iso-host"},{"expect":"css:.host-inspector-heading","text":"iso-host"}]'
 ```
 
 ### workspace-widths-and-views
@@ -196,6 +225,16 @@ keeps its session list and Usage entry.
 
 ```sh
 yv drive new --viewport desktop --steps '[{"expect":{"css":".sidebar-top button","hasText":"Sessions","exact":true},"count":0},{"expect":{"css":".sidebar-top button","hasText":"Subscriptions","exact":true},"count":0},{"click":"role:button:Go to session or page"},{"fill":"role:combobox","value":"subscriptions"},{"press":"Enter"},{"expect":"role:heading:Subscriptions"}]'
+```
+
+### subscriptions-page-signed-out-account
+Viewports: both
+An account that needs sign-in shows Sign in, not its last usage, as the
+sidebar usage popover does (#396). Sign in opens the Engine logins tab.
+
+```sh
+yv api '{"op":"account.add","engine":"claude","name":"TEST-Away"}' --wait '{"op":"accounts"}'
+yv drive 'subscriptions' --steps '[{"expect":"role:heading:Subscriptions"},{"expect":"role:region:Claude · TEST-Work","text":"91% used"},{"expect":"role:region:Claude · TEST-Away","text":"Needs sign-in"},{"expect":"role:region:Claude · TEST-Away","text":"Sign in to see usage"},{"wait":1500},{"eval":"[...document.querySelectorAll(\".subscription-row\")].find((r) => r.getAttribute(\"aria-label\") === \"Claude · TEST-Away\").querySelectorAll(\".usage-percent, [role=progressbar]\").length","equals":0},{"eval":"document.documentElement.scrollWidth === document.documentElement.clientWidth","equals":true},{"shot":"signed-out-account"},{"click":"role:button:Sign in — Claude · TEST-Away"},{"expect":"css:[role=tab][aria-selected=true]","text":"Engine logins"},{"expect":{"css":".account-row","hasText":"TEST-Away"},"text":"not logged in"}]'
 ```
 
 ## Gotchas

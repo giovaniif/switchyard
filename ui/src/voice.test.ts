@@ -7,6 +7,7 @@ import {
   isEcho,
   isStopWord,
   joinDictation,
+  markEnd,
   recognitionProblem,
   speakable,
   speechChunks,
@@ -84,7 +85,21 @@ describe("dictation text", () => {
     expect(heardText([{ text: "hello", final: true }, { text: " world", final: false }])).toBe("hello world");
   });
   test("results already used are skipped", () => {
-    expect(heardText([{ text: "old", final: true }, { text: " new", final: true }], 1)).toBe("new");
+    expect(heardText([{ text: "old", final: true }, { text: " new", final: true }], { i: 1, words: 0 })).toBe("new");
+    expect(heardText([{ text: "old", final: true }, { text: " new", final: true }], markEnd([{ text: "old", final: true }]))).toBe("new");
+  });
+  test("WebKit's one growing result: words said after an echo still count", () => {
+    // Safari and WKWebView report a single interim result whose transcript grows.
+    const echo = [{ text: "Voice mode on", final: false }];
+    const used = markEnd(echo);
+    expect(heardText(echo, used)).toBe("");
+    expect(heardText([{ text: "Voice mode on fix the tests", final: false }], used)).toBe("fix the tests");
+    expect(heardText([{ text: "Voice mode on. Fix the tests.", final: true }], used)).toBe("Fix the tests.");
+  });
+  test("a final result is used up whole", () => {
+    expect(markEnd([{ text: "one two", final: true }])).toEqual({ i: 1, words: 0 });
+    expect(markEnd([])).toEqual({ i: 0, words: 0 });
+    expect(markEnd([{ text: "one", final: true }, { text: " two three ", final: false }])).toEqual({ i: 1, words: 2 });
   });
   test("dictation goes after what is in the box, a space apart", () => {
     expect(joinDictation("", "fix the test")).toBe("fix the test");

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { loadChoice, loadFolder, loadHost, readRecent, rememberSession, validChoice } from "./sessionDefaults";
+import { isAgentHome, loadChoice, loadFolder, loadHost, readRecent, rememberSession, validChoice } from "./sessionDefaults";
 import type { Models } from "./protocol";
 
 const original = globalThis.localStorage;
@@ -45,4 +45,16 @@ describe("session defaults", () => {
     localStorage.setItem("yard.choice", "null");
     expect(loadChoice(models).model).toBe("opus");
   });
+});
+
+test("an agent's own folder is never a recent folder or the next session's", () => {
+  rememberSession({ engine: "codex", model: "m", effort: "low", cwd: "/home/me/.yard/agents/g1a2103dc55c1", agent: "g1a2103dc55c1" });
+  expect(readRecent("local")).toEqual([]);
+  expect(loadFolder("local")).toBe("");
+  rememberSession({ engine: "codex", model: "m", effort: "low", cwd: "/projects/app" });
+  // What an older build remembered is ignored.
+  localStorage.setItem("yard.recent.local", JSON.stringify(["/home/me/.yard/agents/g9", "/projects/app"]));
+  expect(readRecent("local")).toEqual(["/projects/app"]);
+  expect(isAgentHome("/home/me/.yard/agents/g9/")).toBe(true);
+  expect(isAgentHome("/home/me/www/agents/tools")).toBe(false);
 });

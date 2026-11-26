@@ -69,7 +69,7 @@ async fn handoff(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &V
         _ => None,
     };
     app.accounts.check(engine, account)?;
-    let new_sid = app.insert_session(engine, model, effort, &source.cwd, &source.title, worktree, true, account, None)?;
+    let new_sid = app.insert_session(engine, model, effort, &source.cwd, &source.title, worktree, true, account, None, None)?;
     app.update_meta(&new_sid, |m| {
         m.parent = Some(sid.to_string());
         m.permission = source.permission.clone();
@@ -85,7 +85,7 @@ async fn handoff(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &V
         json!({ "type": "note", "text": format!("Handed off from {}.", engine_name(&source.engine)), "session": sid }),
     );
     let _ = direct.send(json!({ "op": "created", "sessionId": new_sid }).to_string());
-    sessions::begin(app, &new_sid, &brief, &[]).await;
+    sessions::begin(app, &new_sid, &brief, &[], None).await;
     Ok(())
 }
 

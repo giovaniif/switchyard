@@ -1,7 +1,7 @@
 # Builds the Linux package the app installs on remote hosts over SSH
 # (scripts/remote-install.sh): yardd, the compiled Claude sidecar and the UI.
 # Every push to main leaves the tarballs in the run's artifacts; release.yml
-# calls this for a version tag and publishes them next to the macOS DMG.
+# calls this for a new version and publishes them next to the macOS DMG.
 name: Linux host
 
 on:
@@ -15,7 +15,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: linux-host-${{ github.ref }}
+  # Called from release.yml, github.workflow is "Release": the release's
+  # build must not cancel, or be cancelled by, the one started by the same push.
+  group: linux-host-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

@@ -47,25 +47,12 @@ test("explicit session defaults survive different one-off host/model selections"
   expect(loadHost()).toBe("local");
   expect(loadChoice(models, "server").model).toBe("other");
 });
-test("Switchy and sessions keep independent defaults, including all-host scope", () => {
-  saveDefaults("sessions", { host: "server", choice });
-  saveDefaults("switchy", {
-    host: "all",
-    choice: { ...choice, model: "other" },
-  });
-  expect(loadDefaults("sessions")?.host).toBe("server");
-  expect(loadDefaults("switchy")?.choice.model).toBe("other");
-  saveDefaults("switchy", null);
-  expect(loadDefaults("sessions")).not.toBeNull();
-});
 test("invalid preferences and unavailable storage do not break launch", () => {
   localStorage.setItem(
     "yard.defaults.sessions",
     '{"host":"all","choice":{"engine":"codex","model":"fast","effort":"low"}}',
   );
   expect(loadDefaults("sessions")).toBeNull();
-  localStorage.setItem("yard.defaults.switchy", "{broken");
-  expect(loadDefaults("switchy")).toBeNull();
   globalThis.localStorage = {
     getItem() {
       throw Error("blocked");

@@ -1,3 +1,4 @@
+import { EngineIcon } from "./EngineIcon";
 import { useEffect, useRef, useState } from "react";
 import { AnchoredPopover } from "./AnchoredPopover";
 import type { Engine, EngineStates } from "./protocol";
@@ -29,7 +30,7 @@ function usageWindow(label: string) {
 
 function UsageAvatar({ engine, small }: { engine: Engine; small?: boolean }) {
   return <span className={`usage-avatar usage-avatar-${engine}${small ? " usage-avatar-small" : ""}`} aria-hidden="true">
-    {engine === "codex" ? "CX" : engine === "claude" ? "CC" : ENGINE_NAME[engine].slice(0, 2).toUpperCase()}
+    <EngineIcon engine={engine} size={small ? 11 : 16} />
   </span>;
 }
 
@@ -261,7 +262,7 @@ export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRe
   );
 }
 
-export function Subscriptions({ sources, onManage }: { sources: SubscriptionSource[]; onManage(): void }) {
+export function Subscriptions({ sources, onManage }: { sources: SubscriptionSource[]; onManage(host?: string): void }) {
   const now = useNow();
   const rows = subscriptionRows(sources, now);
   return (
@@ -283,7 +284,14 @@ export function Subscriptions({ sources, onManage }: { sources: SubscriptionSour
               ))}
             </div>
           </div>
-          {r.meters.length ? (
+          {/* The last report outlives a lost sign-in; the popover hides it too. */}
+          {r.loggedIn === false ? (
+            <p className="muted small">
+              Sign in to see usage.{" "}
+              {/* The sign-in state comes from r.host, so that host's logins hold the account. */}
+              <button className="btn-text usage-link" aria-label={`Sign in — ${r.name}`} onClick={() => onManage(r.host)}>Sign in</button>
+            </p>
+          ) : r.meters.length ? (
             <div className="subscription-meters">
               {r.meters.map((m) => (
                 <div key={m.key} className={`subscription-meter level-${m.level}`}>
@@ -306,7 +314,7 @@ export function Subscriptions({ sources, onManage }: { sources: SubscriptionSour
         </div>
       )}
       <p className="muted small subscription-note">One limit per account, shared across its hosts. {noLimitsNote()}</p>
-      <button className="btn-text" onClick={onManage}>
+      <button className="btn-text" onClick={() => onManage()}>
         Manage engine logins →
       </button>
     </div>

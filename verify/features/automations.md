@@ -209,6 +209,32 @@ yv api '{"op":"automation.save","automation":{"id":"{{overnight_id}}","window":n
 yv drive new --viewport desktop --steps '[{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Overnight\"] .automation-when","hasText":"21:00–09:00"},"visible":false}]'
 ```
 
+### a-run-waiting-for-approval-marks-the-button-amber
+A run that stops for approval puts an amber dot named "A run needs approval" on the sidebar's Automations button, not the green "A run is working" one: runs stay out of the sidebar, so this dot is the only sign there that a run waits for the user. Stopping the run clears it (the fake Codex ignores the interrupt while it asks, so yardd ends the turn after its grace period: wait for the dot to go). At 390 px the button is in the drawer.
+
+```sh
+yv api '{"op":"automation.save","automation":{"name":"TEST-Asks first","prompt":"[cmd] TEST-asks first","cwd":"{{repo}}","engine":"codex","model":"fake-fast","effort":"low","permission":"ask","schedule":{"kind":"manual"}}}' --wait '{"op":"automation.saved"}' --save ask_id=automation.id
+yv api '{"op":"automation.run","id":"{{ask_id}}","force":true}' --wait '{"op":"automation.ran"}' --expect '{"op":"automation.ran","outcome":"started"}' --save ask_sid=sessionId
+yv drive new --viewport desktop --steps '[{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Asks first\"] .automation-status","hasText":"Needs approval"},"timeout":30000},{"expect":"role:img:A run needs approval"},{"expect":"css:.nav-row .dot.dot-needs_approval"},{"expect":"role:img:A run is working","visible":false},{"shot":"approval"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":"role:img:A run needs approval"},{"expect":"role:img:A run is working","visible":false},{"shot":"approval"}]'
+yv api '{"op":"session.interrupt","sessionId":"{{ask_sid}}"}'
+yv drive new --viewport desktop --steps '[{"expect":{"css":".nav-row","hasText":"Automations"}},{"expect":"role:img:A run needs approval","visible":false,"timeout":20000},{"expect":"role:img:A run is working","visible":false}]'
+yv state --expect '{"sessions":[{"id":"{{ask_sid}}","status":"idle"}]}'
+```
+
+### next-run-stays-in-view-with-a-window
+A card's schedule line ends with when it runs next, the part that changes. An
+interval with a window and start days makes the line longer than a card, so
+the schedule words are what gets cut: "next …" stays whole inside the card at
+1440 px (cards about 355 px wide) and at 390 px, and the line's tooltip holds
+all of it. Viewports: both.
+
+```sh
+yv api '{"op":"automation.save","automation":{"name":"TEST-Night shift","prompt":"TEST-night shift","cwd":"{{repo}}","engine":"codex","model":"fake-fast","effort":"low","enabled":true,"schedule":{"kind":"interval","every":5,"unit":"minutes"},"window":{"start":"21:00","end":"09:00","days":[1,3,5]}}}' --wait '{"op":"automation.saved"}' --expect '{"automation":{"enabled":true,"window":{"start":"21:00","end":"09:00","days":[1,3,5]}}}'
+yv drive new --viewport desktop --steps '[{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Night shift\"] .automation-when","hasText":"Every 5 minutes · 21:00–09:00, Mon, Wed, Fri · next "}},{"eval":"(() => { const el = document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\"); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { const i = n.data.indexOf(\"next \"); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, n.data.length); return r.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 ? \"next run in view\" : \"next run cut off\"; } } return \"no next run\"; })()","equals":"next run in view"},{"eval":"/^Every 5 minutes · 21:00–09:00, Mon, Wed, Fri · next .+/.test(document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\").title)","equals":true},{"shot":"night-shift-card"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Night shift\"] .automation-when","hasText":"Every 5 minutes · 21:00–09:00, Mon, Wed, Fri · next "}},{"eval":"(() => { const el = document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\"); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { const i = n.data.indexOf(\"next \"); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, n.data.length); return r.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 ? \"next run in view\" : \"next run cut off\"; } } return \"no next run\"; })()","equals":"next run in view"},{"shot":"night-shift-card"}]'
+```
+
 ## Gotchas
 - Recipes share one isolated yardd and run in order: later recipes use the automation and run the earlier ones made.
 - A drive at both viewports runs on the same data, so the create recipe uses one drive per viewport.

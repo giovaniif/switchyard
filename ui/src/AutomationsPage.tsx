@@ -6,7 +6,7 @@ import { SelectPicker } from "./SelectPicker";
 import { useEffect, useMemo, useState } from "react";
 import type { Automation, AutomationWindow, Engine, Permission, Schedule, SessionMeta } from "./protocol";
 import { branchKey, homeOn, hostName, hostOf, hostOnline, modelsOn, usageOn, type Actions, type State } from "./store";
-import { cardStatus, describeSchedule, runLabel, runOutcome, runsOf, runSummary, runTook, RUN_LABEL, scheduleLine, scheduleProblem, stripRuns, type CardStatus, type RunOutcome } from "./automations";
+import { cardStatus, describeSchedule, runLabel, runOutcome, runsOf, runSummary, runTook, RUN_LABEL, scheduleParts, scheduleProblem, stripRuns, type CardStatus, type RunOutcome } from "./automations";
 import { duration } from "./thread";
 import { ENGINE_NAME, pickerEngines } from "./engines";
 import { metersFor } from "./usage";
@@ -25,6 +25,7 @@ import {
   PLUS,
   effortFor,
   loadChoice,
+  isAgentHome,
   readRecent,
 } from "./App";
 
@@ -116,6 +117,7 @@ function AutomationCard({ state, actions, host, a, now }: { state: State; action
       <span className="automation-status-text">{status.text}</span>
     </>
   );
+  const [schedule, next] = scheduleParts(a, now);
   return (
     <section className="automation" aria-label={a.name}>
       <div className="automation-head">
@@ -136,7 +138,10 @@ function AutomationCard({ state, actions, host, a, now }: { state: State; action
           <span className="switch-knob" />
         </button>
       </div>
-      <div className="automation-when muted small">{scheduleLine(a, now)}</div>
+      <div className="automation-when automation-when-split muted small" title={`${schedule} · ${next}`}>
+        <span className="automation-when-schedule">{schedule}</span>
+        <span className="automation-when-next">{` · ${next}`}</span>
+      </div>
       {status.runId ? (
         <button className={`btn-quiet ${statusClass}`} title={`${status.title}. Open it`} onClick={() => actions.go({ page: "session", id: status.runId! })}>
           {statusBody}
@@ -286,7 +291,8 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
 
   const recent = useMemo(() => {
     const fromSessions = Object.values(state.sessions)
-      .filter((s) => hostOf(s) === target)
+      // Agents' conversations run in the agents' own folders, not projects.
+      .filter((s) => hostOf(s) === target && !s.agent && !isAgentHome(s.cwd))
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .map((s) => s.repo || s.cwd);
     return [...new Set([...readRecent(target), ...fromSessions])].slice(0, 12);
