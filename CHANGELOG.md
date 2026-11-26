@@ -2,6 +2,15 @@
 
 Each version is a [GitHub release](https://github.com/giovaniif/better-than-claude-code/releases) with the signed Mac app and the Linux packages. The section for a version becomes its release notes.
 
+## 0.23.0 (2026-11-26)
+
+- **Install the iPhone app from a public TestFlight link.** The iPhone card on Hosts now has Install with TestFlight, so you no longer need an invitation. You can join once Apple approves the beta.
+- **The iPhone setup QR code works before the app is installed.** It used to hold a `switchyard://` link, which the iPhone Camera ignores until the app is installed, so scanning it showed nothing. It now opens a small page in Safari. **Open in Switchyard** opens the app with your host filled in. If the app isn't installed yet, the page explains how to get it from TestFlight.
+- **Old worktrees are cleaned up after archived runs that never opened a PR.** A worktree goes away once all of its sessions are archived, nothing is running in it, it has no uncommitted changes, and its commits are already on another branch. Each session there gets a note saying why.
+- **Fixed:**
+  - An archived session waiting for approval says so. The collapsed Archived section in the sidebar shows the approval dot, and the Sessions page reads "Archived · <status>" instead of just "Archived".
+  - New session: a typed path under a folder that doesn't exist names that folder, and no longer offers to use it.
+
 ## 0.22.0 (2026-11-25)
 
 - **A native iPhone app, with Liquid Glass.** Switchyard for iPhone and iPad is rebuilt in SwiftUI for iOS 26 and talks to your host directly. Sessions are grouped into Needs you, Working, Pinned and Recent, with search, swipe to pin or archive, and your host's CPU and memory. Replies stream in with formatting, thinking and tool steps (a subagent's steps nested under it). Approvals are cards with Allow once, Always and Deny, and the reply box is a floating glass bar with attachments, dictation, Stop and voice mode. Start sessions from the phone: pick the engine, model, folder, worktree and permission. Terminals, changes and pull requests open the host's page from a session's menu. It needs iOS 26 or later; install it from TestFlight.
