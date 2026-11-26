@@ -1,14 +1,16 @@
 import { loadDefaults } from "./launchDefaults";
 import { createContext, Fragment, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import type { LoginProvider } from "./protocol";
-import type { AccountEntry, Attachment, PendingMessage, ChangedFile, Engine, EngineState, EngineStates, Host, HostEntry, Item, ModelInfo, Models, SessionMeta, Status, ToolItem, Usage } from "./protocol";
+import type { LoginProvider, LoginState } from "./protocol";
+import type { AccountEntry, Agent, Attachment, PendingMessage, ChangedFile, Engine, EngineState, EngineStates, Host, HostEntry, Item, ModelInfo, Models, SessionMeta, Status, ToolItem, Usage } from "./protocol";
 import { ROW_LABEL, type RowState, rowState, useSeen } from "./rowState";
 import { Subscriptions, UsageStrip, type UsageAccount } from "./UsageMeters";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
-import { AssistantPage } from "./AssistantPage";
+import { AgentAvatar, AgentBar, AgentForm, AgentRequests, AgentRunPickers, AgentsPage, AgentStart, EarlierConversations, NewAgentRedirect, agentSettings, useAgentMove, useAgentSave } from "./AgentsPage";
+import { SlackIcons } from "./SlackIcon";
+import { agentHost, agentOf, agentsAttention, agentStatus, conversationOf, handleOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
 import { accountChoices, accountLabel, accountName, accountOf, choiceOnEngine, DEFAULT_ACCOUNT } from "./accounts";
@@ -21,24 +23,30 @@ import { SessionHandover } from "./SessionHandover";
 import { PeekScope, PrLink } from "./PrHoverCard";
 import { PR_URL_SOURCE, prLink, shortLabel } from "./prPeek";
 import { ProcPane } from "./ProcPane";
-import { draftOf, fenceSegments, keepDraft, lineCount, onAppend, quoteInComposer, quoteSegments, type Snippet, splitQuotes, withQuotes } from "./compose";
+import { draftOf, fenceSegments, keepDraft, lineCount, onAppend, quoteInComposer, quoteSegments, type Quote, type Snippet, splitComments, splitQuotes, withQuotes } from "./compose";
 import { blockSegments, fencedBlocks, type MdTable } from "./markdown";
+import { fileTarget } from "./fileLinks";
+import { saveFile } from "./filePreview";
+import { FileLinks, FileView, fileLabel } from "./FileView";
 import { MermaidDiagram } from "./MermaidDiagram";
+import { EngineIcon } from "./EngineIcon";
 import { AutomationForm, AutomationsPage } from "./AutomationsPage";
 import { ConnectorsPage } from "./ConnectorsPage";
 import { WidgetFrame } from "./WidgetFrame";
-import { hiddenFromSidebar } from "./automations";
+import { hiddenFromSidebar, runsAttention } from "./automations";
 import { dragHasSession, dropUpdate, SESSION_DRAG_TYPE, type DropTarget } from "./sidebarDrop";
-import { addsProviders, canSteer, ENGINES, ENGINE_ACCOUNT, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, pickerEngines, queuedHint } from "./engines";
-import { didNotRun, duration, handoffLinks, layout, sessionSubagents, summarize, thoughtLine, type Row, type WorkItem } from "./thread";
+import { addsProviders, canSteer, ENGINES, ENGINE_ACCOUNT, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, pickerEngines, queuedHint, shownEffort } from "./engines";
+import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinned, summarize, thoughtLine, toolLabel, type Row, type WorkItem } from "./thread";
 import { voiceCue, type Cue } from "./voice";
 import { useVoice } from "./useVoice";
 import { MobileSetup, MobileSetupButton } from "./MobileSetup";
-import { loadChoice, loadFolder, loadHost, readRecent, rememberSession, validChoice, type Choice } from "./sessionDefaults";
-export { loadChoice, readRecent } from "./sessionDefaults";
+import { phoneTargets } from "./mobile";
+import { isAgentHome, loadChoice, loadFolder, loadHost, readRecent, rememberSession, validChoice, type Choice } from "./sessionDefaults";
+export { isAgentHome, loadChoice, readRecent } from "./sessionDefaults";
 export type { Choice } from "./sessionDefaults";
 import { NavigationPalette } from "./NavigationPalette";
 import { navigationShortcut, type NavigationEntry } from "./navigation";
+import { sendUpdateAction, useAppUpdate } from "./appUpdate";
 
 /** Permission modes, as Claude Code names them, and what each means per engine. */
 export const PERMISSIONS: ({ id: Permission; label: string } & Record<Engine, string>)[] = [
@@ -86,6 +94,14 @@ const pct = (n: number) => `${Math.round(n)}%`;
 export const tilde = (path: string, home: string) => (home && path.startsWith(home) ? "~" + path.slice(home.length) : path);
 const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
+/** What the phone's Session setup chip shows and says. */
+export const setupSettings = (model: string, account: string, effort: string, permission: Permission | undefined) => ({
+  model,
+  effort,
+  label: [model, account, capitalize(effort), (PERMISSIONS.find((p) => p.id === permission) ?? PERMISSIONS[0]).label].filter(Boolean).join(", "),
+  full: permission === "full",
+});
+
 /* ---------- icons ---------- */
 
 export const Icon = ({ d, size = 14, width = 2 }: { d: string; size?: number; width?: number }) => (
@@ -95,14 +111,14 @@ export const Icon = ({ d, size = 14, width = 2 }: { d: string; size?: number; wi
 );
 export const PLUS = "M12 5v14M5 12h14";
 const CLOCK = "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z";
-const IMPORT = "M12 3v12M7 10l5 5 5-5M5 21h14";
+export const IMPORT = "M12 3v12M7 10l5 5 5-5M5 21h14";
 export const CHEVRON_RIGHT = "M9 6l6 6-6 6";
 const CHEVRON_DOWN = "M6 9l6 6 6-6";
 const ARROW_UP = "M12 19V5M5 12l7-7 7 7";
-const REFRESH = "M21 12a9 9 0 1 1-3-6.7M21 4v5h-5";
+export const REFRESH = "M21 12a9 9 0 1 1-3-6.7M21 4v5h-5";
 export const CLOUD = "M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z";
 const PAPERCLIP = "M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48";
-const FILE = "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8ZM14 3v5h5";
+export const FILE = "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8ZM14 3v5h5";
 const CLOSE = "M18 6 6 18M6 6l12 12";
 const MORE = "M5 12h.01M12 12h.01M19 12h.01";
 const REPLY = "M9 17 4 12l5-5M20 18v-2a4 4 0 0 0-4-4H4";
@@ -119,6 +135,44 @@ const RIGHT_PANEL = "M3 5h18v14H3ZM15 5v14";
 const MIC = "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3ZM19 10v2a7 7 0 0 1-14 0v-2M12 19v3";
 const STOP = "M7 7h10v10H7Z";
 const WAVES = "M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3";
+/** What the dot on the Automations row says. */
+const RUNS_MARK = { approval: "A run needs approval", working: "A run is working" } as const;
+const GROUP_MARK = { approval: "A session needs approval", working: "A session is working" } as const;
+/** What the dot on the Agents row says. */
+const AGENTS_MARK = { approval: "An agent needs approval", needsYou: "An agent needs you", working: "An agent is working", failed: "An agent's turn failed", answered: "An agent answered" } as const;
+
+/** An agent's place: its one conversation, or the empty one before its first message. */
+function AgentView({ state, actions, id }: { state: State; actions: Actions; id: string }) {
+  const agent = state.agents.find((a) => a.id === id);
+  const chat = agent ? conversationOf(agent, state.sessions) : undefined;
+  // The agent asked for the user: seen once its conversation is in front of them.
+  const asked = chat?.needsYou?.at;
+  useEffect(() => {
+    if (!asked) return;
+    const look = () => {
+      if (document.visibilityState === "visible" && document.hasFocus()) actions.agentSeen(id);
+    };
+    look();
+    window.addEventListener("focus", look);
+    document.addEventListener("visibilitychange", look);
+    return () => {
+      window.removeEventListener("focus", look);
+      document.removeEventListener("visibilitychange", look);
+    };
+  }, [asked, id]);
+  if (!agent) return <AgentsPage state={state} actions={actions} />;
+  // What it said on a host it moved away from stays there, a click away.
+  const earlier = <EarlierConversations state={state} actions={actions} agent={agent} />;
+  if (!chat) return <AgentStart key={agent.id} state={state} actions={actions} agent={agent} earlier={earlier} />;
+  return (
+    <PeekScope sessionId={chat.id} peek={actions.peekPr}>
+      <SessionView key={chat.id} meta={chat} state={state} actions={actions} before={earlier} />
+    </PeekScope>
+  );
+}
+
+/** An at sign: agents, which a message names as @Name. */
+const AT = "M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1";
 /** A plug: the Connectors page. */
 const PLUG = "M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0ZM12 18v4";
 
@@ -150,7 +204,8 @@ export function App() {
   const { route } = state;
   const [draftUsageAccount, setDraftUsageAccount] = useState<UsageAccount>();
   const visibleHosts = shownHosts(["local", ...state.hosts.map((host) => host.id)], useHiddenHosts());
-  const selectedSession = route.page === "session" ? state.sessions[route.id] : undefined;
+  const agentChat = route.page === "agent" ? state.agents.find((a) => a.id === route.id)?.chat : undefined;
+  const selectedSession = route.page === "session" ? state.sessions[route.id] : agentChat ? state.sessions[agentChat] : undefined;
   const selectedUsageAccount = selectedSession ? { host: hostOf(selectedSession), engine: selectedSession.engine, account: accountOf(selectedSession) }
     : route.page === "new" ? draftUsageAccount : undefined;
   const usage = {
@@ -170,6 +225,7 @@ export function App() {
   }, [navigating]);
   // Older shells and browsers still need the sidebar's entry points.
   const nativeMenu = (window as any).__SWITCHYARD_APP_MENU__ === true;
+  const appUpdate = useAppUpdate();
   const [sidebarW, setSidebarW] = useWidth("yard.sidebarWidth", SIDEBAR_W);
   const [sidebarCollapsed, setSidebarCollapsed] = usePanelCollapsed("yard.sidebarCollapsed");
   const narrow = useMedia(NARROW);
@@ -330,6 +386,19 @@ export function App() {
               </button>
             </div>
           )}
+          {/* The Mac app's own update, found in the background: a quiet line, never a dialog. */}
+          {appUpdate.update && (
+            <div className="banner banner-notice app-update" role="status">
+              <span>Switchyard {appUpdate.update.version} is {appUpdate.update.ready ? "ready" : "available"}.</span>
+              <span className="app-update-actions">
+                <button className="btn-text" onClick={() => sendUpdateAction("notes")}>What's new</button>
+                <button className="btn-text" onClick={() => sendUpdateAction(appUpdate.update!.ready ? "restart" : "notes")}>
+                  {appUpdate.update.ready ? "Restart" : "Update"}
+                </button>
+                <button className="btn-text" onClick={appUpdate.dismiss}>Later</button>
+              </span>
+            </div>
+          )}
           {route.page === "new" && (
             <>
               {/* The page has no bar of its own; narrow windows need one for the menu button. */}
@@ -339,12 +408,23 @@ export function App() {
                 <span className="spacer" />
                 <UsageStrip {...usage} compact />
                 <button className="btn-icon new-connectors-shortcut" aria-label="Connectors" onClick={() => actions.go({ page: "connectors" })}><Icon d={PLUG} size={17} /></button>
-                <MobileSetupButton mobile={state.mobile} open={() => actions.go({ page: "hosts" })} />
+                <MobileSetupButton mobile={state.mobile} hostMobile={state.hostMobile} open={() => actions.go({ page: "hosts" })} />
               </header>
               <NewSession state={state} actions={actions} onUsageAccount={setDraftUsageAccount} />
             </>
           )}
-          {route.page === "assistant" && <AssistantPage state={state} actions={actions} />}
+          {route.page === "agents" && <AgentsPage state={state} actions={actions} />}
+          {route.page === "agent" && <AgentView state={state} actions={actions} id={route.id} />}
+          {route.page === "agentEdit" &&
+            // A new agent is made at once and set up in its conversation.
+            (route.id === "new" ? (
+              <NewAgentRedirect state={state} actions={actions} />
+            ) : // Like the automation form: read once on mount, so it waits for the snapshot's list.
+            state.agents.some((a) => a.id === route.id) ? (
+              <AgentForm key={route.id} state={state} actions={actions} id={route.id} />
+            ) : (
+              <AgentsPage state={state} actions={actions} />
+            ))}
           {route.page === "hosts" && <Hosts state={state} actions={actions} />}
           {route.page === "subscriptions" && <SubscriptionsPage state={state} actions={actions} />}
           {route.page === "sessions" && <SessionsPage state={state} actions={actions} />}
@@ -368,6 +448,7 @@ export function App() {
       </div>
       {navigating && <NavigationPalette state={state} onPick={pickNavigation} onClose={() => setNavigating(false)} />}
       {importing && <ImportDialog state={state} actions={actions} onClose={() => setImporting(false)} />}
+      <SlackIcons state={state} actions={actions} />
     </DrawerContext.Provider>
   );
 }
@@ -509,6 +590,41 @@ interface RowDrag {
   end(): void;
 }
 
+/** An agent in the sidebar, like a direct message: its face where a
+ *  session shows its harness, the same status badge, and its name. Opens
+ *  its one conversation. */
+function AgentRow({ state, actions, agent, active, seenAt }: { state: State; actions: Actions; agent: Agent; active: boolean; seenAt(id: string): number }) {
+  const host = agentHost(agent);
+  const online = host === "local" || hostOnline(state, host);
+  const chat = conversationOf(agent, state.sessions);
+  const status = agentStatus(agent, state.sessions, Date.now(), chat ? seenAt(chat.id) : Infinity, online ? undefined : hostName(state, host));
+  // What it waits on from the owner reads as an approval does on a session row.
+  const asks = !!(agent.request?.cwd || agent.request?.permission || agent.request?.slack) || !!chat?.needsYou;
+  const mark: RowState = !chat ? (online ? "idle" : "offline") : asks && online ? "approval" : rowState(chat, seenAt(chat.id), online);
+  const detail = [agent.about, asks ? "Asks you for something" : status.text].filter(Boolean).join(" · ");
+  return (
+    <div className="session-item agent-item">
+      <button
+        className={`session-row agent-row ${active ? "active" : ""} ${online ? "" : "offline"} ${mark === "answered" || mark === "unread" ? "unread" : ""}`}
+        title={detail}
+        onClick={() => actions.go({ page: "agent", id: agent.id })}
+      >
+        <span className="row-engine row-agent-face">
+          <AgentAvatar agent={agent} size="sm" busy={mark === "working"} />
+          <RowMark state={mark} />
+        </span>
+        <span className="session-text">
+          <span className="session-title">{agent.name}</span>
+          <span className="sr-only">
+            {" · "}
+            <span className={`row-status row-status-${mark}`}>{asks ? "Asks you for something" : ROW_LABEL[mark]}</span>
+          </span>
+        </span>
+      </button>
+    </div>
+  );
+}
+
 function SessionRow({ state, actions, session: s, active, groups, seenAt, unread, onUnread, onRead, drag }: { state: State; actions: Actions; session: SessionMeta; active: boolean; groups: string[]; seenAt: number; unread: boolean; onUnread(): void; onRead(): void; drag?: RowDrag }) {
   const host = hostOf(s);
   const online = host === "local" || hostOnline(state, host);
@@ -568,6 +684,10 @@ function SessionRow({ state, actions, session: s, active, groups, seenAt, unread
     };
   }, [menu]);
   const rowAccount = accountLabel(accountsOn(state, host), s);
+  const rowAgent = agentOf(state.agents, s);
+  const rowModel = modelName(modelsOn(state, host), s.engine, s.model);
+  // The row shows only the title; the rest is a hover away.
+  const rowDetail = [rowAgent ? rowAgent.name : rowModel, ROW_LABEL[mark], rowAccount, host !== "local" ? `Runs on ${hostName(state, host)}` : ""].filter(Boolean).join(" · ");
   const worktree = !!(s.branch && s.repo);
   const remove = (removeWorktree: boolean) => {
     close();
@@ -598,17 +718,27 @@ function SessionRow({ state, actions, session: s, active, groups, seenAt, unread
     >
       <button
         className={`session-row ${active ? "active" : ""} ${online ? "" : "offline"} ${mark === "answered" || mark === "unread" ? "unread" : ""}`}
+        title={rowDetail}
         onClick={() => { onRead(); actions.go({ page: "session", id: s.id }); }}
       >
-        <RowMark state={mark} />
+        {/* The harness's mark, with what the session is doing as a badge on it. */}
+        <span className="row-engine">
+          <EngineIcon engine={s.engine} size={16} />
+          <RowMark state={mark} />
+        </span>
         <span className="session-text">
           <span className="session-title">{s.title}</span>
-          <span className="session-sub">
-            {modelName(modelsOn(state, host), s.engine, s.model)} · <span className={`row-status row-status-${mark}`}>{ROW_LABEL[mark]}</span>
+          {/* The badge is colour and motion; screen readers get the words. */}
+          <span className="sr-only">
+            {" · "}
+            {rowAgent ? rowAgent.name : rowModel} · <span className={`row-status row-status-${mark}`}>{ROW_LABEL[mark]}</span>
             {rowAccount && <span className="row-account"> · {rowAccount}</span>}
           </span>
         </span>
-        {host !== "local" && <Cloud size={14} label={`Runs on ${hostName(state, host)}`} />}
+      </button>
+      {/* Shown on hover: archive in one click, the rest under ⋯. */}
+      <button className="btn-icon row-archive" aria-label={`${s.archived ? "Restore" : "Archive"} ${s.title}`} title={s.archived ? "Restore" : "Archive"} disabled={!online} onClick={() => actions.setArchived(s.id, !s.archived)}>
+        <Icon d={ARCHIVE} size={15} />
       </button>
       <button ref={more} className="btn-icon row-more" aria-label={`Actions for ${s.title}`} aria-haspopup="menu" aria-expanded={menu} onClick={() => (menu ? close() : setMenu(true))}>
         <Icon d={MORE} size={16} />
@@ -759,8 +889,10 @@ function useCollapsedGroups(): [Set<string>, (name: string) => void] {
 }
 
 /** A group's header: the name, how many sessions, a chevron; its menu renames
- *  or ungroups every session in it, archived ones included. */
-function GroupHead({ name, count, open, onToggle, members, actions }: { name: string; count: number; open: boolean; onToggle(): void; members: SessionMeta[]; actions: Actions }) {
+ *  or ungroups every session in it, archived ones included. Collapsed, it
+ *  hides its rows' marks, so it carries the Automations row's dot instead:
+ *  a group folded days ago must not hide an approval. */
+function GroupHead({ name, count, open, onToggle, members, mark, actions }: { name: string; count: number; open: boolean; onToggle(): void; members: SessionMeta[]; mark: "approval" | "working" | null; actions: Actions }) {
   const [menu, setMenu] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -833,6 +965,7 @@ function GroupHead({ name, count, open, onToggle, members, actions }: { name: st
           </span>
           <span className="group-name">{name}</span>
           <span className="muted">{count}</span>
+          {!open && mark && <span className={`dot ${mark === "approval" ? "dot-needs_approval" : "dot-running"}`} role="img" aria-label={GROUP_MARK[mark]} title={GROUP_MARK[mark]} />}
         </button>
       )}
       {!renaming && (
@@ -886,9 +1019,10 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   onNavigate(): void;
   collapseControl: ReactNode;
 }) {
-  // Runs of automations live on the Automations page, not in this list.
+  // Runs of automations live on the Automations page, and agents'
+  // conversations on the Agents page, not in this list.
   const everything = Object.values(state.sessions);
-  const all = everything.filter((s) => !hiddenFromSidebar(s));
+  const all = everything.filter((s) => !hiddenFromSidebar(s) && !isAgentConversation(s, state.agents));
   const { pinned, ungrouped: active, groups, archived } = sidebarLayout(all);
   // Every group a session can be moved to, including ones whose only live
   // members are pinned.
@@ -950,8 +1084,14 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   const dragged = dragId ? state.sessions[dragId] : undefined;
   // Runs of automations live on the Automations page, not in this list.
   const runs = everything.filter(hiddenFromSidebar);
+  const runsMark = runsAttention(runs);
+  const archivedMark = runsAttention(archived);
   const inRun = route.page === "session" && !!state.sessions[route.id]?.automation;
-  const seen = useSeen(state.sessions, route.page === "session" ? route.id : null, state.restore);
+  const agentOpen = route.page === "agent" ? state.agents.find((a) => a.id === route.id)?.chat ?? null : null;
+  const seen = useSeen(state.sessions, route.page === "session" ? route.id : agentOpen, state.restore);
+  // The Agents row carries what the sidebar would show for their conversations.
+  const agentsMark = agentsAttention(state.agents, state.sessions, seen.seenAt);
+  const inAgent = route.page === "session" && !!state.sessions[route.id] && isAgentConversation(state.sessions[route.id], state.agents);
   // Going to an archived session shows the section, so its row stays in
   // view. Only on going there: archiving the session already open leaves the
   // section as it was (it used to spring open on every archive).
@@ -1024,14 +1164,15 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
           <Icon d={PLUS} />
           New session
         </button>
-        <button className={`nav-row ${route.page === "assistant" ? "active" : ""}`} onClick={() => actions.go({ page: "assistant" })}>
-          <Icon d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" />
-          Switchy
+        <button className={`nav-row ${route.page === "agents" || route.page === "agent" || route.page === "agentEdit" || inAgent ? "active" : ""}`} onClick={() => actions.go({ page: "agents" })}>
+          <Icon d={AT} />
+          Agents
+          {agentsMark && <span className={`dot dot-agents dot-${agentsMark}`} role="img" aria-label={AGENTS_MARK[agentsMark]} title={AGENTS_MARK[agentsMark]} />}
         </button>
         <button className={`nav-row ${route.page === "automations" || route.page === "automation" || inRun ? "active" : ""}`} onClick={() => actions.go({ page: "automations" })}>
           <Icon d={CLOCK} />
           Automations
-          {runs.some((s) => s.status === "running" || s.status === "needs_approval") && <span className="dot dot-running" role="img" aria-label="A run is working" />}
+          {runsMark && <span className={`dot ${runsMark === "approval" ? "dot-needs_approval" : "dot-running"}`} role="img" aria-label={RUNS_MARK[runsMark]} title={RUNS_MARK[runsMark]} />}
         </button>
         <button className={`nav-row ${route.page === "connectors" ? "active" : ""}`} onClick={() => actions.go({ page: "connectors" })}>
           <Icon d={PLUG} />
@@ -1075,18 +1216,39 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
                 open={!collapsed.has(g.name)}
                 onToggle={() => toggleGroup(g.name)}
                 members={all.filter((s) => s.group === g.name)}
+                mark={runsAttention(g.sessions)}
                 actions={actions}
               />
               {!collapsed.has(g.name) && roots(g.sessions).map(tree)}
             </div>
           );
         })}
+        {/* Agents, like direct messages: the list's last section. */}
+        {state.agents.length > 0 && (
+          <div className="agent-dms" role="group" aria-label="Agents">
+            <div className="list-head">Agents</div>
+            {state.agents.map((a) => (
+              <AgentRow
+                key={a.id}
+                state={state}
+                actions={actions}
+                agent={a}
+                active={(route.page === "agent" && route.id === a.id) || (route.page === "session" && (route.id === a.chat || !!a.previous?.includes(route.id)))}
+                seenAt={seen.seenAt}
+              />
+            ))}
+          </div>
+        )}
       </div>
       {archived.length > 0 && (
         <div className="archived-dock">
           <button className="list-head list-toggle" aria-expanded={showArchived} onClick={() => setShowArchived(!showArchived)}>
             <span>Archived</span>
             <span className="muted">{archived.length}</span>
+            {/* Archived sessions still run: collapsed, this dot is the only sign one waits for the user. */}
+            {!showArchived && archivedMark && (
+              <span className={`dot ${archivedMark === "approval" ? "dot-needs_approval" : "dot-running"}`} role="img" aria-label={GROUP_MARK[archivedMark]} title={GROUP_MARK[archivedMark]} />
+            )}
             <span className={`tool-chevron ${showArchived ? "open" : ""}`}>
               <Icon d={CHEVRON_RIGHT} size={11} />
             </span>
@@ -1231,11 +1393,12 @@ export function EffortPicker({ models, value, onChange }: { models: Models; valu
   );
 }
 
-function AccountPicker({
+export function AccountPicker({
   state,
   host,
   engine,
   account,
+  engines,
   onPick,
   onManage,
 }: {
@@ -1243,6 +1406,8 @@ function AccountPicker({
   host: string;
   engine: Engine;
   account: string;
+  /** The engines whose accounts may be picked; every engine the host lists when left out. */
+  engines?: Engine[];
   onPick?(engine: Engine, account: string): void;
   onManage(): void;
 }) {
@@ -1282,7 +1447,7 @@ function AccountPicker({
           </div>
           {onPick ? (
             <div role="menu" aria-label="Engine accounts">
-              {pickerEngines(modelsOn(state, host), engine).flatMap((e) =>
+              {(engines ?? pickerEngines(modelsOn(state, host), engine)).flatMap((e) =>
                 accountChoices(accounts, e).map((a) => (
                   <button
                     key={`${e}:${a.id}`}
@@ -1424,7 +1589,9 @@ export function ModelPicker(props: {
         aria-label={`Model ${current?.name ?? value.model}`}
         onClick={() => (open ? close() : setOpen(true))}
       >
-        <span className="model-provider" aria-hidden="true">{value.engine === "claude" ? "CC" : value.engine === "codex" ? "CX" : value.engine.slice(0, 2).toUpperCase()}</span>
+        <span className="model-provider" aria-hidden="true">
+          <EngineIcon engine={value.engine} size={14} />
+        </span>
         <span>{current?.name ?? value.model}</span>
         <span className="muted">
           <Icon d={CHEVRON_DOWN} size={12} />
@@ -1575,7 +1742,7 @@ type Upload = { target: string; promise: Promise<Attachment> };
 /** What a session's reply box keeps while another session is open (compose.ts). */
 type ComposerDraft = {
   text: string;
-  quotes: { key: string; text: string }[];
+  quotes: (Quote & { key: string })[];
   snippets: (Snippet & { key: string })[];
   files: PendingFile[];
   uploads: Map<string, Upload>;
@@ -1604,8 +1771,14 @@ export function Composer(props: {
   /** False leaves the draft in place when the endpoint rejects a submission. */
   onSubmit(text: string, attachments: Attachment[]): void | boolean | Promise<void | boolean>;
   /** Hands-free voice mode for a session: what it has to say, numbered. */
-  voice?: { scope: string; cue: { n: number; cue: Cue } | null; approval: boolean };
+  voice?: { scope: string; cue: { n: number; cue: Cue } | null; approval: boolean; carry?: boolean };
   settings?: { label: string; model: string; effort: string; full: boolean };
+  /** What the narrow box's setup button and popover are called: "Session setup" unless an agent's. */
+  setupTitle?: string;
+  /** Agents an `@` offers. A message starting with one goes to it (the caller routes it). */
+  mentions?: Agent[];
+  /** What a leading `@Name` does with this message, shown above the box; null says nothing. */
+  mentionHint?(agent: Agent): string | null;
   children: ReactNode;
 }) {
   const toolbar = useRef<HTMLDivElement>(null);
@@ -1630,9 +1803,13 @@ export function Composer(props: {
   const draftKey = props.draft ?? props.appendFor;
   const [kept] = useState(() => draftOf<ComposerDraft>(draftKey));
   const [text, setText] = useState(kept?.text ?? "");
-  // Parts of answers being replied to: cards above the text, sent as
-  // blockquotes before it (compose.ts).
-  const [quotes, setQuotes] = useState<{ key: string; text: string }[]>(kept?.quotes ?? []);
+  // Parts of answers being replied to: cards above the text, each with its
+  // own comment, sent before the text (compose.ts).
+  const [quotes, setQuotes] = useState<(Quote & { key: string })[]>(kept?.quotes ?? []);
+  // The card whose comment field takes the focus once it is on screen.
+  const [focusQuote, setFocusQuote] = useState<string | null>(null);
+  // While they wait, the quoted parts are marked in the answers.
+  useQuoteMarks(quotes);
   // Terminal rows attached as context: cards too, sent as fenced blocks.
   const [snippets, setSnippets] = useState<(Snippet & { key: string })[]>(kept?.snippets ?? []);
   const [files, setFiles] = useState<PendingFile[]>(kept?.files ?? []);
@@ -1649,7 +1826,15 @@ export function Composer(props: {
     return onAppend(props.appendFor, (added) => {
       const more = added.quotes ?? [];
       const newKey = () => `q${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-      if (more.length) setQuotes((q) => [...q, ...more.map((text) => ({ key: newKey(), text }))]);
+      if (more.length) {
+        const cards = more.map((q) => ({ ...q, key: newKey() }));
+        setQuotes((q) => [...q, ...cards]);
+        // A new quote waits for its comment: its field, not the box, gets the caret.
+        if (added.focusQuote) {
+          setFocusQuote(cards[cards.length - 1].key);
+          return;
+        }
+      }
       const rows = added.snippets ?? [];
       if (rows.length) setSnippets((list) => [...list, ...rows.map((r) => ({ ...r, key: newKey() }))]);
       const typed = added.text;
@@ -1758,7 +1943,7 @@ export function Composer(props: {
   const canSend = (text.trim() !== "" || quotes.length > 0 || snippets.length > 0 || files.length > 0) && !failed && !crowded && !props.busy && !sending;
   const submit = async () => {
     const value = withQuotes(
-      quotes.map((q) => q.text),
+      quotes.map((q) => ({ text: q.text, note: q.note })),
       text.trim(),
       snippets.map(({ label, text }) => ({ label, text })),
     );
@@ -1801,9 +1986,50 @@ export function Composer(props: {
     submit: () => void submit(),
     cue: props.voice?.cue,
     scope: props.voice?.scope,
+    carry: props.voice?.carry,
   });
   const voiceOn = voice.mode.phase !== "off";
+  // `@` offers the agents; the pick replaces what was typed after it.
+  const [caret, setCaret] = useState(0);
+  const [pick, setPick] = useState(0);
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const mention = props.mentions?.length ? mentionAt(text, caret) : null;
+  const offered = mention && dismissed !== text ? matchAgents(props.mentions!, mention.query) : [];
+  useEffect(() => setPick(0), [mention?.query, offered.length]);
+  const routed = props.mentions ? leadingMention(text, props.mentions) : null;
+  const hint = routed && props.mentionHint ? props.mentionHint(routed.agent) : null;
+  const choose = (agent: Agent) => {
+    if (!mention) return;
+    const next = insertMention(text, mention.start, caret, handleOf(agent));
+    setText(next.text);
+    setCaret(next.caret);
+    requestAnimationFrame(() => {
+      const el = area.current;
+      if (!el) return;
+      el.focus();
+      el.selectionStart = el.selectionEnd = next.caret;
+    });
+  };
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (offered.length && !e.nativeEvent.isComposing) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setPick((p) => (p + (e.key === "ArrowDown" ? 1 : offered.length - 1)) % offered.length);
+        return;
+      }
+      if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
+        e.preventDefault();
+        choose(offered[Math.min(pick, offered.length - 1)]);
+        return;
+      }
+      if (e.key === "Escape") {
+        // Only the list closes, not the page or the drawer behind it.
+        e.preventDefault();
+        e.stopPropagation();
+        setDismissed(text);
+        return;
+      }
+    }
     if (e.key === "ArrowUp" && text === "" && props.onEditLastQueued?.()) {
       e.preventDefault();
       return;
@@ -1855,10 +2081,18 @@ export function Composer(props: {
       )}
       {quotes.length > 0 && (
         <div className="composer-quotes" aria-label="Quoted">
-          {quotes.map((q) => (
+          {quotes.map((q, i) => (
             <QuoteCard
               key={q.key}
               text={q.text}
+              number={quotes.length > 1 ? i + 1 : undefined}
+              note={q.note ?? ""}
+              focus={focusQuote === q.key}
+              onFocused={() => setFocusQuote(null)}
+              onNote={(note) => setQuotes((list) => list.map((x) => (x.key === q.key ? { ...x, note } : x)))}
+              onShow={q.range ? () => showQuoted(q.range!) : undefined}
+              onDone={() => area.current?.focus()}
+              onSend={() => void submit()}
               onRemove={() => {
                 setQuotes((list) => list.filter((x) => x.key !== q.key));
                 area.current?.focus();
@@ -1883,6 +2117,33 @@ export function Composer(props: {
           ))}
         </div>
       )}
+      {hint && (
+        <div className="mention-route small" role="status">
+          <AgentAvatar agent={routed!.agent} size="xs" />
+          {hint}
+        </div>
+      )}
+      {offered.length > 0 && (
+        <div className="mention-list" id="mention-list" role="listbox" aria-label="Agents">
+          {offered.map((a, i) => (
+            <button className={`picker-item menu-item ${i === pick ? "active" : ""}`}
+              key={a.id}
+              id={`mention-${a.id}`}
+              role="option"
+              aria-selected={i === pick}
+              // Keep the caret in the box while the pick is made.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => choose(a)}
+            >
+              <AgentAvatar agent={a} size="sm" />
+              <span className="mention-name">{a.name}</span>
+              {/* What gets typed, when it reads differently from the name. */}
+              {handleOf(a) !== a.name && <span className="muted small mention-handle">@{handleOf(a)}</span>}
+              {a.about && <span className="muted small mention-about">{a.about}</span>}
+            </button>
+          ))}
+        </div>
+      )}
       <textarea
         ref={area}
         aria-label="Message"
@@ -1890,10 +2151,16 @@ export function Composer(props: {
         maxLength={props.maxLength}
         placeholder={props.placeholder}
         value={text}
+        aria-autocomplete={props.mentions ? "list" : undefined}
+        aria-expanded={props.mentions ? offered.length > 0 : undefined}
+        aria-controls={offered.length ? "mention-list" : undefined}
+        aria-activedescendant={offered.length ? `mention-${offered[Math.min(pick, offered.length - 1)].id}` : undefined}
         onChange={(e) => {
           setText(e.target.value);
+          setCaret(e.target.selectionStart ?? e.target.value.length);
           voice.typed(e.target.value);
         }}
+        onSelect={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
         onKeyDown={onKeyDown}
         onPaste={(e) => {
           if (!props.upload) return;
@@ -1957,7 +2224,7 @@ export function Composer(props: {
                 <button
                   ref={setup}
                   className={`btn-quiet composer-setup ${props.settings.full ? "permission-full" : ""}`}
-                  aria-label={`Session setup: ${props.settings.label}`}
+                  aria-label={`${props.setupTitle ?? "Session setup"}: ${props.settings.label}`}
                   aria-haspopup="dialog"
                   aria-expanded={setupOpen}
                   title={props.settings.label}
@@ -1970,8 +2237,8 @@ export function Composer(props: {
                 </button>
               )}
               {compact && setupOpen && (
-                <AnchoredPopover anchor={setup} label="Session setup" variant="session-setup-popover" onClose={() => setSetupOpen(false)}>
-                  <div className="popover-heading"><strong>Session setup</strong></div>
+                <AnchoredPopover anchor={setup} label={props.setupTitle ?? "Session setup"} variant="session-setup-popover" onClose={() => setSetupOpen(false)}>
+                  <div className="popover-heading"><strong>{props.setupTitle ?? "Session setup"}</strong></div>
                   <div className="setup-options">{props.children}</div>
                 </AnchoredPopover>
               )}
@@ -2026,18 +2293,61 @@ function VoiceBar({ state, phase, canSpeak, onStop, onEnd }: { state: string; ph
   );
 }
 
-/** A quote waiting in the reply box: two lines, More shows the rest. */
-function QuoteCard({ text, label, removeLabel = "Remove quote", onRemove }: { text: string; label?: string; removeLabel?: string; onRemove(): void }) {
+/** A quote waiting in the reply box: two lines, More shows the rest. A
+ *  quote of an answer (not terminal output) has its own comment field, so
+ *  each comment goes with its part; numbered when there are several, as the
+ *  marks in the answers are. */
+function QuoteCard(props: {
+  text: string;
+  label?: string;
+  removeLabel?: string;
+  number?: number;
+  note?: string;
+  focus?: boolean;
+  onFocused?(): void;
+  onNote?(note: string): void;
+  /** Scroll the quoted part of the answer into view. */
+  onShow?(): void;
+  /** Enter in the comment: back to the reply box. */
+  onDone?(): void;
+  onSend?(): void;
+  onRemove(): void;
+}) {
+  const { text, label, removeLabel = "Remove quote", number, onRemove } = props;
   const [open, setOpen] = useState(false);
   const [cut, setCut] = useState(false);
   const body = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const el = body.current;
     if (el && !open) setCut(el.scrollHeight > el.clientHeight + 1);
   }, [text, open]);
+  useEffect(() => {
+    if (!props.focus) return;
+    field.current?.focus();
+    props.onFocused?.();
+  }, [props.focus]);
+  // The comment grows with its text, up to a few lines.
+  useLayoutEffect(() => {
+    const el = field.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [props.note]);
+  const commented = props.onNote !== undefined;
   return (
-    <div className={`quote-card${open ? " open" : ""}${label ? " snippet" : ""}`}>
+    <div className={`quote-card${open ? " open" : ""}${label ? " snippet" : ""}${commented ? " commented" : ""}`}>
       {label && <div className="quote-card-label">{label}</div>}
+      {number !== undefined &&
+        (props.onShow ? (
+          <button className="quote-card-number" title="Show this part in the answer" aria-label={`Show part ${number} in the answer`} onClick={props.onShow}>
+            {number}
+          </button>
+        ) : (
+          <span className="quote-card-number" aria-hidden="true">
+            {number}
+          </span>
+        ))}
       <div ref={body} className="quote-card-text">
         {text}
       </div>
@@ -2049,8 +2359,50 @@ function QuoteCard({ text, label, removeLabel = "Remove quote", onRemove }: { te
       <button className="btn-icon" aria-label={removeLabel} title={removeLabel} onClick={onRemove}>
         <Icon d={CLOSE} size={12} />
       </button>
+      {commented && (
+        <textarea
+          ref={field}
+          className="quote-card-note"
+          rows={1}
+          value={props.note}
+          placeholder="Comment on this part (optional)"
+          aria-label={number !== undefined ? `Comment on part ${number}` : "Comment on this part"}
+          onChange={(e) => props.onNote!(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              props.onSend?.();
+            } else if ((e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) || e.key === "Escape") {
+              e.preventDefault();
+              props.onDone?.();
+            }
+          }}
+        />
+      )}
     </div>
   );
+}
+
+/** The quoted parts waiting in a reply box, marked in the answers they came
+ *  from (CSS Custom Highlight API, where the browser has it). One box shows
+ *  at a time, so one name serves. */
+function useQuoteMarks(quotes: { range?: Range }[]) {
+  useEffect(() => {
+    const css = (globalThis as any).CSS;
+    const Highlight = (globalThis as any).Highlight;
+    if (!css?.highlights || !Highlight) return;
+    const ranges = quotes.map((q) => q.range).filter((r): r is Range => !!r && r.startContainer.isConnected);
+    if (ranges.length) css.highlights.set("yard-quoted", new Highlight(...ranges));
+    else css.highlights.delete("yard-quoted");
+    return () => css.highlights.delete("yard-quoted");
+  }, [quotes]);
+}
+
+/** Bring a quoted part of an answer into view. */
+function showQuoted(range: Range) {
+  if (!range.startContainer.isConnected) return;
+  const el = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
+  el?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
 function PendingChip({ file, onRemove }: { file: PendingFile; onRemove(): void }) {
@@ -2198,7 +2550,8 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
   // session counts as the repository it was cut from.
   const recent = useMemo(() => {
     const fromSessions = Object.values(state.sessions)
-      .filter((s) => hostOf(s) === target)
+      // Agents' conversations run in the agents' own folders, not projects.
+      .filter((s) => hostOf(s) === target && !s.agent && !isAgentHome(s.cwd))
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .map((s) => s.repo || s.cwd);
     return [...new Set([...readRecent(target), ...fromSessions])].slice(0, 12);
@@ -2216,11 +2569,26 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
   // A remembered folder can be deleted since; Send would only be refused.
   const gone = !!branchList?.missing;
 
-  const start = (text: string, attachments: Attachment[]) => {
+  const start = async (text: string, attachments: Attachment[]) => {
     if (/^\/login\s*$/.test(text.trim()) && !attachments.length) {
       setLoggingIn(true);
       return;
     }
+    // "@Reviewer look at #12" goes to the agent's chat, not a new session.
+    const routed = leadingMention(text, state.agents);
+    if (routed) {
+      if (!routed.rest && !attachments.length) return false;
+      setPending(true);
+      const r = await actions.askAgent(routed.agent.id, routed.rest, attachments.map((a) => a.id));
+      setPending(false);
+      if (r.error) {
+        setAgentError(r.error);
+        return false;
+      }
+      keepDraft(NEW_TASK_DRAFT, null);
+      return;
+    }
+    setAgentError(null);
     rememberSession({ ...choice, host: target, cwd });
     localStorage.setItem("yard.permission", permission);
     setPending(true);
@@ -2238,6 +2606,8 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
     });
   };
   const uploadTarget = useMemo<UploadTarget>(() => (target === "local" ? {} : { host: target }), [target]);
+  const [agentError, setAgentError] = useState<string | null>(null);
+  const toAgent = (agent: Agent) => `Goes to ${agent.name}`;
 
   return (
     <div className="new">
@@ -2252,8 +2622,10 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
           target={uploadTarget}
           upload={actions.upload}
           onSubmit={start}
-          voice={{ scope: NEW_TASK_DRAFT, cue: null, approval: false }}
-          settings={{ model: modelName(models, choice.engine, choice.model), effort: choice.effort, label: `${modelName(models, choice.engine, choice.model)}, ${accountName(accounts, choice.engine, selectedAccount)}, ${capitalize(choice.effort)}, ${PERMISSIONS.find((p) => p.id === permission)?.label ?? ""}`, full: permission === "full" }}
+          voice={{ scope: NEW_TASK_DRAFT, cue: null, approval: false, carry: true }}
+          mentions={state.agents}
+          mentionHint={toAgent}
+          settings={setupSettings(modelName(models, choice.engine, choice.model), accountName(accounts, choice.engine, selectedAccount), shownEffort(models, choice.engine, choice.model, choice.effort), permission)}
           busy={pending || !online || !choice.model || !cwd || gone}
         >
           <ModelPicker models={models} value={choice} engines={pickerEngines(models, choice.engine)} onChange={choose} speed={{ value: speed, onChange: setSpeed }} />
@@ -2277,12 +2649,20 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
             <BranchPicker current={branchList.current!} branches={branchList.branches ?? []} value={base} onChange={setBase} />
           )}
           <span className="spacer" />
-          {cwd && branchList && (gone ? (
+          {/* Send is disabled until the host is back; say why rather than leave it grey. */}
+          {target !== "local" && !online ? (
+            <span className="muted small">{hostName(state, target)} is offline</span>
+          ) : cwd && branchList && (gone ? (
             <span className="bad small">This folder no longer exists</span>
           ) : (
             <span className="muted small">{isRepo ? "New worktree" : "Works in the folder itself"}</span>
           ))}
         </div>
+        {agentError && (
+          <div className="small error-line" role="alert">
+            {agentError}
+          </div>
+        )}
         <EngineNotice state={state} host={target} engine={choice.engine} account={picks[choice.engine]} onLogin={() => setLoggingIn(true)} />
         {loggingIn && (
           <LoginDialog state={state} actions={actions} host={target} engine={choice.engine} account={picks[choice.engine]} onClose={() => setLoggingIn(false)} />
@@ -2338,7 +2718,7 @@ function ChipMenu(props: {
   );
 }
 
-export function HostPicker(props: { state: State; value: string; onChange(host: string): void; onAddHost(): void; contextScope?: boolean; allowOffline?: boolean }) {
+export function HostPicker(props: { state: State; value: string; onChange(host: string): void; onAddHost(): void; allowOffline?: boolean }) {
   const { state, value } = props;
   const [open, setOpen] = useState(false);
   const pick = (host: string) => {
@@ -2348,14 +2728,13 @@ export function HostPicker(props: { state: State; value: string; onChange(host: 
   const remote = state.hosts.find((h) => h.id === value);
   return (
     <ChipMenu
-      menuLabel={props.contextScope ? "Context hosts" : "Hosts"}
+      menuLabel="Hosts"
       icon={remote ? <Icon d={CLOUD} /> : <Icon d={LAPTOP} />}
-      label={props.contextScope && value === "all" ? "All hosts" : remote ? remote.name : hostName(state, "local")}
-      title={props.contextScope ? "Hosts used for context" : "Where the session runs"}
+      label={remote ? remote.name : hostName(state, "local")}
+      title="Where the session runs"
       open={open}
       setOpen={setOpen}
     >
-      {props.contextScope && <button className={`picker-item menu-item ${value === "all" ? "active" : ""}`} onClick={() => pick("all")}><Icon d={CLOUD} /><span>All hosts</span></button>}
       <button className={`picker-item menu-item ${value === "local" ? "active" : ""}`} onClick={() => pick("local")}>
         <Icon d={LAPTOP} />
         <span>{hostName(state, "local")}</span>
@@ -2363,7 +2742,7 @@ export function HostPicker(props: { state: State; value: string; onChange(host: 
       {state.hosts.map((h) => {
         const online = hostOnline(state, h.id);
         return (
-          <button key={h.id} className={`picker-item menu-item ${value === h.id ? "active" : ""}`} disabled={!online && !props.contextScope && !props.allowOffline} onClick={() => pick(h.id)}>
+          <button key={h.id} className={`picker-item menu-item ${value === h.id ? "active" : ""}`} disabled={!online && !props.allowOffline} onClick={() => pick(h.id)}>
             <Icon d={CLOUD} />
             <span>{h.name}</span>
             {!online && <span className="muted small menu-aside">{h.status === "error" ? "unreachable" : h.status}</span>}
@@ -2399,6 +2778,8 @@ export function FolderPicker(props: {
   dirs: State["dirs"];
   listDirs(path: string, host: string): void;
   onChange(path: string): void;
+  /** Shown when no folder is chosen. */
+  placeholder?: string;
 }) {
   const { host, home, workspace, value, recent } = props;
   const [open, setOpen] = useState(false);
@@ -2439,15 +2820,19 @@ export function FolderPicker(props: {
         .filter((d) => d.name.toLowerCase().startsWith(lower) && (lower.startsWith(".") || !d.name.startsWith(".")))
         .slice(0, 200)
         .map((d) => ({ path: joinPath(dir, d.name), name: d.name, detail: "", git: d.git, browse: true }));
-      // The folder typed so far is itself a choice.
-      const self = !stem && dir ? [{ path: dir, name: `Use ${tilde(dir, home)}`, detail: "" }] : [];
+      // The folder typed so far is itself a choice, unless yardd says it is not there.
+      const self = !stem && dir && !listing?.missing && !listing?.error ? [{ path: dir, name: `Use ${tilde(dir, home)}`, detail: "" }] : [];
       return [...self, ...children];
     }
     const lower = query.toLowerCase();
+    // A recent folder is browsable like any other, so Tab on the highlighted
+    // one opens it instead of moving focus out of the search. Its git flag
+    // comes from the workspace listing it would otherwise appear in.
+    const gitIn = new Map((projects?.dirs ?? []).map((d) => [joinPath(workspace, d.name), d.git]));
     const recents = recent
       .filter((p) => p.toLowerCase().includes(lower))
       .slice(0, lower ? 12 : 5)
-      .map((p) => ({ path: p, name: baseName(p), detail: tilde(p, home), section: "Recent" }));
+      .map((p) => ({ path: p, name: baseName(p), detail: tilde(p, home), git: gitIn.get(p), browse: true, section: "Recent" }));
     const shown = new Set(recents.map((r) => r.path));
     const inWorkspace = (projects?.dirs ?? [])
       .filter((d) => !d.name.startsWith(".") && d.name.toLowerCase().includes(lower))
@@ -2494,7 +2879,7 @@ export function FolderPicker(props: {
   };
 
   return (
-    <ChipMenu icon={<Icon d={FOLDER} />} label={value ? baseName(value) : "Choose a folder"} menuLabel="Folders" title={value} open={open} setOpen={setOpen} wide>
+    <ChipMenu icon={<Icon d={FOLDER} />} label={value ? baseName(value) : (props.placeholder ?? "Choose a folder")} menuLabel="Folders" title={value} open={open} setOpen={setOpen} wide>
       <input
         className="menu-search"
         autoFocus
@@ -2540,9 +2925,10 @@ export function FolderPicker(props: {
             )}
           </div>,
         ])}
+        {browsing && listing?.missing && <div className="picker-empty">{tilde(listing.missing, home)} doesn’t exist.</div>}
         {browsing && listing?.error && <div className="picker-empty">{listing.error}</div>}
         {/* Only a typed last segment can leave this list empty ("Use <dir>" is offered otherwise); say why Enter does nothing. */}
-        {browsing && listing && !listing.error && rows.length === 0 && (
+        {browsing && listing && !listing.error && !listing.missing && rows.length === 0 && (
           <div className="picker-empty">
             No folder in {tilde(dir, home)} starts with “{stem}”.
           </div>
@@ -2614,7 +3000,7 @@ export function BranchPicker(props: { current: string; branches: string[]; value
 
 /* ---------- session ---------- */
 
-function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State; actions: Actions }) {
+function SessionView({ meta, state, actions, before }: { meta: SessionMeta; state: State; actions: Actions; before?: React.ReactNode }) {
   const [workspace, setWorkspace] = useState(false);
   const [workspaceCollapsed, setWorkspaceCollapsed] = usePanelCollapsed("yard.workspaceCollapsed");
   const wide = !useMedia(WORKSPACE_NARROW);
@@ -2642,6 +3028,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
   // Stick to the bottom while new items arrive, unless the user scrolled up.
   const scroller = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
+  const lastTop = useRef(0);
   useEffect(() => {
     const el = scroller.current;
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
@@ -2701,10 +3088,70 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
   const accounts = accountsOn(state, host);
   const sessionAccount = accountLabel(accounts, meta);
   // The engines' own /login cannot run inside a session; the app's does it.
-  const submit = (text: string, attachments: Attachment[]) => {
-    if (/^\/login\s*$/.test(text.trim()) && !attachments.length) setLoggingIn(true);
-    else actions.send(meta.id, text, attachments.map((a) => a.id));
+  const agent = agentOf(state.agents, meta);
+  // A conversation an agent left behind when it moved: read, not answered.
+  const earlier = !!agent && isEarlierConversation(agent, meta.id);
+  // The agents live on the hub: a remote session's box offers them only in
+  // an agent's own conversation.
+  const mentionable = host === "local" || !!agent;
+  // In an agent's conversation the box's pickers are the agent's: a pick
+  // saves it, and the conversation follows (agents.rs `follow`).
+  const agentEdit = useAgentSave(actions, earlier ? undefined : agent?.id);
+  const agentMove = useAgentMove(state, earlier ? undefined : agent, agentEdit.save);
+  // An agent in its own folder has no project: no terminal, subagents or
+  // processes to show.
+  const noPane = !!agent && !agent.cwd;
+  // A file link opens the file in the workspace; where there is none (an
+  // agent with no folder), it downloads.
+  const [openedFile, setOpenedFile] = useState<{ path: string; nonce: number } | null>(null);
+  useEffect(() => setOpenedFile(null), [meta.id]);
+  const openFile = async (path: string): Promise<string | null> => {
+    if (noPane) {
+      const read = await actions.readFile(meta.id, path);
+      if ("error" in read) return read.error;
+      saveFile(read.name, read.data);
+      return null;
+    }
+    setOpenedFile((f) => ({ path, nonce: (f?.nonce ?? 0) + 1 }));
+    if (wide) setWorkspaceCollapsed(false);
+    else openWorkspace();
+    return null;
   };
+  const submit = async (text: string, attachments: Attachment[]) => {
+    if (/^\/login\s*$/.test(text.trim()) && !attachments.length) {
+      setLoggingIn(true);
+      return;
+    }
+    // A reply that starts with another agent's @Name goes to that agent's chat.
+    const routed = mentionable ? leadingMention(text, state.agents) : null;
+    if (routed && routed.agent.id !== agent?.id) {
+      if (!routed.rest && !attachments.length) return false;
+      const r = await actions.askAgent(routed.agent.id, routed.rest, attachments.map((a) => a.id));
+      return r.error ? false : undefined;
+    }
+    // What you just sent is what you want to see: back to the bottom.
+    pinned.current = true;
+    const el = scroller.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    actions.send(meta.id, text, attachments.map((a) => a.id));
+  };
+  const toAgent = (other: Agent) => (other.id === agent?.id ? null : `Goes to ${other.name}, not this ${agent ? "conversation" : "session"}`);
+  // Whose answers these are: the agent's face and name over each turn's answer.
+  const answerKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (!agent) return keys;
+    let waiting = false;
+    for (const it of items) {
+      if (it.kind === "user" && !it.steered) waiting = true;
+      else if (it.kind === "assistant" && waiting) {
+        keys.add(it.key);
+        waiting = false;
+      }
+    }
+    return keys;
+  }, [items, agent?.id]);
+  // The answer being written now: its face looks busy.
+  const lastAnswerKey = useMemo(() => [...answerKeys].pop(), [answerKeys]);
   const loadAttachment = (a: Attachment) => actions.attachmentUrl(meta.id, a);
   // Start anyway is out: hold the button until the session leaves the queue or
   // yardd refuses, or a double click sends a second startNow that yardd
@@ -2712,8 +3159,14 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
   const [starting, setStarting] = useState(false);
   useEffect(() => setStarting(false), [meta.status, state.errorCount, state.connected]);
   const renderItem = (item: Item) => (
+    <Fragment key={item.key}>
+      {agent && answerKeys.has(item.key) && (
+        <div className="agent-says">
+          <AgentAvatar agent={agent} size="sm" busy={busy && item.key === lastAnswerKey} />
+          <strong>{agent.name}</strong>
+        </div>
+      )}
     <ItemView
-      key={item.key}
       item={item}
       link={handoffs[item.key]}
       onOpen={(id) => actions.go({ page: "session", id })}
@@ -2726,12 +3179,32 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
         actions.startNow(meta.id);
       }}
       onDecide={(id, d) => actions.approve(meta.id, id, d)}
+      agents={state.agents}
     />
+    </Fragment>
   );
 
   return (
+    <FileLinks.Provider value={openFile}>
     <div className={`session ${!wide && workspace ? "workspace-open" : ""}`}>
       <main className="thread">
+        {agent ? (
+          <AgentBar state={state} agent={agent} actions={actions} host={host} busy={busy && !earlier}>
+            {busy && online && (
+              <button className="btn-text" onClick={() => actions.interrupt(meta.id)}>
+                Stop
+              </button>
+            )}
+            {!noPane &&
+              (wide ? (
+                <button className="btn-icon workspace-toggle-desktop" aria-label={workspaceLabel} title={workspaceLabel} aria-controls="session-workspace" aria-expanded={workspaceShown} onClick={() => setWorkspaceCollapsed(!workspaceCollapsed)}>
+                  <Icon d={RIGHT_PANEL} size={18} />
+                </button>
+              ) : (
+                <button className="btn-text workspace-toggle" ref={workspaceOpenButton} aria-controls="session-workspace" aria-expanded={workspaceShown} onClick={openWorkspace}>Workspace</button>
+              ))}
+          </AgentBar>
+        ) : (
         <header className="bar">
           <MenuButton />
           <h1>{meta.title}</h1>
@@ -2750,7 +3223,7 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
             </span>
           )}
           <span className="spacer" />
-          <MobileSetupButton mobile={state.mobile} open={() => actions.go({ page: "hosts" })} />
+          <MobileSetupButton mobile={state.mobile} hostMobile={state.hostMobile} open={() => actions.go({ page: "hosts" })} />
           {wide ? (
             <button className="btn-icon workspace-toggle-desktop" aria-label={workspaceLabel} title={workspaceLabel} aria-controls="session-workspace" aria-expanded={workspaceShown} onClick={() => setWorkspaceCollapsed(!workspaceCollapsed)}>
               <Icon d={RIGHT_PANEL} size={18} />
@@ -2771,24 +3244,41 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
             />
           )}
         </header>
+        )}
         <div
           className="scroll"
           ref={scroller}
           onScroll={(e) => {
             const el = e.currentTarget;
-            pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+            pinned.current = stillPinned(pinned.current, lastTop.current, el.scrollTop, el.scrollHeight - el.scrollTop - el.clientHeight);
+            lastTop.current = el.scrollTop;
           }}
         >
           <div className="column">
+            {before}
             {rows.map((row) => (
               <RowView key={row.key} row={row} render={renderItem} widget={(t) => t.app && <WidgetFrame sessionId={meta.id} app={t.app} actions={actions} />} />
             ))}
             {working && <Working since={turnStart} />}
           </div>
         </div>
-        {online && <QuoteReply sessionId={meta.id} />}
+        {online && !earlier && <QuoteReply sessionId={meta.id} />}
+        {earlier ? (
+          <div className="dock">
+            <div className="muted small offline-note agent-earlier-dock">
+              {agent!.name} moved to {hostName(state, agent!.host || "local")}; this conversation stays here to read.
+              <button className="btn-text note-link" onClick={() => actions.go({ page: "agent", id: agent!.id })}>
+                Open its conversation
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="dock">
-          {!online && <div className="muted small offline-note">{hostName(state, host)} is offline. This session comes back when it reconnects.</div>}
+          {!online && (
+            <div className="muted small offline-note">
+              {agent ? `${agent.name} runs on ${hostName(state, host)}, which is offline. Messages can't be sent until it is back.` : `${hostName(state, host)} is offline. This session comes back when it reconnects.`}
+            </div>
+          )}
           {online && <EngineNotice state={state} host={host} engine={meta.engine} account={accountOf(meta)} onLogin={() => setLoggingIn(true)} />}
           {loggingIn && (
             <LoginDialog state={state} actions={actions} host={host} engine={meta.engine} account={accountOf(meta)} onClose={() => setLoggingIn(false)} />
@@ -2803,8 +3293,17 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
               onRemove={(id) => actions.unqueue(meta.id, id, true)}
             />
           )}
+          {agent && !earlier && <AgentRequests state={state} actions={actions} agent={agent} />}
+          {agentMove.confirm}
+          {agentEdit.error && (
+            <div className="small error-line agent-edit-error" role="alert">
+              {agentEdit.error}
+            </div>
+          )}
           <Composer
-            placeholder={!online ? "Offline" : busy ? "Queue a message for the agent" : "Reply"}
+            placeholder={!online ? "Offline" : busy ? "Queue a message for the agent" : agent ? `Reply to ${agent.name}` : "Reply"}
+            mentions={mentionable ? state.agents : undefined}
+            mentionHint={toAgent}
             rows={1}
             busy={meta.status === "queued" || !online}
             queueing={busy ? queuedHint(meta.engine) : undefined}
@@ -2819,8 +3318,20 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
             upload={actions.upload}
             onSubmit={submit}
             voice={voice}
-            settings={{ model: modelName(models, meta.engine, meta.model), effort: meta.effort, label: `${modelName(models, meta.engine, meta.model)}, ${accountName(accounts, meta.engine, accountOf(meta))}, ${capitalize(meta.effort)}, ${PERMISSIONS.find((p) => p.id === meta.permission)?.label ?? "Ask first"}`, full: meta.permission === "full" }}
+            settings={agent ? agentSettings(state, agent) : setupSettings(modelName(models, meta.engine, meta.model), accountName(accounts, meta.engine, accountOf(meta)), shownEffort(models, meta.engine, meta.model, meta.effort), meta.permission)}
+            setupTitle={agent ? "Agent setup" : undefined}
           >
+            {agent ? (
+              <AgentRunPickers
+                state={state}
+                actions={actions}
+                agent={agent}
+                save={agentEdit.save}
+                onHost={agentMove.pick}
+                speed={{ value: meta.serviceTier ?? STANDARD_SPEED.id, onChange: (tier) => actions.setServiceTier(meta.id, tier), nextTurn: busy }}
+              />
+            ) : (
+            <>
             <ModelPicker
               models={models}
               value={{ engine: meta.engine, model: meta.model, effort: meta.effort }}
@@ -2832,11 +3343,15 @@ function SessionView({ meta, state, actions }: { meta: SessionMeta; state: State
             <AccountPicker state={state} host={host} engine={meta.engine} account={accountOf(meta)} onManage={() => actions.go({ page: "new" })} />
             <EffortPicker models={models} value={{ engine: meta.engine, model: meta.model, effort: meta.effort }} onChange={(effort) => actions.setModel(meta.id, meta.model, effort)} />
             <PermissionPicker engine={meta.engine} value={meta.permission ?? "ask"} onChange={(p) => actions.setPermission(meta.id, p)} />
+            </>
+            )}
           </Composer>
         </div>
+        )}
       </main>
-      <WorkPane key={meta.id} shown={workspaceShown} connected={online} actions={actions} meta={meta} state={state} items={items} closeButton={workspaceCloseButton} onClose={closeWorkspace} />
+      {!noPane && <WorkPane key={meta.id} shown={workspaceShown} connected={online} actions={actions} meta={meta} state={state} items={items} closeButton={workspaceCloseButton} onClose={closeWorkspace} file={openedFile} onOpenFile={openFile} onCloseFile={() => setOpenedFile(null)} />}
     </div>
+    </FileLinks.Provider>
   );
 }
 
@@ -2874,11 +3389,12 @@ function DeleteButton({ worktree, onConfirm }: { worktree: boolean; onConfirm(re
 }
 
 /**
- * Reply to part of an answer: selecting text inside one agent answer shows a
- * Reply button over the selection, which adds it to the reply box as a quote card.
+ * Comment on part of an answer: selecting text inside one agent answer shows
+ * a Comment button over the selection, which adds it to the reply box as a
+ * quote card with its own comment field, and marks it in the answer.
  */
 function QuoteReply({ sessionId }: { sessionId: string }) {
-  const [at, setAt] = useState<{ left: number; top: number; below: boolean; text: string } | null>(null);
+  const [at, setAt] = useState<{ left: number; top: number; below: boolean; text: string; range: Range } | null>(null);
   useEffect(() => {
     const answerOf = (n: Node | null) => (n instanceof Element ? n : n?.parentElement)?.closest("[data-quotable]") ?? null;
     const update = () => {
@@ -2890,7 +3406,7 @@ function QuoteReply({ sessionId }: { sessionId: string }) {
       const r = sel!.getRangeAt(0).getBoundingClientRect();
       // Touch screens put their own copy menu above a selection; go below it.
       const below = r.top < 48 || window.matchMedia("(hover: none)").matches;
-      setAt({ left: Math.min(Math.max(r.left + r.width / 2, 48), window.innerWidth - 48), top: below ? r.bottom : r.top, below, text });
+      setAt({ left: Math.min(Math.max(r.left + r.width / 2, 48), window.innerWidth - 48), top: below ? r.bottom : r.top, below, text, range: sel!.getRangeAt(0).cloneRange() });
     };
     document.addEventListener("selectionchange", update);
     // The button is fixed to the window; the thread scrolls under it.
@@ -2910,13 +3426,13 @@ function QuoteReply({ sessionId }: { sessionId: string }) {
       // Keep the selection: a mousedown on a button would clear it before the click.
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => {
-        quoteInComposer(sessionId, at.text);
+        quoteInComposer(sessionId, at.text, at.range);
         document.getSelection()?.removeAllRanges();
         setAt(null);
       }}
     >
       <Icon d={REPLY} />
-      Reply
+      Comment
     </button>,
     document.body,
   );
@@ -2943,8 +3459,8 @@ function PendingList({ pending, busy, hint, onSteer, onEdit, onRemove }: {
         const { quotes, text } = splitQuotes(p.text);
         return (
           <div className="pending-row" key={p.id}>
-            <span className="pending-text">{text || quotes.join(" ") || p.attachments?.map((a) => a.name).join(", ")}</span>
-            {quotes.length > 0 && <span className="muted small">{quotes.length === 1 ? "1 quote" : `${quotes.length} quotes`}</span>}
+            <span className="pending-text">{text || quotes.map((q) => q.note || q.text).join(" ") || p.attachments?.map((a) => a.name).join(", ")}</span>
+            {quotes.length > 0 && <span className="muted small">{quotes.some((q) => q.note) ? (quotes.length === 1 ? "1 comment" : `${quotes.length} comments`) : quotes.length === 1 ? "1 quote" : `${quotes.length} quotes`}</span>}
             {!!p.attachments?.length && <span className="muted small">{p.attachments.length === 1 ? "1 file" : `${p.attachments.length} files`}</span>}
             {onSteer && <button className="btn-text pending-action pending-steer" title="Send to the current turn" onClick={() => onSteer(p.id)}>Steer</button>}
             <button className="btn-text pending-action" aria-label="Edit" title="Back to the reply box (↑)" onClick={() => onEdit(p.id)}>
@@ -2963,6 +3479,29 @@ function PendingList({ pending, busy, hint, onSteer, onEdit, onRemove }: {
 /** `> ` lines in your own message show as quotes, not as `>` characters.
  *  Your text stays text: only the quote lines are picked out. */
 function BubbleText({ text }: { text: string }) {
+  // Comments on parts of answers: each part with its comment under it.
+  const commented = splitComments(text);
+  if (commented) {
+    const rest = commented.text.replace(/^\n+/, "");
+    return (
+      <div className="bubble-parts">
+        <ol className="bubble-comments" aria-label="Comments on parts of the answers">
+          {commented.quotes.map((q, i) => (
+            <li key={i} className="bubble-comment">
+              {commented.quotes.length > 1 && (
+                <span className="quote-card-number" aria-hidden="true">
+                  {i + 1}
+                </span>
+              )}
+              <blockquote className="bubble-quote">{q.text}</blockquote>
+              {q.note && <div className="bubble-comment-note">{q.note}</div>}
+            </li>
+          ))}
+        </ol>
+        {rest && <BubbleText text={rest} />}
+      </div>
+    );
+  }
   // Attached terminal output arrives as fenced blocks: shown as code, the
   // text around them as before.
   const blocks = fenceSegments(text);
@@ -3063,6 +3602,16 @@ function TurnFold({ row, render }: { row: Extract<Row, { type: "fold" }>; render
   const [open, setOpen] = useState(false);
   const verb = row.status === "interrupted" ? "Stopped after" : "Worked for";
   const label = row.ms != null ? `${verb} ${duration(row.ms)}` : row.status === "interrupted" ? "Stopped" : "Worked";
+  // Its messages and steps follow in place: this line only says how long.
+  if (row.inline)
+    return (
+      <div className="fold">
+        <div className="fold-row fold-row-static">
+          <span>{label}</span>
+          {row.summary && <span className="muted">· {row.summary}</span>}
+        </div>
+      </div>
+    );
   return (
     <div className="fold">
       <button className="fold-row" aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -3146,12 +3695,12 @@ function WorkEntry({ entry }: { entry: WorkItem }) {
         <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
           <Icon d={CHEVRON_RIGHT} size={12} />
         </span>
-        {/* Codex titles a command "Ran" from the start; until it ends, it has not,
-            and while its approval is open or after a denial it never started. */}
-        <span>{entry.title === "Ran" ? ranLabel(entry) : entry.title}</span>
+        {/* Engines title a command "Ran" and an edit "Edited" from the start;
+            while its approval is open or after a denial it never happened. */}
+        <span>{toolLabel(entry)}</span>
         {entry.detail && <code>{entry.detail}</code>}
         {entry.state === "running" && entry.asked !== "waiting" && <span className="pulse" aria-label="running" />}
-        {entry.asked === "waiting" && entry.title !== "Ran" && <span className="muted">· waiting</span>}
+        {entry.asked === "waiting" && toolLabel(entry) === entry.title && <span className="muted">· waiting</span>}
         {didNotRun(entry) ? (
           <span className="muted">· {entry.asked === "denied" ? "denied" : "not answered"}</span>
         ) : (
@@ -3163,14 +3712,8 @@ function WorkEntry({ entry }: { entry: WorkItem }) {
   );
 }
 
-function ranLabel(entry: ToolItem): string {
-  if (entry.asked === "waiting") return "Waiting to run";
-  if (didNotRun(entry)) return "Did not run";
-  return entry.state === "running" ? "Running" : "Ran";
-}
-
 /** A subagent: one line, collapsed. Open, the steps it took and its report. */
-function AgentEntry({ entry }: { entry: ToolItem }) {
+function AgentEntry({ entry, card = false }: { entry: ToolItem; card?: boolean }) {
   const [open, setOpen] = useState(false);
   const steps = entry.steps ?? [];
   const expandable = steps.length > 0 || !!entry.output;
@@ -3180,19 +3723,42 @@ function AgentEntry({ entry }: { entry: ToolItem }) {
     entry.state !== "running" && entry.ms != null ? duration(entry.ms) : null,
     steps.length ? `${steps.length} ${steps.length === 1 ? "step" : "steps"}` : null,
   ].filter(Boolean);
+  const chevron = (
+    <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
+      <Icon d={CHEVRON_RIGHT} size={12} />
+    </span>
+  );
+  const status = (
+    <>
+      {entry.state === "running" && <span className="pulse" aria-label="running" />}
+      <span className={entry.state === "failed" ? "bad small" : "muted small"}>{parts.join(" · ")}</span>
+    </>
+  );
+  const latestLine = entry.state === "running" && latest && !open ? <code>{latest.detail}</code> : null;
   return (
-    <div className="tool agent">
-      <button className="tool-row" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
-        <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
-          <Icon d={CHEVRON_RIGHT} size={12} />
-        </span>
-        <span>Agent</span>
-        {entry.detail && <span className="agent-what">{entry.detail}</span>}
-        {entry.agent && <span className="agent-type">{entry.agent}</span>}
-        {entry.state === "running" && <span className="pulse" aria-label="running" />}
-        <span className={entry.state === "failed" ? "bad small" : "muted small"}>{parts.join(" · ")}</span>
-        {entry.state === "running" && latest && !open && <code>{latest.detail}</code>}
-      </button>
+    <div className={`tool agent ${card ? "subagent" : ""}`}>
+      {card ? (
+        // The pane lists only subagents, so the task leads and the word "Agent"
+        // goes; type, state and the latest step line up under it in every card.
+        <button className="tool-row subagent-head" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
+          {chevron}
+          <span className="subagent-title">{entry.detail || "Agent"}</span>
+          <span className="subagent-meta">
+            {entry.agent && <span className="agent-type">{entry.agent}</span>}
+            {status}
+          </span>
+          {latestLine && <span className="subagent-latest">{latestLine}</span>}
+        </button>
+      ) : (
+        <button className="tool-row" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
+          {chevron}
+          <span>Agent</span>
+          {entry.detail && <span className="agent-what">{entry.detail}</span>}
+          {entry.agent && <span className="agent-type">{entry.agent}</span>}
+          {status}
+          {latestLine}
+        </button>
+      )}
       {open && (
         <div className="agent-body">
           {steps.length > 0 && (
@@ -3266,21 +3832,34 @@ function ItemView(props: {
   loadAttachment(a: Attachment): Promise<string>;
   onStart(): void;
   onDecide(requestId: string, decision: "allow" | "allow_always" | "deny"): void;
+  /** Whose face goes on a message from another agent. */
+  agents: Agent[];
 }) {
   const { item, onDecide } = props;
   switch (item.kind) {
-    case "user":
-      if (!item.attachments?.length) return <UserBubble text={item.text} />;
+    case "user": {
+      const origin = originLabel(item.origin);
+      if (!item.attachments?.length && !origin) return <UserBubble text={item.text} />;
+      const from = origin && props.agents.find((a) => a.id === origin.agentId);
       return (
         <div className="user-message">
-          <div className="attachments attachments-sent">
+          {origin && (
+            <div className={`origin-badge origin-${item.origin!.kind}`} title={item.origin!.kind === "slack" ? "Its answer is posted back to the Slack thread." : undefined}>
+              {from ? <AgentAvatar agent={from} size="xs" /> : <span className="origin-dot" aria-hidden="true" />}
+              {origin.text}
+            </div>
+          )}
+          {item.attachments?.length ? (
+            <div className="attachments attachments-sent">
             {item.attachments.map((a) => (
               <SentAttachment key={a.id} attachment={a} load={props.loadAttachment} />
             ))}
-          </div>
+            </div>
+          ) : null}
           {item.text && <UserBubble text={item.text} />}
         </div>
       );
+    }
     case "note":
       return (
         <div className="note">
@@ -3345,7 +3924,7 @@ function FileDiff({ file }: { file: ChangedFile }) {
   );
 }
 
-function WorkPane({ shown, connected, actions, meta, state, items, closeButton, onClose }: {
+function WorkPane({ shown, connected, actions, meta, state, items, closeButton, onClose, file, onOpenFile, onCloseFile }: {
   shown: boolean;
   connected: boolean;
   actions: Actions;
@@ -3354,9 +3933,17 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
   items: Item[];
   closeButton: RefObject<HTMLButtonElement | null>;
   onClose(): void;
+  /** A file a link opened: its tab shows while it is open. */
+  file: { path: string; nonce: number } | null;
+  onOpenFile(path: string): Promise<string | null>;
+  onCloseFile(): void;
 }) {
   const [paneW, setPaneW] = useWidth("yard.paneWidth", PANE_W);
-  const [tab, setTab] = useState<"terminal" | "agents" | "procs">("terminal");
+  const [tab, setTab] = useState<"terminal" | "agents" | "procs" | "file">("terminal");
+  useEffect(() => {
+    if (file) setTab("file");
+    else setTab((t) => (t === "file" ? "terminal" : t));
+  }, [file?.path, file?.nonce]);
   const [terminalUsed, setTerminalUsed] = useState(shown);
   const agents = useMemo(() => tab === "agents" ? sessionSubagents(items) : [], [tab, items]);
   useEffect(() => {
@@ -3370,16 +3957,28 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
         <button className={`tab ${tab === "terminal" ? "active" : ""}`} aria-pressed={tab === "terminal"} onClick={() => setTab("terminal")}>Terminal</button>
         <button className={`tab ${tab === "agents" ? "active" : ""}`} aria-pressed={tab === "agents"} onClick={() => setTab("agents")}>Subagents</button>
         <button className={`tab ${tab === "procs" ? "active" : ""}`} aria-pressed={tab === "procs"} onClick={() => setTab("procs")}>Processes</button>
+        {file && (
+          <span className={`file-tab ${tab === "file" ? "active" : ""}`}>
+            <button className={`tab ${tab === "file" ? "active" : ""}`} aria-pressed={tab === "file"} aria-label={fileLabel(file.path)} title={file.path} onClick={() => setTab("file")}>
+              <Icon d={FILE} size={13} />
+              <span className="file-tab-name">{fileLabel(file.path)}</span>
+            </button>
+            <button className="btn-icon file-tab-close" aria-label={`Close ${fileLabel(file.path)}`} onClick={onCloseFile}>
+              <Icon d={CLOSE} size={12} />
+            </button>
+          </span>
+        )}
         <span className="spacer" />
         {tab === "procs" && <button className="btn-icon" aria-label="Refresh processes" onClick={() => actions.loadProcs(meta.id)}><Icon d={REFRESH} /></button>}
       </header>
       {terminalUsed && <TerminalPane sessionId={meta.id} connected={connected} visible={shown && tab === "terminal"} actions={actions} />}
       {shown && tab === "agents" && (
         <section aria-label="Session subagents" className="pane-body subagents-pane">
-          {agents.length ? agents.map((agent) => <AgentEntry key={agent.key} entry={agent} />) : <p className="muted">No subagents in this session.</p>}
+          {agents.length ? agents.map((agent) => <AgentEntry key={agent.key} entry={agent} card />) : <p className="muted">No subagents in this session.</p>}
         </section>
       )}
       {shown && tab === "procs" && <ProcPane meta={meta} state={state} actions={actions} visible />}
+      {file && tab === "file" && <FileView sessionId={meta.id} path={file.path} nonce={file.nonce} home={homeOn(state, hostOf(meta))} actions={actions} onOpen={onOpenFile} />}
     </section>
   );
 }
@@ -3388,6 +3987,41 @@ function WorkPane({ shown, connected, actions, meta, state, items, closeButton, 
 
 const WEB_URL = /https?:\/\/(?:[^\s<>()\[\]{}"`']|\([^\s<>()]*\))+/;
 const INLINE = new RegExp(`(${[/\[`?[^\]`]+`?\]\([^)]+\)/.source, /`[^`]+`/.source, /\*\*[^*]+\*\*/.source, PR_URL_SOURCE, WEB_URL.source].join("|")})`, "gi");
+
+/** A link to a file on the session's host. Clicking opens it in the
+ *  workspace; a failure to download one where there is no workspace shows
+ *  next to the link. */
+function FileLink({ path, label }: { path: string; label: string }) {
+  const open = useContext(FileLinks);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!open) return <code>{label}</code>;
+  return (
+    <>
+      <button
+        type="button"
+        className="file-link"
+        title={`Open ${path}`}
+        aria-busy={busy || undefined}
+        onClick={async () => {
+          if (busy) return;
+          setBusy(true);
+          setError(null);
+          setError(await open(path));
+          setBusy(false);
+        }}
+      >
+        <Icon d={FILE} size={12} />
+        {label}
+      </button>
+      {error && (
+        <span className="file-link-error" role="alert">
+          {error}
+        </span>
+      )}
+    </>
+  );
+}
 
 function webHref(raw: string): string | null {
   if (!/^https?:\/\/[^\s\\]+$/i.test(raw)) return null;
@@ -3415,9 +4049,11 @@ function inline(text: string): ReactNode[] {
         </Fragment>
       );
     }
+    const file = link && fileTarget(link[2]);
+    if (file) return <FileLink key={i} path={file} label={link[1]} />;
     if (link) return <code key={i}>{link[1]}</code>;
     if (part.startsWith("`") && part.endsWith("`") && part.length > 2) return <code key={i}>{part.slice(1, -1)}</code>;
-    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) return <strong key={i}>{inline(part.slice(2, -2))}</strong>;
     return part;
   });
 }
@@ -3477,12 +4113,27 @@ export function Markdown({ text, quotable }: { text: string; quotable?: boolean 
                 case "table":
                   return <MdTableView key={key} table={seg.table} />;
                 case "heading":
-                  return <h3 key={key}>{inline(seg.text)}</h3>;
+                  return (
+                    <h3 key={key} data-level={seg.level}>
+                      {inline(seg.text)}
+                    </h3>
+                  );
+                case "quote":
+                  return (
+                    <blockquote key={key}>
+                      {seg.lines.map((l, k) => (
+                        <span key={k}>
+                          {k > 0 && <br />}
+                          {inline(l)}
+                        </span>
+                      ))}
+                    </blockquote>
+                  );
                 case "ul":
                 case "ol": {
                   const List = seg.kind;
                   return (
-                    <List key={key}>
+                    <List key={key} start={seg.kind === "ol" ? seg.start : undefined}>
                       {seg.items.map((item, k) => (
                         <li key={k}>{inline(item)}</li>
                       ))}
@@ -3586,7 +4237,7 @@ function EngineNotice({ state, host, engine, account = DEFAULT_ACCOUNT, onLogin 
       <span className="dot host-dot-busy" aria-hidden="true" />
       {st.installed ? (
         <>
-          <span>
+          <span className="engine-notice-text">
             {which} isn't logged in on {machine}.
           </span>
           <span className="spacer" />
@@ -3595,7 +4246,7 @@ function EngineNotice({ state, host, engine, account = DEFAULT_ACCOUNT, onLogin 
           </button>
         </>
       ) : (
-        <span>
+        <span className="engine-notice-text">
           {ENGINE_LABEL[engine]} isn't installed on {machine}. Install it there with <code>{ENGINE_INSTALL[engine]}</code>.
         </span>
       )}
@@ -3616,6 +4267,9 @@ function LoginDialog(props: { state: State; actions: Actions; host: string; engi
   const login = current === before.current ? undefined : current;
   const [code, setCode] = useState("");
   const [copied, setCopied] = useState(false);
+  // The terminal login shown when Check login was pressed: a newer one means
+  // the check came back still logged out, which otherwise looks like nothing happened.
+  const [checkedFrom, setCheckedFrom] = useState<LoginState | undefined>();
   const machine = hostName(state, host);
   const finished = login?.state === "done";
   useEffect(() => {
@@ -3659,7 +4313,20 @@ function LoginDialog(props: { state: State; actions: Actions; host: string; engi
         </div>
         {login.instructions && <p className="muted small">{login.instructions}</p>}
         <p className="muted small">Gemini CLI keeps the login on that machine. After signing in, check it here.</p>
-        <button className="btn-primary" onClick={() => actions.login(host, engine, account)}>Check login</button>
+        {checkedFrom && checkedFrom !== login && (
+          <p className="small warn" role="status">
+            Still not logged in on {machine}. Finish signing in there, then check again.
+          </p>
+        )}
+        <button
+          className="btn-primary"
+          onClick={() => {
+            setCheckedFrom(login);
+            actions.login(host, engine, account);
+          }}
+        >
+          Check login
+        </button>
       </>
     );
   } else if (login.state === "providers") {
@@ -4324,7 +4991,12 @@ function AccountRow({ account, state: st, onLogin, onRemove }: { account: Accoun
           className="btn-text account-remove"
           aria-label={`Remove ${account.name}`}
           title="Deletes the account's login on this host"
-          onClick={() => (armed ? onRemove() : setArmed(true))}
+          // Disarm on the confirming click: if yardd refuses, the row should
+          // not keep offering a click that will be refused again.
+          onClick={() => {
+            setArmed(!armed);
+            if (armed) onRemove();
+          }}
         >
           {armed ? "Click again to remove" : "Remove"}
         </button>
@@ -4493,7 +5165,7 @@ function AddHost(props: { actions: Actions; hosts: HostEntry[]; errorCount: numb
           </label>
         </div>
       )}
-      <div className="row">
+      <div className="row add-host-actions">
         <button className="btn-primary" disabled={!ready || !!sent} onClick={submit}>
           Add {finalName || "host"}
         </button>
@@ -4517,6 +5189,16 @@ function Hosts({ state, actions }: { state: State; actions: Actions }) {
   const [selected, setSelected] = useState(route?.host ?? "local");
   const id = selected === "local" || state.hosts.some((h) => h.id === selected) ? selected : "local";
   const [login, setLogin] = useState<{ host: string; engine: Engine; account?: string } | null>(null);
+  const page = useRef<HTMLDivElement>(null);
+  // Bumped by a tap on a host row, so tapping the selected host again also reveals it.
+  const [reveal, setReveal] = useState(0);
+  useEffect(() => {
+    if (!reveal) return;
+    // On a phone the setup card and the host rows push the details below the
+    // fold, so a tap on a host only moved its border. Already in view: stay put.
+    const heading = page.current?.querySelector<HTMLElement>(".host-inspector-heading");
+    if (heading && heading.getBoundingClientRect().bottom > window.innerHeight) heading.scrollIntoView({ block: "start" });
+  }, [reveal]);
   const accountActions: AccountActions = {
     login: (engine, account) => setLogin({ host: id, engine, account }),
     add: (engine, name) => actions.addAccount(id, engine, name),
@@ -4536,15 +5218,30 @@ function Hosts({ state, actions }: { state: State; actions: Actions }) {
         )}
       </header>
       <div className="scroll">
-        <div className="focused-page">
+        <div className="focused-page" ref={page}>
           {/* The session headers' phone shortcut leads here: keep setup first. */}
-          <MobileSetup mobile={state.mobile} />
+          <MobileSetup
+            mobile={state.mobile}
+            targets={phoneTargets(
+              [{ id: "local", name: hostName(state, "local"), mobile: state.mobile }, ...state.hosts.map((h) => ({ id: h.id, name: h.name, mobile: state.hostMobile[h.id] }))],
+              location.origin,
+            )}
+          />
           {adding && (
             <AddHost actions={actions} hosts={state.hosts} errorCount={state.errorCount} connected={state.connected} onDone={() => setAdding(false)} />
           )}
           <div className="focused-hosts" aria-label="Choose a host">
             {["local", ...state.hosts.map((h) => h.id)].map((h) => (
-              <HostSummary key={h} state={state} id={h} selected={h === id} onSelect={() => setSelected(h)} />
+              <HostSummary
+                key={h}
+                state={state}
+                id={h}
+                selected={h === id}
+                onSelect={() => {
+                  setSelected(h);
+                  setReveal((n) => n + 1);
+                }}
+              />
             ))}
           </div>
           <HostInspector
@@ -4590,7 +5287,7 @@ function SubscriptionsPage({ state, actions }: { state: State; actions: Actions 
               accounts: accountsOn(state, host),
               engines: state.engines[host],
             }))}
-            onManage={() => actions.go({ page: "hosts", tab: "engines" })}
+            onManage={(host) => actions.go({ page: "hosts", ...(host ? { host } : {}), tab: "engines" })}
           />
         </div>
       </div>
@@ -4652,7 +5349,8 @@ function SessionRows({
             </span>
             <span className={`focused-session-state ${s.status === "needs_approval" ? "warn" : "muted"}`}>
               <span className={`dot dot-${s.status}`} />
-              {!hostOnline(state, host) ? "Offline" : s.archived ? "Archived" : STATUS_LABEL[s.status]}
+              {/* Archived sessions still run: past idle, the status is what the row is for. */}
+              {!hostOnline(state, host) ? "Offline" : !s.archived ? STATUS_LABEL[s.status] : s.status === "idle" ? "Archived" : `Archived · ${STATUS_LABEL[s.status]}`}
             </span>
             <span className="focused-session-resources muted small">
               {usage ? (
@@ -4678,7 +5376,13 @@ function SessionsPage({ state, actions }: { state: State; actions: Actions }) {
   const sessions = Object.values(state.sessions)
     .filter((s) => !hiddenFromSidebar(s))
     .filter((s) => (filter === "archived" ? s.archived : filter === "all" || !s.archived))
-    .filter((s) => `${s.title} ${s.cwd} ${ENGINE_NAME[s.engine]} ${hostName(state, hostOf(s))}`.toLowerCase().includes(query.toLowerCase()))
+    // Search what the row shows, account included: "Work" should find the
+    // sessions that run on the Work login.
+    .filter((s) =>
+      `${s.title} ${s.cwd} ${ENGINE_NAME[s.engine]} ${accountName(accountsOn(state, hostOf(s)), s.engine, accountOf(s))} ${hostName(state, hostOf(s))}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+    )
     .sort((a, b) => b.updatedAt - a.updatedAt);
   return (
     <div className="hosts">

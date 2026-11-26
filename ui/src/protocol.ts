@@ -12,6 +12,9 @@ export const SESSION_TITLE_LIMIT = 60;
 export interface SessionMeta {
   id: string;
   title: string;
+  /** Where the title came from: absent for the task's first line, `auto` when
+   *  a small model named it from the conversation, `user` when typed in. */
+  titleSource?: "auto" | "user";
   engine: Engine;
   model: string;
   effort: string;
@@ -37,6 +40,18 @@ export interface SessionMeta {
   group?: string | null;
   /** The automation that started this session: a run, kept out of the sidebar. */
   automation?: string | null;
+  /** The agent this session is a chat with (see agents.ts). */
+  agent?: string | null;
+  /** An agent's conversation: the start of its last answer, for its card. */
+  lastMessage?: string | null;
+  /** An agent's conversation starts a fresh engine thread with its next turn, and why. */
+  freshContext?: string | null;
+  /** The agent asked for the owner (`notify_owner`): kept until a window opens its conversation (`agent.seen`). */
+  needsYou?: { message: string; at: number } | null;
+  /** Subagents still at work after their turn ended (Agent call ids). */
+  background?: string[];
+  /** Where the messages the running turn answers came from (yardd owes them its answer). */
+  answering?: MessageOrigin[];
   /** When a run's first turn ended; `updatedAt` moves on any later change. */
   finishedAt?: number;
   /** When the latest turn ended (yardd's clock), and how. Missing before the first, and from an older yardd. */
@@ -53,6 +68,86 @@ export interface PendingMessage {
   text: string;
   attachments?: Attachment[];
   at: number;
+  origin?: MessageOrigin;
+}
+
+/** Where a message into a conversation came from, when the owner did not
+ *  type it (yardd's origins.rs): another agent's `message_agent` (`agent`),
+ *  the answer to one delivered back (`agentReply`), or a Slack message
+ *  (`slack`). `hops` counts the chain of agents messaging agents. Absent, or
+ *  `user`: typed by the owner. */
+export type MessageOrigin =
+  | { kind: "user" }
+  /** `handle`: the sender's `@handle` (none from a yardd before handles). */
+  | { kind: "agent" | "agentReply"; agentId: string; name: string; handle?: string; hops: number }
+  /** `slack` (and kinds this build does not know); `isSlack` narrows to SlackOrigin. */
+  | { kind: string; [field: string]: unknown };
+
+/** A message from Slack: where it was written and by whom (yardd's slack.rs). */
+export interface SlackOrigin {
+  kind: "slack";
+  team: string;
+  channel: string;
+  /** `#general`, or `Direct message`. */
+  channelName: string;
+  /** The Slack thread the answer is posted in. */
+  threadTs: string;
+  ts: string;
+  user: string;
+  userName: string;
+}
+
+/** The Slack connection and its settings (yardd's slack.rs). Tokens never
+ *  come here: only their kind and last four characters. */
+export interface SlackView {
+  configured: boolean;
+  appToken: string;
+  botToken: string;
+  state: "off" | "connecting" | "connected" | "error";
+  team: string;
+  bot: string;
+  error: string | null;
+  allowed: { id: string; name: string }[];
+  /** People who wrote to the bot and are not allowed, newest first. */
+  requests: { id: string; name: string; place: string; at: number }[];
+  defaultAgent: string | null;
+  channels: { id: string; name: string; agent: string | null }[];
+  /** Workspaces with a configuration token: an agent's own app there is one click (older yardds send none). */
+  workspaces?: { teamId: string; teamName: string }[];
+  /** Agents with a Slack app of their own, by agent id. */
+  agentApps?: Record<string, SlackAgentApp>;
+  /** The public https address Slack sends agents' new apps' events to; empty: Socket Mode. */
+  publicUrl?: string;
+  /** Set by YARD_SLACK_PUBLIC_URL where Switchyard runs, so not from here. */
+  publicUrlFixed?: boolean;
+  /** Whether that address reached this Switchyard: null untried, "" yes, else why not. */
+  publicCheck?: string | null;
+  /** A new app's install can come back to Switchyard on its own (an https address). */
+  canRedirect?: boolean;
+}
+
+/** An agent's own Slack app (yardd's slack.rs): its step and connection, never a token. */
+export interface SlackAgentApp {
+  /** `install`: approve it in Slack; `appToken`: its connection token is missing; `ready`. */
+  step: "install" | "appToken" | "ready";
+  appId: string;
+  teamId: string;
+  teamName: string;
+  /** Its bot's handle in Slack, made from the agent's name (`code-reviewer`). */
+  handle: string;
+  ownerName: string;
+  /** Slack can send the browser back to Switchyard after the install (an https address). */
+  canRedirect: boolean;
+  authorizeUrl?: string;
+  /** Where Slack sends its events over HTTP; empty: Socket Mode, with an app-level token. */
+  eventsUrl?: string;
+  /** Why its name, description or icon did not reach Slack (a lapsed configuration token). */
+  syncError?: string | null;
+  /** Which picture of the agent Slack has as its icon (`iconKey` in slack.ts); empty: none yet. */
+  iconKey?: string;
+  /** When ready: `connecting`, `connected` or `error` (Socket Mode); `events` until Slack's first event over HTTP. */
+  state?: "connecting" | "connected" | "error" | "events";
+  error?: string | null;
 }
 
 export type ModelServiceTier = { id: string; name: string; description: string };
@@ -273,6 +368,8 @@ export interface DirList {
   hostId?: string;
   /** Sorted by name, hidden ones included, at most 2000. `git` marks a repository root. */
   dirs?: { name: string; git: boolean }[];
+  /** The first folder on `path` that does not exist, when that is why there is no list. */
+  missing?: string;
   error?: string;
 }
 
@@ -447,7 +544,7 @@ export type AgentEvent =
   /** `session.create` and `session.send` take `attachments: string[]` (ids
    *  from `attach.put`) and may then have empty text; the event carries
    *  the attachments' records. */
-  | { type: "user_message"; text: string; attachments?: Attachment[]; steered?: boolean; at?: number }
+  | { type: "user_message"; text: string; attachments?: Attachment[]; steered?: boolean; at?: number; origin?: MessageOrigin }
   /** `at` is yardd's clock in ms; older logs lack it. */
   | { type: "turn_started"; at?: number }
   | { type: "turn_completed"; status: string; at?: number }
@@ -543,7 +640,7 @@ export interface McpAuthState {
 /** What the thread renders. Built from events by `applyEvent`. */
 export type Item =
   /** `steered`: sent while the agent worked and given to it mid-turn, at `at`. */
-  | { kind: "user"; key: string; text: string; attachments?: Attachment[]; steered?: boolean; at?: number }
+  | { kind: "user"; key: string; text: string; attachments?: Attachment[]; steered?: boolean; at?: number; origin?: MessageOrigin }
   | { kind: "assistant"; key: string; itemId: string; text: string; streaming: boolean }
   | { kind: "reasoning"; key: string; itemId: string; text: string; streaming: boolean }
   /** A turn's span, for "Worked for 1m 12s". Not drawn by itself. */
@@ -625,6 +722,7 @@ export function applyEvent(items: Item[], ev: AgentEvent, seq: number): Item[] {
           text: ev.text,
           ...(ev.attachments?.length ? { attachments: ev.attachments } : {}),
           ...(ev.steered ? { steered: true, at: ev.at } : {}),
+          ...(ev.origin && ev.origin.kind !== "user" ? { origin: ev.origin } : {}),
         },
       ];
     case "reasoning_delta":
@@ -735,6 +833,9 @@ export function applyEvent(items: Item[], ev: AgentEvent, seq: number): Item[] {
         if (it.kind === "tool" && it.state === "running" && !goesOn.has(it.itemId) && !(it.parent && goesOn.has(it.parent))) {
           return { ...it, state: "failed" as const, ...(it.asked === "waiting" ? { asked: "unanswered" as const } : {}) };
         }
+        // ACP engines fail the asked call themselves on Stop, before the turn
+        // ends: it still never ran, so it must not count as run and failed.
+        if (it.kind === "tool" && it.asked === "waiting") return { ...it, asked: "unanswered" as const };
         // Nobody chose, so it is not shown as "Denied".
         if (it.kind === "approval" && it.decision === null) return { ...it, unanswered: true };
         return it;
@@ -828,16 +929,54 @@ export interface Automation {
 /** Hub setup discovery; `mobile.connected` records a successful iOS UI connection. */
 export type { MobileStatus } from "./mobile";
 
-/** Switchy's own conversation; engine threads never appear in the session list. */
-export interface SwitchySource {
-  id: string; host: string; title: string; at: number; text: string; unavailable: boolean;
+/** An avatar colour; styles.css has a token for each. */
+export type AgentColor = "blue" | "green" | "amber" | "rose" | "violet" | "teal" | "orange" | "slate";
+/** An avatar face; agents.ts draws each. */
+export type AgentFace = "smile" | "grin" | "wink" | "calm" | "glasses" | "bot" | "happy" | "curious";
+
+/** What an agent asked for that it may not give itself (yardd's agents.rs). */
+export interface AgentRequest {
+  cwd?: string;
+  permission?: Permission;
+  slack?: boolean;
 }
-export interface SwitchyTurn {
-  id: string; question: string; answer: string; engine: string; model: string;
-  at: number; status: string; sources: SwitchySource[]; coverage: string[]; error: string | null;
-  approvals?: { requestId: string; kind: string; title: string; detail: string; decision?: "allow" | "allow_always" | "deny" | null }[];
-}
-export interface SwitchyConversation {
-  status: string; turns: SwitchyTurn[]; engine: string; model: string; scope: string; revision: number;
-  permission?: Permission; effort?: string; queue_reason?: string | null;
+
+/** A named agent, mentioned as `@handle`. Agents live on the hub (yardd's agents.rs). */
+export interface Agent {
+  id: string;
+  /** As people see it: any printable text, spaces and all, up to 40 characters. */
+  name: string;
+  /** What it is `@mentioned` by, made from the name by yardd ("Custom Domains"
+   *  is `Custom-Domains`); unique ignoring case. Older yardds send none: their
+   *  names were handles (handleOf). */
+  handle?: string;
+  color: AgentColor;
+  /** Empty: one picked from its id (faceOf). */
+  face: AgentFace | "";
+  /** One line: what it is for. */
+  about: string;
+  engine: Engine;
+  /** Empty: the host's default model for the engine. */
+  model: string;
+  effort: string;
+  account: string;
+  /** Empty: its own folder in yardd's data dir. */
+  cwd: string;
+  permission: Permission;
+  /** Who it is and how it works, given at the start of each chat. */
+  instructions: string;
+  /** What it keeps in mind across chats. */
+  memory: string;
+  /** Its one conversation (a session id), made with its first message; every message to the agent goes there. */
+  chat?: string | null;
+  /** Where its conversation runs: `local`, or a remote host's id (older yardds send none). */
+  host?: string;
+  /** Conversations it left on a host it moved away from, oldest first: readable, not answered from. */
+  previous?: string[];
+  /** Made with New agent and still setting itself up in its conversation. */
+  setup?: boolean;
+  /** What it asked for in its conversation and waits on the owner's click for. */
+  request?: AgentRequest | null;
+  createdAt: number;
+  updatedAt: number;
 }

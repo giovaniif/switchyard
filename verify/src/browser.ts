@@ -181,7 +181,7 @@ async function openDrawer(page: Page): Promise<boolean> {
   return true;
 }
 
-/** Opens a route: new, hosts, settings, connectors, or session:<id | title text>. */
+/** Opens a route: new, hosts, settings, connectors, agents, automations, or session:<id | title text>. */
 async function goRoute(page: Page, iso: Iso, route: string, w: Watch) {
   if (!page.url().startsWith(iso.url)) {
     await page.goto(iso.url, { waitUntil: "domcontentloaded" });
@@ -207,8 +207,8 @@ async function goRoute(page: Page, iso: Iso, route: string, w: Watch) {
     await search.press("Enter");
   } else if (route === "settings") {
     await page.getByRole("button", { name: "Settings", exact: true }).first().click();
-  } else if (route === "switchy") {
-    await page.getByRole("button", { name: "Switchy", exact: true }).first().click();
+  } else if (route === "agents" || route === "automations") {
+    await page.getByRole("button", { name: route === "agents" ? "Agents" : "Automations", exact: true }).first().click();
   } else if (route === "connectors") {
     await page.getByRole("button", { name: "Connectors" }).first().click();
   } else if (route.startsWith("session:")) {
@@ -298,7 +298,9 @@ interface Capture {
 
 async function snap(page: Page, dir: string, label: string, vp: ViewportName, problems: Result["problems"]): Promise<Capture> {
   const file = join(dir, `${label}-${vp}.png`);
-  await page.screenshot({ path: file });
+  // Finish CSS transitions first: a shot right after "Open sessions" caught
+  // the phone drawer mid-slide (0.2 s), half off screen, with every step passing.
+  await page.screenshot({ path: file, animations: "disabled" });
   const size = pngSize(file);
   const want = VIEWPORTS[vp];
   if (size.width !== want.width * want.deviceScaleFactor || size.height !== want.height * want.deviceScaleFactor)

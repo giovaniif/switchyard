@@ -27,7 +27,9 @@ yv iso down
 Expect at both viewports: the account picker lists OpenCode, Grok and Gemini identities. Choosing Grok opens its own model list.
 
 ```sh
-yv drive new --steps '[{"click":"css:.account-trigger"},{"expect":{"role":"menuitemradio","name":"OpenCode · Default"}},{"expect":{"role":"menuitemradio","name":"Gemini · Default"}},{"click":{"role":"menuitemradio","name":"Grok · Default"}},{"click":"css:button[aria-label^=\"Model \"]"},{"expect":{"css":".picker-model","hasText":"Fake Large"}},{"shot":"picker"}]'
+STEPS='[{"click":"css:.account-trigger"},{"expect":{"role":"menuitemradio","name":"OpenCode · Default"}},{"expect":{"role":"menuitemradio","name":"Gemini · Default"}},{"click":{"role":"menuitemradio","name":"Grok · Default"}},{"click":"css:button[aria-label^=\"Model \"]"},{"expect":{"css":".picker-model","hasText":"Fake Large"}},{"shot":"picker"}]'
+yv drive new --viewport desktop --steps "$STEPS"
+yv drive new --viewport mobile --steps "$(jq -nc --argjson steps "$STEPS" '[{"click":"role:button:Session setup"}] + $steps')"
 ```
 
 ### opencode-session-streams-a-reply
@@ -35,7 +37,10 @@ Expect at both viewports: a session started on OpenCode's free model answers
 "Echo: <prompt>" and its row names the model.
 
 ```sh
-yv drive new --steps '[{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"OpenCode · Default"}},{"click":"css:button[aria-label^=\"Model \"]"},{"click":{"css":".picker-model","hasText":"Fake Free (opencode)"}},{"fill":"label:Message","value":"TEST-hello from OpenCode"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Echo: TEST-hello from OpenCode","timeout":15000},{"shot":"opencode-session"}]'
+PICK='[{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"OpenCode · Default"}},{"click":"css:button[aria-label^=\"Model \"]"},{"click":{"css":".picker-model","hasText":"Fake Free (opencode)"}}]'
+REST='[{"fill":"label:Message","value":"TEST-hello from OpenCode"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Echo: TEST-hello from OpenCode","timeout":15000},{"shot":"opencode-session"}]'
+yv drive new --viewport desktop --steps "$(jq -nc --argjson a "$PICK" --argjson b "$REST" '$a + $b')"
+yv drive new --viewport mobile --steps "$(jq -nc --argjson a "$PICK" --argjson b "$REST" '[{"click":"role:button:Session setup"}] + $a + [{"press":"Escape"}] + $b')"
 ```
 
 ### grok-command-asks-first
@@ -43,7 +48,10 @@ Expect at both viewports: a Grok session in Ask first shows the command's
 approval card; Allow once runs it and the reply follows.
 
 ```sh
-yv drive new --steps '[{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Grok · Default"}},{"click":"css:button[aria-label^=\"Model \"]"},{"click":{"css":".picker-model","hasText":"Fake Small"}},{"fill":"label:Message","value":"[cmd] TEST-check with Grok"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Allow this command?","timeout":15000},{"shot":"approval"},{"click":"role:button:Allow once"},{"expect":"css:.thread","text":"Ran it.","timeout":15000}]'
+PICK='[{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Grok · Default"}},{"click":"css:button[aria-label^=\"Model \"]"},{"click":{"css":".picker-model","hasText":"Fake Small"}}]'
+REST='[{"fill":"label:Message","value":"[cmd] TEST-check with Grok"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Allow this command?","timeout":15000},{"shot":"approval"},{"click":"role:button:Allow once"},{"expect":"css:.thread","text":"Ran it.","timeout":15000}]'
+yv drive new --viewport desktop --steps "$(jq -nc --argjson a "$PICK" --argjson b "$REST" '$a + $b')"
+yv drive new --viewport mobile --steps "$(jq -nc --argjson a "$PICK" --argjson b "$REST" '[{"click":"role:button:Session setup"}] + $a + [{"press":"Escape"}] + $b')"
 ```
 
 ### opencode-hands-off-from-its-picker
@@ -73,7 +81,22 @@ Expect at both viewports: Gemini lists its session-discovered models; its
 session streams a reply, asks before a command and takes Allow once.
 
 ```sh
-yv drive new --steps '[{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Gemini · Default"}},{"click":"css:button[aria-label^=\"Model \"]"},{"click":{"css":".picker-model","hasText":"Fake Small"}},{"fill":"label:Message","value":"[cmd] TEST-check with Gemini"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Allow this command?","timeout":15000},{"shot":"gemini-approval"},{"click":"role:button:Allow once"},{"expect":"css:.thread","text":"Ran it.","timeout":15000},{"expect":"role:button:Model Fake Small"},{"shot":"gemini-reply"}]'
+PICK='[{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Gemini · Default"}},{"click":"css:button[aria-label^=\"Model \"]"},{"click":{"css":".picker-model","hasText":"Fake Small"}}]'
+REST='[{"fill":"label:Message","value":"[cmd] TEST-check with Gemini"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Allow this command?","timeout":15000},{"shot":"gemini-approval"},{"click":"role:button:Allow once"},{"expect":"css:.thread","text":"Ran it.","timeout":15000}]'
+yv drive new --viewport desktop --steps "$(jq -nc --argjson a "$PICK" --argjson b "$REST" '$a + $b + [{"expect":"role:button:Model Fake Small"},{"shot":"gemini-reply"}]')"
+yv drive new --viewport mobile --steps "$(jq -nc --argjson a "$PICK" --argjson b "$REST" '[{"click":"role:button:Session setup"}] + $a + [{"press":"Escape"}] + $b + [{"click":"role:button:Session setup"},{"expect":"role:button:Model Fake Small"},{"shot":"gemini-reply"}]')"
+```
+
+### opencode-setup-chip-has-no-effort
+Expect on phones: an OpenCode model without efforts shows no effort in the
+Session setup chip, before and after the session starts. The chip used to
+keep the last model's "· High" (and its label said High), squeezed onto two
+lines, while the setup sheet itself had no Effort row.
+
+Viewports: mobile
+
+```sh
+yv drive new --viewport mobile --steps '[{"click":"role:button:Session setup"},{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"OpenCode · Default"}},{"click":"css:button[aria-label^=\"Model \"]"},{"click":{"css":".picker-model","hasText":"Fake Free (opencode)"}},{"press":"Escape"},{"expect":"role:button:Session setup: Fake Free (opencode), Default, Ask first"},{"expect":"css:.composer-setup .setup-effort","count":0},{"shot":"new-chip"},{"fill":"label:Message","value":"TEST-opencode chip"},{"click":"role:button:Send"},{"expect":"css:.thread","text":"Echo: TEST-opencode chip","timeout":15000},{"expect":"role:button:Session setup: Fake Free (opencode), Default, Ask first"},{"expect":"css:.composer-setup .setup-effort","count":0},{"shot":"session-chip"}]'
 ```
 
 ### gemini-separate-account-terminal-login
@@ -91,3 +114,4 @@ yv drive hosts --steps '[{"click":"role:tab:Engine logins"},{"expect":{"css":".a
 - The fake's OpenCode lists one model until a provider (`fakeprov`) is logged in; the logins area adds one.
 
 - Gemini uses `gemini --acp`, its models come from session/new, and its scripted login is pre-seeded by iso up. Fresh Google login runs in a terminal on the selected host; the app checks it without a model turn.
+- Below 700 px the account, model, effort and permission pickers fold into one `Session setup` chip (#290): a recipe that picks a model at mobile opens it first (`role:button:Session setup`), and closes it (`Escape`) before Send, which the open sheet covers. The four picker recipes ran one step list at both viewports and failed at mobile from 2026-11-19 until this was split per viewport.

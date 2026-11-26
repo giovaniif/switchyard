@@ -1,0 +1,724 @@
+{
+ "now": 1800000000000,
+ "snapshot": {
+  "op": "snapshot",
+  "accounts": [],
+  "automations": [],
+  "usage": {
+   "claude": {
+    "status": "allowed",
+    "windows": {
+     "five_hour": {
+      "resetsAt": 1795581452,
+      "utilization": 0.47
+     },
+     "seven_day": {
+      "resetsAt": 1795928552,
+      "utilization": 0.17
+     },
+     "seven_day_sonnet": {
+      "resetsAt": 1795928552,
+      "utilization": 0.08
+     }
+    }
+   },
+   "codex": {
+    "limitId": "codex",
+    "primary": {
+     "resetsAt": 1795583551,
+     "usedPercent": 12,
+     "windowDurationMins": 300
+    },
+    "secondary": {
+     "resetsAt": 1795849351,
+     "usedPercent": 34,
+     "windowDurationMins": 10080
+    }
+   }
+  },
+  "sessions": [
+   {
+    "id": "d1",
+    "title": "Native iPhone app with Liquid Glass",
+    "engine": "claude",
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "status": "running",
+    "cwd": "/home/you/www/switchyard/.yard/wt/ios-native",
+    "host": "local",
+    "permission": "acceptEdits",
+    "account": "default",
+    "archived": false,
+    "pinned": false,
+    "automation": null,
+    "agent": null,
+    "pending": [],
+    "parent": null,
+    "createdAt": 1799999400000,
+    "updatedAt": 1800000000000,
+    "repo": "/home/you/www/switchyard",
+    "branch": "yard/ios-native"
+   },
+   {
+    "id": "d2",
+    "title": "Run the billing migration",
+    "engine": "codex",
+    "model": "gpt-5.6",
+    "effort": "medium",
+    "status": "needs_approval",
+    "cwd": "/home/you/www/billing",
+    "host": "local",
+    "permission": "ask",
+    "account": "default",
+    "archived": false,
+    "pinned": false,
+    "automation": null,
+    "agent": null,
+    "pending": [],
+    "parent": null,
+    "createdAt": 1799999220000,
+    "updatedAt": 1799999820000,
+    "repo": "/home/you/www/billing",
+    "branch": "yard/migrate-invoices"
+   },
+   {
+    "id": "d3",
+    "title": "Review PR #412: offline sync",
+    "engine": "claude",
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "status": "idle",
+    "cwd": "/home/you/www/notes-app",
+    "host": "local",
+    "permission": "ask",
+    "account": "default",
+    "archived": false,
+    "pinned": false,
+    "automation": null,
+    "agent": null,
+    "pending": [],
+    "parent": null,
+    "createdAt": 1799998320000,
+    "updatedAt": 1799998920000,
+    "repo": "/home/you/www/notes-app",
+    "branch": "sync/offline-queue",
+    "lastTurn": "completed"
+   },
+   {
+    "id": "d4",
+    "title": "Release notes for 0.18",
+    "engine": "codex",
+    "model": "gpt-5.6",
+    "effort": "low",
+    "status": "idle",
+    "cwd": "/home/you/www/switchyard",
+    "host": "local",
+    "permission": "ask",
+    "account": "default",
+    "archived": false,
+    "pinned": true,
+    "automation": null,
+    "agent": null,
+    "pending": [],
+    "parent": null,
+    "createdAt": 1799996880000,
+    "updatedAt": 1799997480000,
+    "lastTurn": "completed"
+   },
+   {
+    "id": "d5",
+    "title": "Fix the greeting copy",
+    "engine": "codex",
+    "model": "gpt-5.6",
+    "effort": "low",
+    "status": "idle",
+    "cwd": "/home/you/www/landing",
+    "host": "local",
+    "permission": "ask",
+    "account": "default",
+    "archived": false,
+    "pinned": false,
+    "automation": null,
+    "agent": null,
+    "pending": [],
+    "parent": null,
+    "createdAt": 1799993700000,
+    "updatedAt": 1799994300000,
+    "repo": "/home/you/www/landing",
+    "branch": "yard/greeting-copy",
+    "lastTurn": "completed"
+   },
+   {
+    "id": "d6",
+    "title": "Flaky login test on CI",
+    "engine": "claude",
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "status": "idle",
+    "cwd": "/home/you/www/notes-app",
+    "host": "local",
+    "permission": "ask",
+    "account": "default",
+    "archived": false,
+    "pinned": false,
+    "automation": null,
+    "agent": null,
+    "pending": [],
+    "parent": null,
+    "createdAt": 1799989800000,
+    "updatedAt": 1799990400000,
+    "repo": "/home/you/www/notes-app",
+    "branch": "yard/flaky-login",
+    "lastTurn": "failed"
+   },
+   {
+    "id": "d7",
+    "title": "Weekly dependency bumps",
+    "engine": "opencode",
+    "model": "opencode/big-pickle",
+    "effort": "",
+    "status": "idle",
+    "cwd": "/srv/infra",
+    "host": "box",
+    "permission": "ask",
+    "account": "default",
+    "archived": false,
+    "pinned": false,
+    "automation": null,
+    "agent": null,
+    "pending": [],
+    "parent": null,
+    "createdAt": 1799981400000,
+    "updatedAt": 1799982000000,
+    "lastTurn": "completed"
+   },
+   {
+    "id": "d8",
+    "title": "Plan the data export",
+    "engine": "gemini",
+    "model": "gemini-3-pro",
+    "effort": "",
+    "status": "idle",
+    "cwd": "/home/you/www/notes-app",
+    "host": "local",
+    "permission": "ask",
+    "account": "default",
+    "archived": false,
+    "pinned": false,
+    "automation": null,
+    "agent": null,
+    "pending": [],
+    "parent": null,
+    "createdAt": 1799909400000,
+    "updatedAt": 1799910000000,
+    "lastTurn": "completed"
+   }
+  ],
+  "models": {
+   "claude": [
+    {
+     "id": "claude-opus-5-5",
+     "name": "Opus 5.5",
+     "efforts": [
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max"
+     ],
+     "defaultEffort": "high"
+    },
+    {
+     "id": "claude-sonnet-5-5",
+     "name": "Sonnet 5.5",
+     "efforts": [
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max"
+     ],
+     "defaultEffort": "medium",
+     "isDefault": true
+    }
+   ],
+   "codex": [
+    {
+     "id": "gpt-5.6",
+     "name": "GPT-5.6",
+     "efforts": [
+      "low",
+      "medium",
+      "high"
+     ],
+     "defaultEffort": "medium",
+     "isDefault": true
+    },
+    {
+     "id": "gpt-5.6-luna",
+     "name": "GPT-5.6 Luna",
+     "efforts": [
+      "low",
+      "medium"
+     ],
+     "defaultEffort": "low"
+    }
+   ],
+   "gemini": [
+    {
+     "id": "gemini-3-pro",
+     "name": "Gemini 3 Pro",
+     "efforts": []
+    }
+   ],
+   "grok": [
+    {
+     "defaultEffort": "high",
+     "efforts": [
+      "low",
+      "high"
+     ],
+     "id": "fake-small",
+     "isDefault": true,
+     "name": "Fake Small"
+    },
+    {
+     "efforts": [],
+     "id": "fake-large",
+     "isDefault": false,
+     "name": "Fake Large"
+    }
+   ],
+   "opencode": [
+    {
+     "id": "opencode/big-pickle",
+     "name": "Big Pickle",
+     "efforts": []
+    }
+   ]
+  },
+  "host": {
+   "cores": 28,
+   "cpu": 23.5,
+   "cpuHistory": [
+    6.7520647048950195,
+    3.485563039779663,
+    2.919276714324951,
+    8.272015571594238
+   ],
+   "diskTotal": 500235124736,
+   "diskUsed": 143054839808,
+   "id": "local",
+   "limits": {
+    "forced": false,
+    "minFreeBytes": 0
+   },
+   "load": 9.68,
+   "memTotal": 25100000000.0,
+   "memUsed": 9100000000.0,
+   "name": "server",
+   "pressure": null,
+   "queued": [],
+   "sessions": []
+  },
+  "hostName": "server",
+  "home": "/home/you",
+  "workspace": "/home/you/www",
+  "hosts": [
+   {
+    "id": "box",
+    "name": "box",
+    "kind": "ssh",
+    "status": "connected"
+   }
+  ],
+  "agents": [
+   {
+    "about": "Answers quick questions about your hosts and sessions. Read-only.",
+    "account": "default",
+    "builtin": true,
+    "chat": null,
+    "color": "teal",
+    "createdAt": 1795575721537,
+    "cwd": "",
+    "effort": "",
+    "engine": "codex",
+    "face": "glasses",
+    "id": "scout",
+    "instructions": "",
+    "memory": "",
+    "model": "",
+    "name": "Scout",
+    "permission": "plan",
+    "scope": "all",
+    "updatedAt": 1795575721537
+   }
+  ],
+  "mobile": {
+   "configured": true
+  }
+ },
+ "histories": {
+  "d1": [
+   {
+    "type": "user_message",
+    "text": "Build our mobile app, iOS native. Make it pretty. Liquid glass."
+   },
+   {
+    "type": "turn_started",
+    "at": 1799999640000
+   },
+   {
+    "type": "reasoning_delta",
+    "itemId": "r1",
+    "text": "The app should talk to yardd's WebSocket directly. "
+   },
+   {
+    "type": "reasoning",
+    "itemId": "r1",
+    "text": "The app should talk to yardd's WebSocket directly. The thread model is applyEvent in protocol.ts; port it so both stay in step, then build the views on Liquid Glass."
+   },
+   {
+    "type": "tool_started",
+    "itemId": "t1",
+    "kind": "read",
+    "title": "Read",
+    "detail": "ui/src/protocol.ts"
+   },
+   {
+    "type": "tool_completed",
+    "itemId": "t1",
+    "ok": true,
+    "output": "874 lines"
+   },
+   {
+    "type": "tool_started",
+    "itemId": "t2",
+    "kind": "edit",
+    "title": "Write",
+    "detail": "mobile/Switchyard/UI/SessionView.swift"
+   },
+   {
+    "type": "tool_completed",
+    "itemId": "t2",
+    "ok": true,
+    "output": "Wrote 241 lines"
+   },
+   {
+    "type": "tool_started",
+    "itemId": "t3",
+    "kind": "command",
+    "title": "Bash",
+    "detail": "xcodebuild test -scheme Switchyard -destination 'platform=iOS Simulator,name=iPhone 17'"
+   },
+   {
+    "type": "tool_completed",
+    "itemId": "t3",
+    "ok": true,
+    "output": "** TEST SUCCEEDED **"
+   },
+   {
+    "type": "file_change",
+    "itemId": "f1",
+    "files": [
+     {
+      "path": "mobile/Switchyard/UI/SessionView.swift",
+      "kind": "add",
+      "added": 241,
+      "removed": 0
+     },
+     {
+      "path": "mobile/Switchyard/UI/Composer.swift",
+      "kind": "add",
+      "added": 318,
+      "removed": 0
+     },
+     {
+      "path": "mobile/project.yml",
+      "kind": "update",
+      "added": 4,
+      "removed": 2
+     }
+    ]
+   },
+   {
+    "type": "assistant_delta",
+    "itemId": "a1",
+    "text": "The session list and thread are in. Next I'm wiring the composer:\n\n1. A floating **glass** bar with attach, dictation and send\n2. Voice mode that turns the bar into a live panel\n3. Approvals as cards with `Allow once`, `Always` and `Deny`\n\nI'm running the simulator tests now, then I'll"
+   }
+  ],
+  "d2": [
+   {
+    "type": "user_message",
+    "text": "Run the invoice migration against staging and check the row counts."
+   },
+   {
+    "type": "turn_started",
+    "at": 1799999760000
+   },
+   {
+    "type": "tool_started",
+    "itemId": "c1",
+    "kind": "command",
+    "title": "Ran",
+    "detail": "bun run db:status --env staging"
+   },
+   {
+    "type": "tool_completed",
+    "itemId": "c1",
+    "ok": true,
+    "output": "2 pending migrations"
+   },
+   {
+    "type": "assistant_message",
+    "itemId": "m1",
+    "text": "Two migrations are pending. The second rewrites `invoices.total_cents`, so I'd like to run it now."
+   },
+   {
+    "type": "tool_started",
+    "itemId": "c2",
+    "kind": "command",
+    "title": "Ran",
+    "detail": "bun run db:migrate --env staging"
+   },
+   {
+    "type": "approval_request",
+    "requestId": "codex-1",
+    "kind": "command",
+    "title": "bun run db:migrate --env staging",
+    "detail": "Runs 2 migrations on the staging database",
+    "itemId": "c2",
+    "at": 1799999820000
+   }
+  ],
+  "d3": [
+   {
+    "type": "user_message",
+    "text": "Review PR #412. Focus on the offline queue."
+   },
+   {
+    "type": "turn_started",
+    "at": 1799998680000
+   },
+   {
+    "type": "tool_started",
+    "itemId": "s1",
+    "kind": "other",
+    "title": "Agent",
+    "detail": "Survey the sync code",
+    "agent": "explorer"
+   },
+   {
+    "type": "tool_started",
+    "itemId": "s2",
+    "kind": "read",
+    "title": "Read",
+    "detail": "src/sync/queue.ts",
+    "parent": "s1"
+   },
+   {
+    "type": "tool_completed",
+    "itemId": "s2",
+    "ok": true,
+    "output": "Read 212 lines"
+   },
+   {
+    "type": "tool_started",
+    "itemId": "s3",
+    "kind": "search",
+    "title": "Grep",
+    "detail": "retryAfter",
+    "parent": "s1"
+   },
+   {
+    "type": "tool_completed",
+    "itemId": "s3",
+    "ok": true,
+    "output": "6 matches"
+   },
+   {
+    "type": "tool_completed",
+    "itemId": "s1",
+    "ok": true,
+    "output": "The queue retries forever on 4xx.",
+    "ms": 41000
+   },
+   {
+    "type": "assistant_message",
+    "itemId": "m2",
+    "text": "Two things to fix before merging:\n\n- **Retries never stop on a 4xx.** `flush()` re-queues every failure, so a rejected edit loops until the app restarts.\n- The queue isn't persisted before `beforeunload`, so a closed tab loses edits.\n\nThe rest looks good. Want me to push a fix for the first one?"
+   },
+   {
+    "type": "turn_completed",
+    "status": "completed",
+    "at": 1799998920000
+   }
+  ],
+  "d4": [
+   {
+    "type": "user_message",
+    "text": "Draft the release notes for 0.18 from the merged PRs."
+   },
+   {
+    "type": "turn_started",
+    "at": 1799997360000
+   },
+   {
+    "type": "reasoning",
+    "itemId": "r2",
+    "text": "Group the merged PRs by area, lead with the iPhone app."
+   },
+   {
+    "type": "tool_started",
+    "itemId": "g1",
+    "kind": "command",
+    "title": "Ran",
+    "detail": "gh pr list --state merged --search 'merged:>2026-11-17'"
+   },
+   {
+    "type": "tool_completed",
+    "itemId": "g1",
+    "ok": true,
+    "output": "23 pull requests"
+   },
+   {
+    "type": "assistant_message",
+    "itemId": "m3",
+    "text": "Here's a draft for **0.18**:\n\n## Highlights\n\n- **Native iPhone app.** Sessions, approvals and voice, built in SwiftUI with Liquid Glass.\n- **Voice mode on Safari and the desktop app** now hears you after it reads an answer.\n- Agents you `@mention` from any reply box.\n\n## Fixes\n\n1. Long account names no longer push *Log in* off screen.\n2. Processes: tap a command to read all of it.\n\n```sh\nscripts/release.sh 0.18.0\n```\n\n| Area | Changes |\n|---|---|\n| iOS | 14 |\n| Voice | 3 |\n\n> Want me to open the release PR?"
+   },
+   {
+    "type": "turn_completed",
+    "status": "completed",
+    "at": 1799997480000
+   }
+  ],
+  "d5": [
+   {
+    "type": "user_message",
+    "text": "The hero says \"Welcome back\" to new visitors. Make it friendlier."
+   },
+   {
+    "type": "turn_started",
+    "at": 1799994180000
+   },
+   {
+    "type": "file_change",
+    "itemId": "e1",
+    "files": [
+     {
+      "path": "src/components/Hero.tsx",
+      "kind": "update",
+      "added": 3,
+      "removed": 1
+     }
+    ]
+   },
+   {
+    "type": "assistant_message",
+    "itemId": "m4",
+    "text": "New visitors now see **\"Hi there, glad you're here.\"** Returning ones still get \"Welcome back\"."
+   },
+   {
+    "type": "turn_completed",
+    "status": "completed",
+    "at": 1799994300000
+   }
+  ],
+  "d6": [
+   {
+    "type": "user_message",
+    "text": "login.spec.ts fails about one run in five on CI. Find out why."
+   },
+   {
+    "type": "turn_started",
+    "at": 1799990160000
+   },
+   {
+    "type": "tool_started",
+    "itemId": "x1",
+    "kind": "command",
+    "title": "Bash",
+    "detail": "bunx playwright test login.spec.ts --repeat-each 20"
+   },
+   {
+    "type": "tool_completed",
+    "itemId": "x1",
+    "ok": false,
+    "output": "4 failed, 16 passed"
+   },
+   {
+    "type": "error",
+    "message": "Claude's usage limit was reached. It resets at 4:00 PM."
+   },
+   {
+    "type": "turn_completed",
+    "status": "failed",
+    "at": 1799990400000
+   }
+  ],
+  "d7": [
+   {
+    "type": "user_message",
+    "text": "Bump the patch versions in the infra repo and open a PR."
+   },
+   {
+    "type": "turn_started",
+    "at": 1799981640000
+   },
+   {
+    "type": "assistant_message",
+    "itemId": "m5",
+    "text": "Opened **#88** with 7 patch bumps. CI is green."
+   },
+   {
+    "type": "turn_completed",
+    "status": "completed",
+    "at": 1799982000000
+   }
+  ],
+  "d8": [
+   {
+    "type": "user_message",
+    "text": "Plan a data export feature: JSON and Markdown."
+   },
+   {
+    "type": "turn_started",
+    "at": 1799909400000
+   },
+   {
+    "type": "assistant_message",
+    "itemId": "m6",
+    "text": "### Plan\n\n1. An `Export` menu in settings\n2. Stream notes as JSON Lines\n3. Markdown with front matter per note\n\nAbout two days of work."
+   },
+   {
+    "type": "turn_completed",
+    "status": "completed",
+    "at": 1799910000000
+   }
+  ]
+ },
+ "dirs": {
+  "/home/you/www": [
+   {
+    "name": "billing",
+    "git": true
+   },
+   {
+    "name": "landing",
+    "git": true
+   },
+   {
+    "name": "notes-app",
+    "git": true
+   },
+   {
+    "name": "switchyard",
+    "git": true
+   },
+   {
+    "name": "scratch",
+    "git": false
+   }
+  ]
+ }
+}

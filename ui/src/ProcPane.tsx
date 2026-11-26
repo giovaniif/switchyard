@@ -75,6 +75,9 @@ export function ProcPane(props: { meta: SessionMeta; state: State; actions: Acti
 function ProcLine(props: { row: ProcRow; depth: number; offers: ReturnType<typeof rowActions>; onKill(signal: KillSignal, tree: boolean): void }) {
   const { row, depth, offers, onKill } = props;
   const [armed, setArmed] = useState<"stop" | "force" | null>(null);
+  // The column clips a command to a few characters on a phone, and a touch
+  // screen never shows the title: a tap shows the whole line, wrapped.
+  const [whole, setWhole] = useState(false);
   useEffect(() => {
     if (!armed) return;
     const timer = setTimeout(() => setArmed(null), ARMED_MS);
@@ -93,17 +96,17 @@ function ProcLine(props: { row: ProcRow; depth: number; offers: ReturnType<typeo
 
   return (
     <>
-      <tr className="proc-row">
+      <tr className={whole ? "proc-row whole" : "proc-row"}>
         <td className="muted">{row.pid}</td>
-        <td className="proc-cmd" title={row.cmd}>
-          <span style={{ paddingLeft: `${depth * 12}px` }}>
+        <td className="proc-cmd" title={whole ? undefined : row.cmd}>
+          <button type="button" className="proc-cmd-toggle" aria-expanded={whole} style={{ paddingLeft: `${depth * 12}px` }} onClick={() => setWhole(!whole)}>
             {depth === 0 && (
               <span className="proc-tag" title={row.engine ? ENGINE_HINT : undefined}>
                 {row.origin}
               </span>
             )}
-            <code>{shortCommand(row.cmd)}</code>
-          </span>
+            <code>{whole ? row.cmd : shortCommand(row.cmd)}</code>
+          </button>
         </td>
         <td className="num">{Math.round(row.cpu)}%</td>
         <td className="num">{memText(row.memBytes)}</td>

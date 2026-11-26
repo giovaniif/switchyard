@@ -63,3 +63,9 @@ describe("manual unread", () => {
     expect(ROW_LABEL.unread).toBe("Unread");
   });
 });
+
+test("a session whose turn ended with a subagent still at work reads as working", () => {
+  const s = { id: "s", title: "t", engine: "claude", model: "m", effort: "", cwd: "/w", status: "idle", host: "local", createdAt: 0, updatedAt: 0, turnEndedAt: 5, lastTurn: "completed", background: ["tool-1"] } as any;
+  expect(rowState(s, 10, true)).toBe("working");
+  expect(rowState({ ...s, background: [] }, 10, true)).not.toBe("working");
+});

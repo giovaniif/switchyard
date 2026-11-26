@@ -51,6 +51,16 @@ yv drive 'session:{{q3_sid}}' --viewport desktop --steps '[{"expect":"role:butto
 yv state --expect '{"sessions":[{"id":"{{q3_sid}}","status":"idle"}]}'
 ```
 
+### agent-queues-and-starts-anyway
+Viewports: desktop
+An agent's first message goes through the same guard: under pressure it
+waits with "Queued: …" and Start anyway, and Start anyway answers it.
+
+```sh
+yv api '{"op":"agent.save","agent":{"name":"TEST-Waiter","engine":"codex","model":"fake-fast","effort":"low"}}' --wait '{"op":"agent.saved"}'
+yv drive new --viewport desktop --steps '[{"click":"role:button:Agents"},{"click":"css:.agent-card[aria-label=\"TEST-Waiter\"] .agent-message"},{"fill":"label:Message","value":"TEST-agent under pressure"},{"press":"Enter"},{"expect":"css:.queued-line","text":"Queued:"},{"shot":"agent-queued"},{"click":"role:button:Start anyway"},{"expect":"css:.thread","text":"Echo: TEST-agent under pressure"},{"expect":"role:button:Start anyway","count":0}]'
+```
+
 ### hosts-page-shows-pressure
 The Hosts page says the host is under pressure on its card, and its Details
 say why new sessions wait.

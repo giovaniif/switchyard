@@ -2,7 +2,7 @@
 
 Pinned sessions, then ungrouped ones newest first, then one collapsible
 section per group, each row with title, model and status. A row's … menu (or
-right-click) marks read or unread, pins, moves to a group, archives or restores, and deletes after one
+right-click) marks read or unread, renames, pins, moves to a group, archives or restores, and deletes after one
 confirmation; a worktree session also offers to remove its worktree. On a
 desktop-width window a row can also be dragged onto a group, the ungrouped
 Sessions rows or Pinned; on the phone drawer the menu is the only way. A group
@@ -11,10 +11,17 @@ of them. Pinned, archived and group live in yardd, so every window agrees;
 which groups are collapsed is per browser. The Archived header is pinned to the
 bottom of the session area and never scrolls away.
 
+A session starts titled with its task's first line; as soon as it starts yardd
+names it from the task, then again after its first and third completed turns
+from the conversation (a session never named yet, after any turn), with a
+small model (Codex `gpt-5.6-luna`, else Haiku). Scripted environments have naming
+off; Setup turns it on with the fake Codex model, which answers a title only when
+the conversation has `[name]`. A title typed through Rename is never replaced.
+
 ## Setup
 
 ```sh
-yv iso up
+yv iso up --env YARD_SESSION_NAMES=on,YARD_NAMING_CODEX_MODEL=fake-fast
 yv iso seed
 ```
 
@@ -28,11 +35,65 @@ yv iso down
 
 ### rows-show-status
 Expect at both viewports: every seeded session has a row; the approval one
-says "Needs approval". At 390 px the sidebar is a drawer, opened first.
+carries "Needs approval" (shown as its badge, read out to screen readers). At
+390 px the sidebar is a drawer, opened first.
 
 ```sh
 yv drive new --viewport desktop --steps '[{"expect":{"css":".session-row","hasText":"TEST-say hello"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"},"text":"Needs approval"},{"expect":{"role":"navigation","name":"Sessions"},"text":"TEST-hello from Claude"},{"shot":"sidebar"}]'
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":{"css":".session-row","hasText":"TEST-say hello"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"},"text":"Needs approval"},{"expect":{"role":"navigation","name":"Sessions"},"text":"TEST-hello from Claude"},{"shot":"sidebar"}]'
+```
+
+### compact-rows-with-engine-marks
+Viewports: both
+A row is one line (36 px at most): the harness's own mark (Claude's starburst,
+the Codex mark; never "CC" or "CX") with what the session is doing as a badge
+on its corner, then the title. Model, status and account are in the row's
+tooltip and read out to screen readers, not shown. No cloud icon; a remote
+host's name is in the tooltip too.
+
+```sh
+yv drive new --viewport desktop --steps '[
+  {"expect":{"css":".session-row","hasText":"TEST-hello from Claude"}},
+  {"expect":{"css":".session-row .engine-icon-claude"}},
+  {"expect":{"css":".session-row .engine-icon-codex"}},
+  {"eval":"(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-run the migration\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\".row-engine .engine-icon\").getBoundingClientRect(); const badge = row.querySelector(\".row-engine .mark-approval\").getBoundingClientRect(); const title = row.querySelector(\".session-title\").getBoundingClientRect(); const visible = [...row.querySelector(\".session-text\").children].filter((e) => !e.classList.contains(\"sr-only\")).length; return [box.height <= 36, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right, icon.right <= title.left, visible, row.title.includes(\"Fake Fast · Needs approval\"), row.querySelectorAll(\".cloud\").length]; })()","equals":[true,true,true,1,true,0]},
+  {"expect":{"css":".session-row","hasText":"CC"},"visible":false},
+  {"shot":"rows"}
+]'
+yv drive new --viewport mobile --steps '[
+  {"click":"role:button:Open sessions"},
+  {"expect":{"css":".session-row","hasText":"TEST-hello from Claude"}},
+  {"eval":"(() => { const row = [...document.querySelectorAll(\".session-row\")].find((r) => r.textContent.includes(\"TEST-run the migration\")); const box = row.getBoundingClientRect(); const icon = row.querySelector(\".row-engine .engine-icon\").getBoundingClientRect(); const badge = row.querySelector(\".row-engine .mark-approval\").getBoundingClientRect(); const title = row.querySelector(\".session-title\").getBoundingClientRect(); const visible = [...row.querySelector(\".session-text\").children].filter((e) => !e.classList.contains(\"sr-only\")).length; return [box.height <= 36, badge.left > icon.left && badge.top > icon.top && badge.right >= icon.right, icon.right <= title.left, visible, row.title.includes(\"Fake Fast · Needs approval\"), row.querySelectorAll(\".cloud\").length]; })()","equals":[true,true,true,1,true,0]},
+  {"shot":"rows"}
+]'
+```
+
+### hover-shows-archive
+Viewports: both
+On a desktop, Archive and ⋯ appear at the row's end while the pointer is on
+it, and Archive takes one click. A phone has no hover: ⋯ stays, and Archive is
+in its menu.
+
+```sh
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-archive me"}' --wait '{"op":"created"}' --save arch_sid=sessionId
+yv drive new --viewport desktop --steps '[
+  {"expect":{"css":".session-row","hasText":"TEST-archive me"}},
+  {"eval":"getComputedStyle(document.querySelector(\"[aria-label=\\\"Archive TEST-archive me\\\"]\")).opacity","equals":"0"},
+  {"hover":{"css":".session-row","hasText":"TEST-archive me"}},
+  {"wait":200},
+  {"eval":"(() => { const item = document.querySelector(\"[aria-label=\\\"Archive TEST-archive me\\\"]\").closest(\".session-item\"); return getComputedStyle(item.querySelector(\".row-archive\")).opacity; })()","equals":"1"},
+  {"shot":"hover"},
+  {"click":"role:button:Archive TEST-archive me"},
+  {"expect":"role:button:Archived"}
+]'
+yv state --expect '{"sessions":[{"id":"{{arch_sid}}","archived":true}]}'
+yv api '{"op":"session.update","sessionId":"{{arch_sid}}","archived":false}'
+yv drive new --viewport mobile --steps '[
+  {"click":"role:button:Open sessions"},
+  {"expect":{"css":".session-row","hasText":"TEST-archive me"}},
+  {"eval":"(() => { const item = [...document.querySelectorAll(\".session-item\")].find((i) => i.textContent.includes(\"TEST-archive me\")); return [getComputedStyle(item.querySelector(\".row-archive\")).display, getComputedStyle(item.querySelector(\".row-more\")).opacity]; })()","equals":["none","1"]},
+  {"shot":"touch"}
+]'
 ```
 
 ### rows-mark-what-needs-you
@@ -193,6 +254,53 @@ yv drive new --viewport desktop --steps '[{"click":"role:button:Actions for grou
 yv state --expect '{"sessions":[{"id":"{{sid_echo}}","group":null}]}'
 ```
 
+### group-count-clear-of-the-menu-button
+Viewports: both
+A group whose name is cut off still shows its session count. The header's ···
+button (always shown on touch, on hover or focus on desktop) sits after the
+count, not on top of it, the way session rows make room for theirs.
+
+```sh
+yv api '{"op":"session.update","sessionId":"{{sid_echo}}","group":"TEST-a group name long enough to be cut off"}' --wait '{"op":"session","session":{"id":"{{sid_echo}}","group":"TEST-a group name long enough to be cut off"}}'
+yv drive new --viewport desktop --steps '[{"hover":"css:.group-head"},{"wait":300},{"eval":"(() => { const h = document.querySelector(\".group-head\"); const c = h.querySelector(\".group-toggle > .muted\").getBoundingClientRect(); const m = h.querySelector(\".row-more\"); return getComputedStyle(m).opacity === \"1\" && c.width > 0 && c.right <= m.getBoundingClientRect().left; })()","equals":true},{"shot":"group-count-hover"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"wait":300},{"eval":"(() => { const h = document.querySelector(\".group-head\"); const c = h.querySelector(\".group-toggle > .muted\").getBoundingClientRect(); const m = h.querySelector(\".row-more\"); return getComputedStyle(m).opacity === \"1\" && c.width > 0 && c.right <= m.getBoundingClientRect().left; })()","equals":true},{"shot":"group-count-touch"}]'
+yv api '{"op":"session.update","sessionId":"{{sid_echo}}","group":null}'
+yv state --expect '{"sessions":[{"id":"{{sid_echo}}","group":null}]}'
+```
+
+### collapsed-group-shows-a-waiting-approval
+Viewports: both
+A collapsed group hides its rows, so a session in it that waits for approval
+would leave no sign in the sidebar. The group's header carries the amber dot
+the Automations row uses for hidden runs ("A session needs approval"), only
+while the group is collapsed: open, the row's own mark says it.
+
+```sh
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","group":"TEST-waiting"}' --wait '{"op":"session","session":{"id":"{{sid_cmd}}","group":"TEST-waiting"}}'
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","status":"needs_approval","group":"TEST-waiting"}]}'
+yv drive new --viewport desktop --steps '[{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"}},{"expect":"role:img:A session needs approval","visible":false},{"click":{"css":".group-toggle","hasText":"TEST-waiting"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"},"visible":false},{"expect":{"css":".group-head","hasText":"TEST-waiting"},"text":"1"},{"expect":"role:img:A session needs approval"},{"shot":"collapsed-group-approval"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":{"css":".group-toggle","hasText":"TEST-waiting"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"},"visible":false},{"expect":"role:img:A session needs approval"},{"shot":"collapsed-group-approval"}]'
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","group":null}'
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","group":null}]}'
+```
+
+### collapsed-archived-dock-shows-a-waiting-approval
+Viewports: both
+Archived sessions still open and run, so one can wait for approval (archived
+while asking, or asking after it was archived). The Archived dock is collapsed
+by default and showed only "Archived 1": nothing said a turn was waiting on
+you. While collapsed, the dock's header carries the same amber dot as a
+collapsed group ("A session needs approval"); open, the row's own mark says it.
+
+```sh
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","status":"needs_approval"}]}'
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","archived":true}' --wait '{"op":"session","session":{"id":"{{sid_cmd}}","archived":true}}'
+yv drive new --viewport desktop --steps '[{"expect":{"css":".archived-dock .list-toggle","hasText":"Archived"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"},"visible":false},{"expect":"role:img:A session needs approval"},{"shot":"collapsed-archived-approval"},{"click":{"css":".archived-dock .list-toggle"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"}},{"expect":"role:img:A session needs approval","visible":false}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":{"css":".archived-dock .list-toggle","hasText":"Archived"}},{"expect":"role:img:A session needs approval"},{"shot":"collapsed-archived-approval"}]'
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","archived":false}' --wait '{"op":"session","session":{"id":"{{sid_cmd}}","archived":false}}'
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","status":"needs_approval","archived":false}]}'
+```
+
 ### archived-header-stays-at-bottom
 With many sessions the list scrolls, but the Archived header stays at the bottom of the session list, just above the sidebar's footer (usage meters, host rows), and opening it expands upward with its own scroll.
 
@@ -227,5 +335,32 @@ yv drive new --viewport desktop --steps '[{"expect":{"css":".group-head","hasTex
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":{"css":".group-head","hasText":"TEST-pinned"},"text":"1"},{"expect":{"css":".group-zone .session-row","hasText":"Fake Deep"}},{"eval":"[...document.querySelectorAll(\".session-list .drop-zone\")].find(z => z.querySelector(\".list-head\")?.textContent === \"Pinned\").textContent.includes(\"Fake Deep\")","equals":false},{"shot":"pinned-handover"}]'
 ```
 
+### menu-on-a-row-below-the-fold
+With more sessions than the list shows, scrolling down to an older row and
+opening its … menu works at both viewports: the menu opens on screen next to
+its row and its Rename asks for the name. Scrolling
+closes an open row menu on purpose (a fixed menu would drift away from its
+row), so the steps scroll the list first and let it settle before the click.
+
+```sh
+for i in 1 2 3 4 5 6 7 8; do yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-filler '$i'"}' --wait '{"op":"event","event":{"type":"turn_completed"}}'; done
+yv drive new --viewport desktop --steps '[{"expect":{"css":".session-row","hasText":"TEST-filler 8"}},{"eval":"(()=>{const l=document.querySelector(\".session-list\");const b=document.querySelector(\"[aria-label=\\\"Actions for [edit] TEST-fix the greeting\\\"]\");const below=b.getBoundingClientRect().top>=l.getBoundingClientRect().bottom;b.scrollIntoView({block:\"center\"});return below})()","equals":true},{"wait":400},{"click":"role:button:Actions for [edit] TEST-fix the greeting"},{"expect":"role:menuitem:Rename","inViewport":true},{"shot":"menu-below-fold"},{"click":"role:menuitem:Rename"},{"expect":"label:Session name","value":"[edit] TEST-fix the greeting"},{"press":"Escape"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":{"css":".session-row","hasText":"TEST-filler 8"}},{"eval":"(()=>{const l=document.querySelector(\".session-list\");const b=document.querySelector(\"[aria-label=\\\"Actions for [edit] TEST-fix the greeting\\\"]\");const below=b.getBoundingClientRect().top>=l.getBoundingClientRect().bottom;b.scrollIntoView({block:\"center\"});return below})()","equals":true},{"wait":400},{"click":"role:button:Actions for [edit] TEST-fix the greeting"},{"expect":"role:menuitem:Rename","inViewport":true},{"shot":"menu-below-fold"},{"click":"role:menuitem:Rename"},{"expect":"label:Session name","value":"[edit] TEST-fix the greeting"},{"press":"Escape"}]'
+```
+
+### session-named-from-the-conversation
+After the first turn the row shows the generated title instead of the task's first line.
+
+```sh
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{work}}","text":"[name] TEST-hey can you look at this"}' --wait '{"op":"session","session":{"title":"Fake named session"}}'
+yv drive new --viewport desktop --steps '[{"expect":{"css":".session-title","hasText":"Fake named session"}},{"expect":{"css":".session-title","hasText":"TEST-hey can you look"},"visible":false}]'
+```
+
 ## Gotchas
 - Row menus render on document.body (a portal), so find menu items by role, not inside the row.
+- A click on a row's … button that first has to scroll the row into view
+  (`drive` does that by itself) opens the menu and closes it again at once: the
+  scroll event lands after the click, and scrolling closes row menus on
+  purpose. With more sessions than fit (more than about 9 on a phone), scroll
+  `.session-list` and wait before clicking, as menu-on-a-row-below-the-fold does.
+  Found by the patrol run of 2026-11-21 01:00.

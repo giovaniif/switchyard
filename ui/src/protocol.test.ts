@@ -20,6 +20,18 @@ describe("applyEvent", () => {
     expect(tool).toMatchObject({ state: "ok", output: "one" });
   });
 
+  test("a message's origin rides on its item; the owner's own carries none", () => {
+    const origin = { kind: "agent", agentId: "g1", name: "Builder", hops: 1 } as const;
+    const items = fold([
+      { type: "user_message", text: "check #12", origin },
+      { type: "user_message", text: "mine", origin: { kind: "user" } },
+      { type: "user_message", text: "also mine" },
+    ]);
+    expect(items[0]).toEqual({ kind: "user", key: "e0", text: "check #12", origin });
+    expect(items[1]).toEqual({ kind: "user", key: "e1", text: "mine" });
+    expect(items[2]).toEqual({ kind: "user", key: "e2", text: "also mine" });
+  });
+
   test("an id reused in a later turn makes a new item under its own question", () => {
     // A restarted Claude sidecar used to count its ids from 1 again.
     const items = fold([
@@ -257,6 +269,17 @@ describe("a call that waits for an approval", () => {
 
   test("a turn that ends before anyone answers leaves it unanswered", () => {
     const items = fold([...asked, { type: "turn_completed", status: "interrupted", at: 2_000 }]);
+    expect(tool(items)).toMatchObject({ state: "failed", asked: "unanswered" });
+  });
+
+  // ACP engines fail the asked call on Stop before the turn ends, so the call
+  // is no longer running when turn_completed arrives.
+  test("a call the engine failed while it waited is still unanswered at turn end", () => {
+    const items = fold([
+      ...asked,
+      { type: "tool_completed", itemId: "c1", ok: false },
+      { type: "turn_completed", status: "interrupted", at: 2_000 },
+    ]);
     expect(tool(items)).toMatchObject({ state: "failed", asked: "unanswered" });
   });
 

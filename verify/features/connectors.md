@@ -79,6 +79,17 @@ clips their 3 px focus ring (a scrolling row did, on the first try of #225).
 yv drive connectors --steps '[{"click":{"role":"button","name":"Claude","exact":true}},{"click":{"role":"button","name":"Filter tools","exact":true}},{"expect":"role:heading:Connectors"},{"expect":{"role":"button","name":"All","exact":true}},{"eval":"(() => { const group = document.querySelector(\".connector-filters\"); const box = group.getBoundingClientRect(); const tabs = [...group.querySelectorAll(\"button\")].map((b) => b.getBoundingClientRect()); return tabs.length === 4 && tabs.every((t) => t.top === tabs[0].top && t.left >= box.left && t.right <= box.right + 0.5); })()","equals":true},{"eval":"[...document.querySelectorAll(\".connector-filters button\")].every((tab) => { const r = tab.getBoundingClientRect(); for (let el = tab.parentElement; el && !el.classList.contains(\"connectors-card\"); el = el.parentElement) { const cs = getComputedStyle(el); if (cs.overflowX === \"visible\" && cs.overflowY === \"visible\") continue; const b = el.getBoundingClientRect(); if (r.top - 3 < b.top || r.bottom + 3 > b.bottom || r.left - 3 < b.left || r.right + 3 > b.right) return false; } return true; })","equals":true},{"shot":"filters"}]'
 ```
 
+### retry-a-failed-server
+Retry on a Not working row asks the account to dial the server again and
+lists the servers afresh. The fake's gmail has no URL, so it stays Not working
+with the same error, and the click raises no error. The daemon's side is read
+back: `mcp.reconnect` answers with a new `mcp` listing for the account.
+
+```sh
+yv drive connectors --steps '[{"click":{"role":"button","name":"Claude","exact":true}},{"expect":{"css":".connector","hasText":"gmail"},"text":"Not working"},{"click":{"css":".connector:has-text(\"gmail\") button","hasText":"Retry"}},{"wait":1500},{"expect":{"css":".connector","hasText":"gmail"},"text":"No URL configured for this server"},{"expect":{"css":".connector:has-text(\"gmail\") button","hasText":"Retry"}},{"shot":"retry-failed"}]'
+yv api '{"op":"mcp.reconnect","engine":"claude","server":"plugin:engineering:gmail"}' --wait '{"op":"mcp","engine":"claude","servers":[{"name":"plugin:engineering:gmail","status":"failed"}]}'
+```
+
 ### claude-sign-in
 Viewports: desktop
 Datadog connects by itself after Connect. sentry asks for the address: one
@@ -140,8 +151,33 @@ service name wraps within the phone viewport.
 ```sh
 yv iso up --name map-connectors-many
 bun -e 'const fs=require("node:fs"); fs.writeFileSync(process.argv[1]+"/claude-mcp.txt", Array.from({length:21},(_,i)=>"TEST-service-"+String(i).padStart(2,"0")+(i===20?"-very-long-service-name".repeat(6):"")+" https://example.com/mcp").join("\n")+"\n")' "$(yv var get fake --iso map-connectors-many | jq -r .value)"
-yv drive connectors --iso map-connectors-many --steps '[{"click":{"role":"button","name":"Claude","exact":true}},{"click":{"role":"button","name":"Filter tools","exact":true}},{"click":{"role":"button","name":"Connected","exact":true}},{"expect":"css:.connector","count":1},{"expect":{"css":".connector","hasText":"TEST-service"},"count":0},{"click":{"role":"button","name":"All","exact":true}},{"expect":"css:.connector","count":8},{"expect":"role:navigation:Connector pages","text":"1–8 of 25"},{"click":"role:button:Next"},{"expect":"role:navigation:Connector pages","text":"9–16 of 25"},{"click":"role:button:Next"},{"click":"role:button:Next"},{"expect":"css:.connector","count":1},{"expect":"role:button:Next","enabled":false},{"fill":"placeholder:Search connectors","value":"TEST-service-20"},{"expect":"css:.connector","count":1},{"expect":"css:.connector","text":"TEST-service-20"},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"long-service-name"},{"fill":"placeholder:Search connectors","value":""},{"expect":"role:navigation:Connector pages","text":"1–8 of 25"},{"shot":"bounded-catalog"}]'
+yv drive connectors --iso map-connectors-many --steps '[{"click":{"role":"button","name":"Claude","exact":true}},{"click":{"role":"button","name":"Filter tools","exact":true}},{"click":{"role":"button","name":"Connected","exact":true}},{"expect":"css:.connector","count":1},{"expect":{"css":".connector","hasText":"TEST-service"},"count":0},{"click":{"role":"button","name":"All","exact":true}},{"expect":"css:.connector","count":8},{"expect":"role:navigation:Connector pages","text":"1–8 of 25"},{"click":"role:button:Next"},{"expect":"role:navigation:Connector pages","text":"9–16 of 25"},{"click":"role:button:Next"},{"click":"role:button:Next"},{"expect":"css:.connector","count":1},{"expect":"role:button:Next","enabled":false},{"fill":"placeholder:Search connectors","value":"TEST-service-20"},{"expect":"css:.connector","count":1},{"expect":"css:.connector","text":"TEST-service-20"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"long-service-name"},{"fill":"placeholder:Search connectors","value":""},{"expect":"role:navigation:Connector pages","text":"1–8 of 25"},{"shot":"bounded-catalog"}]'
 yv iso down --name map-connectors-many
+```
+
+### disabled-button-looks-disabled
+Viewports: both
+An outlined button that cannot be used reads muted. In Add connector's "Other
+address…" form, Continue stays disabled until a name and an address are
+typed. Until then it is not the ink colour of a live outlined button, and
+once both are filled it matches them. (`.btn` had no disabled style, so it
+looked live and the click did nothing: #175.)
+
+```sh
+yv drive connectors --steps '[{"click":{"css":".connectors-card:has-text(\"Claude\") button","hasText":"Add connector"}},{"click":"role:button:Other address…"},{"expect":"role:button:Continue","enabled":false},{"eval":"(() => { const all = [...document.querySelectorAll(\"button.btn\")]; const c = all.find((b) => b.textContent.trim() === \"Continue\"); const live = all.find((b) => b !== c && !b.disabled && b.getClientRects().length); return String(getComputedStyle(c).color !== getComputedStyle(live).color); })()","equals":"true"},{"shot":"continue-disabled"},{"fill":"label:Connector name","value":"TEST-svc"},{"fill":"label:Connector address","value":"https://example.com/mcp"},{"expect":"role:button:Continue","enabled":true},{"eval":"(() => { const all = [...document.querySelectorAll(\"button.btn\")]; const c = all.find((b) => b.textContent.trim() === \"Continue\"); const live = all.find((b) => b !== c && !b.disabled && b.getClientRects().length); return String(getComputedStyle(c).color === getComputedStyle(live).color); })()","equals":"true"}]'
+```
+
+### rows-meet-header-and-footer
+Viewports: both
+An account card's connector rows start right under its header and end right
+on its footer, with one line between each: no empty band. The search and
+filters, once Filter tools opens them, keep their room under the header.
+Before, the card's old 10 px gap (from before #290 made it a header, rows
+and footer) left a white band framed by two lines under the header and
+blank space above the footer.
+
+```sh
+yv drive connectors --steps '[{"expect":"css:.connectors-card .connector-list"},{"eval":"[...document.querySelectorAll(\".connectors-card\")].map((card) => { const head = card.querySelector(\".connectors-card-head\").getBoundingClientRect(); const listEl = card.querySelector(\".connector-list\"); const list = listEl.getBoundingClientRect(); const foot = card.querySelector(\".connector-card-footer\").getBoundingClientRect(); const lines = [getComputedStyle(card.querySelector(\".connectors-card-head\")).borderBottomWidth, getComputedStyle(listEl).borderTopWidth].filter((w) => w !== \"0px\").length; return [Math.round(list.top - head.bottom), Math.round(foot.top - list.bottom), lines].join(); }).join(\";\")","equals":"0,0,1;0,0,1"},{"shot":"rows-meet"},{"click":{"css":".connectors-card:has-text(\"Claude\") button","hasText":"Filter tools"}},{"expect":"label:Search connectors"},{"eval":"(() => { const card = document.querySelector(\".connectors-card\"); const head = card.querySelector(\".connectors-card-head\").getBoundingClientRect(); const ctl = card.querySelector(\".connector-filter-controls\").getBoundingClientRect(); const list = card.querySelector(\".connector-list\").getBoundingClientRect(); return ctl.top - head.bottom >= 8 && list.top - ctl.bottom >= 8; })()","equals":true},{"shot":"filters-open"}]'
 ```
 
 ## Gotchas

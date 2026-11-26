@@ -61,10 +61,14 @@ yv drive 'session:{{sid_echo}}' --viewport desktop --steps '[{"click":"role:butt
 ### meters-zero-after-reset
 Viewports: both
 Past a reset, the 30-second clock redraws its limit as 0%, keeps unexpired weekly usage and drops the reset tooltip.
+An Other accounts row shows only its first meter (#292), so Claude's unexpired
+weekly 17% is read on its own card, in a Claude session.
 
 ```sh
-yv drive 'session:{{sid_echo}}' --viewport desktop --steps '[{"click":"role:button:Subscription usage"},{"expect":"role:region:Codex · Default","text":"12%"},{"eval":"(() => { const real=Date.now; Date.now=() => real()+3*3600*1000; return true; })()","equals":true},{"wait":31000},{"expect":"role:region:Codex · Default","text":"0%"},{"click":"role:button:Other accounts"},{"expect":"role:region:Claude · Default","text":"0%"},{"expect":"role:region:Codex · Default","text":"34%"},{"expect":"role:region:Claude · Default","text":"17%"},{"expect":"css:.compact-meter[title*=now]","count":0},{"shot":"usage-after-reset"}]'
-yv drive 'session:{{sid_echo}}' --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Subscription usage"},{"expect":"role:region:Codex · Default","text":"12%"},{"eval":"(() => { const real=Date.now; Date.now=() => real()+3*3600*1000; return true; })()","equals":true},{"wait":31000},{"expect":"role:region:Codex · Default","text":"0%"},{"click":"role:button:Other accounts"},{"expect":"role:region:Claude · Default","text":"0%"},{"expect":"role:region:Codex · Default","text":"34%"},{"expect":"role:region:Claude · Default","text":"17%"},{"expect":"css:.compact-meter[title*=now]","count":0},{"shot":"usage-after-reset"}]'
+yv drive 'session:{{sid_echo}}' --viewport desktop --steps '[{"click":"role:button:Subscription usage"},{"expect":"role:region:Codex · Default","text":"12%"},{"eval":"(() => { const real=Date.now; Date.now=() => real()+3*3600*1000; return true; })()","equals":true},{"wait":31000},{"expect":"role:region:Codex · Default","text":"0%"},{"click":"role:button:Other accounts"},{"expect":"role:region:Claude · Default","text":"0% of 5-hour"},{"expect":"role:region:Codex · Default","text":"34%"},{"expect":"css:.compact-meter[title*=now]","count":0},{"shot":"usage-after-reset"}]'
+yv drive 'session:{{sid_echo}}' --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Subscription usage"},{"expect":"role:region:Codex · Default","text":"12%"},{"eval":"(() => { const real=Date.now; Date.now=() => real()+3*3600*1000; return true; })()","equals":true},{"wait":31000},{"expect":"role:region:Codex · Default","text":"0%"},{"click":"role:button:Other accounts"},{"expect":"role:region:Claude · Default","text":"0% of 5-hour"},{"expect":"role:region:Codex · Default","text":"34%"},{"expect":"css:.compact-meter[title*=now]","count":0},{"shot":"usage-after-reset"}]'
+yv drive 'session:{{sid_claude}}' --viewport desktop --steps '[{"click":"role:button:Subscription usage"},{"expect":"role:region:Claude · Default","text":"47%"},{"eval":"(() => { const real=Date.now; Date.now=() => real()+3*3600*1000; return true; })()","equals":true},{"wait":31000},{"expect":"role:region:Claude · Default","text":"0% used"},{"expect":"role:region:Claude · Default","text":"17%"},{"expect":"css:.compact-meter[title*=now]","count":0},{"shot":"claude-after-reset"}]'
+yv drive 'session:{{sid_claude}}' --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Subscription usage"},{"expect":"role:region:Claude · Default","text":"47%"},{"eval":"(() => { const real=Date.now; Date.now=() => real()+3*3600*1000; return true; })()","equals":true},{"wait":31000},{"expect":"role:region:Claude · Default","text":"0% used"},{"expect":"role:region:Claude · Default","text":"17%"},{"expect":"css:.compact-meter[title*=now]","count":0},{"shot":"claude-after-reset"}]'
 ```
 
 ### claude-usage-after-restart
@@ -80,9 +84,14 @@ yv drive 'new' --viewport mobile --steps '[{"click":"role:button:Open sessions"}
 ### strip-names-every-account
 Viewports: both
 Every account has a labelled group, including Default and an added account reported without a turn.
+The added account is logged in first (the fake Claude's `good-code`): since the
+approved Usage design (#292) an account that needs sign-in shows **Sign in** in
+its row, not meters.
 
 ```sh
 yv api '{"op":"account.add","engine":"claude","name":"TEST-Work"}' --wait '{"op":"accounts","accounts":[{"name":"TEST-Work"}]}' --save work_acct='accounts[name=TEST-Work].id'
+yv api '{"op":"login.start","engine":"claude","account":"{{work_acct}}"}' --wait '{"op":"login"}'
+yv api '{"op":"login.code","engine":"claude","account":"{{work_acct}}","code":"good-code"}' --wait '{"op":"engines","accounts":{"{{work_acct}}":{"loggedIn":true}}}' --timeout 20000
 yv drive 'new' --viewport desktop --steps '[{"click":"role:button:Subscription usage"},{"click":"role:button:Other accounts"},{"expect":"role:region:Claude · Default","count":1},{"expect":"role:region:Claude · TEST-Work","count":1},{"expect":"role:region:Claude · TEST-Work","text":"91%"},{"expect":"role:region:Claude · Default","text":"47%"},{"shot":"usage-accounts"}]'
 yv drive 'new' --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Subscription usage"},{"click":"role:button:Other accounts"},{"expect":"role:region:Claude · Default","count":1},{"expect":"role:region:Claude · TEST-Work","count":1},{"expect":"role:region:Claude · TEST-Work","text":"91%"},{"expect":"role:region:Claude · Default","text":"47%"},{"shot":"usage-accounts"}]'
 ```

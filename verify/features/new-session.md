@@ -112,6 +112,18 @@ Enter does not take it: the chip keeps the folder it had.
 yv drive new --steps '[{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{work}}/TEST-no-such-folder"},{"expect":"css:.picker-empty","text":"No folder in"},{"expect":"css:.picker-empty","text":"TEST-no-such-folder"},{"shot":"no-match"},{"press":"Enter"},{"expect":"css:.picker-empty","text":"TEST-no-such-folder"},{"press":"Escape"},{"expect":{"role":"button","name":"work","exact":true}}]'
 ```
 
+### typed-path-under-a-missing-folder-names-it
+Viewports: both
+A typed path whose parent folder does not exist (a typo higher up, or a
+folder deleted since) names the first folder that is not there, in words,
+and offers no "Use" row for it: Enter keeps the folder the chip had.
+(Before #462 the list showed yardd's raw "cannot read …: No such file or
+directory (os error 2)" and offered "Use <the missing folder>".)
+
+```sh
+yv drive new --steps '[{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{work}}/TEST-gone/TEST-deeper/b"},{"expect":"css:.picker-empty","text":"TEST-gone doesn’t exist."},{"expect":"text:os error","count":0},{"shot":"missing-parent"},{"fill":"role:textbox:Folder","value":"{{work}}/TEST-gone/"},{"expect":"css:.picker-empty","text":"TEST-gone doesn’t exist."},{"expect":"role:option","count":0},{"press":"Enter"},{"press":"Escape"},{"expect":{"role":"button","name":"work","exact":true}}]'
+```
+
 ### remembered-folder-that-is-gone-says-so
 Viewports: both
 The page reopens on the folder last used. When that folder was deleted since,
@@ -145,6 +157,19 @@ work on?".)
 
 ```sh
 yv drive new --steps '[{"click":{"role":"button","name":"work","exact":true}},{"expect":"placeholder:Search folders, or type a path"},{"wait":300},{"shot":"folder-menu"},{"eval":"(() => { const pop = document.querySelector(\".chip-popover-wide\").getBoundingClientRect(); const chip = document.querySelector(\".new-chips .chip[aria-expanded=true]\").getBoundingClientRect(); const scrolled = [...document.querySelectorAll(\"*\")].filter((e) => e.scrollLeft > 0).length; const underChip = innerWidth <= 700 || Math.abs(pop.left - chip.left) < 1; return pop.left >= 0 && pop.right <= innerWidth && scrolled === 0 && underChip; })()","equals":true}]'
+```
+
+### recent-folder-opens-with-tab
+Viewports: both
+A Recent folder is a folder like the ones listed under it: it has its open
+(›) button, a repository wears the branch icon, and Tab on it (the key the ›
+button names) lists the folders inside while the search box keeps focus.
+(Recent rows had no › and no git flag, so Tab on the highlighted one did
+nothing and moved focus to another row's › button: typing stopped filtering.
+Patrol finding #369.)
+
+```sh
+yv drive new --steps '[{"click":{"role":"button","name":"work","exact":true}},{"fill":"placeholder:Search folders, or type a path","value":"TEST-demo"},{"expect":"css:.picker-head","text":"Recent"},{"expect":"css:.folder-row.cursor","text":"TEST-demo-app"},{"expect":"role:button:Open TEST-demo-app"},{"eval":"document.querySelector(\".folder-row.cursor svg path\").getAttribute(\"d\").startsWith(\"M6 3v12\")","equals":true},{"press":"Tab"},{"expect":"placeholder:Search folders, or type a path","value":"{{repo}}/"},{"eval":"document.activeElement === document.querySelector(\".menu-search\")","equals":true},{"expect":"css:.folder-row","text":"Use "},{"shot":"recent-tab"}]'
 ```
 
 ### refused-send-names-the-session-in-the-way

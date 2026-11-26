@@ -1,0 +1,882 @@
+{
+ "snapshot": {
+  "accounts": [],
+  "agents": [
+   {
+    "about": "Answers quick questions about your hosts and sessions. Read-only.",
+    "account": "default",
+    "builtin": true,
+    "chat": null,
+    "color": "teal",
+    "createdAt": 1795575721537,
+    "cwd": "",
+    "effort": "",
+    "engine": "codex",
+    "face": "glasses",
+    "id": "scout",
+    "instructions": "",
+    "memory": "",
+    "model": "",
+    "name": "Scout",
+    "permission": "plan",
+    "scope": "all",
+    "updatedAt": 1795575721537
+   }
+  ],
+  "automations": [],
+  "home": "/tmp/yv-default-2056461-mwvjf9rj/home",
+  "host": {
+   "cores": 28,
+   "cpu": 8.272015571594238,
+   "cpuHistory": [
+    6.7520647048950195,
+    3.485563039779663,
+    2.919276714324951,
+    8.272015571594238
+   ],
+   "diskTotal": 500235124736,
+   "diskUsed": 143054839808,
+   "id": "local",
+   "limits": {
+    "forced": false,
+    "minFreeBytes": 0
+   },
+   "load": 9.68,
+   "memTotal": 25089982464,
+   "memUsed": 12941926400,
+   "name": "iso-host",
+   "pressure": null,
+   "queued": [],
+   "sessions": [
+    {
+     "cpuCores": 0.006646095309406519,
+     "id": "s1a210a73030a",
+     "memBytes": 26099712
+    }
+   ]
+  },
+  "hostName": "iso-host",
+  "hosts": [],
+  "mobile": {
+   "configured": false,
+   "testFlightUrl": null
+  },
+  "models": {
+   "claude": [
+    {
+     "defaultEffort": "high",
+     "efforts": [
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max"
+     ],
+     "id": "claude-opus-5-5",
+     "name": "Opus 5.5"
+    },
+    {
+     "defaultEffort": "medium",
+     "efforts": [
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max"
+     ],
+     "id": "claude-sonnet-5-5",
+     "name": "Sonnet 5.5"
+    },
+    {
+     "defaultEffort": "medium",
+     "efforts": [
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max"
+     ],
+     "id": "claude-haiku-5-5",
+     "name": "Haiku 5.5"
+    }
+   ],
+   "codex": [
+    {
+     "defaultEffort": "low",
+     "efforts": [
+      "low",
+      "high"
+     ],
+     "id": "fake-fast",
+     "isDefault": true,
+     "name": "Fake Fast",
+     "serviceTiers": [
+      {
+       "description": "Higher speed, increased usage",
+       "id": "priority",
+       "name": "Fast"
+      },
+      {
+       "description": "Fastest available responses",
+       "id": "ultrafast",
+       "name": "Ultrafast"
+      }
+     ]
+    },
+    {
+     "defaultEffort": "medium",
+     "efforts": [
+      "medium",
+      "xhigh"
+     ],
+     "id": "fake-deep",
+     "isDefault": false,
+     "name": "Fake Deep"
+    }
+   ],
+   "gemini": [
+    {
+     "efforts": [],
+     "id": "fake-small",
+     "isDefault": true,
+     "name": "Fake Small"
+    },
+    {
+     "efforts": [],
+     "id": "fake-large",
+     "isDefault": false,
+     "name": "Fake Large"
+    }
+   ],
+   "grok": [
+    {
+     "defaultEffort": "high",
+     "efforts": [
+      "low",
+      "high"
+     ],
+     "id": "fake-small",
+     "isDefault": true,
+     "name": "Fake Small"
+    },
+    {
+     "efforts": [],
+     "id": "fake-large",
+     "isDefault": false,
+     "name": "Fake Large"
+    }
+   ],
+   "opencode": [
+    {
+     "efforts": [],
+     "id": "opencode/fake-free",
+     "name": "Fake Free (opencode)"
+    }
+   ]
+  },
+  "op": "snapshot",
+  "sessions": [
+   {
+    "account": "default",
+    "archived": false,
+    "automation": null,
+    "branch": "yard/cmd-test-run-the-migration-065b",
+    "createdAt": 1795575722107,
+    "cwd": "/tmp/yv-default-2056461-mwvjf9rj/data/wt/TEST-demo-app/yard-cmd-test-run-the-migration-065b",
+    "effort": "low",
+    "engine": "codex",
+    "host": "local",
+    "id": "s1a210a7307bc",
+    "model": "fake-fast",
+    "parent": null,
+    "pending": [],
+    "permission": "ask",
+    "pinned": false,
+    "repo": "/tmp/yv-default-2056461-mwvjf9rj/work/TEST-demo-app",
+    "status": "needs_approval",
+    "title": "[cmd] TEST-run the migration",
+    "updatedAt": 1795575722111
+   },
+   {
+    "account": "default",
+    "archived": false,
+    "automation": null,
+    "branch": "yard/test-hello-from-claude-0189",
+    "createdAt": 1795575722032,
+    "cwd": "/tmp/yv-default-2056461-mwvjf9rj/data/wt/TEST-demo-app/yard-test-hello-from-claude-0189",
+    "effort": "medium",
+    "engine": "claude",
+    "host": "local",
+    "id": "s1a210a73030a",
+    "lastTurn": "completed",
+    "model": "claude-haiku-5-5",
+    "parent": null,
+    "pending": [],
+    "permission": "ask",
+    "pinned": false,
+    "repo": "/tmp/yv-default-2056461-mwvjf9rj/work/TEST-demo-app",
+    "status": "idle",
+    "title": "TEST-hello from Claude",
+    "turnEndedAt": 1795575722059,
+    "updatedAt": 1795575722059
+   },
+   {
+    "account": "default",
+    "archived": false,
+    "automation": null,
+    "branch": "yard/edit-test-fix-the-greeting-fcd7",
+    "createdAt": 1795575721954,
+    "cwd": "/tmp/yv-default-2056461-mwvjf9rj/data/wt/TEST-demo-app/yard-edit-test-fix-the-greeting-fcd7",
+    "effort": "low",
+    "engine": "codex",
+    "host": "local",
+    "id": "s1a210a72fe28",
+    "lastTurn": "completed",
+    "model": "fake-fast",
+    "parent": null,
+    "pending": [],
+    "permission": "ask",
+    "pinned": false,
+    "repo": "/tmp/yv-default-2056461-mwvjf9rj/work/TEST-demo-app",
+    "status": "idle",
+    "title": "[edit] TEST-fix the greeting",
+    "turnEndedAt": 1795575721959,
+    "updatedAt": 1795575721959
+   },
+   {
+    "account": "default",
+    "archived": false,
+    "automation": null,
+    "branch": "yard/test-say-hello-f815",
+    "createdAt": 1795575721881,
+    "cwd": "/tmp/yv-default-2056461-mwvjf9rj/data/wt/TEST-demo-app/yard-test-say-hello-f815",
+    "effort": "low",
+    "engine": "codex",
+    "host": "local",
+    "id": "s1a210a72f996",
+    "lastTurn": "completed",
+    "model": "fake-fast",
+    "parent": null,
+    "pending": [],
+    "permission": "ask",
+    "pinned": false,
+    "repo": "/tmp/yv-default-2056461-mwvjf9rj/work/TEST-demo-app",
+    "status": "idle",
+    "title": "TEST-say hello",
+    "turnEndedAt": 1795575721884,
+    "updatedAt": 1795575721884
+   },
+   {
+    "account": "default",
+    "archived": false,
+    "automation": null,
+    "branch": "yard/think-test-plan-the-refactor-f363",
+    "createdAt": 1795575721803,
+    "cwd": "/tmp/yv-default-2056461-mwvjf9rj/data/wt/TEST-demo-app/yard-think-test-plan-the-refactor-f363",
+    "effort": "low",
+    "engine": "codex",
+    "host": "local",
+    "id": "s1a210a72f4b4",
+    "lastTurn": "completed",
+    "model": "fake-fast",
+    "parent": null,
+    "pending": [],
+    "permission": "ask",
+    "pinned": false,
+    "repo": "/tmp/yv-default-2056461-mwvjf9rj/work/TEST-demo-app",
+    "status": "idle",
+    "title": "[think] TEST-plan the refactor",
+    "turnEndedAt": 1795575721807,
+    "updatedAt": 1795575721807
+   },
+   {
+    "account": "default",
+    "archived": false,
+    "automation": null,
+    "branch": "yard/fail-test-failing-turn-ee91",
+    "createdAt": 1795575721725,
+    "cwd": "/tmp/yv-default-2056461-mwvjf9rj/data/wt/TEST-demo-app/yard-fail-test-failing-turn-ee91",
+    "effort": "low",
+    "engine": "codex",
+    "host": "local",
+    "id": "s1a210a72efd2",
+    "lastTurn": "failed",
+    "model": "fake-fast",
+    "parent": null,
+    "pending": [],
+    "permission": "ask",
+    "pinned": false,
+    "repo": "/tmp/yv-default-2056461-mwvjf9rj/work/TEST-demo-app",
+    "status": "idle",
+    "title": "[fail] TEST-failing turn",
+    "turnEndedAt": 1795575721730,
+    "updatedAt": 1795575721730
+   },
+   {
+    "account": "default",
+    "archived": false,
+    "automation": null,
+    "branch": null,
+    "createdAt": 1795575734632,
+    "cwd": "/tmp/yv-default-2056461-mwvjf9rj/work",
+    "effort": "low",
+    "engine": "codex",
+    "host": "local",
+    "id": "s1a210a76168d",
+    "lastTurn": "completed",
+    "model": "fake-fast",
+    "parent": null,
+    "pending": [],
+    "permission": "full",
+    "pinned": false,
+    "repo": null,
+    "status": "idle",
+    "title": "[think] Plan the release notes",
+    "turnEndedAt": 1795575734637,
+    "updatedAt": 1795575734637
+   },
+   {
+    "account": "default",
+    "archived": false,
+    "automation": null,
+    "branch": null,
+    "createdAt": 1795575740632,
+    "cwd": "/tmp/yv-default-2056461-mwvjf9rj/work",
+    "effort": "low",
+    "engine": "codex",
+    "host": "local",
+    "id": "s1a210a778d8e",
+    "lastTurn": "completed",
+    "model": "fake-fast",
+    "parent": null,
+    "pending": [],
+    "permission": "full",
+    "pinned": false,
+    "repo": null,
+    "status": "idle",
+    "title": "## Release plan",
+    "turnEndedAt": 1795575740637,
+    "updatedAt": 1795575740637
+   },
+   {
+    "account": "default",
+    "archived": false,
+    "automation": null,
+    "branch": null,
+    "createdAt": 1795575746632,
+    "cwd": "/tmp/yv-default-2056461-mwvjf9rj/work",
+    "effort": "low",
+    "engine": "claude",
+    "host": "local",
+    "id": "s1a210a79048f",
+    "lastTurn": "completed",
+    "model": "fake",
+    "parent": null,
+    "pending": [],
+    "permission": "full",
+    "pinned": false,
+    "repo": null,
+    "status": "idle",
+    "title": "[steps] Check the build",
+    "turnEndedAt": 1795575747867,
+    "updatedAt": 1795575747867
+   },
+   {
+    "account": "default",
+    "archived": false,
+    "automation": null,
+    "branch": null,
+    "createdAt": 1795575752633,
+    "cwd": "/tmp/yv-default-2056461-mwvjf9rj/work",
+    "effort": "low",
+    "engine": "claude",
+    "host": "local",
+    "id": "s1a210a7a7b910",
+    "lastTurn": "completed",
+    "model": "fake",
+    "parent": null,
+    "pending": [],
+    "permission": "full",
+    "pinned": false,
+    "repo": null,
+    "status": "idle",
+    "title": "[subagent] Review the PR",
+    "turnEndedAt": 1795575754276,
+    "updatedAt": 1795575754276
+   }
+  ],
+  "usage": {
+   "claude": {
+    "status": "allowed",
+    "windows": {
+     "five_hour": {
+      "resetsAt": 1795581452,
+      "utilization": 0.47
+     },
+     "seven_day": {
+      "resetsAt": 1795928552,
+      "utilization": 0.17
+     },
+     "seven_day_sonnet": {
+      "resetsAt": 1795928552,
+      "utilization": 0.08
+     }
+    }
+   },
+   "codex": {
+    "limitId": "codex",
+    "primary": {
+     "resetsAt": 1795583551,
+     "usedPercent": 12,
+     "windowDurationMins": 300
+    },
+    "secondary": {
+     "resetsAt": 1795849351,
+     "usedPercent": 34,
+     "windowDurationMins": 10080
+    }
+   }
+  },
+  "workspace": "/tmp/yv-default-2056461-mwvjf9rj/work"
+ },
+ "histories": [
+  {
+   "events": [
+    {
+     "text": "[cmd] TEST-run the migration",
+     "type": "user_message"
+    },
+    {
+     "at": 1795575722108,
+     "type": "turn_started"
+    },
+    {
+     "detail": "echo approved",
+     "itemId": "cmd-2057225-16",
+     "kind": "command",
+     "title": "Ran",
+     "type": "tool_started"
+    },
+    {
+     "at": 1795575722111,
+     "detail": "needs to run a command",
+     "itemId": "cmd-2057225-16",
+     "kind": "command",
+     "requestId": "codex-1000",
+     "title": "echo approved",
+     "type": "approval_request"
+    }
+   ],
+   "op": "history",
+   "sessionId": "s1a210a7307bc"
+  },
+  {
+   "events": [
+    {
+     "text": "TEST-hello from Claude",
+     "type": "user_message"
+    },
+    {
+     "at": 1795575722033,
+     "type": "turn_started"
+    },
+    {
+     "itemId": "text-2057370-1",
+     "text": "Echo: TEST-hello from Claude",
+     "type": "assistant_message"
+    },
+    {
+     "at": 1795575722059,
+     "status": "completed",
+     "type": "turn_completed"
+    }
+   ],
+   "op": "history",
+   "sessionId": "s1a210a73030a"
+  },
+  {
+   "events": [
+    {
+     "text": "[edit] TEST-fix the greeting",
+     "type": "user_message"
+    },
+    {
+     "at": 1795575721956,
+     "type": "turn_started"
+    },
+    {
+     "files": [
+      {
+       "diff": "@@ -1 +1,2 @@\n fn kept() {}\n+fn added() {}\n",
+       "kind": "update",
+       "path": "src/lib.rs"
+      }
+     ],
+     "itemId": "edit-2057225-12",
+     "type": "file_change"
+    },
+    {
+     "itemId": "msg-2057225-13",
+     "text": "Edited ",
+     "type": "assistant_delta"
+    },
+    {
+     "itemId": "msg-2057225-13",
+     "text": "src/lib.rs.",
+     "type": "assistant_delta"
+    },
+    {
+     "itemId": "msg-2057225-13",
+     "text": "Edited src/lib.rs.",
+     "type": "assistant_message"
+    },
+    {
+     "at": 1795575721959,
+     "status": "completed",
+     "type": "turn_completed"
+    }
+   ],
+   "op": "history",
+   "sessionId": "s1a210a72fe28"
+  },
+  {
+   "events": [
+    {
+     "text": "TEST-say hello",
+     "type": "user_message"
+    },
+    {
+     "at": 1795575721882,
+     "type": "turn_started"
+    },
+    {
+     "itemId": "msg-2057225-9",
+     "text": "Echo: T",
+     "type": "assistant_delta"
+    },
+    {
+     "itemId": "msg-2057225-9",
+     "text": "EST-say",
+     "type": "assistant_delta"
+    },
+    {
+     "itemId": "msg-2057225-9",
+     "text": " hello",
+     "type": "assistant_delta"
+    },
+    {
+     "itemId": "msg-2057225-9",
+     "text": "Echo: TEST-say hello",
+     "type": "assistant_message"
+    },
+    {
+     "at": 1795575721884,
+     "status": "completed",
+     "type": "turn_completed"
+    }
+   ],
+   "op": "history",
+   "sessionId": "s1a210a72f996"
+  },
+  {
+   "events": [
+    {
+     "text": "[fail] TEST-failing turn",
+     "type": "user_message"
+    },
+    {
+     "at": 1795575721727,
+     "type": "turn_started"
+    },
+    {
+     "message": "fake failure: the model is unavailable",
+     "type": "error"
+    },
+    {
+     "at": 1795575721730,
+     "status": "failed",
+     "type": "turn_completed"
+    }
+   ],
+   "op": "history",
+   "sessionId": "s1a210a72efd2"
+  },
+  {
+   "events": [
+    {
+     "text": "[think] TEST-plan the refactor",
+     "type": "user_message"
+    },
+    {
+     "at": 1795575721804,
+     "type": "turn_started"
+    },
+    {
+     "itemId": "reasoning-2057225-5",
+     "text": "Reading ",
+     "type": "reasoning_delta"
+    },
+    {
+     "itemId": "reasoning-2057225-5",
+     "text": "the tests",
+     "type": "reasoning_delta"
+    },
+    {
+     "itemId": "reasoning-2057225-5",
+     "text": "\n\n",
+     "type": "reasoning_delta"
+    },
+    {
+     "itemId": "reasoning-2057225-5",
+     "text": "Then the fix",
+     "type": "reasoning_delta"
+    },
+    {
+     "itemId": "reasoning-2057225-5",
+     "text": "Reading the tests\n\nThen the fix",
+     "type": "reasoning"
+    },
+    {
+     "itemId": "msg-2057225-6",
+     "text": "Thought it through.",
+     "type": "assistant_delta"
+    },
+    {
+     "itemId": "msg-2057225-6",
+     "text": "Thought it through.",
+     "type": "assistant_message"
+    },
+    {
+     "at": 1795575721807,
+     "status": "completed",
+     "type": "turn_completed"
+    }
+   ],
+   "op": "history",
+   "sessionId": "s1a210a72f4b4"
+  },
+  {
+   "events": [
+    {
+     "text": "## Release plan\n\nShip the **native** iPhone app with `Liquid Glass`:\n\n1. Sessions list with live status\n2. Conversation with streaming *Markdown*\n3. Voice mode that reads answers aloud\n\n```swift\nlet glass = Glass.regular.interactive()\n```\n\n> Quotes and [links](https://example.com) render too.",
+     "type": "user_message"
+    },
+    {
+     "at": 1795575740634,
+     "type": "turn_started"
+    },
+    {
+     "itemId": "msg-2057225-23",
+     "text": "Echo: ## Release plan\n\nShip the **native** iPhone app with `Liquid Glass`:\n\n1. Sessions list with li",
+     "type": "assistant_delta"
+    },
+    {
+     "itemId": "msg-2057225-23",
+     "text": "ve status\n2. Conversation with streaming *Markdown*\n3. Voice mode that reads answers aloud\n\n```swift",
+     "type": "assistant_delta"
+    },
+    {
+     "itemId": "msg-2057225-23",
+     "text": "\nlet glass = Glass.regular.interactive()\n```\n\n> Quotes and [links](https://example.com) render too.",
+     "type": "assistant_delta"
+    },
+    {
+     "itemId": "msg-2057225-23",
+     "text": "Echo: ## Release plan\n\nShip the **native** iPhone app with `Liquid Glass`:\n\n1. Sessions list with live status\n2. Conversation with streaming *Markdown*\n3. Voice mode that reads answers aloud\n\n```swift\nlet glass = Glass.regular.interactive()\n```\n\n> Quotes and [links](https://example.com) render too.",
+     "type": "assistant_message"
+    },
+    {
+     "at": 1795575740637,
+     "status": "completed",
+     "type": "turn_completed"
+    }
+   ],
+   "op": "history",
+   "sessionId": "s1a210a778d8e"
+  },
+  {
+   "events": [
+    {
+     "text": "[think] Plan the release notes",
+     "type": "user_message"
+    },
+    {
+     "at": 1795575734633,
+     "type": "turn_started"
+    },
+    {
+     "itemId": "reasoning-2057225-19",
+     "text": "Reading ",
+     "type": "reasoning_delta"
+    },
+    {
+     "itemId": "reasoning-2057225-19",
+     "text": "the tests",
+     "type": "reasoning_delta"
+    },
+    {
+     "itemId": "reasoning-2057225-19",
+     "text": "\n\n",
+     "type": "reasoning_delta"
+    },
+    {
+     "itemId": "reasoning-2057225-19",
+     "text": "Then the fix",
+     "type": "reasoning_delta"
+    },
+    {
+     "itemId": "reasoning-2057225-19",
+     "text": "Reading the tests\n\nThen the fix",
+     "type": "reasoning"
+    },
+    {
+     "itemId": "msg-2057225-20",
+     "text": "Thought it through.",
+     "type": "assistant_delta"
+    },
+    {
+     "itemId": "msg-2057225-20",
+     "text": "Thought it through.",
+     "type": "assistant_message"
+    },
+    {
+     "at": 1795575734637,
+     "status": "completed",
+     "type": "turn_completed"
+    }
+   ],
+   "op": "history",
+   "sessionId": "s1a210a76168d"
+  },
+  {
+   "events": [
+    {
+     "text": "[steps] Check the build",
+     "type": "user_message"
+    },
+    {
+     "at": 1795575746634,
+     "type": "turn_started"
+    },
+    {
+     "detail": "echo step 1",
+     "itemId": "tool-2059049-1",
+     "kind": "command",
+     "title": "Bash",
+     "type": "tool_started"
+    },
+    {
+     "itemId": "tool-2059049-1",
+     "ok": true,
+     "output": "step 1",
+     "type": "tool_completed"
+    },
+    {
+     "detail": "echo step 2",
+     "itemId": "tool-2059049-2",
+     "kind": "command",
+     "title": "Bash",
+     "type": "tool_started"
+    },
+    {
+     "itemId": "tool-2059049-2",
+     "ok": true,
+     "output": "step 2",
+     "type": "tool_completed"
+    },
+    {
+     "detail": "echo step 3",
+     "itemId": "tool-2059049-3",
+     "kind": "command",
+     "title": "Bash",
+     "type": "tool_started"
+    },
+    {
+     "itemId": "tool-2059049-3",
+     "ok": true,
+     "output": "step 3",
+     "type": "tool_completed"
+    },
+    {
+     "itemId": "text-2059049-4",
+     "text": "Echo: [steps] Check the build",
+     "type": "assistant_message"
+    },
+    {
+     "at": 1795575747867,
+     "status": "completed",
+     "type": "turn_completed"
+    }
+   ],
+   "op": "history",
+   "sessionId": "s1a210a79048f"
+  },
+  {
+   "events": [
+    {
+     "text": "[subagent] Review the PR",
+     "type": "user_message"
+    },
+    {
+     "at": 1795575752634,
+     "type": "turn_started"
+    },
+    {
+     "agent": "general-purpose",
+     "detail": "TEST-survey the repo",
+     "itemId": "tool-2059416-1",
+     "kind": "other",
+     "title": "Agent",
+     "type": "tool_started"
+    },
+    {
+     "detail": "README.md",
+     "itemId": "tool-2059416-2",
+     "kind": "read",
+     "parent": "tool-2059416-1",
+     "title": "Read",
+     "type": "tool_started"
+    },
+    {
+     "itemId": "tool-2059416-2",
+     "ok": true,
+     "output": "Read done",
+     "type": "tool_completed"
+    },
+    {
+     "detail": "ls src",
+     "itemId": "tool-2059416-3",
+     "kind": "command",
+     "parent": "tool-2059416-1",
+     "title": "Bash",
+     "type": "tool_started"
+    },
+    {
+     "itemId": "tool-2059416-3",
+     "ok": true,
+     "output": "Bash done",
+     "type": "tool_completed"
+    },
+    {
+     "itemId": "tool-2059416-1",
+     "ms": 1700,
+     "ok": true,
+     "output": "TEST-subagent report: two files read",
+     "type": "tool_completed"
+    },
+    {
+     "itemId": "text-2059416-4",
+     "text": "Echo: [subagent] Review the PR",
+     "type": "assistant_message"
+    },
+    {
+     "at": 1795575754276,
+     "status": "completed",
+     "type": "turn_completed"
+    }
+   ],
+   "op": "history",
+   "sessionId": "s1a210a7a7b910"
+  }
+ ]
+}

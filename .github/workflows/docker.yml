@@ -1,14 +1,19 @@
 # Builds the web image (Dockerfile) and pushes it to
-# ghcr.io/giovaniif/switchyard: `latest` from main, the version (`0.1.0`) from
-# a release tag, and the short sha on every build. docker-compose.yml pulls
-# `latest`.
+# ghcr.io/giovaniif/switchyard: `latest` from main, the version (`0.1.0`) when
+# release.yml publishes one, and the short sha on every build.
+# docker-compose.yml pulls `latest`.
 name: Docker image
 
 on:
   workflow_dispatch:
+  # release.yml, after it publishes `version`.
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
   push:
     branches: [main]
-    tags: ["v*"]
     paths-ignore: ["docs/**", "design/**", "**.md"]
 
 permissions:
@@ -16,7 +21,9 @@ permissions:
   packages: write
 
 concurrency:
-  group: docker-${{ github.ref }}
+  # Called from release.yml, github.workflow is "Release": the release's
+  # build must not cancel, or be cancelled by, the one started by the same push.
+  group: docker-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -39,14 +46,19 @@ jobs:
 
       - name: Tags
         id: tags
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
           sha="$(git rev-parse --short HEAD)"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           tags="$IMAGE:$sha"
-          case "$GITHUB_REF" in
-            refs/heads/main) tags="$tags,$IMAGE:latest" ;;
-            refs/tags/v*) tags="$tags,$IMAGE:${GITHUB_REF#refs/tags/v}" ;;
-          esac
+          # A release build runs on main too, but `latest` stays with the push
+          # builds: main may have moved past the release commit by now.
+          if [ -n "$VERSION" ]; then
+            tags="$tags,$IMAGE:$VERSION"
+          elif [ "$GITHUB_REF" = refs/heads/main ]; then
+            tags="$tags,$IMAGE:latest"
+          fi
           echo "tags=$tags" >> "$GITHUB_OUTPUT"
 
       - uses: docker/build-push-action@v6

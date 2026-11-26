@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Automation, SessionMeta } from "./protocol";
-import { describeSchedule, describeNext, describeLast, runsOf, hiddenFromSidebar, scheduleProblem, runTime, runOutcome, RUN_LABEL, runSummary, runTag, runLabel, stripRuns, scheduleLine, cardStatus } from "./automations";
+import { describeSchedule, describeNext, describeLast, runsOf, hiddenFromSidebar, runsAttention, scheduleProblem, runTime, runOutcome, RUN_LABEL, runSummary, runTag, runLabel, stripRuns, scheduleLine, scheduleParts, cardStatus } from "./automations";
 import { initial, reduce } from "./store";
 
 const MIN = 60_000;
@@ -109,6 +109,13 @@ describe("runs", () => {
     expect(hiddenFromSidebar(run("a", "x", { pinned: true }))).toBe(false);
     expect(hiddenFromSidebar(run("a", null))).toBe(false);
   });
+  test("the Automations button's dot: a run waiting for approval outranks a working one", () => {
+    expect(runsAttention([])).toBe(null);
+    expect(runsAttention([run("a", "x", { status: "idle" }), run("b", "x", { status: "queued" })])).toBe(null);
+    expect(runsAttention([run("a", "x", { status: "running" })])).toBe("working");
+    expect(runsAttention([run("a", "x", { status: "needs_approval" })])).toBe("approval");
+    expect(runsAttention([run("a", "x", { status: "running" }), run("b", "y", { status: "needs_approval" })])).toBe("approval");
+  });
 });
 
 const auto = (id: string): Automation => ({
@@ -198,6 +205,9 @@ describe("the card at a glance", () => {
   test("a manual automation has no next run: it runs when started", () => {
     expect(scheduleLine(a({ schedule: { kind: "manual" }, nextRun: null }), now)).toBe("Manual · runs when started");
     expect(scheduleLine(a({ schedule: { kind: "manual" }, enabled: false, nextRun: null }), now)).toBe("Manual · off");
+    // The card cuts the first part when the line is too long, so the next run is always the second.
+    expect(scheduleParts(a({ schedule: { kind: "interval", every: 5, unit: "minutes" }, window: { start: "21:00", end: "09:00", days: [1, 3, 5] }, nextRun: at(21) }), now)).toEqual(["Every 5 minutes · 21:00–09:00, Mon, Wed, Fri", "next today 21:00"]);
+    expect(scheduleParts(a({ schedule: { kind: "manual" }, nextRun: null }), now)).toEqual(["Manual", "runs when started"]);
   });
 
   test("a run started for a pull request is labelled with it, a plain run by its time alone", () => {

@@ -1,3 +1,4 @@
+import { EngineIcon } from "./EngineIcon";
 import { useEffect, useRef, useState } from "react";
 import { AnchoredPopover } from "./AnchoredPopover";
 import type { Engine, EngineStates } from "./protocol";
@@ -29,7 +30,7 @@ function usageWindow(label: string) {
 
 function UsageAvatar({ engine, small }: { engine: Engine; small?: boolean }) {
   return <span className={`usage-avatar usage-avatar-${engine}${small ? " usage-avatar-small" : ""}`} aria-hidden="true">
-    {engine === "codex" ? "CX" : engine === "claude" ? "CC" : ENGINE_NAME[engine].slice(0, 2).toUpperCase()}
+    <EngineIcon engine={engine} size={small ? 11 : 16} />
   </span>;
 }
 
@@ -59,7 +60,7 @@ export type UsageAccount = { host: string; engine: Engine; account: string };
 
 /** Keep the existing cross-host deduplication and freshness rules. Identity
  * and host badges explain which login each report belongs to. */
-function subscriptionRows(sources: SubscriptionSource[], now: number) {
+export function subscriptionRows(sources: SubscriptionSource[], now: number) {
   const groups = stripGroups(sources, [...LIMIT_ENGINES]);
   for (const source of sources)
     for (const engine of LIMIT_ENGINES) {
@@ -88,6 +89,27 @@ function subscriptionRows(sources: SubscriptionSource[], now: number) {
   });
 }
 
+/** The meter the closed trigger shows: the fullest one across accounts. An
+ *  account that needs sign-in keeps its last report, but the popover hides it
+ *  behind "Sign in to see usage", so the trigger leaves it out too. */
+export function triggerMeter(rows: ReturnType<typeof subscriptionRows>): Meter | undefined {
+  return fullest(rows)?.meter;
+}
+
+function fullest(rows: ReturnType<typeof subscriptionRows>) {
+  return rows
+    .filter((r) => r.loggedIn !== false)
+    .flatMap((row) => row.meters.map((meter) => ({ row, meter })))
+    .sort((a, b) => b.meter.percent - a.meter.percent)[0];
+}
+
+/** The account the popover opens on when no session picks one: the one whose
+ *  meter the trigger shows, so the number you clicked is on screen. Default
+ *  sorts first even with nothing reported. */
+export function leadRow(rows: ReturnType<typeof subscriptionRows>) {
+  return fullest(rows)?.row ?? rows[0];
+}
+
 export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRefresh, compact = false }: {
   sources: SubscriptionSource[];
   selected?: UsageAccount;
@@ -104,7 +126,7 @@ export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRe
   const chosen = selectedHost && selected
     ? rows.find((row) => row.engine === selected.engine && (row.account ?? "Default").toLowerCase() === selectedName.toLowerCase())
     : undefined;
-  const active = chosen ?? (selectedHost ? undefined : rows[0]);
+  const active = chosen ?? (selectedHost ? undefined : leadRow(rows));
   const others = rows.filter((row) => row !== active);
   const activeLabel = selectedHost && selected ? `${ENGINE_NAME[selected.engine]} · ${selectedName}` : active?.name;
   const activeName = active?.account ?? (selectedHost ? selectedName : "Default");
@@ -119,7 +141,7 @@ export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRe
   const [failure, setFailure] = useState("");
   const [lastRefresh, setLastRefresh] = useState<{ host: string; engine: Engine; account: string; at: number }>();
   const anchor = useRef<HTMLButtonElement>(null);
-  const highest = rows.flatMap((r) => r.meters).sort((a, b) => b.percent - a.percent)[0];
+  const highest = triggerMeter(rows);
   const close = () => { setOpen(false); setShowOthers(false); setFailure(""); };
   const refresh = async () => {
     if (!canRefresh || refreshing || !activeHost || !activeEngine || !accountId) return;
@@ -240,7 +262,7 @@ export function UsageStrip({ sources, selected, onManageAccounts, onManage, onRe
   );
 }
 
-export function Subscriptions({ sources, onManage }: { sources: SubscriptionSource[]; onManage(): void }) {
+export function Subscriptions({ sources, onManage }: { sources: SubscriptionSource[]; onManage(host?: string): void }) {
   const now = useNow();
   const rows = subscriptionRows(sources, now);
   return (
@@ -262,7 +284,14 @@ export function Subscriptions({ sources, onManage }: { sources: SubscriptionSour
               ))}
             </div>
           </div>
-          {r.meters.length ? (
+          {/* The last report outlives a lost sign-in; the popover hides it too. */}
+          {r.loggedIn === false ? (
+            <p className="muted small">
+              Sign in to see usage.{" "}
+              {/* The sign-in state comes from r.host, so that host's logins hold the account. */}
+              <button className="btn-text usage-link" aria-label={`Sign in — ${r.name}`} onClick={() => onManage(r.host)}>Sign in</button>
+            </p>
+          ) : r.meters.length ? (
             <div className="subscription-meters">
               {r.meters.map((m) => (
                 <div key={m.key} className={`subscription-meter level-${m.level}`}>
@@ -285,7 +314,7 @@ export function Subscriptions({ sources, onManage }: { sources: SubscriptionSour
         </div>
       )}
       <p className="muted small subscription-note">One limit per account, shared across its hosts. {noLimitsNote()}</p>
-      <button className="btn-text" onClick={onManage}>
+      <button className="btn-text" onClick={() => onManage()}>
         Manage engine logins →
       </button>
     </div>

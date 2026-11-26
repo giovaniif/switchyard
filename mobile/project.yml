@@ -2,11 +2,11 @@ name: Switchyard
 options:
   bundleIdPrefix: sh.giovani
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "26.0"
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "0.2.0"
     CURRENT_PROJECT_VERSION: "1"
     TARGETED_DEVICE_FAMILY: "1,2"
 targets:
@@ -26,7 +26,6 @@ targets:
         NSMicrophoneUsageDescription: Dictate messages and talk to your Switchyard sessions.
         NSSpeechRecognitionUsageDescription: Turn your speech into messages for your Switchyard sessions.
         NSLocalNetworkUsageDescription: Connect to your Switchyard host on your private network.
-        NSCameraUsageDescription: Take a photo to attach to a Switchyard message.
         NSPhotoLibraryUsageDescription: Choose photos to attach to a Switchyard message.
         ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:

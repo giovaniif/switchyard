@@ -128,13 +128,33 @@ export interface Heard {
   final: boolean;
 }
 
-/** What has been said since result `from`, interim words included. */
-export function heardText(results: Heard[], from = 0): string {
-  return results
-    .slice(from)
-    .map((r) => r.text.trim())
-    .filter(Boolean)
-    .join(" ");
+/** How much of the results is used up: every result before `i`, and the
+ *  first `words` words of result `i`. Chrome gives each phrase its own
+ *  result, but WebKit (Safari, the desktop and iOS apps) keeps one result
+ *  whose transcript grows for as long as it listens, so an index alone would
+ *  skip everything said after an echo. */
+export interface Mark {
+  i: number;
+  words: number;
+}
+
+export const START: Mark = { i: 0, words: 0 };
+
+const spokenWords = (text: string) => text.trim().split(/\s+/).filter(Boolean);
+
+/** What has been said since `from`, interim words included. */
+export function heardText(results: Heard[], from: Mark = START): string {
+  const head = results[from.i] ? spokenWords(results[from.i].text).slice(from.words).join(" ") : "";
+  const rest = results.slice(from.i + 1).map((r) => r.text.trim());
+  return [head, ...rest].filter(Boolean).join(" ");
+}
+
+/** Everything heard so far, used up. A result still growing is marked by its
+ *  words, so the words it gains later still count. */
+export function markEnd(results: Heard[]): Mark {
+  const last = results[results.length - 1];
+  if (!last || last.final) return { i: results.length, words: 0 };
+  return { i: results.length - 1, words: spokenWords(last.text).length };
 }
 
 /** Dictated words go after what is already in the box. */

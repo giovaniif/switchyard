@@ -113,6 +113,22 @@ An account with sessions cannot be removed: yardd says so and the row stays.
 yv drive hosts --viewport desktop --allow-errors --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Remove TEST-Work"},{"click":"role:button:Remove TEST-Work"},{"expect":"css:.banner-error","text":"session"},{"expect":{"css":".account-row","hasText":"TEST-Work"}}]'
 ```
 
+### refusal-names-the-sessions-archived-too
+Viewports: both
+The refusal names the sessions still on the account and marks an archived
+one, which is not in the sidebar and so comes first, so the user knows what
+to delete. The
+confirming click disarms Remove, so the row does not keep saying "Click again
+to remove" beside the refusal. (Before #397: "1 session still use this
+account. Delete it first.", nothing named.)
+
+```sh
+sid="$(yv state | jq -r '.sessions[] | select(.title == "TEST-account pick mobile") | .id')"
+yv api "{\"op\":\"session.update\",\"sessionId\":\"$sid\",\"archived\":true}"
+yv drive hosts --allow-errors --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Remove TEST-Work"},{"click":"role:button:Remove TEST-Work"},{"expect":"css:.banner-error","text":"2 sessions still use this account: \"TEST-account pick mobile\" (archived) and \"TEST-account pick desktop\". Delete them first."},{"eval":"document.querySelector(\"[aria-label=\\\"Remove TEST-Work\\\"]\").textContent","equals":"Remove"},{"eval":"document.querySelector(\".banner-error\").scrollIntoView(); 1"},{"shot":"refusal-names-sessions"}]'
+yv api "{\"op\":\"session.update\",\"sessionId\":\"$sid\",\"archived\":false}"
+```
+
 ### remove-account
 Viewports: desktop
 Once its sessions are deleted the account can be removed: the row goes, and
@@ -131,7 +147,7 @@ Viewports: both
 Desktop actions align at the right; on mobile the whole action group moves under the login identity, with no overflow.
 
 ```sh
-yv drive 'hosts' --steps '[{"click":"role:tab:Engine logins"},{"expect":"role:button:Add OpenCode account"},{"expect":"role:button:Add Gemini account"},{"eval":"[...document.querySelectorAll(\".engine-actions\")].every(a => { const r=a.getBoundingClientRect(), p=a.closest(\".engine-row\").getBoundingClientRect(); return r.left>=p.left && r.right<=p.right+1; })","equals":true},{"eval":"document.documentElement.scrollWidth <= innerWidth","equals":true},{"shot":"engine-actions"}]'
+yv drive 'hosts' --steps '[{"click":"role:tab:Engine logins"},{"expect":"role:button:Add OpenCode account"},{"expect":"role:button:Add Gemini account"},{"eval":"[...document.querySelectorAll(\".engine-actions\")].every(a => { const r=a.getBoundingClientRect(), p=a.closest(\".engine-row\").getBoundingClientRect(); return r.left>=p.left && r.right<=p.right+1; })","equals":true},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"engine-actions"}]'
 ```
 
 ### install-command-stays-at-the-right
@@ -146,26 +162,72 @@ yv drive hosts --steps '[{"click":"role:tab:Engine logins"},{"expect":"role:butt
 
 ### account-chip-shows-the-whole-name
 Viewports: both
-The account chip under a session's composer shows "Codex · Default" in full
-when the row has room for it, and a long account name stops at 230 px with an
-ellipsis instead of pushing the row wider. (`.account-trigger { max-width: 100% }`
-resolved against the picker's own shrink-to-fit width, so at desktop the chip
-clipped itself to "Codex · Def…" next to free space.)
+The account chip names the whole account wherever it shows one. In a
+session's desktop toolbar the chip is the approved avatar badge ("D") and its
+title and accessible name carry "Codex · Default" (the name itself is hidden
+there since #290). On a phone the Session setup sheet shows "Codex · Default"
+in full, and a long account name ends in an ellipsis inside the sheet instead
+of pushing the page wider. A long name never widens the desktop badge. (Before
+#262, `.account-trigger { max-width: 100% }` resolved against the picker's own
+shrink-to-fit width and clipped the chip to "Codex · Def…" next to free space.)
 
 ```sh
-yv drive 'session:{{sid_edit}}' --steps '[{"expect":"css:.composer .account-trigger-name","text":"Codex · Default"},{"eval":"(() => { const n = document.querySelector(\".composer .account-trigger-name\"); return n.scrollWidth <= n.clientWidth; })()","equals":true},{"shot":"account-chip"},{"eval":"(() => { const n = document.querySelector(\".composer .account-trigger-name\"); n.textContent = \"Codex · \" + \"TEST-averyverylongaccountname\".repeat(4); const b = n.parentElement.getBoundingClientRect(), row = document.querySelector(\".composer-row\").getBoundingClientRect(); return n.scrollWidth > n.clientWidth && b.width <= 230.5 && b.right <= row.right + 0.5 && document.documentElement.scrollWidth <= innerWidth; })()","equals":true}]'
+yv drive 'session:{{sid_edit}}' --viewport desktop --steps '[{"expect":"role:button:Account: Codex, Default"},{"eval":"(() => { const b = document.querySelector(\".composer .account-trigger\"); return [b.title, b.querySelector(\".account-avatar\").textContent].join(\"|\"); })()","equals":"Codex · Default|D"},{"shot":"account-chip"},{"eval":"(() => { const b = document.querySelector(\".composer .account-trigger\"), w = b.getBoundingClientRect().width; b.querySelector(\".account-trigger-name\").textContent = \"Codex · \" + \"TEST-averyverylongaccountname\".repeat(4); return b.getBoundingClientRect().width === w && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()","equals":true}]'
+yv drive 'session:{{sid_edit}}' --viewport mobile --steps '[{"click":"role:button:Session setup"},{"expect":"css:.setup-options .account-trigger-name","text":"Codex · Default"},{"eval":"(() => { const n = document.querySelector(\".setup-options .account-trigger-name\"); return n.scrollWidth <= n.clientWidth; })()","equals":true},{"shot":"account-chip"},{"eval":"(() => { const n = document.querySelector(\".setup-options .account-trigger-name\"); n.textContent = \"Codex · \" + \"TEST-averyverylongaccountname\".repeat(4); const b = n.parentElement.getBoundingClientRect(), sheet = document.querySelector(\".setup-options\").getBoundingClientRect(); return n.scrollWidth > n.clientWidth && b.right <= sheet.right + 0.5 && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()","equals":true}]'
 ```
 
 ### account-chip-chevron-keeps-its-size
 Viewports: both
-A long account name ends in an ellipsis, and the chip's chevron stays its full
-12 px after it, so the chip still reads as a menu. (The chevron was a flex item
-that could shrink, and a long name squeezed it to a dot at 390 px.)
+The chip's chevron stays its full 12 px, so the chip still reads as a menu: in
+the desktop toolbar next to the badge, and on a phone after a long account
+name that ends in an ellipsis. (The chevron was a flex item that could shrink,
+and a long name squeezed it to a dot at 390 px.)
 
 ```sh
-yv drive 'session:{{sid_edit}}' --steps '[{"expect":"css:.composer .account-trigger-name","text":"Codex · Default"},{"eval":"(() => { const n = document.querySelector(\".composer .account-trigger-name\"); n.textContent = \"Codex · \" + \"TEST-averyverylongaccountname\".repeat(4); const s = n.parentElement.querySelector(\"svg\").getBoundingClientRect(); return n.scrollWidth > n.clientWidth && Math.round(s.width) === 12; })()","equals":true},{"shot":"account-chip-long"}]'
+yv drive 'session:{{sid_edit}}' --viewport desktop --steps '[{"expect":"role:button:Account: Codex, Default"},{"eval":"(() => { const b = document.querySelector(\".composer .account-trigger\"); b.querySelector(\".account-trigger-name\").textContent = \"Codex · \" + \"TEST-averyverylongaccountname\".repeat(4); return Math.round(b.querySelector(\"svg\").getBoundingClientRect().width) === 12; })()","equals":true},{"shot":"account-chip-long"}]'
+yv drive 'session:{{sid_edit}}' --viewport mobile --steps '[{"click":"role:button:Session setup"},{"expect":"css:.setup-options .account-trigger-name","text":"Codex · Default"},{"eval":"(() => { const n = document.querySelector(\".setup-options .account-trigger-name\"); n.textContent = \"Codex · \" + \"TEST-averyverylongaccountname\".repeat(4); const s = n.parentElement.querySelector(\"svg\").getBoundingClientRect(); return n.scrollWidth > n.clientWidth && Math.round(s.width) === 12; })()","equals":true},{"shot":"account-chip-long"}]'
+```
+
+### long-account-name-fits-the-setup-sheet
+Viewports: mobile
+On a phone, an account name as long as yardd allows (40 characters) ends
+in an ellipsis inside the Session setup sheet: every row of the sheet, the account chip and
+its chevron included, stays within its edges. (The sheet's grid column sized
+to the name's full width, so one long name pushed every row and chevron past
+the sheet's right edge and the name was cut off mid-word.)
+
+```sh
+yv drive hosts --viewport desktop --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Add Codex account"},{"fill":"label:Account name","value":"TEST-ACME WORLDWIDE ENGINEERING PLATFORM"},{"press":"Enter"},{"expect":{"css":".account-row","hasText":"TEST-ACME WORLDWIDE ENGINEERING PLATFORM"}}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Session setup"},{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · TEST-ACME WORLDWIDE ENGINEERING PLATFORM"}},{"expect":"role:button:Account: Codex, TEST-ACME WORLDWIDE ENGINEERING PLATFORM"},{"expect":"role:dialog:Engine account identity","count":0},{"expect":"role:dialog:Session setup"},{"shot":"long-account-sheet"},{"eval":"(() => { const sheet = document.querySelector(\".setup-options\").getBoundingClientRect(), n = document.querySelector(\".setup-options .account-trigger-name\"), chevron = n.parentElement.querySelector(\"svg\").getBoundingClientRect(); return n.scrollWidth > n.clientWidth && chevron.right <= sheet.right + 0.5 && [...document.querySelectorAll(\".setup-options button\")].every((b) => b.getBoundingClientRect().right <= sheet.right + 0.5); })()","equals":true}]'
+```
+
+### long-account-name-wraps-in-the-login-banner
+Viewports: mobile
+On a phone, New session with an added account that is not logged in and
+whose name has no spaces (40 characters, yardd's limit) wraps the name inside
+the "isn't logged in" banner: the banner and its Log in button stay on
+screen. (The banner's message did not wrap an unbroken name, so it pushed
+the Log in button past the right edge of the screen.)
+
+```sh
+yv drive hosts --viewport desktop --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Add Codex account"},{"fill":"label:Account name","value":"TEST-ACME_WORLDWIDE_ENGINEERING_PLATFORM"},{"press":"Enter"},{"expect":{"css":".account-row","hasText":"TEST-ACME_WORLDWIDE_ENGINEERING_PLATFORM"},"text":"not logged in"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Session setup"},{"click":"css:.account-trigger"},{"click":{"role":"menuitemradio","name":"Codex · TEST-ACME_WORLDWIDE_ENGINEERING_PLATFORM"}},{"press":"Escape"},{"expect":"role:dialog:Session setup","count":0},{"expect":{"css":".new-inner .engine-notice","hasText":"TEST-ACME_WORLDWIDE_ENGINEERING_PLATFORM"},"text":"logged in on iso-host"},{"shot":"long-account-banner"},{"eval":"(() => { const n = document.querySelector(\".new-inner .engine-notice\").getBoundingClientRect(), b = document.querySelector(\".new-inner .engine-notice .btn-primary\").getBoundingClientRect(); return n.right <= innerWidth + 0.5 && b.left >= n.left && b.right <= n.right + 0.5; })()","equals":true}]'
+```
+
+### refusal-with-a-long-word-keeps-dismiss-on-screen
+Viewports: both
+A refusal that quotes a session title with no spaces wraps inside the error
+banner: the page does not scroll sideways and Dismiss stays on screen, at
+390 px too. (#425: the banner's text did not wrap an unbroken word, so at
+390 px the layout grew to 397 px and Dismiss ended past the screen edge.)
+
+```sh
+yv api '{"op":"account.add","engine":"codex","name":"TEST-Unbroken"}' --wait '{"op":"accounts"}' --save uacct='accounts[name=TEST-Unbroken].id'
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{work}}","account":"{{uacct}}","text":"TEST-AnUnbrokenSessionTitleThatGoesOnAndOnWithoutAnySpacesAtAllForSeventyChars"}' --wait '{"op":"created"}'
+yv drive hosts --allow-errors --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Remove TEST-Unbroken"},{"click":"role:button:Remove TEST-Unbroken"},{"expect":"css:.banner-error","text":"still use"},{"shot":"long-word-refusal"},{"eval":"(() => { const w = document.documentElement.clientWidth, b = document.querySelector(\".banner-error\").getBoundingClientRect(), d = [...document.querySelectorAll(\".banner-error button\")].find((x) => x.textContent.trim() === \"Dismiss\").getBoundingClientRect(); return document.documentElement.scrollWidth <= w && b.right <= w + 0.5 && d.left >= b.left && d.right <= b.right + 0.5; })()","equals":true},{"click":"role:button:Dismiss"},{"expect":"css:.banner-error","count":0}]'
 ```
 
 ## Gotchas
 - An account's folder is deleted with it, login included. There is no "log out" separate from Remove.
 - The account of a session cannot be changed after it starts.
+- The session toolbar shows the account as an avatar badge only (approved design, #290); the full name is in the chip's title and accessible name, and in the phone's Session setup sheet. `account-chip-*` expected the visible name in `.composer` until 2026-11-21.

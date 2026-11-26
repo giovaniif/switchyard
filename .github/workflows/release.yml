@@ -1,47 +1,115 @@
-# Publishes a numbered release when a version tag (v0.1.0) is pushed:
-# the signed DMG and both Linux packages, under stable asset names so
-# releases/latest/download/<name> always reaches the newest release (the README
-# and scripts/remote-install.sh rely on that). Notes come from CHANGELOG.md.
-# scripts/release.sh makes the tag.
+# Publishes a numbered release when main reaches a version that has none yet.
+# scripts/release.sh X.Y.Z opens the version bump as a PR with auto-merge; its
+# merge lands here. This run tests the commit, builds the signed DMG, the
+# signed update package and both Linux packages, publishes them under stable
+# asset names (releases/latest/download/<name> always reaches the newest
+# release; the README and scripts/remote-install.sh rely on that), and tags the
+# Docker image. The release makes the tag vX.Y.Z on the merged commit. Notes
+# come from CHANGELOG.md.
+#
+# A tag made with GITHUB_TOKEN starts no other workflow, so everything a
+# pushed tag used to start happens here. Run it by hand (Actions, Release,
+# Run workflow on main) to retry a publish that failed; it never publishes a
+# version twice.
 name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths:
+      - crates/yardd/Cargo.toml
+      - app/src-tauri/Cargo.toml
+      - app/src-tauri/tauri.conf.json
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+# One publish at a time, never cancelled half way.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
+  cancel-in-progress: false
 
 jobs:
   check:
     runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
     steps:
       - uses: actions/checkout@v5
-      # The app, yardd and the tag must agree, or the app reports one version
-      # while the release page shows another.
-      - name: Versions match the tag
+
+      # The app, yardd and the release must agree, or the app reports one
+      # version while the release page shows another.
+      - name: Versions agree and are not released yet
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          want="${GITHUB_REF_NAME#v}"
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Releases are published from main, not $GITHUB_REF"
+            exit 1
+          fi
           app="$(sed -n 's/^  "version": "\(.*\)",$/\1/p' app/src-tauri/tauri.conf.json)"
+          app_crate="$(sed -n 's/^version = "\(.*\)"/\1/p' app/src-tauri/Cargo.toml | head -1)"
           yardd="$(sed -n 's/^version = "\(.*\)"/\1/p' crates/yardd/Cargo.toml | head -1)"
-          echo "tag $want, app $app, yardd $yardd"
-          [ "$app" = "$want" ] && [ "$yardd" = "$want" ]
-          grep -q "^## $want\b" CHANGELOG.md || { echo "CHANGELOG.md has no '## $want' section"; exit 1; }
+          lock() { awk -v n="$1" '$0 == "name = \"" n "\"" { getline; sub(/^version = "/, ""); sub(/"$/, ""); print; exit }' Cargo.lock; }
+          echo "app $app, app crate $app_crate, yardd $yardd, Cargo.lock $(lock switchyard)/$(lock yardd)"
+          if [ "$app" != "$yardd" ] || [ "$app_crate" != "$yardd" ] \
+            || [ "$(lock switchyard)" != "$yardd" ] || [ "$(lock yardd)" != "$yardd" ]; then
+            echo "::error::The versions disagree; scripts/release.sh sets all of them"
+            exit 1
+          fi
+          version="$yardd"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          if gh release view "v$version" --json tagName >/dev/null 2>&1; then
+            echo "::notice::Switchyard $version is already released; nothing to publish"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          latest="$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // ""')"
+          latest="${latest#v}"
+          if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$latest" "$version" | sort -V | tail -1)" != "$version" ]; then
+            echo "::error::$version is older than the latest release, $latest"
+            exit 1
+          fi
+          if ! grep -Eq "^## $version( |$)" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## $version' section"
+            exit 1
+          fi
+          # A tag left by an earlier attempt must be this commit, or the
+          # release would describe another one.
+          # An annotated tag's commit is on its peeled `^{}` line.
+          tagged="$(git ls-remote origin "refs/tags/v$version" "refs/tags/v$version^{}" \
+            | awk '$2 ~ /\^\{\}$/ { peeled = $1; next } { plain = $1 } END { print (peeled != "" ? peeled : plain) }')"
+          if [ -n "$tagged" ] && [ "$tagged" != "$GITHUB_SHA" ]; then
+            echo "::error::Tag v$version exists on $tagged, not on this commit ($GITHUB_SHA)"
+            exit 1
+          fi
+          echo "Publishing Switchyard $version from $GITHUB_SHA"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+  # The same checks the merged PR passed, on the merged commit itself.
+  ci:
+    needs: check
+    if: needs.check.outputs.publish == 'true'
+    uses: ./.github/workflows/ci.yml
 
   macos:
     needs: check
+    if: needs.check.outputs.publish == 'true'
     uses: ./.github/workflows/macos-app.yml
     secrets: inherit
 
   linux:
     needs: check
+    if: needs.check.outputs.publish == 'true'
     uses: ./.github/workflows/linux-host.yml
 
   publish:
-    needs: [macos, linux]
+    needs: [check, ci, macos, linux]
+    if: needs.check.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -54,25 +122,28 @@ jobs:
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          tag="v$VERSION"
           ls -l dist
           dmg="$(ls dist/Switchyard-*.dmg)"
           case "$dmg" in
             *-unsigned.dmg) echo "The DMG is not signed; check the signing secrets"; exit 1 ;;
           esac
           mv "$dmg" dist/Switchyard.dmg
-          # The in-app updater reads releases/latest/download/latest.json.
+          section="$(awk -v v="$VERSION" '$0 ~ "^## " v "( |$)" { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md)"
+          # The in-app updater reads releases/latest/download/latest.json and
+          # shows `notes` before it installs.
           [ -f dist/Switchyard.app.tar.gz.sig ] || { echo "No signed update package; check TAURI_SIGNING_PRIVATE_KEY"; exit 1; }
-          jq -n --arg v "$version" --arg sig "$(cat dist/Switchyard.app.tar.gz.sig)" \
-            --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/Switchyard.app.tar.gz" \
-            --arg notes "$(awk -v v="$version" '$0 ~ "^## " v "( |$)" { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md)" \
+          jq -n --arg v "$VERSION" --arg sig "$(cat dist/Switchyard.app.tar.gz.sig)" \
+            --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/Switchyard.app.tar.gz" \
+            --arg notes "$section" \
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             '{version: $v, notes: $notes, pub_date: $date, platforms: {"darwin-aarch64": {signature: $sig, url: $url}}}' \
             > dist/latest.json
           cat dist/latest.json
           {
-            awk -v v="$version" '$0 ~ "^## " v "( |$)" { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md
+            printf '%s\n' "$section"
             cat <<'EOF'
 
           ### Install
@@ -85,7 +156,20 @@ jobs:
           EOF
           } > notes.md
           cat notes.md
-          gh release create "$GITHUB_REF_NAME" --verify-tag --latest \
-            --title "Switchyard $version" --notes-file notes.md \
+          # Makes the tag on this commit (or uses the one check found on it).
+          # Fails if the release exists, so a version is never published twice.
+          gh release create "$tag" --target "$GITHUB_SHA" --latest \
+            --title "Switchyard $VERSION" --notes-file notes.md \
             dist/Switchyard.dmg dist/Switchyard.app.tar.gz dist/latest.json \
             dist/switchyard-linux-x64.tar.gz dist/switchyard-linux-arm64.tar.gz
+
+  # After the release exists, so the image tag never names an unpublished one.
+  docker:
+    needs: [check, publish]
+    if: needs.check.outputs.publish == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker.yml
+    with:
+      version: ${{ needs.check.outputs.version }}
