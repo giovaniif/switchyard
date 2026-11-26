@@ -1085,6 +1085,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   // Runs of automations live on the Automations page, not in this list.
   const runs = everything.filter(hiddenFromSidebar);
   const runsMark = runsAttention(runs);
+  const archivedMark = runsAttention(archived);
   const inRun = route.page === "session" && !!state.sessions[route.id]?.automation;
   const agentOpen = route.page === "agent" ? state.agents.find((a) => a.id === route.id)?.chat ?? null : null;
   const seen = useSeen(state.sessions, route.page === "session" ? route.id : agentOpen, state.restore);
@@ -1244,6 +1245,10 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
           <button className="list-head list-toggle" aria-expanded={showArchived} onClick={() => setShowArchived(!showArchived)}>
             <span>Archived</span>
             <span className="muted">{archived.length}</span>
+            {/* Archived sessions still run: collapsed, this dot is the only sign one waits for the user. */}
+            {!showArchived && archivedMark && (
+              <span className={`dot ${archivedMark === "approval" ? "dot-needs_approval" : "dot-running"}`} role="img" aria-label={GROUP_MARK[archivedMark]} title={GROUP_MARK[archivedMark]} />
+            )}
             <span className={`tool-chevron ${showArchived ? "open" : ""}`}>
               <Icon d={CHEVRON_RIGHT} size={11} />
             </span>
@@ -2815,8 +2820,8 @@ export function FolderPicker(props: {
         .filter((d) => d.name.toLowerCase().startsWith(lower) && (lower.startsWith(".") || !d.name.startsWith(".")))
         .slice(0, 200)
         .map((d) => ({ path: joinPath(dir, d.name), name: d.name, detail: "", git: d.git, browse: true }));
-      // The folder typed so far is itself a choice.
-      const self = !stem && dir ? [{ path: dir, name: `Use ${tilde(dir, home)}`, detail: "" }] : [];
+      // The folder typed so far is itself a choice, unless yardd says it is not there.
+      const self = !stem && dir && !listing?.missing && !listing?.error ? [{ path: dir, name: `Use ${tilde(dir, home)}`, detail: "" }] : [];
       return [...self, ...children];
     }
     const lower = query.toLowerCase();
@@ -2920,9 +2925,10 @@ export function FolderPicker(props: {
             )}
           </div>,
         ])}
+        {browsing && listing?.missing && <div className="picker-empty">{tilde(listing.missing, home)} doesn’t exist.</div>}
         {browsing && listing?.error && <div className="picker-empty">{listing.error}</div>}
         {/* Only a typed last segment can leave this list empty ("Use <dir>" is offered otherwise); say why Enter does nothing. */}
-        {browsing && listing && !listing.error && rows.length === 0 && (
+        {browsing && listing && !listing.error && !listing.missing && rows.length === 0 && (
           <div className="picker-empty">
             No folder in {tilde(dir, home)} starts with “{stem}”.
           </div>
@@ -5343,7 +5349,8 @@ function SessionRows({
             </span>
             <span className={`focused-session-state ${s.status === "needs_approval" ? "warn" : "muted"}`}>
               <span className={`dot dot-${s.status}`} />
-              {!hostOnline(state, host) ? "Offline" : s.archived ? "Archived" : STATUS_LABEL[s.status]}
+              {/* Archived sessions still run: past idle, the status is what the row is for. */}
+              {!hostOnline(state, host) ? "Offline" : !s.archived ? STATUS_LABEL[s.status] : s.status === "idle" ? "Archived" : `Archived · ${STATUS_LABEL[s.status]}`}
             </span>
             <span className="focused-session-resources muted small">
               {usage ? (

@@ -208,10 +208,14 @@ testers or other apps' groups were changed. Use
 [Switchyard → TestFlight](https://appstoreconnect.apple.com/apps/6836111611/testflight)
 to inspect processing, tester access and installation availability.
 
-For the first installation, select **Owner testing → Invite Testers**, choose
-the owner's App Store Connect account, and click Add. The group still had zero
-testers at the final API check; a ready build alone does not grant installation
-access. Accept the invitation on the iPhone, install **0.1.0 (8.1)** through
+The group had zero testers until 2026-11-25, so no invitation was ever sent:
+a ready build alone does not grant installation access. The 409 came from
+assigning the owner's **existing** tester record, an external (`EMAIL`) tester
+of the Bolão app. Creating a new one with the group in the same request works:
+`POST /v1/betaTesters` with `email`, `firstName`, `lastName` and
+`relationships.betaGroups` = `78fa0ded-…` returned 201, and the group then
+listed the owner as `INVITED`. Apple emails the invitation; accept it on the
+iPhone (**View in TestFlight**), install the latest build through
 TestFlight, enable the private network/Tailscale, and connect to the existing
 HTTPS host. Installation and physical microphone/permission behavior require
 that device check; they are not proven by CI or Apple's processing status.
