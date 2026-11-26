@@ -10,7 +10,7 @@ import type { Actions, Route, State } from "./store";
 import { Icon, MenuButton } from "./App";
 import { SLACK_MARK } from "./SlackSetup";
 import { parseSlack, emojiChar, type SlackNode } from "./slackText";
-import { callableAgents, calledAgents, initials, mentionQuery, pageKey, shownConversations, startsGroup, topLevel, type CallableAgent } from "./slackInbox";
+import { callableAgents, calledAgents, composerKey, initials, mentionQuery, pageKey, shownConversations, startsGroup, suggestAgents, topLevel, type CallableAgent } from "./slackInbox";
 
 const CLOSE = "M6 6l12 12M18 6L6 18";
 const ARROW_UP = "M12 19V5M5 12l7-7 7 7";
@@ -320,7 +320,7 @@ function SlackComposer({ placeholder, disabled, agents, send }: { placeholder: s
     box.current.setSelectionRange(at, at);
   }, [text]);
   const query = agents.length ? mentionQuery(text, caret) : null;
-  const suggestions = query === null ? [] : agents.filter((a) => a.handle.includes(query) || a.name.toLowerCase().includes(query));
+  const suggestions = query === null ? [] : suggestAgents(agents, query);
   const called = calledAgents(text, agents);
   const pick = (a: CallableAgent) => {
     const start = text.slice(0, caret).lastIndexOf("@");
@@ -366,11 +366,11 @@ function SlackComposer({ placeholder, disabled, agents, send }: { placeholder: s
           }}
           onSelect={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              if (suggestions.length === 1) pick(suggestions[0]);
-              else void go();
-            }
+            const k = composerKey({ key: e.key, shiftKey: e.shiftKey, composing: e.nativeEvent.isComposing }, suggestions, 0, query);
+            if (!k) return;
+            e.preventDefault();
+            if (k.do === "pick") pick(k.agent);
+            else if (k.do === "send") void go();
           }}
         />
         <div className="composer-row">

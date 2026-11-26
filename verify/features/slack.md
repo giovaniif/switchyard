@@ -318,6 +318,48 @@ curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and 
 yv api '{"op":"host.remove","hostId":"{{slack_box}}"}' --wait '{"op":"hosts"}'
 ```
 
+### pick-an-agent-with-the-keys
+Viewports: both
+With two agents' apps in the workspace (TEST-Reviewer, @test-reviewer, bot
+UAGENT; TEST-Reviewer Two, @test-reviewer-two, bot UAGENT2), the reply box's
+@ list works like Slack's own picker: the first row is highlighted (the
+textarea's `aria-activedescendant`, the row's `aria-selected`), Down and Up
+move it round the ends, Enter writes the highlighted handle (a bare `@` is
+never sent), Escape closes the list without sending and typing opens it
+again. A handle typed in full is a complete mention: Enter sends it. The
+thread pane's reply box does the same. The rows' text is centred in them. On
+a phone the list fits the screen and a tap picks.
+
+```sh
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","agentId":"{{reviewer}}","origin":"http://127.0.0.1","ref":"grant"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.app.botToken","agentId":"{{reviewer}}","token":"xoxb-agent-TEST","ref":"bot"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.app.appToken","agentId":"{{reviewer}}","token":"xapp-1-agent-TEST","ref":"app"}' --wait '{"op":"slack"}'
+yv api '{"op":"agent.save","agent":{"name":"TEST-Reviewer Two","engine":"codex","model":"fake-fast","effort":"low","color":"teal","about":"TEST-reviews too"},"ref":"two"}' --wait '{"op":"agent.saved"}' --save reviewer_two=agent.id
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","agentId":"{{reviewer_two}}","origin":"http://127.0.0.1","ref":"grant-two"}' --wait '{"op":"slack","ref":"grant-two"}'
+yv api '{"op":"slack.app.botToken","agentId":"{{reviewer_two}}","token":"xoxb-agent-2-TEST","ref":"bot-two"}' --wait '{"op":"slack","ref":"bot-two"}'
+yv api '{"op":"slack.app.appToken","agentId":"{{reviewer_two}}","token":"xapp-1-agent-TEST","ref":"app-two"}' --wait '{"op":"slack","ref":"app-two"}'
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant2"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app2"}' --wait '{"op":"slack"}'
+for i in $(seq 100); do yv state --full 2>/dev/null | grep -q G0TRIO && break; sleep 0.2; done
+# The highlighted row, as the textarea names it.
+HL='{"eval":"document.getElementById(document.activeElement.getAttribute(\"aria-activedescendant\")).textContent"'
+ONE='{"eval":"document.querySelectorAll(\"[role=option][aria-selected=true]\").length","equals":1}'
+CENTRED='{"eval":"[...document.querySelectorAll(\"[role=option]\")].every((o) => { const r = o.getBoundingClientRect(), t = o.querySelector(\"strong\").getBoundingClientRect(); return Math.abs((t.top + t.bottom) / 2 - (r.top + r.bottom) / 2) <= 2; })","equals":true}'
+yv drive 'slack:TEST-Stranger' --viewport desktop --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@test-rev"},{"expect":"role:option","count":2},'"$HL"',"equals":"TEST-Reviewer@test-reviewer"},'"$ONE"','"$CENTRED"',{"press":"ArrowDown"},'"$HL"',"equals":"TEST-Reviewer Two@test-reviewer-two"},'"$ONE"',{"shot":"highlighted"},{"press":"ArrowDown"},'"$HL"',"equals":"TEST-Reviewer@test-reviewer"},{"press":"ArrowUp"},'"$HL"',"equals":"TEST-Reviewer Two@test-reviewer-two"},{"press":"Enter"},{"expect":"role:option","count":0},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":"@test-reviewer-two "},{"type":"keys desktop"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Reviewer Two"},{"press":"Enter"},{"expect":{"css":".slack-messages"},"text":"keys desktop"},{"type":"@"},{"expect":"role:option","count":2},{"press":"Enter"},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":"@test-reviewer "},{"fill":"label:Message TEST-Ana, TEST-Stranger","value":""},{"type":"@"},{"press":"Escape"},{"expect":"role:option","count":0},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":"@"},{"type":"t"},{"expect":"role:option","count":2},{"fill":"label:Message TEST-Ana, TEST-Stranger","value":""},{"type":"ping exact desktop @test-reviewer"},{"expect":"role:option","count":2},'"$HL"',"equals":"TEST-Reviewer@test-reviewer"},{"press":"Enter"},{"expect":{"css":".slack-messages"},"text":"ping exact desktop"},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":""},{"shot":"sent"},{"click":{"css":".slack-message","hasText":"keys desktop"}},{"click":"role:button:Reply in thread"},{"click":"label:Reply in the thread"},{"type":"@test-rev"},{"expect":{"css":".slack-thread [role=option]"},"count":2},{"press":"ArrowDown"},'"$HL"',"equals":"TEST-Reviewer Two@test-reviewer-two"},{"shot":"thread-highlighted"},{"press":"Escape"},{"expect":"role:option","count":0},{"expect":"css:.slack-thread"},{"type":"-"},{"press":"Backspace"},{"press":"ArrowDown"},{"press":"Enter"},{"expect":"label:Reply in the thread","value":"@test-reviewer-two "},{"type":"thread keys"},{"press":"Enter"},{"expect":{"css":".slack-thread"},"text":"thread keys"}]'
+yv drive 'slack:TEST-Stranger' --viewport mobile --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@test-rev"},{"expect":"role:option","count":2},'"$CENTRED"',{"eval":"(r => r.left >= 0 && r.right <= innerWidth && r.top >= 0)(document.querySelector(\".slack-compose .mention-list\").getBoundingClientRect())","equals":true},{"shot":"suggest"},{"tap":{"role":"option","name":"TEST-Reviewer Two @test-reviewer-two"}},{"expect":"role:option","count":0},{"type":"tap mobile"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"tap mobile"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"sent"},{"click":{"css":".slack-message","hasText":"tap mobile"}},{"click":"role:button:Reply in thread"},{"click":"label:Reply in the thread"},{"type":"@test-rev"},{"expect":{"css":".slack-thread [role=option]"},"count":2},{"eval":"(r => r.left >= 0 && r.right <= innerWidth && r.top >= 0)(document.querySelector(\".slack-thread .mention-list\").getBoundingClientRect())","equals":true},{"shot":"thread-suggest"},{"tap":{"role":"option","name":"TEST-Reviewer Two @test-reviewer-two"}},{"type":"thread tap mobile"},{"click":{"css":".slack-thread button[aria-label=Send]"}},{"expect":{"css":".slack-thread"},"text":"thread tap mobile"}]'
+S=$(curl -sf "$(v slack)/_fake/state")
+echo "$S" | jq -e '[.posts[] | select(.app == "you" and .thread_ts == null and (.text | startswith("<@UAGENT2> keys desktop")))] | length == 1'
+echo "$S" | jq -e '[.posts[] | select(.app == "you" and .text == "ping exact desktop <@UAGENT>")] | length == 1'
+echo "$S" | jq -e '[.posts[] | select(.app == "you" and .thread_ts != null and (.text | startswith("<@UAGENT2> thread keys")))] | length == 1'
+echo "$S" | jq -e '[.posts[] | select(.app == "you" and .thread_ts == null and (.text | startswith("<@UAGENT2> tap mobile")))] | length == 1'
+echo "$S" | jq -e '[.posts[] | select(.app == "you" and .thread_ts != null and (.text | startswith("<@UAGENT2> thread tap mobile")))] | length == 1'
+# A bare @ never went out, nor a half-typed handle.
+echo "$S" | jq -e '[.posts[] | select(.app == "you" and (.text == "@" or (.text | test("@test-rev"))))] | length == 0'
+# The recipes after this one know one agent's app.
+yv api '{"op":"slack.app.remove","agentId":"{{reviewer_two}}","ref":"rm-two"}' --wait '{"op":"slack","ref":"rm-two"}'
+```
+
 ### one-icon-per-picture
 Viewports: both
 An agent's app gets its face as its icon once: a window of either size works
@@ -414,6 +456,11 @@ yv api '{"op":"slack.app.remove","agentId":"{{oncall}}","ref":"rm"}' --wait '{"o
   field), so anything that grants one comes after it. Later recipes set up
   what they need through the API (a grant, TEST-Reviewer's app with its bot
   token pasted), so each also runs alone.
+- The fake has one second bot (UAGENT2, `xoxb-agent-2-TEST`), shared by
+  TEST-Far in `call-an-agent-on-another-host` and TEST-Reviewer Two in
+  `pick-an-agent-with-the-keys`; the inbox names `<@UAGENT2>` after the
+  agent that took it last. So the keys recipe comes after the one that reads
+  the name TEST-Far, and checks Slack's posts by bot id, not by name.
 - Not covered here (no real Slack can be reached from tests): a real
   workspace's events, rate limits and Slack's own manifest import, update
   and icon upload. The install redirect to an https address from an http

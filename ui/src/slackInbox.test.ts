@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SlackAgentApp, SlackConversation, SlackMessage } from "./protocol";
-import { applyMessage, callableAgents, calledAgents, initials, mentionQuery, mergePage, pageKey, shownConversations, startsGroup } from "./slackInbox";
+import { applyMessage, callableAgents, calledAgents, composerKey, initials, mentionQuery, mergePage, pageKey, shownConversations, startsGroup, suggestAgents } from "./slackInbox";
 import { initial, parseHash, reduce, routeHash } from "./store";
 // The same cases yardd's `mention_handle` is tested on: the box must say a
 // message calls an agent exactly when yardd will make it a mention.
@@ -95,6 +95,38 @@ describe("calling an agent from the reply box", () => {
       { id: "h1~g2", name: "Far", handle: "far" },
     ]);
     expect(callableAgents(listed, undefined, "T0")).toEqual([]);
+  });
+  test("offers the agent whose handle is typed first, then those it starts, then the rest", () => {
+    const list = [{ id: "g3", name: "Pre-reviewer", handle: "pre-reviewer" }, { id: "g4", name: "Reviewer Two", handle: "reviewer-two" }, ...agents];
+    expect(suggestAgents(list, "reviewer").map((a) => a.id)).toEqual(["g1", "g4", "g3"]);
+    expect(suggestAgents(list, "rev").map((a) => a.id)).toEqual(["g4", "g1", "g3"]);
+    expect(suggestAgents(list, "").map((a) => a.id)).toEqual(["g3", "g4", "g1", "g2"]);
+    expect(suggestAgents(list, "deploy b")).toEqual([agents[1]]);
+  });
+  test("keys work the list like Slack's own picker", () => {
+    const key = (k: string, extra: { shiftKey?: boolean; composing?: boolean } = {}) => ({ key: k, shiftKey: false, composing: false, ...extra });
+    const two = agents;
+    // Up and down move the highlight, round the ends.
+    expect(composerKey(key("ArrowDown"), two, 0, "")).toEqual({ do: "move", to: 1 });
+    expect(composerKey(key("ArrowDown"), two, 1, "")).toEqual({ do: "move", to: 0 });
+    expect(composerKey(key("ArrowUp"), two, 0, "")).toEqual({ do: "move", to: 1 });
+    // Enter or Tab writes the highlighted one: a bare @ is not sent.
+    expect(composerKey(key("Enter"), two, 1, "")).toEqual({ do: "pick", agent: two[1] });
+    expect(composerKey(key("Tab"), two, 0, "")).toEqual({ do: "pick", agent: two[0] });
+    expect(composerKey(key("Enter"), [two[0]], 0, "rev")).toEqual({ do: "pick", agent: two[0] });
+    // Escape closes the list, sending nothing.
+    expect(composerKey(key("Escape"), two, 0, "")).toEqual({ do: "close" });
+    // The handle typed in full is a complete mention: Enter sends it.
+    expect(composerKey(key("Enter"), [two[0]], 0, "reviewer")).toEqual({ do: "send" });
+    // No list: Enter sends, the other keys are the box's own.
+    expect(composerKey(key("Enter"), [], 0, null)).toEqual({ do: "send" });
+    for (const k of ["ArrowDown", "ArrowUp", "Tab", "Escape"]) expect(composerKey(key(k), [], 0, null)).toBeNull();
+    // Shift+Enter is a new line and an IME's Enter its own, list or not.
+    expect(composerKey(key("Enter", { shiftKey: true }), two, 0, "")).toBeNull();
+    expect(composerKey(key("Enter", { shiftKey: true }), [], 0, null)).toBeNull();
+    expect(composerKey(key("Enter", { composing: true }), two, 0, "")).toBeNull();
+    expect(composerKey(key("ArrowDown", { composing: true }), two, 0, "")).toBeNull();
+    expect(composerKey(key("Tab", { shiftKey: true }), two, 0, "")).toBeNull();
   });
   test("agrees with yardd on every case", () => {
     for (const c of handleCalls) {

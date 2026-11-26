@@ -85,6 +85,19 @@ export function mentionQuery(text: string, caret: number): string | null {
   return m ? m[1].toLowerCase() : null;
 }
 
+/** Agents offered for a typed `@query`. */
+export function suggestAgents(agents: CallableAgent[], query: string): CallableAgent[] {
+  return agents.filter((a) => a.handle.includes(query) || a.name.toLowerCase().includes(query));
+}
+
+/** What a key does in the reply box: the @ list's own keys, Send, or the
+ *  textarea's default (null). */
+export type ComposerKey = { do: "move"; to: number } | { do: "pick"; agent: CallableAgent } | { do: "close" } | { do: "send" } | null;
+export function composerKey(e: { key: string; shiftKey: boolean; composing: boolean }, offered: CallableAgent[], _active: number, _query: string | null): ComposerKey {
+  if (e.key !== "Enter" || e.shiftKey || e.composing) return null;
+  return offered.length === 1 ? { do: "pick", agent: offered[0] } : { do: "send" };
+}
+
 /** The agents a message calls: each `@handle` written as a word. */
 export function calledAgents(text: string, agents: CallableAgent[]): string[] {
   return agents.filter((a) => new RegExp(`(^|[^a-z0-9._-])@${a.handle.replace(/[.]/g, "\\.")}(?![a-z0-9_-])(?!\\.[a-z0-9_-])`, "i").test(text)).map((a) => a.id);
