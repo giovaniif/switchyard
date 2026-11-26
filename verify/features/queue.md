@@ -61,6 +61,18 @@ yv api '{"op":"agent.save","agent":{"name":"TEST-Waiter","engine":"codex","model
 yv drive new --viewport desktop --steps '[{"click":"role:button:Agents"},{"click":"css:.agent-card[aria-label=\"TEST-Waiter\"] .agent-message"},{"fill":"label:Message","value":"TEST-agent under pressure"},{"press":"Enter"},{"expect":"css:.queued-line","text":"Queued:"},{"shot":"agent-queued"},{"click":"role:button:Start anyway"},{"expect":"css:.thread","text":"Echo: TEST-agent under pressure"},{"expect":"role:button:Start anyway","count":0}]'
 ```
 
+### queued-session-composer-says-start-first
+A queued session takes no messages until it starts (yardd answers "this
+session is queued; start it first"), so Send stays disabled. The message box
+says so: it read "Reply", and typing plus Enter did nothing, with no reason
+shown.
+
+```sh
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{repo}}","worktree":true,"text":"TEST-queued reply"}' --wait '{"op":"created"}' --save q4_sid=sessionId
+yv drive 'session:{{q4_sid}}' --steps '[{"expect":"css:.queued-line","text":"Queued:"},{"expect":"placeholder:Queued: Start anyway to reply"},{"fill":"label:Message","value":"TEST-one more thing"},{"expect":"role:button:Send","enabled":false},{"shot":"queued-composer"}]'
+yv state --expect '{"sessions":[{"id":"{{q4_sid}}","status":"queued"}]}'
+```
+
 ### hosts-page-shows-pressure
 The Hosts page says the host is under pressure on its card, and its Details
 say why new sessions wait.
