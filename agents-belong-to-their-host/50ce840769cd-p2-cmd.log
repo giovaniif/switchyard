@@ -1,0 +1,28 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents a_second_hub_sees_the_hosts_agents
+# exit 101 after 1883 ms at 8910b6573f3a3747266fb50bc6675c927f424dbc
+
+
+running 1 test
+test a_second_hub_sees_the_hosts_agents_and_can_ask_edit_and_delete_them ... FAILED
+
+failures:
+
+---- a_second_hub_sees_the_hosts_agents_and_can_ask_edit_and_delete_them stdout ----
+
+thread 'a_second_hub_sees_the_hosts_agents_and_can_ask_edit_and_delete_them' (2491386) panicked at crates/yardd/tests/agents.rs:388:63:
+called `Option::unwrap()` on a `None` value
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-2491385-agents-two-first-1 for inspection
+kept /tmp/yardd-test-2491385-agents-two-remote-0 for inspection
+
+
+failures:
+    a_second_hub_sees_the_hosts_agents_and_can_ask_edit_and_delete_them
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.28s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 1.55s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+error: test failed, to rerun pass `-p yardd --test agents`
