@@ -1,0 +1,77 @@
+{
+  "command": "drive",
+  "ok": false,
+  "route": "new",
+  "build": {
+    "sha": "c443b39f4f143a550b842510bb7b65886c0ec9ce",
+    "short": "c443b39",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T09:11:49.587Z"
+  },
+  "dir": ".verify/evidence/palette-selection-base-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 14881,
+      "steps": 13,
+      "failed": {
+        "step": 8,
+        "action": {
+          "eval": "document.querySelector(\"[role=option][aria-selected=true] .navigation-title\").textContent === window.__picked",
+          "equals": true
+        },
+        "reason": "eval returned false, expected true",
+        "screenshot": ".verify/evidence/palette-selection-base-mobile/fail-mobile-step8.png",
+        "aria": "- banner:\n  - button \"Open sessions\"\n  - heading \"New session\" [level=2]\n  - button \"Subscription usage\": 47%\n  - button \"Connectors\"\n  - button \"Set up iPhone app\"\n- heading \"What should we work on?\" [level=1]\n- textbox \"Message\":\n  - /placeholder: Describe the task\n- button \"Attach files\"\n- button \"Dictate\"\n- button \"Voice mode\"\n- 'button \"Session setup: Opus 5.5, Default, High, Ask first\"': Opus 5.5 · High\n- button \"Send\" [disabled]\n- button \"iso-host\"\n- button \"work\"\n- text: Works in the folder itself\n- dialog \"Go to session or page\":\n  - banner:\n    - combobox \"Search sessions and pages\" [expanded]\n    - button \"Close\": Esc\n  - listbox \"Sessions and pages\":\n    - option \"[think] TEST-plan the refactor Codex · iso-host · TEST-demo-app · yard/think-test-plan-the-refactor-b5e3\"\n    - option \"[fail] TEST-failing turn Codex · iso-host · TEST-demo-app · yard/fail-test-failing-turn-b111\" [selected]\n    - option \"[cmd] TEST-run the migration Codex · iso-host · TEST-demo-app · yard/cmd-test-run-the-migration-c8db\"\n    - option \"TEST-hello from Claude Claude · iso-host · TEST-demo-app · yard/test-hello-from-claude-c429\"\n    - option \"[edit] TEST-fix the greeting Codex · iso-host · TEST-demo-app · yard/edit-test-fix-the-greeting-bf77\"\n    - option \"TEST-say hello Codex · iso-host · TEST-demo-app · yard/test-say-hello-bab5\"\n    - option \"New session Start a conversation\"\n    - 'option \"Agents Your named agents: @mention them anywhere, or in Slack\"'\n    - option \"Automations Scheduled work and runs\"\n    - option \"Connectors MCP servers and connections\"\n    - option \"Settings Notifications and sidebar\"\n    - option \"Hosts Local and remote machines\"\n    - option \"Subscriptions Accounts and usage across hosts\"\n    - option \"Sessions Active and archived conversations\"\n    - option \"Import Claude Code sessions\"\n  - contentinfo: ↑ ↓ to navigate Enter to open"
+      },
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/palette-selection-base-mobile/picked-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/palette-selection-base-mobile/after-re-sort-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "window.__picked = document.querySelector(\"[role=option][aria-selected=true] .navigation-title\").textContent; [...document.querySelectorAll(\".navigation-option .navigation-title\")].map((e) => e.textContent).indexOf(\"[think] TEST-plan the refactor\") > 1",
+          "value": true
+        },
+        {
+          "step": 6,
+          "eval": "document.querySelector(\".navigation-option .navigation-title\").textContent",
+          "value": "[think] TEST-plan the refactor"
+        },
+        {
+          "step": 8,
+          "eval": "document.querySelector(\"[role=option][aria-selected=true] .navigation-title\").textContent === window.__picked",
+          "value": false
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 8 {\"eval\":\"document.querySelector(\\\"[role=option][aria-selected=true] .navigation-title\\\").textContent === window.__picked\",\"equals\":true}: eval returned false, expected true",
+      "hint": "see .verify/evidence/palette-selection-base-mobile/fail-mobile-step8.png and the aria snapshot"
+    }
+  ]
+}

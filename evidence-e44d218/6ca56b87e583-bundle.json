@@ -1,0 +1,226 @@
+{
+  "v": 1,
+  "claim": "Cmd-K: with a session highlighted in the Go to palette, a turn starting in another session re-sorted the list and moved the highlight onto a different session, so Enter opened a session the user did not pick",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-895d",
+  "base": "87c0419784fac0e2283382b7c069b5db7c6f6cc9",
+  "head": "e44d21837da06673269029c98202b9d5ddede501",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/NavigationPalette.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/navigation.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T09:11:50.272Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "c443b39f4f143a550b842510bb7b65886c0ec9ce",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-palette-selection-base-desktop.out.json",
+          "sha256": "6fd153f928094e2906709655288cc037b79e7da7b0adecdc4f9e8e7ea4fe7e12"
+        },
+        {
+          "path": "p1-picked-desktop.png",
+          "sha256": "a05fd35ac7fcbadcc4ca54c671be3c9c3c6f3986f610e4fa29e4e82439e8ca1d"
+        },
+        {
+          "path": "p1-after-re-sort-desktop.png",
+          "sha256": "7cca593f9de910ef0fd81674364db23f8eea189ddc54170a6f6921e774d027d7"
+        },
+        {
+          "path": "p1-fail-desktop-step8.png",
+          "sha256": "07a705f76113e7cd027a91c5ebe47c9e47cdc5bee135ec589ba0d85fd83bc0f6"
+        }
+      ],
+      "addedAt": "2026-11-26T09:12:21.338Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "c443b39f4f143a550b842510bb7b65886c0ec9ce",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-palette-selection-base-mobile.out.json",
+          "sha256": "dc5ae400bc023886eef7c9949529f2014afb8c805b7ba316109758b8b75515d2"
+        },
+        {
+          "path": "p2-picked-mobile.png",
+          "sha256": "960ab3a767787d236690b43f1573b4e2ad402b07a639dd4ebd54d2f76639a082"
+        },
+        {
+          "path": "p2-after-re-sort-mobile.png",
+          "sha256": "76934a4891ac933d8fa374bf4787a38ed5ad6dfa82831c859e4ba9506b052025"
+        },
+        {
+          "path": "p2-fail-mobile-step8.png",
+          "sha256": "76934a4891ac933d8fa374bf4787a38ed5ad6dfa82831c859e4ba9506b052025"
+        }
+      ],
+      "addedAt": "2026-11-26T09:12:21.386Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "c443b39f4f143a550b842510bb7b65886c0ec9ce",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "70eeb885473472a66743338c6593014a95bd9f90b6bda1f0c8bf127e67944ac6"
+        }
+      ],
+      "addedAt": "2026-11-26T09:12:22.249Z",
+      "cmd": "verify/yv map run navigation --recipe selection-survives-a-re-sort",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "e44d21837da06673269029c98202b9d5ddede501",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-palette-selection-head-desktop.out.json",
+          "sha256": "1d25ed9a2993478b2c378eaf5be6f0b8b80e9689033a82c331fa97342d2af572"
+        },
+        {
+          "path": "p4-picked-desktop.png",
+          "sha256": "21ac4b77f51f8ec327d87f4a6cd2f7ac7d09bfafb759ad89b197ab144c78efd9"
+        },
+        {
+          "path": "p4-after-re-sort-desktop.png",
+          "sha256": "21955a93bd99ec2b84e751d06f409c7f597a43fdff768c8af0c77c00942b037f"
+        },
+        {
+          "path": "p4-opened-desktop.png",
+          "sha256": "e6b20168581c346c1664ae3613b9fa1f213337ad7f1cfa8e9cb14d219ff9f066"
+        }
+      ],
+      "addedAt": "2026-11-26T09:13:16.473Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "e44d21837da06673269029c98202b9d5ddede501",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-palette-selection-head-mobile.out.json",
+          "sha256": "1dfab5bcd2f316b9cd4a827ee531265e52e8664edfabf359f96e775ba52b8832"
+        },
+        {
+          "path": "p5-picked-mobile.png",
+          "sha256": "960ab3a767787d236690b43f1573b4e2ad402b07a639dd4ebd54d2f76639a082"
+        },
+        {
+          "path": "p5-after-re-sort-mobile.png",
+          "sha256": "860284714dccea579044146ef3a8f43bd430121a71f8cc432af256651598b720"
+        },
+        {
+          "path": "p5-opened-mobile.png",
+          "sha256": "d72deb0e113fc80748a95f6c1d9347a18694046265d191f132b6dadce19d1358"
+        }
+      ],
+      "addedAt": "2026-11-26T09:13:16.517Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "e44d21837da06673269029c98202b9d5ddede501",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "85dd3fe8a953b9cbc0f1d84505b9430c91b35c426169f17e75343886dcf71374"
+        }
+      ],
+      "addedAt": "2026-11-26T09:13:21.859Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "e44d21837da06673269029c98202b9d5ddede501",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "0f85b023b932c4f0c0967cccd22a5ee3bd3a8b6d9419a26f724fdaef8c23ecfc"
+        }
+      ],
+      "addedAt": "2026-11-26T09:13:22.272Z",
+      "cmd": "verify/yv design-check --base 87c0419784fa",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "e44d21837da06673269029c98202b9d5ddede501",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-navigation.json",
+          "sha256": "4029b9e757302e3d4a168fa60699dfb302e87cb57402cf774ca4aa21eb2b504a"
+        }
+      ],
+      "addedAt": "2026-11-26T09:13:22.353Z",
+      "cmd": "verify/yv map run navigation",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "navigation/command-k-navigation",
+        "navigation/command-k-finds-agents",
+        "navigation/command-k-rows-name-repo-and-branch",
+        "navigation/recent-list-skips-automation-runs",
+        "navigation/selection-survives-a-re-sort",
+        "navigation/native-app-menu"
+      ]
+    }
+  ]
+}

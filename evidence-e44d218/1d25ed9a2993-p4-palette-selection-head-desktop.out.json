@@ -1,0 +1,75 @@
+{
+  "command": "drive",
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "e44d21837da06673269029c98202b9d5ddede501",
+    "short": "e44d218",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T09:12:43.231Z"
+  },
+  "dir": ".verify/evidence/palette-selection-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 15230,
+      "steps": 13,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/palette-selection-head-desktop/picked-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/palette-selection-head-desktop/after-re-sort-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/palette-selection-head-desktop/opened-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "window.__picked = document.querySelector(\"[role=option][aria-selected=true] .navigation-title\").textContent; [...document.querySelectorAll(\".navigation-option .navigation-title\")].map((e) => e.textContent).indexOf(\"[fail] TEST-failing turn\") > 1",
+          "value": true
+        },
+        {
+          "step": 6,
+          "eval": "document.querySelector(\".navigation-option .navigation-title\").textContent",
+          "value": "[fail] TEST-failing turn"
+        },
+        {
+          "step": 8,
+          "eval": "document.querySelector(\"[role=option][aria-selected=true] .navigation-title\").textContent === window.__picked",
+          "value": true
+        },
+        {
+          "step": 11,
+          "eval": "document.querySelector(\".session-row.active .session-title\").textContent === window.__picked",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

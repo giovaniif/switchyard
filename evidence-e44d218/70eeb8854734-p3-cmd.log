@@ -1,0 +1,40 @@
+$ verify/yv map run navigation --recipe selection-survives-a-re-sort
+# exit 1 after 16097 ms at c443b39f4f143a550b842510bb7b65886c0ec9ce
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "navigation",
+      "at": "2026-11-26T09:12:38.343Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "selection-survives-a-re-sort",
+          "status": "fail",
+          "ms": 15223,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 8 {\"eval\":\"document.querySelector(\\\"[role=option][aria-selected=true] .navigation-title\\\").textContent === window.__picked\",\"equals\":true}: eval returned false, expected true",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-895d/.verify/drives/2026-11-26T09-12-23-705Z/fail-desktop-step8.png and the aria snapshot"
+            }
+          ],
+          "tail": "tart a conversation\\\"\\n    - 'option \\\"Agents Your named agents: @mention them anywhere, or in Slack\\\"'\\n    - option \\\"Automations Scheduled work and runs\\\"\\n    - option \\\"Connectors MCP servers and connections\\\"\\n    - option \\\"Settings Notifications and sidebar\\\"\\n    - option \\\"Hosts Local and remote machines\\\"\\n    - option \\\"Subscriptions Accounts and usage across hosts\\\"\\n    - option \\\"Sessions Active and archived conversations\\\"\\n    - option \\\"Import Claude Code sessions\\\"\\n  - contentinfo: ↑ ↓ to navigate Enter to open\"\n      },\n      \"captures\": [\n        {\n          \"viewport\": \"desktop\",\n          \"file\": \"/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-895d/.verify/drives/2026-11-26T09-12-23-705Z/picked-desktop.png\",\n          \"size\": {\n            \"width\": 2880,\n            \"height\": 1800\n          }\n        },\n        {\n          \"viewport\": \"desktop\",\n          \"file\": \"/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-895d/.verify/drives/2026-11-26T09-12-23-705Z/after-re-sort-desktop.png\",\n          \"size\": {\n            \"width\": 2880,\n            \"height\": 1800\n          }\n        }\n      ],\n      \"notes\": [\n        {\n          \"step\": 3,\n          \"eval\": \"window.__picked = document.querySelector(\\\"[role=option][aria-selected=true] .navigation-title\\\").textContent; const t = [...document.querySelectorAll(\\\".navigation-option .navigation-title\\\")].map((e) => e.textContent); t.indexOf(\\\"[fail] TEST-failing turn\\\") > 1\",\n          \"value\": true\n        },\n        {\n          \"step\": 6,\n          \"eval\": \"document.querySelector(\\\".navigation-option .navigation-title\\\").textContent\",\n          \"value\": \"[fail] TEST-failing turn\"\n        },\n        {\n          \"step\": 8,\n          \"eval\": \"document.querySelector(\\\"[role=option][aria-selected=true] .navigation-title\\\").textContent === window.__picked\",\n          \"value\": false\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 8 {\\\"eval\\\":\\\"document.querySelector(\\\\\\\"[role=option][aria-selected=true] .navigation-title\\\\\\\").textContent === window.__picked\\\",\\\"equals\\\":true}: eval returned false, expected true\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-895d/.verify/drives/2026-11-26T09-12-23-705Z/fail-desktop-step8.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "navigation/selection-survives-a-re-sort",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+
