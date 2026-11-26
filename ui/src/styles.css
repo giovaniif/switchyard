@@ -1516,29 +1516,16 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .slack-state-ok { color: var(--ok-ink); }
 .slack-state-bad { color: var(--bad-ink); }
 .slack-state-muted { color: var(--muted); }
+.slack-state-warn { color: var(--warn-ink); }
 .slack-status-line { overflow-wrap: anywhere; }
 .slack-hint { padding-left: 15px; line-height: 1.5; }
 /* Setting rows keep the dot's place, so every name starts at the same x. */
 .dot-spacer { visibility: hidden; }
-.slack-setup { display: grid; gap: 16px; padding: 14px 16px 16px; }
-/* Numbers sit on the card's left edge, with the token fields below; the
-   text and buttons of each step share one column after them. */
-.slack-steps { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: step; line-height: 1.5; }
-.slack-steps li { display: grid; grid-template-columns: 20px minmax(0, 1fr); counter-increment: step; }
-.slack-steps li::before { content: counter(step) "."; grid-row: 1 / span 3; color: var(--muted); }
-.slack-steps li > * { grid-column: 2; }
-.slack-step-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
-.slack-manifest { max-height: 240px; margin: 8px 0 0; padding: 10px 12px; overflow: auto; border-radius: 10px; background: var(--fill); font-size: 12px; line-height: 1.45; }
-.slack-token-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.slack-field { display: grid; align-content: start; gap: 4px; }
-.slack-field .field { font-family: var(--mono); }
-.slack-form-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-.slack-form-actions .muted { margin-right: auto; }
+.slack-setup { display: grid; gap: 12px; padding: 14px 16px 16px; border-bottom: 1px solid var(--line); }
+.slack-setup p { margin: 0; line-height: 1.5; }
+.slack-setup .login-open { justify-self: start; text-decoration: none; }
 .slack-tokens { font-family: var(--mono); overflow-wrap: anywhere; }
 .slack-footer-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
-@media (max-width: 700px) {
-  .slack-token-form { grid-template-columns: minmax(0, 1fr); }
-}
 @media (max-width: 700px) {
   .anchored-scrim { background: var(--scrim); }
   .anchored-popover { width: calc(100vw - 16px); border-radius: 16px; }
@@ -1653,7 +1640,7 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .agent-card-slack { display: flex; align-items: center; gap: 4px; }
 /* An agent's own Slack app: the dialog. */
 .slack-modal { width: min(500px, 100%); max-height: 84vh; overflow-y: auto; }
-.slack-modal a.btn { align-self: flex-start; color: var(--ink); text-decoration: none; }
+.slack-modal a.btn, .slack-setup a.btn { align-self: flex-start; color: var(--ink); text-decoration: none; }
 .slack-progress { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; counter-reset: slack-step; }
 .slack-progress li { flex: 1; padding-top: 6px; border-top: 3px solid var(--line); color: var(--muted); font-size: 12px; counter-increment: slack-step; }
 .slack-progress li::before { content: counter(slack-step) ". "; }

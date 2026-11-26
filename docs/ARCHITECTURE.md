@@ -849,7 +849,7 @@ the composer and session view in `App.tsx`.
     owner started in Switchyard, or long after the Slack message. Safety:
     only threads routed to that agent (the `team/channel/thread_ts` links
     Slack routing keeps, the newest 1,000), in its app's workspace, and not a
-    direct message with the shared bot (another bot's DM, where its app
+    direct message with the retired shared bot (another bot's DM, where its app
     cannot post). Any other channel or thread is refused, and the refusal
     lists the agent's threads (place, channel id, `thread_ts`, last message)
     so the model can pick one. With no `channel` (an id or `#name`) and no
@@ -862,7 +862,7 @@ the composer and session view in `App.tsx`.
     Posts are mrkdwn with the app's mention list (`to_mrkdwn_with`), so the
     people the owner chose can be tagged and nobody else. An agent without an app, or with one not installed
     yet, is refused and told how to get one. A thread routed through the
-    shared bot in a channel is allowed, and if the agent's app is not in
+    retired shared bot in a channel is allowed, and if the agent's app is not in
     that channel Slack's `not_in_channel` is said plainly. Links keep `app`
     (it came through the agent's own app) and `place` (`#ops`) for this;
     links from before they were kept count as the shared bot's. Posts wait
@@ -980,53 +980,94 @@ the composer and session view in `App.tsx`.
 
 ## Slack
 
-The owner talks to his agents from Slack. `crates/yardd/src/slack.rs`; UI
-`ui/src/SlackCard.tsx` (the card), `ui/src/slack.ts` (manifest, token checks,
-status words, the badge's words). Messages and answers ride the shared
+Two things: the owner's own Slack (his direct messages and the channels he
+picks, read and answered as him) and his agents in Slack, each with an app of
+its own. `crates/yardd/src/slack.rs`; UI `ui/src/SlackCard.tsx` (the
+Connectors card: his own Slack and who may talk to agents),
+`ui/src/SlackSetup.tsx` (an agent's app), `ui/src/slack.ts` (status words,
+steps, the badge's words). Agents' messages and answers ride the shared
 origins and reply hook (see Agents, Origins): Slack adds the `slack` kind,
 its engine framing and one arm in `origins::reply`.
 
-- **Transport: Socket Mode** for the shared bot (and agents' apps unless a
-  public address is set, below). The server is tailnet-only, so Slack cannot
-  call it by default. The app-level token (`xapp-`, scope
-  `connections:write`) opens a WebSocket with `apps.connections.open`; the bot
-  token (`xoxb-`) makes the Web API calls (`auth.test`, `chat.postMessage`,
-  `chat.postEphemeral`, `reactions.add/remove`, `users.info`,
-  `conversations.info`), form-encoded with a bearer header. Every envelope is
+- **The shared bot is retired** (owner decision, after agents got apps of
+  their own). It was one "Switchyard" bot that routed a DM or @mention to the
+  agent named first in it, else a per-channel or the default agent. Gone with
+  it: `slack.tokens`, `slack.disconnect`, `slack.retry`, `slack.route`, the
+  default agent, the channel rows and `Agents::all`. A `slack.json` that still
+  holds its tokens is rewritten without them when yardd starts; the people
+  allowed, the routed threads and agents' apps stay. An answer owed to a
+  message that came through it (no `app` on its origin) has no token left and
+  leaves a note in the conversation instead. The owner can delete that old
+  app in Slack himself.
+- **The owner's own Slack** (`me` in `slack.json`, `MyApp`). Plan, approved
+  by the owner: every DM and group DM comes into Switchyard, new ones too;
+  channels only when he imports them; 60 days of history, then more on
+  demand; replies from either app. A bot only sees what is sent to it, so this
+  is an app of his with **user scopes** and no bot user: `channels:history`,
+  `channels:read`, `groups:history`, `groups:read`, `im:history`, `im:read`,
+  `im:write`, `mpim:history`, `mpim:read`, `mpim:write`, `users:read`,
+  `chat:write`, `reactions:read`, `reactions:write`, and user events
+  `message.im`, `message.mpim`, `message.channels`, `message.groups`,
+  `reaction_added`, `reaction_removed` (`my_manifest`, all asked once so later
+  steps need no new approval). Made like an agent's app:
+  - `slack.grant { token, me: true, origin }` (a workspace's configuration
+    token, or `slack.me.create { teamId, origin }` for one already given, one
+    click on the card), `apps.manifest.create`, named "Switchyard".
+  - Approve in Slack: the install link (`slack.me.authorize` makes a new one;
+    the OAuth `state` maps to no agent) comes back to `/slack/oauth`, which
+    keeps `authed_user.access_token` (`xoxp-`) and who he is. With no https
+    address he pastes the User OAuth Token (`slack.me.userToken`, checked
+    with `auth.test`). A workspace that makes admins approve apps sends them
+    his request; the card says to choose New link once they approve.
+  - `slack.me.appToken` (`xapp-`, checked with `apps.connections.open`).
+    Then `run` keeps his Socket Mode connection, in the slot the shared bot
+    had: dialled when ready, redialled on `disconnect`, a drop (backing off to
+    a minute), a new token or `slack.me.retry`, and after a restart. `connect`
+    takes his user token; his user id is not added to `own_bots` (his posts
+    are not a bot's).
+  - His events are acknowledged and not stored yet: keeping DMs and channels
+    in `yard.db` and showing them is the next step. He goes on the allowlist
+    when he approves.
+  - `slack.me.remove` (Disconnect): forgets his tokens, closes the connection
+    and deletes his app (best effort). Always Socket Mode, even with a public
+    address. The view sends `me { step, appId, teamId, teamName, userName,
+    canRedirect, authorizeUrl?, userToken, appToken, state?, handle?, error? }`,
+    tokens as kind and last four characters only.
+- **Transport: Socket Mode** for his app and agents' apps (unless a public
+  address is set, below). The server is tailnet-only, so Slack cannot call
+  it by default. The app-level token (`xapp-`, scope `connections:write`)
+  opens a WebSocket with `apps.connections.open`; the user or bot token makes
+  the Web API calls, form-encoded with a bearer header. Every envelope is
   acknowledged; `disconnect` dials again at once (`link_disabled` is shown as
   an error); a drop or a refusal backs off from 1 s to a minute; with no frame
-  for 90 s (yardd pings every 30 s) the connection is redialled; new tokens or
-  Retry dial at once. TLS is rustls on ring (reqwest and tokio-tungstenite),
-  as the app's updater already builds it. Configure Slack on one yardd only:
-  two connections with the same app token split Slack's events between them.
+  for 90 s (yardd pings every 30 s) the connection is redialled. TLS is rustls
+  on ring (reqwest and tokio-tungstenite), as the app's updater already
+  builds it. Configure Slack on one yardd only: two connections with the same
+  app token split Slack's events between them.
 - **Tokens** are kept in `slack.json` in the data dir, written with mode 0600
   (aside, then renamed). They never leave yardd: the snapshot and the `slack`
-  broadcast carry `xoxb-…WXYZ` only, and no log line or error names them (the
+  broadcast carry `xoxp-…WXYZ` only, and no log line or error names them (the
   Socket Mode address, which holds a ticket, is not logged either).
-- **Who may talk to agents:** an allowlist of Slack user ids, empty at first.
-  Anyone else is ignored, gets one ephemeral "not allowed" note with their
-  member id, and shows on the card as a request (Allow, Dismiss). That is how
-  the owner adds himself: his first DM after connecting. Bots, this app
-  included, and edits, joins and other subtypes are ignored.
-- **Routing.** A DM or an @mention goes to: the agent of its Slack thread (a
-  follow-up stays with the agent the thread's first routed message went to,
-  saved as `team/channel/thread_ts`, the newest 1,000; a follow-up without
-  the bot's mention that @mentions a person, a user group or another bot is
-  theirs, and the agent stays out of it); else the agent whose
-  handle or name starts the text (`Reviewer …`, `@Reviewer …`, `Reviewer: …`,
-  `@Custom-Domains …`, `Custom Domains, …`, any case, the longest that fits;
-  it is dropped); else the channel's default agent, then the default
-  agent; else the bot answers in the thread with the agents' names. An agent
-  still setting up (New agent's placeholder) is neither named nor reached by
-  name: its first message sets it up, and that is the owner's. In a
-  channel, a message without a mention counts only inside a routed thread
-  (events `message.channels`/`message.groups`); a mention arrives as both
+- **Who may talk to agents:** an allowlist of Slack user ids. Whoever
+  approves an agent's app (or his own) is on it. Anyone else who writes to an
+  agent's app is ignored, gets one ephemeral "not allowed" note with their
+  member id, and shows on the card as a request (Allow, Dismiss). Bots, the
+  app's own included, and edits, joins and other subtypes are ignored. (Next,
+  per the owner: anyone may talk to agents, and any tool use for someone not
+  approved, reads included, waits for the owner's approval.)
+- **Routing.** A message to an agent's app goes to that agent, never by name
+  or default. In a channel, a message without its bot's mention counts only
+  as a follow-up in a thread already routed to *that* agent (saved as
+  `team/channel/thread_ts`, the newest 1,000; every app in the channel hears
+  it, and before this the first app's event took it), and not when it
+  @mentions a person, a user group or another bot; a mention arrives as both
   `app_mention` and a channel message and is handled once. Slack markup reads
   as text (`<url|label>` as `label (url)`, `<@U1>` as `@U1`). Files are not
   passed on. Delivery is `agents::deliver`, the same path `message_agent`
   uses: into the agent's one conversation, made if it has none, queued while
   a turn runs.
-- **Answers** (`slack::answer`, the reply hook's `slack` arm). The message
+- **Answers** (`slack::answer`, the reply hook's `slack` arm), through the
+  app the message came in on. The message
   gets :eyes: when it reaches the agent (queued or not). When the turn that
   answered it ends: completed, the final answer is posted in the thread
   (`thread_ts` = the message's thread or its own ts), Markdown turned into
@@ -1043,27 +1084,15 @@ its engine framing and one arm in `origins::reply`.
   at a time so a thread reads them in order. A post that fails leaves a note
   in the conversation. An error before the agent is reached (it is queued for
   room on the host, say) is posted in the thread with :x:.
-- **Setup** (Connectors page, Messaging, Slack): Create on Slack opens
-  api.slack.com with the app manifest filled in (`manifest_json`), or Copy
-  manifest and paste it under Create New App, From a manifest. The manifest
-  turns Socket Mode on and asks for `app_mentions:read`, `chat:write`,
-  `im:history`, `im:read`, `im:write`, `channels:history`, `channels:read`,
-  `groups:history`, `groups:read`, `users:read`, `reactions:write`, with bot
-  events `app_mention`, `message.im`, `message.channels`, `message.groups`.
-  Install it, copy the Bot User OAuth Token, generate an app-level token with
-  `connections:write` under Basic Information, paste both, then DM the bot
-  and Allow yourself on the card. The card then shows the connection ("As
-  @switchyard in Acme", or the error with Retry), requests, allowed people,
-  the default agent and a row per channel the bot was mentioned in, each with
-  an agent picker; Replace tokens and Disconnect (forgets the tokens) in its
-  footer. Ops: `slack.tokens`, `slack.disconnect`, `slack.retry`,
-  `slack.allow`, `slack.disallow`, `slack.dismiss`, `slack.route { agent,
-  channel? }`; each broadcasts `slack`. Slack lives on the hub: a remote's
-  `slack` broadcast is dropped.
+- **The card** (Connectors page, Messaging, Slack): his own Slack's steps
+  (Token, Approve, Connect) until it is ready, then "As @gio in Acme" (or the
+  error with Retry); the requests and the people allowed; a footer with his
+  tokens' kinds and Disconnect. Ops: `slack.me.*`, `slack.allow`,
+  `slack.disallow`, `slack.dismiss`; each broadcasts `slack`. Slack lives on
+  the hub: a remote's `slack` broadcast is dropped.
 - **An agent's own app** (after Orca's bots: "I can't tag it" was the owner's
   complaint about the shared bot). Each agent can have a Slack app of its
-  own, named after it, so people @mention it by name; it lives beside the
-  shared bot. Its dialog (`SlackSetup.tsx`) opens from Add to Slack in the
+  own, named after it, so people @mention it by name. Its dialog (`SlackSetup.tsx`) opens from Add to Slack in the
   agent's header, from its start page, and from its request card.
   - **Token.** The owner pastes a Slack App Configuration *Refresh* Token
     (`xoxe-`), once per workspace (`slack.grant`; with `agentId` it also
@@ -1078,8 +1107,8 @@ its engine framing and one arm in `origins::reply`.
     other separators a dash, runs of dashes one, only a-z 0-9 `-` `_` `.`,
     cut to 21 characters with no separator at either end (`agent` if nothing
     is left). 21 because Slack makes the bot's username from the display
-    name that way, so the two agree and people @mention what they see. The
-    shared bot's scopes and events; Socket Mode, or HTTP events (below). The
+    name that way, so the two agree and people @mention what they see. It
+    reads its DMs, mentions and the channels it is in; Socket Mode, or HTTP events (below). The
     manifest Slack has is kept (`manifest`) with the app's signing secret.
   - **Its name follows the agent.** Saving an agent (`agents::save`, so also
     its own `update_setup`) with a new name or purpose calls `agent_changed`,
@@ -1125,7 +1154,7 @@ its engine framing and one arm in `origins::reply`.
     lines of what to click
     (`slack.app.appToken`, checked with `apps.connections.open`). Then it
     keeps its own Socket Mode connection (`run_app`, redialled like the
-    shared bot's, from start after a restart).
+    owner's, from start after a restart).
   - **Connection, HTTP** (Orca's way; strictly opt-in and off by default:
     the owner would rather not expose anything, so the dialog does not offer
     it and no tunnel is set up): with a public https address for Slack
@@ -1149,8 +1178,7 @@ its engine framing and one arm in `origins::reply`.
     it was made: one on Socket Mode stays there when an address is set later.
   - **Messages.** Everything it hears goes to its agent, never routed by
     name or default; the allowlist, origins (with `app`: its agent),
-    reactions and answers are the shared bot's, and the answer is posted
-    with its own bot token. Its agent can also post on its own, at any time,
+    reactions and answers are as above, posted with its own bot token. Its agent can also post on its own, at any time,
     in a thread routed to it (`slack_reply`, see Agents' own tools).
   - **Watched channels** (owner request: On-call, Domain Triage and
     Firefighter only reacted when @mentioned, and every Datadog, PostHog or
@@ -1172,7 +1200,7 @@ its engine framing and one arm in `origins::reply`.
       app): a `message` in a watched channel that is top level (no
       `thread_ts`, or its own), with no subtype, `bot_message` or
       `file_share`, from a person or an integration. Ignored: Switchyard's
-      own bots (the shared bot and every agent app's bot, by user id, bot id
+      own bots (every agent app's bot, by user id, bot id
       from `auth.test`, or app id), edits, deletions, joins, and thread
       replies, which keep the follow-up rules. A person's @mention of the
       agent there is a request and goes the mention path (allowlist and

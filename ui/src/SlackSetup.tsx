@@ -5,8 +5,8 @@
 // then one app-level token for its Socket Mode connection. A public address
 // for Slack's events (YARD_SLACK_PUBLIC_URL, opt-in, not offered here) drops
 // that last step. yardd's slack.rs does the work; this dialog only shows the
-// steps it still needs. The shared Switchyard bot on the Connectors page is
-// separate.
+// steps it still needs. The owner's own Slack, on the Connectors page, goes
+// the same way with an app of his (SlackCard.tsx).
 import { useState } from "react";
 import type { Agent, SlackAgentApp } from "./protocol";
 import type { Actions, SlackAppOp, State } from "./store";
@@ -27,7 +27,7 @@ export function slackConnection(s: SlackAgentApp | undefined): string | null {
   return "Connecting…";
 }
 
-function TokenField({ label, placeholder, busy, button, onSubmit }: { label: string; placeholder: string; busy: boolean; button: string; onSubmit(token: string): void }) {
+export function TokenField({ label, placeholder, busy, button, onSubmit }: { label: string; placeholder: string; busy: boolean; button: string; onSubmit(token: string): void }) {
   const [token, setToken] = useState("");
   const id = `slack-${label.replace(/\W+/g, "-").toLowerCase()}`;
   return (

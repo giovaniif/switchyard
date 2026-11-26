@@ -106,18 +106,12 @@ export interface SlackOrigin {
 /** The Slack connection and its settings (yardd's slack.rs). Tokens never
  *  come here: only their kind and last four characters. */
 export interface SlackView {
-  configured: boolean;
-  appToken: string;
-  botToken: string;
-  state: "off" | "connecting" | "connected" | "error";
-  team: string;
-  bot: string;
-  error: string | null;
+  /** The owner's own Slack app: none until he starts connecting it (older yardds send none). */
+  me?: SlackMe | null;
+  /** Who may talk to agents through their apps. */
   allowed: { id: string; name: string }[];
-  /** People who wrote to the bot and are not allowed, newest first. */
+  /** People who wrote to an agent's app and are not allowed, newest first. */
   requests: { id: string; name: string; place: string; at: number }[];
-  defaultAgent: string | null;
-  channels: { id: string; name: string; agent: string | null }[];
   /** Workspaces with a configuration token: an agent's own app there is one click (older yardds send none). */
   workspaces?: { teamId: string; teamName: string }[];
   /** Agents with a Slack app of their own, by agent id. */
@@ -130,6 +124,29 @@ export interface SlackView {
   publicCheck?: string | null;
   /** A new app's install can come back to Switchyard on its own (an https address). */
   canRedirect?: boolean;
+}
+
+/** The owner's own Slack app (yardd's slack.rs `me`): user scopes, his
+ *  direct messages and channels. Its step and connection, never a token. */
+export interface SlackMe {
+  /** `install`: approve it in Slack; `appToken`: its connection token is missing; `ready`. */
+  step: "install" | "appToken" | "ready";
+  appId: string;
+  teamId: string;
+  teamName: string;
+  /** The owner's name in Slack, once approved. */
+  userName: string;
+  /** Slack can send the browser back to Switchyard after the install (an https address). */
+  canRedirect: boolean;
+  authorizeUrl?: string;
+  /** Each token's kind and last four characters (`xoxp-…abcd`), empty when not set. */
+  userToken: string;
+  appToken: string;
+  /** Once ready: the connection. */
+  state?: "connecting" | "connected" | "error" | "off";
+  /** His handle in Slack, from the connection. */
+  handle?: string;
+  error?: string | null;
 }
 
 /** An agent's own Slack app (yardd's slack.rs): its step and connection, never a token. */

@@ -1,24 +1,26 @@
-// The Slack connector on the Connectors page: setup (a manifest to paste at
-// api.slack.com and the two tokens), the connection's state, who may talk to
-// agents, and which agent answers a message that names none. yardd keeps the
-// tokens; this page only ever sees their last four characters.
+// The Slack connector on the Connectors page: the owner connects his own
+// Slack (an app of his with user scopes: a configuration token, Approve in
+// Slack, one connection token), sees its connection, and decides who may
+// talk to agents through their own apps. yardd keeps the tokens; this page
+// only ever sees their kind and last four characters.
 import { useState } from "react";
 import type { SlackView } from "./protocol";
-import type { Actions, State } from "./store";
-import { SelectPicker } from "./SelectPicker";
-import { allowedSummary, createAppUrl, manifestText, slackStatus, tokenProblem } from "./slack";
+import type { Actions, SlackAppOp, State } from "./store";
+import { Icon } from "./App";
+import { SLACK_MARK, TokenField } from "./SlackSetup";
+import { allowedSummary, mySteps, slackStatus } from "./slack";
+
+const APPS = "https://api.slack.com/apps";
 
 export function SlackCard({ state, actions }: { state: State; actions: Actions }) {
   const view = state.slack;
-  const [replacing, setReplacing] = useState(false);
   const [confirm, setConfirm] = useState(false);
   if (!view) return null;
   const status = slackStatus(view);
-  const agents = state.agents;
-  const nameOf = (id: string | null) => agents.find((a) => a.id === id)?.name;
-  const agentOptions = [{ value: "", label: "None: ask which agent" }, ...agents.map((a) => ({ value: a.id, label: a.name }))];
+  const me = view.me;
+  const attention = me?.state === "error";
   return (
-    <section className={`host-card slack-card ${view.state === "error" ? "connectors-card-attention" : ""}`} aria-label="Slack">
+    <section className={`host-card slack-card ${attention ? "connectors-card-attention" : ""}`} aria-label="Slack">
       <header className="connectors-card-head">
         <span className="connector-account-icon connector-account-slack" aria-hidden="true">#</span>
         <div className="connector-account-name">
@@ -26,102 +28,63 @@ export function SlackCard({ state, actions }: { state: State; actions: Actions }
           <span className={`small ${status.tone === "bad" ? "bad" : "muted"} slack-status-line`}>{status.line}</span>
         </div>
         <span className={`connector-account-state slack-state-${status.tone}`} role="status">{status.label}</span>
-        {view.state === "error" && (
-          <button className="btn btn-small" onClick={() => actions.slack("slack.retry")}>
+        {attention && (
+          <button className="btn btn-small" onClick={() => actions.slack("slack.me.retry")}>
             Retry
           </button>
         )}
       </header>
-      {!view.configured || replacing ? (
-        <SlackSetup view={view} actions={actions} replacing={view.configured} onDone={() => setReplacing(false)} />
-      ) : (
-        <>
-          <ul className="connector-list">
-            {view.requests.map((r) => (
-              <li key={r.id} className="connector">
-                <div className="connector-row">
-                  <span className="connector-id">
-                    <span className="dot connector-dot-needs-auth" aria-hidden="true" />
-                    <span className="connector-name">{r.name}</span>
-                    <span className="muted small connector-via">{r.place === "Direct message" ? "wrote by direct message" : `wrote in ${r.place}`} · {r.id}</span>
-                  </span>
-                  <span className="connector-side">
-                    <span className="connector-status connector-status-needs-auth">Not allowed</span>
-                    <button className="btn btn-small" onClick={() => actions.slack("slack.allow", { user: r.id })} aria-label={`Allow ${r.name}`}>
-                      Allow
-                    </button>
-                    <button className="btn-text btn-small" onClick={() => actions.slack("slack.dismiss", { user: r.id })} aria-label={`Dismiss ${r.name}`}>
-                      Dismiss
-                    </button>
-                  </span>
-                </div>
-              </li>
-            ))}
-            {view.allowed.map((p) => (
-              <AllowedRow key={p.id} person={p} onRemove={() => actions.slack("slack.disallow", { user: p.id })} />
-            ))}
-            {!view.allowed.length && !view.requests.length && (
-              <li className="connector">
-                <div className="connector-row">
-                  <span className="connector-id">
-                    <span className="dot connector-dot-pending" aria-hidden="true" />
-                    <span className="connector-name">Who can talk to agents</span>
-                  </span>
-                </div>
-                <p className="muted small slack-hint">{allowedSummary(view)} Anyone else who writes to it is ignored.</p>
-              </li>
-            )}
-            <li className="connector">
-              <div className="connector-row">
-                <span className="connector-id">
-                  <span className="dot dot-spacer" aria-hidden="true" />
-                  <span className="connector-name">Default agent</span>
-                  <span className="muted small connector-via">for messages that name no agent</span>
-                </span>
-                <span className="connector-side">
-                  <SelectPicker label="Default agent" value={view.defaultAgent ?? ""} options={agentOptions} onChange={(agent) => actions.slack("slack.route", { agent: agent || null })} />
-                </span>
-              </div>
-            </li>
-            {view.channels.map((ch) => (
-              <li key={ch.id} className="connector">
-                <div className="connector-row">
-                  <span className="connector-id">
-                    <span className="dot dot-spacer" aria-hidden="true" />
-                    <span className="connector-name">{ch.name}</span>
-                    <span className="muted small connector-via">channel</span>
-                  </span>
-                  <span className="connector-side">
-                    <SelectPicker
-                      label={`Agent for ${ch.name}`}
-                      value={ch.agent ?? ""}
-                      options={[{ value: "", label: view.defaultAgent && nameOf(view.defaultAgent) ? `Default (${nameOf(view.defaultAgent)})` : "Default" }, ...agents.map((a) => ({ value: a.id, label: a.name }))]}
-                      onChange={(agent) => actions.slack("slack.route", { channel: ch.id, agent: agent || null })}
-                    />
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <footer className="connector-card-footer">
-            <span className="muted small slack-tokens">
-              {view.appToken} · {view.botToken}
-            </span>
-            <span className="slack-footer-actions">
-              <button className="btn-text btn-small" onClick={() => setReplacing(true)}>
-                Replace tokens
-              </button>
-              <button
-                className={`btn-text btn-small ${confirm ? "bad" : ""}`}
-                onClick={() => (confirm ? actions.slack("slack.disconnect") : setConfirm(true))}
-                onBlur={() => setConfirm(false)}
-                aria-label={confirm ? "Confirm disconnecting Slack" : "Disconnect Slack"}
-              >
-                {confirm ? "Confirm" : "Disconnect"}
-              </button>
-            </span>
-          </footer>
-        </>
+      {me?.step !== "ready" && <ConnectMe view={view} actions={actions} />}
+      <ul className="connector-list">
+        {view.requests.map((r) => (
+          <li key={r.id} className="connector">
+            <div className="connector-row">
+              <span className="connector-id">
+                <span className="dot connector-dot-needs-auth" aria-hidden="true" />
+                <span className="connector-name">{r.name}</span>
+                <span className="muted small connector-via">{r.place === "Direct message" ? "wrote to an agent directly" : `wrote to an agent in ${r.place}`} · {r.id}</span>
+              </span>
+              <span className="connector-side">
+                <span className="connector-status connector-status-needs-auth">Not allowed</span>
+                <button className="btn btn-small" onClick={() => actions.slack("slack.allow", { user: r.id })} aria-label={`Allow ${r.name}`}>
+                  Allow
+                </button>
+                <button className="btn-text btn-small" onClick={() => actions.slack("slack.dismiss", { user: r.id })} aria-label={`Dismiss ${r.name}`}>
+                  Dismiss
+                </button>
+              </span>
+            </div>
+          </li>
+        ))}
+        {view.allowed.map((p) => (
+          <AllowedRow key={p.id} person={p} onRemove={() => actions.slack("slack.disallow", { user: p.id })} />
+        ))}
+        {!view.allowed.length && !view.requests.length && (
+          <li className="connector">
+            <div className="connector-row">
+              <span className="connector-id">
+                <span className="dot connector-dot-pending" aria-hidden="true" />
+                <span className="connector-name">Who can talk to agents</span>
+              </span>
+            </div>
+            <p className="muted small slack-hint">{allowedSummary(view)}</p>
+          </li>
+        )}
+      </ul>
+      {me && (
+        <footer className="connector-card-footer">
+          <span className="muted small slack-tokens">{[me.userToken, me.appToken].filter(Boolean).join(" · ") || me.teamName}</span>
+          <span className="slack-footer-actions">
+            <button
+              className={`btn-text btn-small ${confirm ? "bad" : ""}`}
+              onClick={() => (confirm ? actions.slackApp("slack.me.remove", {}) : setConfirm(true))}
+              onBlur={() => setConfirm(false)}
+              aria-label={confirm ? "Confirm disconnecting your Slack" : "Disconnect your Slack"}
+            >
+              {confirm ? "Confirm: forget it and delete its app" : "Disconnect"}
+            </button>
+          </span>
+        </footer>
       )}
     </section>
   );
@@ -153,84 +116,129 @@ function AllowedRow({ person, onRemove }: { person: { id: string; name: string }
   );
 }
 
-/** The guide and the token form: shown until both tokens are set, and to replace them. */
-function SlackSetup({ view, actions, replacing, onDone }: { view: SlackView; actions: Actions; replacing: boolean; onDone(): void }) {
-  const [appToken, setAppToken] = useState("");
-  const [botToken, setBotToken] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [showManifest, setShowManifest] = useState(false);
-  const appProblem = tokenProblem("app", appToken);
-  const botProblem = tokenProblem("bot", botToken);
-  // Replacing: either token alone; the other is kept.
-  const ready = replacing ? (appToken.trim() || botToken.trim()) && !appProblem && !botProblem : appToken.trim() && botToken.trim() && !appProblem && !botProblem;
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(manifestText());
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setShowManifest(true);
-    }
+/** Connecting the owner's own Slack, the step he is at: the workspace's
+ *  configuration token (one click when an agent's app has it already), the
+ *  install approved in Slack (or his user token pasted, with no https
+ *  address), then the app-level token for its connection. */
+function ConnectMe({ view, actions }: { view: SlackView; actions: Actions }) {
+  const me = view.me;
+  const workspaces = view.workspaces ?? [];
+  const [other, setOther] = useState(false);
+  const [paste, setPaste] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const origin = window.location.origin;
+  const run = async (op: SlackAppOp, fields: Record<string, unknown>) => {
+    setBusy(true);
+    setError(null);
+    const r = await actions.slackApp(op, fields);
+    setBusy(false);
+    if (r.error) setError(r.error);
   };
-  return (
-    <div className="slack-setup">
-      {!replacing && (
-        <ol className="slack-steps">
-          <li>
-            <span>
-              Create a Slack app from this manifest. It turns on Socket Mode, so this host needs no public address.
-            </span>
-            <span className="slack-step-actions">
-              <a className="btn btn-small" href={createAppUrl()} target="_blank" rel="noreferrer">
-                Create on Slack
-              </a>
-              <button className="btn btn-small" onClick={copy}>
-                {copied ? "Copied" : "Copy manifest"}
-              </button>
-              <button className="btn btn-small" aria-expanded={showManifest} onClick={() => setShowManifest(!showManifest)}>
-                {showManifest ? "Hide manifest" : "Show manifest"}
-              </button>
-            </span>
-            {showManifest && <pre className="slack-manifest">{manifestText()}</pre>}
-          </li>
-          <li><span>Install it to your workspace, then copy the Bot User OAuth Token from OAuth &amp; Permissions.</span></li>
-          <li><span>Under Basic Information, App-Level Tokens, generate a token with the connections:write scope.</span></li>
-          <li><span>Paste both here. Then send the bot a direct message and allow yourself on this card.</span></li>
-        </ol>
-      )}
-      <form
-        className="slack-token-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!ready) return;
-          actions.slack("slack.tokens", { appToken: appToken.trim(), botToken: botToken.trim() });
-          setAppToken("");
-          setBotToken("");
-          onDone();
-        }}
-      >
-        <label className="slack-field">
-          <span className="small">App-level token</span>
-          <input className="field" type="password" autoComplete="off" spellCheck={false} placeholder={view.appToken || "xapp-…"} value={appToken} onChange={(e) => setAppToken(e.target.value)} />
-          {appProblem && <span className="bad small">{appProblem}</span>}
-        </label>
-        <label className="slack-field">
-          <span className="small">Bot token</span>
-          <input className="field" type="password" autoComplete="off" spellCheck={false} placeholder={view.botToken || "xoxb-…"} value={botToken} onChange={(e) => setBotToken(e.target.value)} />
-          {botProblem && <span className="bad small">{botProblem}</span>}
-        </label>
-        <div className="slack-form-actions">
-          <span className="muted small">Kept on this host only, readable by you alone.</span>
-          {replacing && (
-            <button type="button" className="btn-text btn-small" onClick={onDone}>
-              Cancel
+  const { steps, at } = mySteps(view);
+  let body: React.ReactNode;
+  if (!me && workspaces.length > 0 && !other) {
+    body = (
+      <>
+        <p>Switchyard reads your direct messages and the channels you choose, as you, through a Slack app of your own. Choose the workspace:</p>
+        <div className="slack-workspaces" role="group" aria-label="Slack workspaces">
+          {workspaces.map((w) => (
+            <button key={w.teamId} className="picker-item menu-item" disabled={busy} onClick={() => void run("slack.me.create", { teamId: w.teamId, origin })}>
+              <Icon d={SLACK_MARK} size={14} />
+              <span>{w.teamName}</span>
             </button>
-          )}
-          <button className="btn-primary" disabled={!ready}>
-            {replacing ? "Save" : "Connect"}
+          ))}
+        </div>
+        <div className="row slack-alt">
+          <button className="btn-text" onClick={() => setOther(true)}>
+            Another workspace
           </button>
         </div>
-      </form>
+      </>
+    );
+  } else if (!me) {
+    body = (
+      <>
+        <p>Switchyard reads your direct messages and the channels you choose, as you, through a Slack app of your own. Slack makes it from a configuration token:</p>
+        <a className="btn login-open" href={APPS} target="_blank" rel="noopener noreferrer">
+          Get config token
+        </a>
+        <ol className="login-steps">
+          <li>In Slack app settings, find “Your App Configuration Tokens” and choose Generate Token.</li>
+          <li>Select your workspace.</li>
+          <li>Copy the Refresh Token (it starts with xoxe-) and paste it below.</li>
+        </ol>
+        <TokenField label="Configuration refresh token" placeholder="xoxe-…" busy={busy} button="Create my Slack app" onSubmit={(t) => void run("slack.grant", { token: t, me: true, origin })} />
+      </>
+    );
+  } else if (me.step === "install" && me.authorizeUrl && !paste) {
+    body = (
+      <>
+        <p>Your Slack app is made. Approve it in Slack, signed in as yourself. Then one token is left, here.</p>
+        <a className="btn-primary login-open" href={me.authorizeUrl} target="_blank" rel="noopener noreferrer">
+          Approve in Slack
+        </a>
+        <p className="muted small">The link works once, for 30 minutes. If your workspace needs an admin to approve new apps, Slack sends them your request; once they approve it, choose New link and approve again.</p>
+        <div className="row slack-alt">
+          <button className="btn-text" disabled={busy} onClick={() => void run("slack.me.authorize", { origin })}>
+            New link
+          </button>
+          <button className="btn-text" onClick={() => setPaste(true)}>
+            Paste your user token instead
+          </button>
+        </div>
+      </>
+    );
+  } else if (me.step === "install") {
+    body = (
+      <>
+        <p>Your Slack app is made. Install it in your workspace:</p>
+        <ol className="login-steps">
+          <li>
+            Open its{" "}
+            <a href={`${APPS}/${me.appId}/install-on-team`} target="_blank" rel="noopener noreferrer">
+              Install App page
+            </a>{" "}
+            and choose Install to {me.teamName || "your workspace"}, then Allow.
+          </li>
+          <li>Copy the User OAuth Token (it starts with xoxp-) and paste it below.</li>
+        </ol>
+        <TokenField label="User token" placeholder="xoxp-…" busy={busy} button="Next" onSubmit={(t) => void run("slack.me.userToken", { token: t })} />
+        {!me.canRedirect && <p className="muted small">Slack sends you back to Switchyard on its own once Switchyard has an https address.</p>}
+      </>
+    );
+  } else {
+    body = (
+      <>
+        <p>Approved. Last, Switchyard keeps a connection open to Slack, which takes an app-level token. Slack only makes those by hand, on the app's Basic Information page:</p>
+        <a className="btn login-open" href={`${APPS}/${me.appId}/general`} target="_blank" rel="noopener noreferrer">
+          Open Basic Information
+        </a>
+        <ol className="login-steps">
+          <li>Under App-Level Tokens, choose Generate Token and Scopes.</li>
+          <li>Name it switchyard, Add Scope connections:write, then Generate.</li>
+          <li>Copy the token (it starts with xapp-) and paste it below.</li>
+        </ol>
+        <TokenField label="App-level token" placeholder="xapp-…" busy={busy} button="Connect" onSubmit={(t) => void run("slack.me.appToken", { token: t })} />
+      </>
+    );
+  }
+  return (
+    <div className="slack-setup">
+      <ol className="slack-progress" aria-label="Steps">
+        {steps.map((label, i) => (
+          <li key={label} className={i < at ? "done" : i === at ? "now" : ""} aria-current={i === at ? "step" : undefined}>
+            {label}
+          </li>
+        ))}
+      </ol>
+      {body}
+      {error && (
+        <p className="small automation-reason" role="alert">
+          {error}
+        </p>
+      )}
+      <p className="muted small">Tokens stay on this host, readable by you alone.</p>
     </div>
   );
 }

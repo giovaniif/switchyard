@@ -86,7 +86,7 @@ export function ConnectorsPage({ state, actions, usage }: { state: State; action
             <div className="connector-apps">
               <div className="connector-section-head">
                 <h2>Messaging</h2>
-                <p className="muted small">Write to your agents from other apps. Each answer goes back where you asked.</p>
+                <p className="muted small">Your own Slack, and who can talk to your agents there.</p>
               </div>
               <SlackCard state={state} actions={actions} />
             </div>
