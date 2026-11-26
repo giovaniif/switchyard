@@ -1,7 +1,7 @@
 // The owner's own Slack in the page: loaded pages of messages (a
 // conversation's, or a thread's), merged as yardd sends them (a page, an
 // older page, one message new or changed), and what the sidebar shows.
-import type { SlackConversation, SlackMessage, SlackPage } from "./protocol";
+import type { SlackAgentApp, SlackConversation, SlackMessage, SlackPage } from "./protocol";
 
 /** A conversation's page key, or a thread's. */
 export const pageKey = (team: string, channel: string, thread?: string | null) => (thread ? `${team}/${channel}/${thread}` : `${team}/${channel}`);
@@ -66,6 +66,17 @@ export interface CallableAgent {
   id: string;
   name: string;
   handle: string;
+}
+
+/** Agents with their own app ready in this workspace and a bot yardd can
+ *  mention: the ones he can call. On a hub, a host's agents are listed with
+ *  their apps under the same prefixed ids, so an agent on the server is
+ *  offered too, even while that host is offline (Slack carries the mention). */
+export function callableAgents(agents: { id: string; name: string }[], apps: Record<string, SlackAgentApp> | undefined, team: string): CallableAgent[] {
+  return agents.flatMap((a) => {
+    const app = apps?.[a.id];
+    return app && app.step === "ready" && app.teamId === team && app.handle && app.botUser ? [{ id: a.id, name: a.name, handle: app.handle }] : [];
+  });
 }
 
 /** The `@handle` being typed at the caret, if any: what to suggest. */

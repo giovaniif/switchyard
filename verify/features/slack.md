@@ -55,6 +55,7 @@ yv api '{"op":"agent.save","agent":{"name":"TEST-Reviewer","engine":"codex","mod
 ```sh
 D=$(v slack_dir)
 yv iso down
+yv iso down --name map-slack-remote || true
 kill "$(cat "$D/pid")" 2>/dev/null || true
 rm -rf "$D"
 ```
@@ -277,6 +278,44 @@ curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and 
 curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and (.text | startswith("<@UAGENT> typed")))] | length == 2'
 ```
 
+### call-an-agent-on-another-host
+Viewports: both
+His Slack is this yardd's; TEST-Far runs on a host (TEST-slack-box, a second
+isolated yardd on the same fake Slack) with its own app there (@test-far, bot
+UAGENT2), and TEST-Reviewer here (@test-reviewer, UAGENT). The reply box
+offers both, and one message calls both: each handle goes to Slack as a real
+mention of its own bot, and in his inbox each reads as its agent. With the
+host gone from this yardd, TEST-Far is still offered and still called: the
+mention goes through Slack to its app, not through this yardd.
+
+```sh
+yv var set slack_remote_port "$(yv iso up --name map-slack-remote --env "YARD_SLACK_API=$(v slack)/api/,YARD_ALLOW_ORIGIN=https://yard.test" | jq -r .iso.port)"
+yv api '{"op":"host.add","name":"TEST-slack-box","kind":"direct","url":"ws://127.0.0.1:{{slack_remote_port}}/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-slack-box","status":"connected","ownAgents":true}]}' --save slack_box='hosts[name=TEST-slack-box].id'
+yv api '{"op":"agent.save","agent":{"name":"TEST-Far","engine":"codex","model":"fake-fast","effort":"low","color":"teal","about":"TEST-runs on the server","host":"{{slack_box}}"},"ref":"far"}' --wait '{"op":"agent.saved"}' --save far=agent.id
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","agentId":"{{far}}","origin":"http://127.0.0.1","ref":"grant-far"}' --wait '{"op":"slack","ref":"grant-far"}'
+yv api '{"op":"slack.app.botToken","agentId":"{{far}}","token":"xoxb-agent-2-TEST","ref":"bot-far"}' --wait '{"op":"slack","ref":"bot-far"}'
+yv api '{"op":"slack.app.appToken","agentId":"{{far}}","token":"xapp-1-agent-TEST","ref":"app-far"}' --wait '{"op":"slack","ref":"app-far"}'
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","agentId":"{{reviewer}}","origin":"http://127.0.0.1","ref":"grant"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.app.botToken","agentId":"{{reviewer}}","token":"xoxb-agent-TEST","ref":"bot"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.app.appToken","agentId":"{{reviewer}}","token":"xapp-1-agent-TEST","ref":"app"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant2"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app2"}' --wait '{"op":"slack"}'
+for i in $(seq 100); do yv state --full 2>/dev/null | grep -q G0TRIO && break; sleep 0.2; done
+for vp in desktop mobile; do
+yv drive 'slack:TEST-Stranger' --viewport $vp --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@"},{"expect":{"role":"option","name":"TEST-Reviewer @test-reviewer"}},{"expect":{"role":"option","name":"TEST-Far @test-far"}},{"shot":"suggest-both"},{"type":"test-f"},{"click":{"role":"option","name":"TEST-Far @test-far"}},{"type":"and @test-r"},{"click":{"role":"option","name":"TEST-Reviewer @test-reviewer"}},{"type":"look '$vp'"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Reviewer, TEST-Far"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"look '$vp'"},{"expect":{"css":".slack-messages .slack-mention","hasText":"TEST-Far"}},{"shot":"called-both"}]'
+done
+curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and (.text | startswith("<@UAGENT2> and <@UAGENT> look")))] | length == 2'
+yv iso down --name map-slack-remote
+for i in $(seq 100); do yv state --full 2>/dev/null | jq -e '.snapshot.hosts | any(.name == "TEST-slack-box" and .status != "connected")' > /dev/null && break; sleep 0.2; done
+yv state --full | jq -e '.snapshot.hosts | any(.name == "TEST-slack-box" and .status != "connected")'
+# Mobile, as the last drive was: see Gotchas (an icon's key per viewport).
+yv drive 'slack:TEST-Stranger' --viewport mobile --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@test-f"},{"click":{"role":"option","name":"TEST-Far @test-far"}},{"type":"still there?"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Far"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"still there?"},{"shot":"called-offline"}]'
+curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and .text == "<@UAGENT2> still there?")] | length == 1'
+# The recipes after this one know no such host.
+yv api '{"op":"host.remove","hostId":"{{slack_box}}"}' --wait '{"op":"hosts"}'
+```
+
 ### one-token-with-a-public-address
 Viewports: both
 With a public address for Slack (opt-in, set here by the `slack.publicUrl`
@@ -347,6 +386,13 @@ yv api '{"op":"slack.app.remove","agentId":"{{oncall}}","ref":"rm"}' --wait '{"o
   field), so anything that grants one comes after it. Later recipes set up
   what they need through the API (a grant, TEST-Reviewer's app with its bot
   token pasted), so each also runs alone.
+- An agent's app icon key (`iconKey`, `SlackIcon.tsx`) comes out different
+  at the mobile and desktop viewports, so each window size that opens the
+  page uploads the face again (`slack.app.icon`), and for an agent on a host
+  that is offline that upload is refused ("TEST-slack-box is offline, so
+  TEST-Far can't be changed now"), an API error in the drive.
+  `call-an-agent-on-another-host` drives the offline step at the viewport of
+  the drive before it, so it is not that error's recipe. Found 2026-11-26.
 - Not covered here (no real Slack can be reached from tests): a real
   workspace's events, rate limits and Slack's own manifest import, update
   and icon upload. The install redirect to an https address from an http

@@ -1582,6 +1582,62 @@ async fn an_agent_called_in_another_case_still_hears_it() {
 }
 
 #[tokio::test]
+async fn the_owner_calls_agents_here_and_on_a_remote_host_from_his_reply_box() {
+    let fake = FakeSlack::start();
+    let remote_sb = Sandbox::new("slack-call-far-remote");
+    let remote = remote_sb.start_with(&[("YARD_SLACK_API", &fake.api()), ("YARD_ALLOW_ORIGIN", ORIGIN)]);
+    let sb = Sandbox::new("slack-call-far-hub");
+    let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api()), ("YARD_ALLOW_ORIGIN", ORIGIN)]);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    c.send(json!({ "op": "host.add", "name": "TEST-box", "kind": "direct", "url": remote.url() })).await;
+    let hosts = c.wait_for("the remote connected", |m| m["op"] == "hosts" && m["hosts"][0]["status"] == "connected" && m["hosts"][0]["ownAgents"] == true).await;
+    let host = hosts["hosts"][0]["id"].as_str().unwrap().to_string();
+    c.wait_for("the remote's models", |m| (m["op"] == "host.snapshot" || m["op"] == "models") && m["hostId"] == host.as_str() && m["models"]["codex"].as_array().is_some_and(|a| !a.is_empty())).await;
+    // Reviewer runs here with its app (@reviewer, UAGENT); Far runs on the
+    // server with its app there (@far, UAGENT2), in the same workspace. His
+    // own Slack is the hub's.
+    let near = reviewer(&mut c).await;
+    agent_app(&mut c, daemon.port, &near).await;
+    let from = c.mark();
+    c.send(json!({ "op": "agent.save", "agent": { "name": "Far", "engine": "codex", "model": MODEL, "effort": EFFORT, "host": host }, "ref": "far" })).await;
+    let far = c.wait_after(from, "Far saved", |m| m["ref"] == "far").await["agent"]["id"].as_str().unwrap().to_string();
+    let s = step(&mut c, json!({ "op": "slack.grant", "token": "xoxe-1-TEST-refresh", "agentId": far, "origin": ORIGIN })).await.unwrap();
+    let url = s["agentApps"][&far]["authorizeUrl"].as_str().unwrap().to_string();
+    let state = url.split("&state=").nth(1).unwrap().to_string();
+    let (port, path) = (remote.port, format!("/slack/oauth?code=TEST-code-2&state={state}"));
+    assert!(tokio::task::spawn_blocking(move || http_get(port, &path).unwrap()).await.unwrap().contains("installed in Slack"));
+    step(&mut c, json!({ "op": "slack.app.appToken", "agentId": far, "token": "xapp-1-agent-TEST" })).await.unwrap();
+    slack_state(&mut c, "Far's app connected on the server", |s| s["agentApps"][&far]["state"] == "connected").await;
+    connect_me(&mut c).await;
+    inbox_list(&mut c, "the DMs synced", |l| l.len() == 2).await;
+
+    // Both are called in one message: each handle a real mention of its own bot.
+    let sent = inbox(&mut c, json!({ "op": "slack.inbox.send", "team": "T0TEST", "channel": "G0TRIO", "text": "@reviewer and @Far, look", "mentions": [near, far] })).await;
+    let ts = sent["ts"].as_str().unwrap().to_string();
+    let posted = fake.state()["posts"].as_array().unwrap().iter().find(|p| p["ts"] == ts.as_str()).cloned().unwrap();
+    assert_eq!(posted["text"], "<@UAGENT> and <@UAGENT2>, look");
+    // In his inbox each bot reads as its agent.
+    let page = inbox(&mut c, json!({ "op": "slack.inbox.messages", "team": "T0TEST", "channel": "G0TRIO" })).await;
+    assert_eq!(page["users"]["UAGENT"], "Reviewer");
+    assert_eq!(page["users"]["UAGENT2"], "Far");
+    // The windows learn each app's bot user (never a token), so the reply
+    // box offers only agents yardd can make a mention of.
+    let view = slack_state(&mut c, "both apps' bot users", |s| s["agentApps"][&near]["botUser"] == "UAGENT" && s["agentApps"][&far]["botUser"] == "UAGENT2").await;
+    assert!(!view.to_string().contains("xoxb-") && !view.to_string().contains("xapp-"), "{view}");
+
+    // The server drops off the hub's tailnet: Far is still called, since the
+    // mention goes through Slack to its app, not through the hub.
+    remote.stop();
+    c.wait_for("the remote offline", |m| m["op"] == "hosts" && m["hosts"][0]["status"] != "connected").await;
+    slack_state(&mut c, "Far's app still listed", |s| s["agentApps"][&far]["botUser"] == "UAGENT2").await;
+    let sent = inbox(&mut c, json!({ "op": "slack.inbox.send", "team": "T0TEST", "channel": "G0TRIO", "text": "@far are you up?", "mentions": [far] })).await;
+    let ts = sent["ts"].as_str().unwrap().to_string();
+    let posted = fake.state()["posts"].as_array().unwrap().iter().find(|p| p["ts"] == ts.as_str()).cloned().unwrap();
+    assert_eq!(posted["text"], "<@UAGENT2> are you up?");
+}
+
+#[tokio::test]
 async fn an_agents_own_slack_app_moves_with_it_and_answers_from_its_host_while_the_hub_sleeps() {
     let fake = FakeSlack::start();
     let api = fake.api();

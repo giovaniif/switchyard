@@ -426,9 +426,8 @@ async fn learn_user(app: &App, token: &str, team: &str, user: &str) {
     if user.is_empty() || app.slack.inbox.name_of(team, user).is_some() {
         return;
     }
-    // An agent's own bot reads as the agent.
-    let agent = app.slack.cfg.lock().unwrap().apps.iter().find(|a| a.bot_user == user).map(|a| a.agent.clone());
-    if let Some(name) = agent.and_then(|id| app.agents.get(&id)).map(|a| a.name) {
+    // An agent's own bot reads as the agent, here or on a host.
+    if let Some(name) = super::callable_apps(app).into_iter().find(|a| a.bot_user == user).map(|a| a.name).filter(|n| !n.is_empty()) {
         app.slack.inbox.put_user(team, user, &name);
         return;
     }
@@ -824,10 +823,11 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
             let mut escaped = text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
             // Agents he called by handle (`mentions`, their ids): a real
             // mention of each one's bot, so its app answers there. Only
-            // agents with an app in this workspace; nothing else he typed
-            // becomes a mention.
+            // agents with an app in this workspace, here or on a host;
+            // nothing else he typed becomes a mention.
+            let apps = super::callable_apps(app);
             for id in msg["mentions"].as_array().into_iter().flatten().filter_map(Value::as_str).take(10) {
-                if let Some(rec) = app.slack.app_of(id).filter(|r| r.team_id == team && !r.bot_user.is_empty() && !r.handle.is_empty()) {
+                if let Some(rec) = apps.iter().find(|a| a.agent == id && a.team == team) {
                     escaped = mention_handle(&escaped, &rec.handle, &rec.bot_user);
                 }
             }

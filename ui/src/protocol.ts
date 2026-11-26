@@ -225,6 +225,8 @@ export interface SlackAgentApp {
   teamName: string;
   /** Its bot's handle in Slack, made from the agent's name (`code-reviewer`). */
   handle: string;
+  /** Its bot's Slack user id (`U…`), which a call from the reply box mentions; empty until installed. Older yardds send none. */
+  botUser?: string;
   ownerName: string;
   /** Slack can send the browser back to Switchyard after the install (an https address). */
   canRedirect: boolean;

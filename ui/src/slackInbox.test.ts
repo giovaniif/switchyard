@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { SlackConversation, SlackMessage } from "./protocol";
-import { applyMessage, calledAgents, initials, mentionQuery, mergePage, pageKey, shownConversations, startsGroup } from "./slackInbox";
+import type { SlackAgentApp, SlackConversation, SlackMessage } from "./protocol";
+import { applyMessage, callableAgents, calledAgents, initials, mentionQuery, mergePage, pageKey, shownConversations, startsGroup } from "./slackInbox";
 import { initial, parseHash, reduce, routeHash } from "./store";
 // The same cases yardd's `mention_handle` is tested on: the box must say a
 // message calls an agent exactly when yardd will make it a mention.
@@ -70,6 +70,31 @@ describe("calling an agent from the reply box", () => {
     expect(calledAgents("@reviewer and @deploy-bot, please", agents)).toEqual(["g1", "g2"]);
     expect(calledAgents("@reviewers a@reviewer @deploy-bot2", agents)).toEqual([]);
     expect(calledAgents("thanks @reviewer.", agents)).toEqual(["g1"]);
+  });
+  test("offers agents whose app yardd can mention in this workspace, here or on a remote host", () => {
+    const app = (extra: Partial<SlackAgentApp>): SlackAgentApp => ({ step: "ready", appId: "A1", teamId: "T0", teamName: "Acme", handle: "x", ownerName: "", canRedirect: false, botUser: "U1", ...extra });
+    const listed = [
+      { id: "g1", name: "Reviewer" },
+      { id: "h1~g2", name: "Far" },
+      { id: "h2~g3", name: "Old Host" },
+      { id: "g4", name: "Elsewhere" },
+      { id: "g5", name: "Halfway" },
+      { id: "g6", name: "No App" },
+    ];
+    const apps = {
+      g1: app({ handle: "reviewer", botUser: "UAGENT" }),
+      // An agent's app on the server, listed by the hub under its prefixed id.
+      "h1~g2": app({ handle: "far", botUser: "UAGENT2" }),
+      // An older host says no bot user: yardd could not make it a mention.
+      "h2~g3": app({ handle: "old-host", botUser: undefined }),
+      g4: app({ handle: "elsewhere", teamId: "T9" }),
+      g5: app({ handle: "halfway", step: "appToken" }),
+    };
+    expect(callableAgents(listed, apps, "T0")).toEqual([
+      { id: "g1", name: "Reviewer", handle: "reviewer" },
+      { id: "h1~g2", name: "Far", handle: "far" },
+    ]);
+    expect(callableAgents(listed, undefined, "T0")).toEqual([]);
   });
   test("agrees with yardd on every case", () => {
     for (const c of handleCalls) {

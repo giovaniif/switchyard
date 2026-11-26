@@ -1281,9 +1281,14 @@ its engine framing and one arm in `origins::reply`.
     its own (see agents' own apps) if it is in the conversation. Nothing
     else he types becomes a mention. The box offers those agents on `@`
     (any part of the name or handle) and says which ones a message calls.
-    A mention of an agent's bot reads as the agent's name in his inbox. It
-    looks up apps on the host that holds his Slack: an agent whose app
-    lives on another host is not offered. Disconnecting his Slack forgets his inbox.
+    A mention of an agent's bot reads as the agent's name in his inbox.
+    Agents on other hosts are called the same way (`slack::callable_apps`):
+    each app's view carries its bot's user id (`botUser`, not a secret), so
+    the hub that holds his Slack knows a host's agent's bot from what the
+    host last said, and the box offers only apps with one (an older host
+    sends none). A host the hub cannot reach still has its agent offered
+    and called: the mention goes through Slack to the app on that host,
+    not through the hub. Disconnecting his Slack forgets his inbox.
   - **The page**: the sidebar's Slack section (before Agents): his
     conversations newest first, the first 8 plus any unread or open one, an
     unread count, Show all. `#/slack/<team>/<channel>` (yv route
