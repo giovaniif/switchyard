@@ -297,3 +297,21 @@ async fn claude_sessions_carry_their_connector_scope() {
     assert!(starts[1].ends_with(" mcp=except:metabase,claude.ai Metabase"), "{}", starts[1]);
     assert!(starts[2].ends_with(" mcp=only:handoff,claude.ai Linear"), "{}", starts[2]);
 }
+
+#[tokio::test]
+async fn existing_agents_keep_a_missing_list_but_firefighter_gets_metabase_by_name() {
+    let sb = Sandbox::new("scope-firefighter");
+    let agents = json!([
+        { "id": "g1a212f7695f8", "name": "Firefighter", "engine": "codex", "createdAt": 1, "updatedAt": 1 },
+        { "id": "gother", "name": "Other", "engine": "codex", "createdAt": 1, "updatedAt": 1 },
+    ]);
+    fs::write(sb.data().join("agents.json"), agents.to_string()).unwrap();
+    let d = sb.start();
+    let c = d.client().await;
+    let listed = c.log[0]["agents"].as_array().unwrap().clone();
+    let of = |id: &str| listed.iter().find(|a| a["id"] == id).unwrap()["mcp"].clone();
+    assert!(of("g1a212f7695f8").as_array().unwrap().contains(&json!("metabase")), "{listed:?}");
+    assert!(of("gother").is_null(), "the default (no Metabase) is the missing list: {listed:?}");
+    let saved: Value = serde_json::from_str(&fs::read_to_string(sb.data().join("agents.json")).unwrap()).unwrap();
+    assert!(saved[0]["mcp"].as_array().is_some(), "written back: {saved}");
+}

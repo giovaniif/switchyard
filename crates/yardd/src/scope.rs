@@ -15,10 +15,21 @@ use crate::state::App;
 /// disabled for the connections many idle threads held open.
 pub const DENIED_BY_DEFAULT: [&str; 2] = ["metabase", "claude.ai Metabase"];
 
-/// Agents whose record without a list keeps every server. Firefighter was set
-/// up to read Metabase, and its record can arrive from a hub whose yardd
-/// predates `mcp`, so its default cannot be the deny list.
-const KEEPS_EVERY_SERVER: [&str; 1] = ["g1a212f7695f8"];
+/// Firefighter was set up to read Metabase. It gets an explicit list when
+/// agents load (`with_explicit_lists`); a record without one, pushed by a hub
+/// whose yardd predates `mcp`, keeps every server rather than the deny list.
+pub const FIREFIGHTER: &str = "g1a212f7695f8";
+const FIREFIGHTER_SERVERS: [&str; 4] = ["metabase", "claude.ai Metabase", "handoff", "handoff-demo"];
+const KEEPS_EVERY_SERVER: [&str; 1] = [FIREFIGHTER];
+
+/// Give a record that has no list the one it was meant to have. True if one changed.
+pub fn with_explicit_list(id: &str, mcp: &mut Option<Vec<String>>) -> bool {
+    if id == FIREFIGHTER && mcp.is_none() {
+        *mcp = Some(FIREFIGHTER_SERVERS.iter().map(|s| s.to_string()).collect());
+        return true;
+    }
+    false
+}
 
 /// A list is a few names; this only keeps a script from saving megabytes.
 const MAX_SERVERS: usize = 200;
@@ -116,6 +127,17 @@ mod tests {
     fn firefighter_keeps_every_server_until_it_has_a_list() {
         assert_eq!(of_record("g1a212f7695f8", None), None);
         assert_eq!(of_record("g1a212f7695f8", Some(&vec!["metabase".into()])), Some(Scope::Only(vec!["metabase".into()])));
+    }
+
+    #[test]
+    fn firefighter_gets_an_explicit_list_with_metabase() {
+        let mut mcp = None;
+        assert!(with_explicit_list(FIREFIGHTER, &mut mcp));
+        assert!(of_record(FIREFIGHTER, mcp.as_ref()).unwrap().allows("metabase"));
+        assert!(!with_explicit_list(FIREFIGHTER, &mut mcp), "once");
+        let mut other = None;
+        assert!(!with_explicit_list("g2", &mut other));
+        assert_eq!(other, None);
     }
 
     #[test]

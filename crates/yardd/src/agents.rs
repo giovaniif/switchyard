@@ -192,9 +192,11 @@ impl Agents {
         // Agents from before handles: a name that was one word is its handle,
         // so every `@Name` already written keeps working.
         let handled = give_handles(&mut list);
+        // Firefighter keeps Metabase by name (see `scope`).
+        let listed = list.iter_mut().fold(false, |changed, a| crate::scope::with_explicit_list(&a.id, &mut a.mcp) || changed);
         let (ends, ends_rx) = mpsc::unbounded_channel();
         let agents = Agents { file, list: Mutex::new(list), later: Mutex::default(), ends, ends_rx: Mutex::new(Some(ends_rx)) };
-        if handled || agents.list.lock().unwrap().len() != before {
+        if handled || listed || agents.list.lock().unwrap().len() != before {
             agents.persist(&agents.list.lock().unwrap());
         }
         agents
@@ -509,6 +511,8 @@ fn check_fields(a: &mut Agent) -> Result<()> {
     if a.account.is_empty() {
         a.account = default_account();
     }
+    // A copy pushed by a yardd that drops `mcp` arrives without it.
+    crate::scope::with_explicit_list(&a.id, &mut a.mcp);
     if let Some(list) = &mut a.mcp {
         crate::scope::clean(list)?;
     }
