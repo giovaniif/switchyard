@@ -92,6 +92,43 @@ describe("Codex full resets and per-model limits", () => {
     expect(html).toContain("3 full resets available");
   });
 
+  // Codex 0.171's schema: `credits` is null when only `availableCount` is known,
+  // and the backend may cap the list below it. The count is availableCount.
+  const withCredits = (now: number, resetCredits: unknown) => ({ codex: { ...codex(now), resetCredits } }) as any;
+
+  test("only the count known (no credit rows): the count, with no expiry", () => {
+    const now = Date.now();
+    const r = fullResets("codex", withCredits(now, { availableCount: 2, credits: null }), now);
+    expect(r).toEqual({ count: 2, title: "Full reset", expiresAt: null });
+    const html = renderToStaticMarkup(<Subscriptions sources={[{ ...source(now), usage: withCredits(now, { availableCount: 2, credits: null }) }]} onManage={() => {}} />);
+    expect(html).toContain("2 full resets available");
+    expect(html).not.toContain("xpires");
+  });
+
+  test("a capped list: the count is availableCount, the expiry the soonest listed", () => {
+    const now = Date.now();
+    const listed = [{ id: "a", resetType: "codexRateLimits", status: "available", expiresAt: at(now + 6 * DAY), title: "Full reset" }];
+    const r = fullResets("codex", withCredits(now, { availableCount: 5, credits: listed }), now);
+    expect(r).toEqual({ count: 5, title: "Full reset", expiresAt: at(now + 6 * DAY) * 1000 });
+  });
+
+  test("a listed credit that expired since the read is not counted", () => {
+    const now = Date.now();
+    const listed = [
+      { id: "a", resetType: "codexRateLimits", status: "available", expiresAt: at(now - DAY), title: "Full reset" },
+      { id: "b", resetType: "codexRateLimits", status: "available", expiresAt: at(now + 3 * DAY), title: "Full reset" },
+    ];
+    expect(fullResets("codex", withCredits(now, { availableCount: 4, credits: listed }), now)?.count).toBe(3);
+  });
+
+  test("none available, or an answer without the count", () => {
+    const now = Date.now();
+    expect(fullResets("codex", withCredits(now, { availableCount: 0, credits: [] }), now)).toBeNull();
+    expect(fullResets("codex", withCredits(now, { availableCount: 0, credits: null }), now)).toBeNull();
+    const listed = [{ id: "a", resetType: "codexRateLimits", status: "available", expiresAt: null, title: "Full reset" }];
+    expect(fullResets("codex", withCredits(now, { credits: listed }), now)?.count).toBe(1);
+  });
+
   test("a second Codex limit (another model's) is a meter of its own, the main one is not repeated", () => {
     const now = Date.now();
     const meters = metersFor("codex", { codex: codex(now) } as any, now);

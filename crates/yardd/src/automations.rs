@@ -892,4 +892,53 @@ mod tests {
         assert_eq!(usage_reason(&usage, "claude", None, Some(80.0), 9500), None);
         assert!(usage_reason(&usage, "claude", None, Some(80.0), 3000).is_some(), "the week has not reset yet");
     }
+
+    #[test]
+    fn grok_limits_read_its_credit_allowance() {
+        // The shape `usage::grok_from_billing` stores: one window for the billing period.
+        let usage = json!({
+            "claude": { "windows": { "five_hour": { "utilization": 0.9, "resetsAt": 9000 }, "seven_day": { "utilization": 0.9, "resetsAt": 9000 } } },
+            "grok": { "windows": { "week": { "utilization": 0.23, "resetsAt": 5000, "label": "Week" } } },
+        });
+        // Claude's figures are not Grok's.
+        assert_eq!(usage_reason(&usage, "grok", Some(50.0), Some(50.0), 1000), None);
+        assert_eq!(usage_reason(&usage, "grok", None, Some(20.0), 1000).as_deref(), Some("Grok weekly usage 23% is above 20%"));
+        // Grok has no 5-hour window: that limit cannot apply.
+        assert_eq!(usage_reason(&usage, "grok", Some(1.0), None, 1000), None);
+        // Past the period's end the figure is stale.
+        assert_eq!(usage_reason(&usage, "grok", None, Some(20.0), 6000), None);
+        // A monthly allowance counts against the same limit, named as what it is.
+        let monthly = json!({ "grok": { "windows": { "month": { "utilization": 0.6, "resetsAt": 5000, "label": "Month" } } } });
+        assert_eq!(usage_reason(&monthly, "grok", None, Some(50.0), 1000).as_deref(), Some("Grok monthly usage 60% is above 50%"));
+        let period = json!({ "grok": { "windows": { "period": { "utilization": 0.6, "resetsAt": null, "label": "Billing period" } } } });
+        assert_eq!(usage_reason(&period, "grok", None, Some(50.0), 1000).as_deref(), Some("Grok billing-period usage 60% is above 50%"));
+        assert_eq!(usage_reason(&json!({}), "grok", Some(1.0), Some(1.0), 1000), None, "unknown usage does not skip");
+    }
+
+    #[test]
+    fn engines_without_limits_never_skip_on_usage() {
+        // OpenCode and Gemini report no plan usage; another engine's is not theirs.
+        let usage = json!({
+            "claude": { "windows": { "five_hour": { "utilization": 0.9, "resetsAt": 9000 }, "seven_day": { "utilization": 0.9, "resetsAt": 9000 } } },
+            "codex": { "primary": { "usedPercent": 90, "resetsAt": 9000 }, "secondary": { "usedPercent": 90, "resetsAt": 9000 } },
+        });
+        for engine in ["opencode", "gemini"] {
+            assert_eq!(usage_reason(&usage, engine, Some(1.0), Some(1.0), 1000), None, "{engine}");
+        }
+    }
+
+    #[test]
+    fn a_codex_window_counts_by_its_length() {
+        // A Pro account's main limit is one 10080-minute week (codex 0.171), with no
+        // second window: that is the weekly figure, not the 5-hour one.
+        let usage = json!({ "codex": { "primary": { "usedPercent": 52, "windowDurationMins": 10080, "resetsAt": 9000 }, "secondary": null } });
+        assert_eq!(usage_reason(&usage, "codex", Some(10.0), None, 1000), None);
+        assert_eq!(usage_reason(&usage, "codex", None, Some(50.0), 1000).as_deref(), Some("Codex weekly usage 52% is above 50%"));
+        let both = json!({ "codex": {
+            "primary": { "usedPercent": 30, "windowDurationMins": 300, "resetsAt": 9000 },
+            "secondary": { "usedPercent": 70, "windowDurationMins": 10080, "resetsAt": 9000 },
+        } });
+        assert_eq!(usage_reason(&both, "codex", Some(20.0), None, 1000).as_deref(), Some("Codex 5-hour usage 30% is above 20%"));
+        assert_eq!(usage_reason(&both, "codex", Some(40.0), Some(60.0), 1000).as_deref(), Some("Codex weekly usage 70% is above 60%"));
+    }
 }
