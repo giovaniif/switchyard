@@ -1081,7 +1081,16 @@ its engine framing and one arm in `origins::reply`.
     (`chat.postMessage` with his user token; `&`, `<`, `>` escaped so typed
     text is never markup; Slack's answer is stored and broadcast at once, and
     his own message reads everything before it); `slack.inbox.react { ts,
-    name, add }`. Disconnecting his Slack forgets his inbox.
+    name, add }`. **Calling an agent from his reply box**: `send` takes
+    `mentions` (agent ids, at most 10); each one with its own app ready in
+    this workspace has its `@handle`, written as a word in any case, made a real
+    `<@bot_user>` mention, so its app answers there in a place session of
+    its own (see agents' own apps) if it is in the conversation. Nothing
+    else he types becomes a mention. The box offers those agents on `@`
+    (any part of the name or handle) and says which ones a message calls.
+    A mention of an agent's bot reads as the agent's name in his inbox. It
+    looks up apps on the host that holds his Slack: an agent whose app
+    lives on another host is not offered. Disconnecting his Slack forgets his inbox.
   - **The page**: the sidebar's Slack section (before Agents): his
     conversations newest first, the first 8 plus any unread or open one, an
     unread count, Show all. `#/slack/<team>/<channel>` (yv route

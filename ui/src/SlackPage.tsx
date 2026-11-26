@@ -10,7 +10,7 @@ import type { Actions, Route, State } from "./store";
 import { Icon, MenuButton } from "./App";
 import { SLACK_MARK } from "./SlackSetup";
 import { parseSlack, emojiChar, type SlackNode } from "./slackText";
-import { initials, pageKey, shownConversations, startsGroup, topLevel } from "./slackInbox";
+import { calledAgents, initials, mentionQuery, pageKey, shownConversations, startsGroup, topLevel, type CallableAgent } from "./slackInbox";
 
 const CLOSE = "M6 6l12 12M18 6L6 18";
 const ARROW_UP = "M12 19V5M5 12l7-7 7 7";
@@ -68,6 +68,7 @@ export function SlackConversationPage({ state, actions, team, channel }: { state
   const [thread, setThread] = useState<string | null>(null);
   const me = state.slack?.me?.userId ?? "";
   const connected = state.slack?.me?.step === "ready";
+  const callable = callableAgents(state, team);
   useEffect(() => {
     setThread(null);
     actions.slackLoad(team, channel);
@@ -111,15 +112,15 @@ export function SlackConversationPage({ state, actions, team, channel }: { state
             react={(ts, name, add) => actions.slackReact(team, channel, ts, name, add)}
             filter={topLevel}
           />
-          <SlackComposer key={`${team}/${channel}`} placeholder={`Message ${conversation.name}`} disabled={!connected} send={(text) => actions.slackSend(team, channel, text)} />
+          <SlackComposer key={`${team}/${channel}`} placeholder={`Message ${conversation.name}`} disabled={!connected} agents={callable} send={(text, mentions) => actions.slackSend(team, channel, text, undefined, mentions)} />
         </div>
-        {thread && <ThreadPane state={state} actions={actions} team={team} channel={channel} ts={thread} me={me} connected={connected} onClose={() => setThread(null)} />}
+        {thread && <ThreadPane state={state} actions={actions} team={team} channel={channel} ts={thread} me={me} connected={connected} agents={callable} onClose={() => setThread(null)} />}
       </div>
     </div>
   );
 }
 
-function ThreadPane({ state, actions, team, channel, ts, me, connected, onClose }: { state: State; actions: Actions; team: string; channel: string; ts: string; me: string; connected: boolean; onClose(): void }) {
+function ThreadPane({ state, actions, team, channel, ts, me, connected, agents, onClose }: { state: State; actions: Actions; team: string; channel: string; ts: string; me: string; connected: boolean; agents: CallableAgent[]; onClose(): void }) {
   const page = state.slackPages[pageKey(team, channel, ts)];
   useEffect(() => {
     actions.slackLoad(team, channel, { thread: ts });
@@ -135,7 +136,7 @@ function ThreadPane({ state, actions, team, channel, ts, me, connected, onClose 
         </button>
       </header>
       <MessageList page={page} me={me} react={(m, name, add) => actions.slackReact(team, channel, m, name, add)} />
-      <SlackComposer key={ts} placeholder="Reply in the thread" disabled={!connected} send={(text) => actions.slackSend(team, channel, text, ts)} />
+      <SlackComposer key={ts} placeholder="Reply in the thread" disabled={!connected} agents={agents} send={(text, mentions) => actions.slackSend(team, channel, text, ts, mentions)} />
     </aside>
   );
 }
@@ -302,39 +303,93 @@ function MessageRow({ m, head, name, users, me, onThread, react, picked, onPick 
   );
 }
 
-function SlackComposer({ placeholder, disabled, send }: { placeholder: string; disabled: boolean; send(text: string): Promise<{ error?: string }> }) {
+/** Agents with their own app ready in this workspace: the ones he can call. */
+function callableAgents(state: State, team: string): CallableAgent[] {
+  const apps = state.slack?.agentApps ?? {};
+  return state.agents.flatMap((a) => {
+    const app = apps[a.id];
+    return app && app.step === "ready" && app.teamId === team && app.handle ? [{ id: a.id, name: a.name, handle: app.handle }] : [];
+  });
+}
+
+function SlackComposer({ placeholder, disabled, agents, send }: { placeholder: string; disabled: boolean; agents: CallableAgent[]; send(text: string, mentions: string[]): Promise<{ error?: string }> }) {
   const [text, setText] = useState("");
+  const [caret, setCaret] = useState(0);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  // Where the caret goes once a picked handle is in the box: placed right
+  // after the redraw, before the next key can land.
+  const caretAfter = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const at = caretAfter.current;
+    if (at === null || !box.current) return;
+    caretAfter.current = null;
+    box.current.focus();
+    box.current.setSelectionRange(at, at);
+  }, [text]);
+  const query = agents.length ? mentionQuery(text, caret) : null;
+  const suggestions = query === null ? [] : agents.filter((a) => a.handle.includes(query) || a.name.toLowerCase().includes(query));
+  const called = calledAgents(text, agents);
+  const pick = (a: CallableAgent) => {
+    const start = text.slice(0, caret).lastIndexOf("@");
+    const next = `${text.slice(0, start)}@${a.handle} ${text.slice(caret)}`;
+    setText(next);
+    const at = start + a.handle.length + 2;
+    setCaret(at);
+    caretAfter.current = at;
+  };
   const go = async () => {
     const t = text.trim();
     if (!t || sending) return;
     setSending(true);
     setError(null);
-    const r = await send(t);
+    const r = await send(t, calledAgents(t, agents));
     setSending(false);
     if (r.error) setError(r.error);
     else setText("");
   };
   return (
     <div className="slack-compose">
+      {suggestions.length > 0 && (
+        <div className="mention-list slack-mention-list" role="listbox" aria-label="Agents">
+          {suggestions.map((a) => (
+            <button key={a.id} role="option" aria-selected={false} className="picker-item menu-item" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(a)}>
+              <strong>{a.name}</strong>
+              <span className="muted small">@{a.handle}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="composer">
         <textarea
+          ref={box}
           rows={2}
           aria-label={placeholder}
           placeholder={disabled ? "Your Slack is not connected" : placeholder}
           value={text}
           disabled={disabled}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            setCaret(e.target.selectionStart ?? e.target.value.length);
+          }}
+          onSelect={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
-              void go();
+              if (suggestions.length === 1) pick(suggestions[0]);
+              else void go();
             }
           }}
         />
         <div className="composer-row">
-          <span className="muted small">Sends as you, in Slack</span>
+          <span className="muted small">
+            {called.length
+              ? `Calls ${agents.filter((a) => called.includes(a.id)).map((a) => a.name).join(", ")}: it answers here if its app is in this conversation`
+              : agents.length
+                ? "Sends as you, in Slack · @ to call an agent"
+                : "Sends as you, in Slack"}
+          </span>
           <button className="send" aria-label="Send" disabled={disabled || sending || !text.trim()} onClick={() => void go()}>
             {sending ? <span className="send-wait" aria-label="Sending" /> : <Icon d={ARROW_UP} width={2.5} />}
           </button>

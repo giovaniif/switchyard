@@ -796,8 +796,9 @@ export interface Actions {
   slackLoad(team: string, channel: string, opts?: { before?: string; thread?: string }): void;
   /** His read mark, here and in Slack. */
   slackRead(team: string, channel: string, ts: string): void;
-  /** A message as him (in a thread with `thread`); the error, if Slack refused it. */
-  slackSend(team: string, channel: string, text: string, thread?: string): Promise<{ error?: string }>;
+  /** A message as him (in a thread with `thread`); the error, if Slack refused it.
+   *  `mentions`: agents he called by `@handle`, made real mentions of their apps. */
+  slackSend(team: string, channel: string, text: string, thread?: string, mentions?: string[]): Promise<{ error?: string }>;
   /** His reaction on a message, on or off. */
   slackReact(team: string, channel: string, ts: string, name: string, add: boolean): Promise<{ error?: string }>;
   /** The channels he is in, and which are imported. */
@@ -1157,8 +1158,8 @@ export function useYard(): { state: State; actions: Actions } {
         post({ op: "slack.inbox.messages", team, channel, ...(opts.before ? { before: opts.before } : {}), ...(opts.thread ? { thread: opts.thread } : {}) });
       },
       slackRead: (team, channel, ts) => post({ op: "slack.inbox.read", team, channel, ts }),
-      slackSend: async (team, channel, text, thread) => {
-        const reply = await ask({ op: "slack.inbox.send", team, channel, text, ...(thread ? { thread } : {}) }, 30_000);
+      slackSend: async (team, channel, text, thread, mentions) => {
+        const reply = await ask({ op: "slack.inbox.send", team, channel, text, ...(thread ? { thread } : {}), ...(mentions?.length ? { mentions } : {}) }, 30_000);
         return reply.error ? { error: reply.error as string } : {};
       },
       slackChannels: async () => {

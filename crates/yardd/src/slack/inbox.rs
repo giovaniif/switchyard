@@ -347,6 +347,40 @@ fn mentions(text: &str) -> Vec<String> {
     out
 }
 
+/// `@handle` as a word (not inside another handle or an address), in any
+/// case, made a Slack mention of `user`. Handles are lowercase ASCII and the
+/// reply box matches them case-insensitively too (`calledAgents`): the same
+/// cases are tested on both sides (handle-calls.json).
+fn mention_handle(text: &str, handle: &str, user: &str) -> String {
+    let needle = format!("@{}", handle.to_ascii_lowercase());
+    // ASCII lowercasing keeps every byte offset, so matches index `text`.
+    let lower = text.to_ascii_lowercase();
+    let word = |c: char| c.is_ascii_alphanumeric() || matches!(c, '-' | '_');
+    let mut out = String::new();
+    let mut from = 0;
+    while let Some(k) = lower[from..].find(&needle) {
+        let (i, end) = (from + k, from + k + needle.len());
+        let before = text[..i].chars().next_back();
+        let mut after = text[end..].chars();
+        // A dot after it ends a sentence unless a word goes on past it.
+        let alone = before.is_none_or(|c| !word(c) && c != '.')
+            && match after.next() {
+                None => true,
+                Some('.') => after.next().is_none_or(|c| !word(c)),
+                Some(c) => !word(c),
+            };
+        out.push_str(&text[from..i]);
+        if alone {
+            out.push_str(&format!("<@{user}>"));
+        } else {
+            out.push_str(&text[i..end]);
+        }
+        from = end;
+    }
+    out.push_str(&text[from..]);
+    out
+}
+
 /// One line for the sidebar: Slack markup read as text, clipped.
 fn preview(text: &str) -> String {
     super::clip_line(&super::from_slack(text), 120)
@@ -390,6 +424,12 @@ pub fn snapshot(app: &App) -> Value {
 /// Remembers who a user is (name from Slack, cached).
 async fn learn_user(app: &App, token: &str, team: &str, user: &str) {
     if user.is_empty() || app.slack.inbox.name_of(team, user).is_some() {
+        return;
+    }
+    // An agent's own bot reads as the agent.
+    let agent = app.slack.cfg.lock().unwrap().apps.iter().find(|a| a.bot_user == user).map(|a| a.agent.clone());
+    if let Some(name) = agent.and_then(|id| app.agents.get(&id)).map(|a| a.name) {
+        app.slack.inbox.put_user(team, user, &name);
         return;
     }
     let name = app.slack.user_name(token, user).await;
@@ -781,7 +821,16 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
             anyhow::ensure!(!text.is_empty(), "Write something first.");
             anyhow::ensure!(text.len() <= 40_000, "That message is too long for Slack.");
             inbox.conversation(&team, &channel).context("no such conversation")?;
-            let escaped = text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+            let mut escaped = text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+            // Agents he called by handle (`mentions`, their ids): a real
+            // mention of each one's bot, so its app answers there. Only
+            // agents with an app in this workspace; nothing else he typed
+            // becomes a mention.
+            for id in msg["mentions"].as_array().into_iter().flatten().filter_map(Value::as_str).take(10) {
+                if let Some(rec) = app.slack.app_of(id).filter(|r| r.team_id == team && !r.bot_user.is_empty() && !r.handle.is_empty()) {
+                    escaped = mention_handle(&escaped, &rec.handle, &rec.bot_user);
+                }
+            }
             let mut form = vec![("channel", channel.as_str()), ("text", escaped.as_str())];
             if !thread.is_empty() {
                 form.push(("thread_ts", thread.as_str()));
@@ -846,6 +895,24 @@ pub fn forget(app: &App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_agents_handle_becomes_a_mention_only_as_a_word() {
+        assert_eq!(mention_handle("@reviewer look, cc @reviewer.", "reviewer", "UA"), "<@UA> look, cc <@UA>.");
+        assert_eq!(mention_handle("@reviewers a@reviewer @reviewer-2 @reviewer.x", "reviewer", "UA"), "@reviewers a@reviewer @reviewer-2 @reviewer.x");
+    }
+
+    /// The reply box (`calledAgents` in ui/src/slackInbox.ts) reads the same
+    /// cases: what it says a message calls is exactly what becomes a mention.
+    #[test]
+    fn the_reply_box_and_yardd_agree_on_what_calls_an_agent() {
+        let cases: Vec<Value> = serde_json::from_str(include_str!("handle-calls.json")).unwrap();
+        for c in cases {
+            let (handle, text) = (c["handle"].as_str().unwrap(), c["text"].as_str().unwrap());
+            let out = mention_handle(text, handle, "UA");
+            assert_eq!(out.contains("<@UA>"), c["calls"].as_bool().unwrap(), "{text:?} for @{handle} became {out:?}");
+        }
+    }
 
     #[test]
     fn mentions_are_user_ids_only() {

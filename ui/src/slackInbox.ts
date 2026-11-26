@@ -60,6 +60,25 @@ export function startsGroup(prev: SlackMessage | undefined, m: SlackMessage): bo
   return b - a > 5 * 60_000 || new Date(a).toDateString() !== new Date(b).toDateString();
 }
 
+/** An agent the owner can call in a Slack message: one with its own app,
+ *  ready, in that workspace. */
+export interface CallableAgent {
+  id: string;
+  name: string;
+  handle: string;
+}
+
+/** The `@handle` being typed at the caret, if any: what to suggest. */
+export function mentionQuery(text: string, caret: number): string | null {
+  const m = /(?:^|\s)@([a-z0-9._-]*)$/i.exec(text.slice(0, caret));
+  return m ? m[1].toLowerCase() : null;
+}
+
+/** The agents a message calls: each `@handle` written as a word. */
+export function calledAgents(text: string, agents: CallableAgent[]): string[] {
+  return agents.filter((a) => new RegExp(`(^|[^a-z0-9._-])@${a.handle.replace(/[.]/g, "\\.")}(?![a-z0-9_-])(?!\\.[a-z0-9_-])`, "i").test(text)).map((a) => a.id);
+}
+
 /** A person's two initials, for the round mark beside their messages. */
 export function initials(name: string): string {
   const words = name.replace(/^[@#]/, "").split(/[\s._-]+/).filter(Boolean);
