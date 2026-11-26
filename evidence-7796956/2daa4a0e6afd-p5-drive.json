@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "route": "slack:TEST-Stranger",
+  "build": {
+    "sha": "7796956c5b7a6894e997615b3b12543da165b475",
+    "short": "7796956",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T22:54:52.919Z"
+  },
+  "dir": ".verify/evidence/slack-picker-keys-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 6906,
+      "steps": 24,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/slack-picker-keys-head-mobile/suggest-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/slack-picker-keys-head-mobile/sent-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/slack-picker-keys-head-mobile/thread-suggest-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "[...document.querySelectorAll(\"[role=option]\")].every((o) => { const r = o.getBoundingClientRect(), t = o.querySelector(\"strong\").getBoundingClientRect(); return Math.abs((t.top + t.bottom) / 2 - (r.top + r.bottom) / 2) <= 2; })",
+          "value": true
+        },
+        {
+          "step": 4,
+          "eval": "(r => r.left >= 0 && r.right <= innerWidth && r.top >= 0)(document.querySelector(\".slack-compose .mention-list\").getBoundingClientRect())",
+          "value": true
+        },
+        {
+          "step": 11,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        },
+        {
+          "step": 18,
+          "eval": "(r => r.left >= 0 && r.right <= innerWidth && r.top >= 0)(document.querySelector(\".slack-thread .mention-list\").getBoundingClientRect())",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

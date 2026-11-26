@@ -1,0 +1,64 @@
+{
+  "ok": true,
+  "route": "slack:TEST-Stranger",
+  "build": {
+    "sha": "bd3c5d5da626d2afe0c54bba2132b0dd52a81512",
+    "short": "bd3c5d5",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T22:45:24.272Z"
+  },
+  "dir": ".verify/evidence/slack-picker-keys-base",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 6348,
+      "steps": 20,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-picker-keys-base/two-suggestions-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-picker-keys-base/full-handle-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-picker-keys-base/after-enter-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "document.querySelectorAll(\"[role=option][aria-selected=true]\").length",
+          "value": 0
+        },
+        {
+          "step": 4,
+          "eval": "document.activeElement.getAttribute(\"aria-activedescendant\")",
+          "value": null
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

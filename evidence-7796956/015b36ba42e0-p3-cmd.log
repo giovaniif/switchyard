@@ -1,0 +1,54 @@
+$ cd ui && bun test src/slackInbox.test.ts
+# exit 1 after 39 ms at 57353839c3755c43cf855595812445b1c8186880
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/slackInbox.test.ts:
+ 96 |     ]);
+ 97 |     expect(callableAgents(listed, undefined, "T0")).toEqual([]);
+ 98 |   });
+ 99 |   test("offers the agent whose handle is typed first, then those it starts, then the rest", () => {
+100 |     const list = [{ id: "g3", name: "Pre-reviewer", handle: "pre-reviewer" }, { id: "g4", name: "Reviewer Two", handle: "reviewer-two" }, ...agents];
+101 |     expect(suggestAgents(list, "reviewer").map((a) => a.id)).toEqual(["g1", "g4", "g3"]);
+                                                                   ^
+error: expect(received).toEqual(expected)
+
+  [
+-   "g1",
+-   "g4",
+    "g3",
++   "g4",
++   "g1",
+  ]
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-picker-keys/ui/src/slackInbox.test.ts:101:62)
+(fail) calling an agent from the reply box > offers the agent whose handle is typed first, then those it starts, then the rest [0.70ms]
+105 |   });
+106 |   test("keys work the list like Slack's own picker", () => {
+107 |     const key = (k: string, extra: { shiftKey?: boolean; composing?: boolean } = {}) => ({ key: k, shiftKey: false, composing: false, ...extra });
+108 |     const two = agents;
+109 |     // Up and down move the highlight, round the ends.
+110 |     expect(composerKey(key("ArrowDown"), two, 0, "")).toEqual({ do: "move", to: 1 });
+                                                            ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "do": "move",
+-   "to": 1,
+- }
++ null
+
+- Expected  - 4
++ Received  + 1
+
+      at <anonymous> (/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-picker-keys/ui/src/slackInbox.test.ts:110:55)
+(fail) calling an agent from the reply box > keys work the list like Slack's own picker [0.55ms]
+
+ 10 pass
+ 2 fail
+ 55 expect() calls
+Ran 12 tests across 1 file. [30.00ms]

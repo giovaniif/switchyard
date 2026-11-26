@@ -1,0 +1,99 @@
+{
+  "ok": true,
+  "route": "slack:TEST-Stranger",
+  "build": {
+    "sha": "7796956c5b7a6894e997615b3b12543da165b475",
+    "short": "7796956",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T22:54:52.919Z"
+  },
+  "dir": ".verify/evidence/slack-picker-keys-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 9788,
+      "steps": 59,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-picker-keys-head-desktop/highlighted-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-picker-keys-head-desktop/sent-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-picker-keys-head-desktop/thread-highlighted-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "document.getElementById(document.activeElement.getAttribute(\"aria-activedescendant\")).textContent",
+          "value": "TEST-Reviewer@test-reviewer"
+        },
+        {
+          "step": 4,
+          "eval": "document.querySelectorAll(\"[role=option][aria-selected=true]\").length",
+          "value": 1
+        },
+        {
+          "step": 5,
+          "eval": "[...document.querySelectorAll(\"[role=option]\")].every((o) => { const r = o.getBoundingClientRect(), t = o.querySelector(\"strong\").getBoundingClientRect(); return Math.abs((t.top + t.bottom) / 2 - (r.top + r.bottom) / 2) <= 2; })",
+          "value": true
+        },
+        {
+          "step": 7,
+          "eval": "document.getElementById(document.activeElement.getAttribute(\"aria-activedescendant\")).textContent",
+          "value": "TEST-Reviewer Two@test-reviewer-two"
+        },
+        {
+          "step": 8,
+          "eval": "document.querySelectorAll(\"[role=option][aria-selected=true]\").length",
+          "value": 1
+        },
+        {
+          "step": 11,
+          "eval": "document.getElementById(document.activeElement.getAttribute(\"aria-activedescendant\")).textContent",
+          "value": "TEST-Reviewer@test-reviewer"
+        },
+        {
+          "step": 13,
+          "eval": "document.getElementById(document.activeElement.getAttribute(\"aria-activedescendant\")).textContent",
+          "value": "TEST-Reviewer Two@test-reviewer-two"
+        },
+        {
+          "step": 35,
+          "eval": "document.getElementById(document.activeElement.getAttribute(\"aria-activedescendant\")).textContent",
+          "value": "TEST-Reviewer@test-reviewer"
+        },
+        {
+          "step": 46,
+          "eval": "document.getElementById(document.activeElement.getAttribute(\"aria-activedescendant\")).textContent",
+          "value": "TEST-Reviewer Two@test-reviewer-two"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,221 @@
+{
+  "v": 1,
+  "claim": "In a Slack conversation's reply box (and the thread pane's), the @ list of callable agents has no keyboard selection: with two or more suggestions Enter sends what is typed (a bare @ or a half-typed handle) and aria-selected is always false; a handle typed in full is completed again (a space added) instead of sent; and the rows' text sits at the top of the row.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-picker-keys",
+  "base": "bd3c5d5da626d2afe0c54bba2132b0dd52a81512",
+  "head": "7796956c5b7a6894e997615b3b12543da165b475",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/SlackPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slackInbox.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slackInbox.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T22:54:47.359Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "bd3c5d5da626d2afe0c54bba2132b0dd52a81512",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "85d5593b69e3d1572b83f499a9064518ab43b70a23e492570701e4a560f21b9d"
+        },
+        {
+          "path": "p1-two-suggestions-desktop.png",
+          "sha256": "d3103b9a8d0105a05ef68c0cc13f3978f615649da35f7a905419647a0102ff5f"
+        },
+        {
+          "path": "p1-full-handle-desktop.png",
+          "sha256": "a8251e9774401503b09ea337253479005fa2406effa72d348712f9e54246881f"
+        },
+        {
+          "path": "p1-after-enter-desktop.png",
+          "sha256": "f46d92c3b5e8078e842c572d97cce95f96e482e1acfb0840caa4e373e6837441"
+        }
+      ],
+      "addedAt": "2026-11-26T22:54:47.400Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "7796956c5b7a6894e997615b3b12543da165b475",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T22:54:47.448Z",
+      "text": "base repro (bd3c5d5): with TEST-Reviewer and TEST-Reviewer Two offered, ArrowDown+Enter sent '@test-rev' and Enter on a bare '@' sent '@' (fake Slack posts: [\"@test-rev\",\"@\"]); no option is ever aria-selected; Enter on the fully typed '@test-reviewer-two' added a space instead of sending."
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "57353839c3755c43cf855595812445b1c8186880",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "015b36ba42e0c0c80facdfd03d4b59bfd7449c9c0436ea4d56611846f8520fe2"
+        }
+      ],
+      "addedAt": "2026-11-26T22:54:47.496Z",
+      "cmd": "cd ui && bun test src/slackInbox.test.ts",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "7796956c5b7a6894e997615b3b12543da165b475",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "cb0cfcc3b19090f60973b193da3429f0256b5deac2e48a44ff5f8987b9efa4ed"
+        },
+        {
+          "path": "p4-highlighted-desktop.png",
+          "sha256": "35e761423e2c24702f02d72083a7286aa5316e05c900586566fda32844fedb2f"
+        },
+        {
+          "path": "p4-sent-desktop.png",
+          "sha256": "b21378d24d5279fbe367441968b337f67ca2e167bc953439240197fec32ec19e"
+        },
+        {
+          "path": "p4-thread-highlighted-desktop.png",
+          "sha256": "6a62d73caac0afc1f0daf5fa2a292e8888f63623685e094d86ccae41aad83db3"
+        }
+      ],
+      "addedAt": "2026-11-26T22:55:17.366Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "7796956c5b7a6894e997615b3b12543da165b475",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "2daa4a0e6afd195ea24e220d757ac54638ada2c52629e6c472067b92ca48da79"
+        },
+        {
+          "path": "p5-suggest-mobile.png",
+          "sha256": "fa1c5fdf133e7a6e18a0c7ee82f74a4a9b502dc4ecf2f374988a9c632fb71c5d"
+        },
+        {
+          "path": "p5-sent-mobile.png",
+          "sha256": "53b0e0f75666b4995e2d40270c87e91de4965fedcc4094fa8f3754f24ac35eb0"
+        },
+        {
+          "path": "p5-thread-suggest-mobile.png",
+          "sha256": "74a2340139a272edb851e964000a99f73051e06e286ad7519a36dde5fa042d0f"
+        }
+      ],
+      "addedAt": "2026-11-26T22:55:17.416Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "7796956c5b7a6894e997615b3b12543da165b475",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "79a692251daad5065da2718bbeee2661a5b33a0fe047673574282d93ae538cde"
+        }
+      ],
+      "addedAt": "2026-11-26T22:55:21.880Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "7796956c5b7a6894e997615b3b12543da165b475",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "f069817040dd36fe348153fae376f19484055b6119cd5a0290eaf89c96548107"
+        }
+      ],
+      "addedAt": "2026-11-26T22:55:22.334Z",
+      "cmd": "verify/yv design-check --base bd3c5d5da626",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "7796956c5b7a6894e997615b3b12543da165b475",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-slack.json",
+          "sha256": "6fd97752c38bba160e85d058d8e311438d4964cf3d6ce75d5f1919ab28a62be6"
+        }
+      ],
+      "addedAt": "2026-11-26T22:55:22.469Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/not-connected",
+        "slack/an-agents-own-slack-app",
+        "slack/allow-from-an-agents-app",
+        "slack/answer-in-the-slack-thread",
+        "slack/connect-your-slack",
+        "slack/tokens-stay-in-yardd",
+        "slack/your-direct-messages",
+        "slack/reply-react-and-read",
+        "slack/someone-new-writes",
+        "slack/import-a-channel",
+        "slack/call-an-agent-from-slack",
+        "slack/call-an-agent-on-another-host",
+        "slack/pick-an-agent-with-the-keys",
+        "slack/one-icon-per-picture",
+        "slack/one-token-with-a-public-address",
+        "slack/a-watched-channel"
+      ]
+    }
+  ]
+}
