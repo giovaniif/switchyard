@@ -1083,7 +1083,7 @@ its engine framing and one arm in `origins::reply`.
     his own message reads everything before it); `slack.inbox.react { ts,
     name, add }`. **Calling an agent from his reply box**: `send` takes
     `mentions` (agent ids, at most 10); each one with its own app ready in
-    this workspace has its `@handle`, written as a word, made a real
+    this workspace has its `@handle`, written as a word in any case, made a real
     `<@bot_user>` mention, so its app answers there in a place session of
     its own (see agents' own apps) if it is in the conversation. Nothing
     else he types becomes a mention. The box offers those agents on `@`

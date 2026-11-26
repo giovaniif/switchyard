@@ -347,26 +347,37 @@ fn mentions(text: &str) -> Vec<String> {
     out
 }
 
-/// `@handle` as a word (not inside another handle or an address) made a
-/// Slack mention of `user`.
+/// `@handle` as a word (not inside another handle or an address), in any
+/// case, made a Slack mention of `user`. Handles are lowercase ASCII and the
+/// reply box matches them case-insensitively too (`calledAgents`): the same
+/// cases are tested on both sides (handle-calls.json).
 fn mention_handle(text: &str, handle: &str, user: &str) -> String {
-    let needle = format!("@{handle}");
-    let word = |c: char| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.');
+    let needle = format!("@{}", handle.to_ascii_lowercase());
+    // ASCII lowercasing keeps every byte offset, so matches index `text`.
+    let lower = text.to_ascii_lowercase();
+    let word = |c: char| c.is_ascii_alphanumeric() || matches!(c, '-' | '_');
     let mut out = String::new();
-    let mut rest = text;
-    while let Some(i) = rest.find(&needle) {
-        let before = rest[..i].chars().next_back();
-        let after = rest[i + needle.len()..].chars().next();
-        let alone = before.is_none_or(|c| !word(c)) && after.is_none_or(|c| !word(c) || (c == '.' && rest[i + needle.len() + 1..].chars().next().is_none_or(|c| !word(c))));
-        out.push_str(&rest[..i]);
+    let mut from = 0;
+    while let Some(k) = lower[from..].find(&needle) {
+        let (i, end) = (from + k, from + k + needle.len());
+        let before = text[..i].chars().next_back();
+        let mut after = text[end..].chars();
+        // A dot after it ends a sentence unless a word goes on past it.
+        let alone = before.is_none_or(|c| !word(c) && c != '.')
+            && match after.next() {
+                None => true,
+                Some('.') => after.next().is_none_or(|c| !word(c)),
+                Some(c) => !word(c),
+            };
+        out.push_str(&text[from..i]);
         if alone {
             out.push_str(&format!("<@{user}>"));
         } else {
-            out.push_str(&needle);
+            out.push_str(&text[i..end]);
         }
-        rest = &rest[i + needle.len()..];
+        from = end;
     }
-    out.push_str(rest);
+    out.push_str(&text[from..]);
     out
 }
 
