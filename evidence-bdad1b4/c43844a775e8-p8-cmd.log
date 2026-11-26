@@ -1,0 +1,26 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test daemon question && (cd ui && bun test) && (cd sidecar/yard-claude && bun test)
+# exit 0 after 1078 ms at bdad1b4a6d43e49644cf7e77311fc0f0821257a2
+
+
+running 2 tests
+test a_codex_question_takes_the_owners_answers ... ok
+test a_claude_question_takes_the_owners_answers ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 88 filtered out; finished in 0.32s
+
+bun test v1.4.4 (38afee6c8)
+bun test v1.4.4 (38afee6c8)
+
+    Finished `test` profile [unoptimized] target(s) in 0.22s
+     Running tests/daemon.rs (target/debug/build/yardd/bc3e500ead7d3ac6/out/daemon-bc3e500ead7d3ac6)
+
+ 492 pass
+ 0 fail
+ 4981 expect() calls
+Ran 492 tests across 36 files. [323.00ms]
+
+ 54 pass
+ 1 skip
+ 0 fail
+ 146 expect() calls
+Ran 55 tests across 12 files. [151.00ms]

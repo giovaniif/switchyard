@@ -1,0 +1,77 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "approvals",
+      "at": "2026-11-26T14:43:44.930Z",
+      "counts": {
+        "pass": 12
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "pending-shows-card",
+          "status": "pass",
+          "ms": 7246
+        },
+        {
+          "label": "allow-once",
+          "status": "pass",
+          "ms": 4779
+        },
+        {
+          "label": "allow-then-follow-up",
+          "status": "pass",
+          "ms": 5908
+        },
+        {
+          "label": "deny",
+          "status": "pass",
+          "ms": 4600
+        },
+        {
+          "label": "waiting-then-denied-command-did-not-run",
+          "status": "pass",
+          "ms": 18703
+        },
+        {
+          "label": "waiting-then-denied-edit-was-not-made",
+          "status": "pass",
+          "ms": 18139
+        },
+        {
+          "label": "always-allow",
+          "status": "pass",
+          "ms": 4752
+        },
+        {
+          "label": "double-click-allow-once",
+          "status": "pass",
+          "ms": 4353
+        },
+        {
+          "label": "approval-wait-is-not-work",
+          "status": "pass",
+          "ms": 19020
+        },
+        {
+          "label": "claude-question-answered",
+          "status": "pass",
+          "ms": 11639
+        },
+        {
+          "label": "claude-question-something-else-and-skip",
+          "status": "pass",
+          "ms": 8404
+        },
+        {
+          "label": "codex-question-answered",
+          "status": "pass",
+          "ms": 11630
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

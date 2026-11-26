@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "session:s1a21829320a1",
+  "build": {
+    "sha": "b546dcfc222dc23d2eb1dca86f4a55e111bf9879",
+    "short": "b546dcf",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T14:01:01.308Z"
+  },
+  "dir": ".verify/evidence/codex-question-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 3806,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/codex-question-head-desktop/codex-question-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/codex-question-head-desktop/codex-answered-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
