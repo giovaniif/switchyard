@@ -26,7 +26,8 @@
 // take. oauth.v2.access takes code TEST-code with client secret TEST-secret
 // and installs it for UOWNER: its bot token `xoxb-agent-TEST` is @agent
 // (UAGENT), and an app-level token with "agent" in it opens a socket of its
-// own. A message's `app` ("agent" or "shared") picks the socket it goes down;
+// own. Code TEST-code-2 installs a second agent's bot instead:
+// `xoxb-agent-2-TEST`, @agent-2 (UAGENT2), on the same socket. A message's `app` ("agent" or "shared") picks the socket it goes down;
 // without one, every socket gets it. apps.manifest.update is recorded under
 // `updates`; apps.icon.set (multipart, like Slack's) under `icons` with the
 // PNG's size, never its bytes. The app's signing secret is
@@ -82,6 +83,7 @@ const arg = (name) => {
 
 const BOT = "UBOT";
 const AGENT_BOT = "UAGENT";
+const AGENT_BOT_2 = "UAGENT2";
 const USERS = { UOWNER: "TEST-Owner", USTRANGER: "TEST-Stranger", UANA: "TEST-Ana", UOLD: "TEST-Old" };
 const CHANNELS = { C0GENERAL: "general", C0OPS: "ops", C0DEV: "dev", C0INCIDENT: "incidents" };
 
@@ -175,6 +177,7 @@ function api(method, p, auth, port) {
     case "auth.test":
       if (kind === "user" && !token.includes("bad")) return { ok: true, url: "https://test-workspace.slack.com/", team: "TEST-workspace", user: "test-owner", team_id: "T0TEST", user_id: "UOWNER" };
       if (kind !== "bot" || token.includes("bad")) return refused;
+      if (token.includes("agent-2")) return { ok: true, url: "https://test-workspace.slack.com/", team: "TEST-workspace", user: "agent-2", team_id: "T0TEST", user_id: AGENT_BOT_2, bot_id: "BAGENT2" };
       if (token.includes("agent")) return { ok: true, url: "https://test-workspace.slack.com/", team: "TEST-workspace", user: "agent", team_id: "T0TEST", user_id: AGENT_BOT, bot_id: "BAGENT" };
       return { ok: true, url: "https://test-workspace.slack.com/", team: "TEST-workspace", user: "switchyard", team_id: "T0TEST", user_id: BOT, bot_id: "BBOT" };
     case "apps.connections.open":
@@ -217,8 +220,9 @@ function api(method, p, auth, port) {
       state.deleted.push(p.app_id);
       return { ok: true };
     case "oauth.v2.access":
-      if (p.code !== "TEST-code" || p.client_secret !== "TEST-secret") return { ok: false, error: "invalid_code" };
+      if ((p.code !== "TEST-code" && p.code !== "TEST-code-2") || p.client_secret !== "TEST-secret") return { ok: false, error: "invalid_code" };
       if (p.client_id === "C0YOU") return { ok: true, app_id: "A0YOU", team: { id: "T0TEST", name: "TEST-workspace" }, authed_user: { id: "UOWNER", scope: "im:history,im:read", access_token: "xoxp-you-TEST", token_type: "user" } };
+      if (p.code === "TEST-code-2") return { ok: true, access_token: "xoxb-agent-2-TEST", token_type: "bot", bot_user_id: AGENT_BOT_2, app_id: "A0AGENT", team: { id: "T0TEST", name: "TEST-workspace" }, authed_user: { id: "UOWNER" } };
       return { ok: true, access_token: "xoxb-agent-TEST", token_type: "bot", bot_user_id: AGENT_BOT, app_id: "A0AGENT", team: { id: "T0TEST", name: "TEST-workspace" }, authed_user: { id: "UOWNER" } };
     case "chat.postMessage": {
       if (kind === "user" && !token.includes("bad")) {
