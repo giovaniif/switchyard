@@ -1557,3 +1557,23 @@ async fn the_owner_calls_an_agent_from_his_reply_box_with_a_real_mention() {
     let page = inbox(&mut c, json!({ "op": "slack.inbox.messages", "team": "T0TEST", "channel": "G0TRIO" })).await;
     assert_eq!(page["users"]["UAGENT"], "Reviewer");
 }
+
+#[tokio::test]
+async fn an_agent_called_in_another_case_still_hears_it() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-call-case");
+    let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api()), ("YARD_ALLOW_ORIGIN", ORIGIN)]);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    let id = reviewer(&mut c).await;
+    agent_app(&mut c, daemon.port, &id).await;
+    connect_me(&mut c).await;
+    inbox_list(&mut c, "the DMs synced", |l| l.len() == 2).await;
+
+    // Written as its name shows (`@Reviewer`), it is still a call, as the
+    // reply box says; a near miss stays text.
+    let sent = inbox(&mut c, json!({ "op": "slack.inbox.send", "team": "T0TEST", "channel": "G0TRIO", "text": "@Reviewer please, not @Reviewers", "mentions": [id] })).await;
+    let ts = sent["ts"].as_str().unwrap().to_string();
+    let posted = fake.state()["posts"].as_array().unwrap().iter().find(|p| p["ts"] == ts.as_str()).cloned().unwrap();
+    assert_eq!(posted["text"], "<@UAGENT> please, not @Reviewers");
+}

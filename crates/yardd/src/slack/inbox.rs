@@ -891,6 +891,18 @@ mod tests {
         assert_eq!(mention_handle("@reviewers a@reviewer @reviewer-2 @reviewer.x", "reviewer", "UA"), "@reviewers a@reviewer @reviewer-2 @reviewer.x");
     }
 
+    /// The reply box (`calledAgents` in ui/src/slackInbox.ts) reads the same
+    /// cases: what it says a message calls is exactly what becomes a mention.
+    #[test]
+    fn the_reply_box_and_yardd_agree_on_what_calls_an_agent() {
+        let cases: Vec<Value> = serde_json::from_str(include_str!("handle-calls.json")).unwrap();
+        for c in cases {
+            let (handle, text) = (c["handle"].as_str().unwrap(), c["text"].as_str().unwrap());
+            let out = mention_handle(text, handle, "UA");
+            assert_eq!(out.contains("<@UA>"), c["calls"].as_bool().unwrap(), "{text:?} for @{handle} became {out:?}");
+        }
+    }
+
     #[test]
     fn mentions_are_user_ids_only() {
         assert_eq!(mentions("hi <@U1ABC> and <@W2XYZ|ana>, not <#C1|general> or <@B1>"), ["U1ABC", "W2XYZ"]);

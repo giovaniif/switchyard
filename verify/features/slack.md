@@ -258,8 +258,9 @@ Viewports: both
 In a Slack conversation's reply box, @ offers the agents whose own app is in
 that workspace; picking one writes its handle, the box says it calls it, and
 the message goes to Slack with a real mention of its bot (so its app answers
-there, in a place of its own, if it is in the conversation). Anything else he
-types stays plain text.
+there, in a place of its own, if it is in the conversation). Typed by hand in
+any case (`@TEST-Reviewer`, as its name shows) it is a call too, exactly when
+the box says so. Anything else he types stays plain text.
 
 ```sh
 yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","agentId":"{{reviewer}}","origin":"http://127.0.0.1","ref":"grant"}' --wait '{"op":"slack"}'
@@ -270,9 +271,10 @@ yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait
 yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app2"}' --wait '{"op":"slack"}'
 for i in $(seq 100); do yv state --full 2>/dev/null | grep -q G0TRIO && break; sleep 0.2; done
 for vp in desktop mobile; do
-yv drive 'slack:TEST-Stranger' --viewport $vp --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@rev"},{"expect":{"role":"option","name":"TEST-Reviewer @test-reviewer"}},{"shot":"suggest"},{"click":{"role":"option","name":"TEST-Reviewer @test-reviewer"}},{"type":"check the deploy '$vp'"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Reviewer"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"check the deploy '$vp'"},{"shot":"called"}]'
+yv drive 'slack:TEST-Stranger' --viewport $vp --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@rev"},{"expect":{"role":"option","name":"TEST-Reviewer @test-reviewer"}},{"shot":"suggest"},{"click":{"role":"option","name":"TEST-Reviewer @test-reviewer"}},{"type":"check the deploy '$vp'"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Reviewer"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"check the deploy '$vp'"},{"shot":"called"},{"fill":"label:Message TEST-Ana, TEST-Stranger","value":"@TEST-Reviewer typed '$vp'"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Reviewer"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"typed '$vp'"}]'
 done
 curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and (.text | startswith("<@UAGENT> check the deploy")))] | length == 2'
+curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and (.text | startswith("<@UAGENT> typed")))] | length == 2'
 ```
 
 ### one-token-with-a-public-address

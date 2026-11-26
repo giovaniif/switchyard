@@ -1,0 +1,19 @@
+[
+  { "handle": "reviewer", "text": "@reviewer look", "calls": true },
+  { "handle": "reviewer", "text": "@Reviewer look", "calls": true },
+  { "handle": "reviewer", "text": "cc @REVIEWER, please", "calls": true },
+  { "handle": "reviewer", "text": "thanks @reviewer.", "calls": true },
+  { "handle": "reviewer", "text": "wait @reviewer...", "calls": true },
+  { "handle": "reviewer", "text": "(@reviewer)", "calls": true },
+  { "handle": "test-reviewer", "text": "@TEST-Reviewer upper desktop", "calls": true },
+  { "handle": "reviewer", "text": "@reviewers", "calls": false },
+  { "handle": "reviewer", "text": "@Reviewers", "calls": false },
+  { "handle": "reviewer", "text": "a@reviewer", "calls": false },
+  { "handle": "reviewer", "text": "x.@Reviewer", "calls": false },
+  { "handle": "reviewer", "text": "@reviewer-2", "calls": false },
+  { "handle": "reviewer", "text": "@reviewer_x", "calls": false },
+  { "handle": "reviewer", "text": "@Reviewer.x", "calls": false },
+  { "handle": "reviewer", "text": "@review", "calls": false },
+  { "handle": "test-reviewer", "text": "@test-reviewers", "calls": false },
+  { "handle": "test-reviewer", "text": "@TEST-Reviewer2", "calls": false }
+]
