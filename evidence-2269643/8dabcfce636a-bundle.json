@@ -1,0 +1,263 @@
+{
+  "v": 1,
+  "claim": "An agent's Slack app icon key differs between the mobile and desktop window sizes, so every window size that opens Switchyard uploads the agent's picture to Slack again (apps.icon.set); for an agent whose host is offline, that upload is refused with an error on every page view.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key",
+  "base": "98c80b25d02dd4d307f943b8066832680239ab3c",
+  "head": "2269643b04f45fbb234f431cb1dcaa98ef16ad69",
+  "changed": [
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackIcon.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T22:07:57.274Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "8c9d54f6157b9d7c2454e725fd967eac8bce2a10",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "b5ecfd4f1716876d52665857b7fdfc47a57d5823f0f4d62e4e1be12b5b01d5c5"
+        },
+        {
+          "path": "p1-agents-desktop.png",
+          "sha256": "a86f1d33aad40514709efae74aa9767884674e2c51c929fc44fb55b00060f5fb"
+        }
+      ],
+      "addedAt": "2026-11-26T22:08:27.924Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "8c9d54f6157b9d7c2454e725fd967eac8bce2a10",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "bbf650eb0a17d0504cfc5f12102e396c6b017dcc078ae66cc576a98c1063b46e"
+        },
+        {
+          "path": "p2-agents-mobile.png",
+          "sha256": "70a459c18a3a4a0494bf0626fb587cb0082c6d958cae86d39e90058fefae48d4"
+        }
+      ],
+      "addedAt": "2026-11-26T22:08:27.971Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "note",
+      "at": "8c9d54f6157b9d7c2454e725fd967eac8bce2a10",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T22:08:28.015Z",
+      "text": "base: TEST-Reviewer's app had no icon; opening the agents page at desktop uploaded one (fake Slack icons=1, iconKey v1-2e3e1163c12b0e58), then at mobile uploaded it again (icons=2, iconKey v1-f8efd6c6276a4e69) though the face is the same. The hidden avatar's gradient ids were f_r_2_-* at desktop and f_r_3_-* at mobile (React useId)."
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "test",
+      "at": "8c9d54f6157b9d7c2454e725fd967eac8bce2a10",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "fb73fd6ff81ae5f087b2ea2e6b55e738296a957720bc99d12b44db2b64a9308b"
+        }
+      ],
+      "addedAt": "2026-11-26T22:08:32.907Z",
+      "cmd": "cd ui && bun test src/slack.test.ts",
+      "exit": 1
+    },
+    {
+      "id": 5,
+      "ref": "base",
+      "kind": "test",
+      "at": "8c9d54f6157b9d7c2454e725fd967eac8bce2a10",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "41f6218f8ca65377f277820219aeace6e827728fa8aa519d82c1541a005ec22f"
+        }
+      ],
+      "addedAt": "2026-11-26T22:08:41.352Z",
+      "cmd": "verify/yv map run slack --recipe one-icon-per-picture",
+      "exit": 1
+    },
+    {
+      "id": 6,
+      "ref": "base",
+      "kind": "test",
+      "at": "8c9d54f6157b9d7c2454e725fd967eac8bce2a10",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "fc95050b54d81234ff6c03fe2c0fdc2a6328edc1bf0a012f872f933d7c407e67"
+        }
+      ],
+      "addedAt": "2026-11-26T22:08:53.509Z",
+      "cmd": "verify/yv map run slack --recipe call-an-agent-on-another-host",
+      "exit": 1
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "fix",
+      "at": "2269643b04f45fbb234f431cb1dcaa98ef16ad69",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p7-drive.json",
+          "sha256": "eaab137b89481d21bbdb8fb19884e670b2e886da99767ef7204e31e98d73bbf6"
+        },
+        {
+          "path": "p7-agents-desktop.png",
+          "sha256": "58231d9fe6796d6a9c90be9be76b175437d016b65bf5a7f615a4ac87cff3add3"
+        }
+      ],
+      "addedAt": "2026-11-26T22:09:43.455Z",
+      "failedApi": []
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "fix",
+      "at": "2269643b04f45fbb234f431cb1dcaa98ef16ad69",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p8-drive.json",
+          "sha256": "e9d344f615728747f308461e3aecf654a369f91be55438091360545b5b2a2c11"
+        },
+        {
+          "path": "p8-agents-mobile.png",
+          "sha256": "6983dc3f065fe55e3cff5d1bc5553d23601285221f40d8b252b8a756e811e143"
+        }
+      ],
+      "addedAt": "2026-11-26T22:09:43.499Z",
+      "failedApi": []
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "note",
+      "at": "2269643b04f45fbb234f431cb1dcaa98ef16ad69",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T22:09:43.541Z",
+      "text": "head: same steps. Desktop uploaded TEST-Reviewer's icon once (fake Slack icons=1, iconKey v1-a44bcd561a0aea81); mobile computed the same key and uploaded nothing (icons=1, same key)."
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "test",
+      "at": "2269643b04f45fbb234f431cb1dcaa98ef16ad69",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-cmd.log",
+          "sha256": "a6919f1b9ddc5e8e26ceb55be7f5fa01806b225d7a6be008190a2013f0c958e0"
+        }
+      ],
+      "addedAt": "2026-11-26T22:10:10.026Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test) && (cd sidecar/yard-claude && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "design",
+      "at": "2269643b04f45fbb234f431cb1dcaa98ef16ad69",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-design.json",
+          "sha256": "aeca28e9a53bff3c97ae9dc1def342f48d4de4fe9351ccdc36781c7bdb0ef1fa"
+        }
+      ],
+      "addedAt": "2026-11-26T22:13:43.939Z",
+      "cmd": "verify/yv design-check --base 98c80b25d02d",
+      "exit": 0
+    },
+    {
+      "id": 12,
+      "ref": "head",
+      "kind": "regression",
+      "at": "2269643b04f45fbb234f431cb1dcaa98ef16ad69",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p12-map-slack.json",
+          "sha256": "a3593bb8453c23a0034c33113cabb8e055359b68f2ff26c6c289df874d5cd27a"
+        }
+      ],
+      "addedAt": "2026-11-26T22:13:44.070Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/not-connected",
+        "slack/an-agents-own-slack-app",
+        "slack/allow-from-an-agents-app",
+        "slack/answer-in-the-slack-thread",
+        "slack/connect-your-slack",
+        "slack/tokens-stay-in-yardd",
+        "slack/your-direct-messages",
+        "slack/reply-react-and-read",
+        "slack/someone-new-writes",
+        "slack/import-a-channel",
+        "slack/call-an-agent-from-slack",
+        "slack/call-an-agent-on-another-host",
+        "slack/one-icon-per-picture",
+        "slack/one-token-with-a-public-address",
+        "slack/a-watched-channel"
+      ]
+    }
+  ]
+}

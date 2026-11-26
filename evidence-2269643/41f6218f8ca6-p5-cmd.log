@@ -1,0 +1,34 @@
+$ verify/yv map run slack --recipe one-icon-per-picture
+# exit 1 after 12029 ms at 8c9d54f6157b9d7c2454e725fd967eac8bce2a10
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "slack",
+      "at": "2026-11-26T22:08:53.377Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "one-icon-per-picture",
+          "status": "fail",
+          "ms": 11349,
+          "problems": [],
+          "tail": " \"syncError\": null,\n          \"teamId\": \"T0TEST\",\n          \"teamName\": \"TEST-workspace\",\n          \"watched\": []\n        }\n      },\n      \"allowed\": [\n        {\n          \"id\": \"UOWNER\",\n          \"name\": \"TEST-Owner\"\n        }\n      ],\n      \"canRedirect\": true,\n      \"hosts\": {},\n      \"me\": null,\n      \"places\": [],\n      \"publicCheck\": null,\n      \"publicUrl\": \"\",\n      \"publicUrlFixed\": false,\n      \"workspaces\": [\n        {\n          \"teamId\": \"T0TEST\",\n          \"teamName\": \"TEST-workspace\"\n        }\n      ]\n    }\n  },\n  \"saved\": {},\n  \"received\": 1,\n  \"problems\": []\n}\n{\n  \"command\": \"drive\",\n  \"ok\": true,\n  \"route\": \"agents\",\n  \"build\": {\n    \"sha\": \"8c9d54f6157b9d7c2454e725fd967eac8bce2a10\",\n    \"short\": \"8c9d54f\",\n    \"dirty\": false,\n    \"diffHash\": null,\n    \"at\": \"2026-11-26T22:08:09.643Z\"\n  },\n  \"dir\": \"/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/.verify/drives/2026-11-26T22-08-42-555Z\",\n  \"runs\": [\n    {\n      \"viewport\": \"desktop\",\n      \"ms\": 1656,\n      \"steps\": 2,\n      \"failed\": null,\n      \"captures\": [\n        {\n          \"viewport\": \"desktop\",\n          \"file\": \"/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/.verify/drives/2026-11-26T22-08-42-555Z/painter-desktop.png\",\n          \"size\": {\n            \"width\": 2880,\n            \"height\": 1800\n          }\n        }\n      ],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": []\n}\n{\n  \"command\": \"drive\",\n  \"ok\": true,\n  \"route\": \"agents\",\n  \"build\": {\n    \"sha\": \"8c9d54f6157b9d7c2454e725fd967eac8bce2a10\",\n    \"short\": \"8c9d54f\",\n    \"dirty\": false,\n    \"diffHash\": null,\n    \"at\": \"2026-11-26T22:08:09.643Z\"\n  },\n  \"dir\": \"/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/.verify/drives/2026-11-26T22-08-46-508Z\",\n  \"runs\": [\n    {\n      \"viewport\": \"mobile\",\n      \"ms\": 5121,\n      \"steps\": 3,\n      \"failed\": null,\n      \"captures\": [\n        {\n          \"viewport\": \"mobile\",\n          \"file\": \"/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/.verify/drives/2026-11-26T22-08-46-508Z/painter-mobile.png\",\n          \"size\": {\n            \"width\": 780,\n            \"height\": 1688\n          }\n        }\n      ],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": []\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "slack/one-icon-per-picture",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

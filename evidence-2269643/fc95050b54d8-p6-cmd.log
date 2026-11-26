@@ -1,0 +1,39 @@
+$ verify/yv map run slack --recipe call-an-agent-on-another-host
+# exit 1 after 21682 ms at 8c9d54f6157b9d7c2454e725fd967eac8bce2a10
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "slack",
+      "at": "2026-11-26T22:09:15.188Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "call-an-agent-on-another-host",
+          "status": "fail",
+          "ms": 20998,
+          "problems": [
+            {
+              "code": "errors",
+              "msg": "desktop: 0 console, 0 page, 1 API, 0 HTTP errors"
+            }
+          ],
+          "tail": " \"dirty\": false,\n    \"diffHash\": null,\n    \"at\": \"2026-11-26T22:08:09.643Z\"\n  },\n  \"dir\": \"/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/.verify/drives/2026-11-26T22-09-03-061Z\",\n  \"runs\": [\n    {\n      \"viewport\": \"mobile\",\n      \"ms\": 5511,\n      \"steps\": 15,\n      \"failed\": null,\n      \"captures\": [\n        {\n          \"viewport\": \"mobile\",\n          \"file\": \"/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/.verify/drives/2026-11-26T22-09-03-061Z/suggest-both-mobile.png\",\n          \"size\": {\n            \"width\": 780,\n            \"height\": 1688\n          }\n        },\n        {\n          \"viewport\": \"mobile\",\n          \"file\": \"/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/.verify/drives/2026-11-26T22-09-03-061Z/called-both-mobile.png\",\n          \"size\": {\n            \"width\": 780,\n            \"height\": 1688\n          }\n        }\n      ],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": []\n}\ntrue\n{\n  \"command\": \"iso down\",\n  \"ok\": true,\n  \"stopped\": [\n    \"map-slack-remote\"\n  ],\n  \"problems\": []\n}\ntrue\n{\n  \"command\": \"drive\",\n  \"ok\": false,\n  \"route\": \"slack:TEST-Stranger\",\n  \"build\": {\n    \"sha\": \"8c9d54f6157b9d7c2454e725fd967eac8bce2a10\",\n    \"short\": \"8c9d54f\",\n    \"dirty\": false,\n    \"diffHash\": null,\n    \"at\": \"2026-11-26T22:08:09.643Z\"\n  },\n  \"dir\": \"/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/.verify/drives/2026-11-26T22-09-09-961Z\",\n  \"runs\": [\n    {\n      \"viewport\": \"desktop\",\n      \"ms\": 4851,\n      \"steps\": 8,\n      \"failed\": null,\n      \"captures\": [\n        {\n          \"viewport\": \"desktop\",\n          \"file\": \"/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/.verify/drives/2026-11-26T22-09-09-961Z/called-offline-desktop.png\",\n          \"size\": {\n            \"width\": 2880,\n            \"height\": 1800\n          }\n        }\n      ],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [\n        {\n          \"op\": \"error\",\n          \"for\": \"slack.app.icon\",\n          \"message\": \"TEST-slack-box is offline, so TEST-Far can't be changed now. Try again once it is back.\"\n        }\n      ],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"errors\",\n      \"msg\": \"desktop: 0 console, 0 page, 1 API, 0 HTTP errors\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "slack/call-an-agent-on-another-host",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

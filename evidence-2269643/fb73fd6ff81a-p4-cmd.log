@@ -1,0 +1,26 @@
+$ cd ui && bun test src/slack.test.ts
+# exit 1 after 32 ms at 8c9d54f6157b9d7c2454e725fd967eac8bce2a10
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/slack.test.ts:
+105 |     // A page names a face's gradients after where React mounted it (useId),
+106 |     // and a phone-sized window mounts it elsewhere than a desktop one.
+107 |     const paint = { background: "crimson", light: "white", clear: "transparent" };
+108 |     const drawn = (uid: string, color: "rose" | "teal" = "rose") => avatarIconSvg(avatarSvg({ color, face: "glasses" }, 88, uid), paint) ?? "";
+109 |     expect(avatarSvg({ color: "rose", face: "glasses" }, 88, "f_r_2_")).toContain('id="f_r_2_-skin"');
+110 |     expect(iconKey(drawn("f_r_2_"))).toBe(iconKey(drawn("f_r_3_")));
+                                           ^
+error: expect(received).toBe(expected)
+
+Expected: "v1-1039a9dcf7177ef6"
+Received: "v1-2ecf3d0eb5b1f0d2"
+
+      at <anonymous> (/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/ui/src/slack.test.ts:110:38)
+(fail) an agent's own Slack app > has one key per picture, whichever window drew it [5.98ms]
+
+ 10 pass
+ 1 fail
+ 48 expect() calls
+Ran 11 tests across 1 file. [26.00ms]

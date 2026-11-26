@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "8c9d54f6157b9d7c2454e725fd967eac8bce2a10",
+    "short": "8c9d54f",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T22:08:09.643Z"
+  },
+  "dir": "/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/.verify/evidence/slack-icon-key-base-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4113,
+      "steps": 3,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/www/better-than-claude-code/.claude/worktrees/slack-icon-key/.verify/evidence/slack-icon-key-base-desktop/agents-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

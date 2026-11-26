@@ -1,0 +1,38 @@
+{
+  "command": "design-check",
+  "ok": true,
+  "base": "98c80b25d02dd4d307f943b8066832680239ab3c",
+  "ui": true,
+  "touched": [
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/SlackIcon.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/slack.test.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/slack.ts"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "rule": "raw-svg",
+      "severity": "warn",
+      "file": "ui/src/slack.test.ts",
+      "line": 112,
+      "text": "const styled = (uid: string) => avatarIconSvg(`<svg><defs><radialGradient id=\"${uid}-skin\"/><clipPath id=\"${uid}-skin-2\"/></defs><circle fill=\"url(&quot;#${uid}-skin&quot;)\" clip-path=\"url(&quot;#${ui",
+      "hint": "use <Icon d={PATH} /> like the rest of the UI"
+    }
+  ],
+  "problems": [],
+  "hint": "screenshot the reference screen next to your after-shots, and cover empty, loading, error and long-text states at both viewports"
+}
