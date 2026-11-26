@@ -1,0 +1,245 @@
+{
+  "v": 1,
+  "claim": "Connecting your Slack brought none of your DMs into Switchyard: there was no Slack section in the sidebar, no conversation to read and no way to answer; now every DM and group DM (new ones too) is there, read and answered as you",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a",
+  "base": "b18c4536ccb6aeba7722b9519376a2c4710f1fc9",
+  "head": "26f69a300600b97e9725cc72faed47a6900eccaa",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/yardd/src/slack/inbox.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/SlackPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/slackInbox.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/slackInbox.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/slackText.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/slackText.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/fakes/fake-slack"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/src/browser.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/src/cli.ts"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T15:19:52.023Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "31205f15e980240079bd27020b5e3d0c9cb90638",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "d15f5c97a14a84524f1fedc6f15048224b66dab63a4e48029904f4188025d772"
+        },
+        {
+          "path": "p1-base-no-dms-desktop.png",
+          "sha256": "e18759c28ac6516ca95f9789bd55ed28808321519898127364a9ad41575de155"
+        }
+      ],
+      "addedAt": "2026-11-26T15:20:09.901Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "31205f15e980240079bd27020b5e3d0c9cb90638",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "06402df73509ea2598f21586a5acc206eef61e5f41dbdd697629d12b7207018c"
+        }
+      ],
+      "addedAt": "2026-11-26T15:20:09.947Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack the_owners_direct_messages_come_into_switchyard",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "26f69a300600b97e9725cc72faed47a6900eccaa",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "77e50a7d346217c9ec7dcd6288c88b76fd025a4bbe55e28f9ae780b4f82fa52e"
+        },
+        {
+          "path": "p3-dm-desktop.png",
+          "sha256": "d6a742f648ec532337e07bc31ce883f2626ed362dc9c827fda41dd4f6dc05000"
+        },
+        {
+          "path": "p3-thread-desktop.png",
+          "sha256": "0da6f1c0a9dcc59f185917d9d9d054a9af45d9cc087277bee836a940f878ac32"
+        }
+      ],
+      "addedAt": "2026-11-26T15:20:32.393Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "26f69a300600b97e9725cc72faed47a6900eccaa",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "8126faf2f582977e1a99338b3901cc43d9d7c18ba006d341608cc34b76340306"
+        },
+        {
+          "path": "p4-dm-mobile.png",
+          "sha256": "7da53968edd1cfd185c195b75cd99a786e71bb6edeabafe9d1f83cdeb0fba881"
+        },
+        {
+          "path": "p4-thread-mobile.png",
+          "sha256": "a0288d02083f540cd48188ce5f258ea520bc031f83b0287bd759e958edced79a"
+        }
+      ],
+      "addedAt": "2026-11-26T15:20:36.416Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "26f69a300600b97e9725cc72faed47a6900eccaa",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "18c79d4f381db62c30907185ef14c1a02ab21cc37a5e7fad42f42d1847dc4fb8"
+        }
+      ],
+      "addedAt": "2026-11-26T15:20:36.591Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack && CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd inbox && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "26f69a300600b97e9725cc72faed47a6900eccaa",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "f945eb40efa911fca0248fc8a1b23775027c07f5996dcb7ad38514ee01564717"
+        }
+      ],
+      "addedAt": "2026-11-26T15:21:00.368Z",
+      "cmd": "verify/yv design-check --base b18c4536ccb6",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "26f69a300600b97e9725cc72faed47a6900eccaa",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-slack.json",
+          "sha256": "e9ece112b87dadb3a6303581b9941d9dd203915620ed7afcbd04eeb717fbd3a9"
+        }
+      ],
+      "addedAt": "2026-11-26T15:21:00.470Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/not-connected",
+        "slack/an-agents-own-slack-app",
+        "slack/allow-from-an-agents-app",
+        "slack/answer-in-the-slack-thread",
+        "slack/connect-your-slack",
+        "slack/tokens-stay-in-yardd",
+        "slack/your-direct-messages",
+        "slack/reply-react-and-read",
+        "slack/someone-new-writes",
+        "slack/one-token-with-a-public-address",
+        "slack/a-watched-channel"
+      ]
+    }
+  ]
+}

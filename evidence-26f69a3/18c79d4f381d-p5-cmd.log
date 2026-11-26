@@ -1,0 +1,40 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack && CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd inbox && (cd ui && bun test)
+# exit 0 after 23726 ms at 26f69a300600b97e9725cc72faed47a6900eccaa
+
+
+running 12 tests
+test without_an_https_address_the_owner_pastes_his_user_token ... ok
+test an_agent_gets_a_slack_app_of_its_own_from_a_configuration_token ... ok
+test slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_the_thread ... ok
+test an_agent_posts_later_only_in_slack_threads_routed_to_it_as_its_own_app ... ok
+test an_agents_slack_app_follows_its_name_and_icon_and_says_when_it_cannot ... ok
+test the_owner_replies_reacts_and_reads_from_switchyard_as_himself ... ok
+test with_a_public_address_an_agents_app_needs_only_the_configuration_token ... ok
+test a_watched_turn_cannot_change_the_agents_setup_or_pass_its_access_on ... ok
+test the_owners_direct_messages_come_into_switchyard_new_ones_too ... ok
+test the_owner_connects_his_own_slack_and_it_comes_back_after_a_disconnect_a_drop_or_a_restart ... ok
+test an_agents_app_takes_messages_from_allowed_people_and_answers_in_the_thread ... ok
+test a_watched_channel_reaches_its_agent_as_read_only_data_one_turn_per_batch ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.32s
+
+
+running 2 tests
+test slack::inbox::tests::mentions_are_user_ids_only ... ok
+test slack::inbox::tests::messages_are_kept_edited_deleted_and_counted_in_threads ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 104 filtered out; finished in 0.03s
+
+bun test v1.4.4 (38afee6c8)
+
+   Compiling yardd v0.23.0 (/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 0.80s
+     Running tests/slack.rs (target/debug/build/yardd/7070339f5020f7ad/out/slack-7070339f5020f7ad)
+   Compiling yardd v0.23.0 (/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 2.87s
+     Running unittests src/main.rs (target/debug/build/yardd/7902cb21fd3fec33/out/yardd-7902cb21fd3fec33)
+
+ 504 pass
+ 0 fail
+ 5006 expect() calls
+Ran 504 tests across 38 files. [575.00ms]

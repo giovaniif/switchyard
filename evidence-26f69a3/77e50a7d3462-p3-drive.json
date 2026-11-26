@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "slack:TEST-Ana",
+  "build": {
+    "sha": "26f69a300600b97e9725cc72faed47a6900eccaa",
+    "short": "26f69a3",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T15:20:23.140Z"
+  },
+  "dir": ".verify/evidence/slack-inbox-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 6193,
+      "steps": 11,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-inbox-head-desktop/dm-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-inbox-head-desktop/thread-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
