@@ -5348,7 +5348,8 @@ function SessionRows({
             </span>
             <span className={`focused-session-state ${s.status === "needs_approval" ? "warn" : "muted"}`}>
               <span className={`dot dot-${s.status}`} />
-              {!hostOnline(state, host) ? "Offline" : s.archived ? "Archived" : STATUS_LABEL[s.status]}
+              {/* Archived sessions still run: past idle, the status is what the row is for. */}
+              {!hostOnline(state, host) ? "Offline" : !s.archived ? STATUS_LABEL[s.status] : s.status === "idle" ? "Archived" : `Archived · ${STATUS_LABEL[s.status]}`}
             </span>
             <span className="focused-session-resources muted small">
               {usage ? (
