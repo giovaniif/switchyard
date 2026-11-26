@@ -101,6 +101,20 @@ pub fn turn_permission(permission: &str, answering: &[Value]) -> String {
     if answering.iter().any(read_only) { "plan".to_string() } else { permission.to_string() }
 }
 
+/// These fields are derived by the Slack router and carried to an agent's
+/// host. Guest status is independent of Plan and must survive the host hop.
+pub fn slack_place(origin: &Value) -> Option<&str> {
+    (kind(origin) == "slack").then(|| origin["placeKey"].as_str()).flatten().filter(|key| !key.is_empty())
+}
+
+pub fn slack_guest(origin: &Value) -> bool {
+    slack_place(origin).is_some() && origin["guest"].as_bool() != Some(false)
+}
+
+pub fn escape_data(text: &str) -> String {
+    text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+}
+
 /// What the engine reads around a notice from a watched channel. The text
 /// inside is yardd's own framing of the messages (`slack::watched_text`),
 /// each escaped so it cannot close its tag. The rules come before and after
@@ -145,8 +159,10 @@ pub fn engine_text(text: &str, origin: Option<&Value>) -> String {
                 Some("Direct message") | Some("") | None => "a direct message".to_string(),
                 Some(channel) => attr(channel),
             };
+            let history = crate::slack::history_frame(&origin["history"]);
+            let text = if slack_place(origin).is_some() { escape_data(text) } else { text.to_string() };
             format!(
-                "<slack from=\"{who}\" in=\"{place}\">\n{text}\n</slack>\n(From {who} on Slack, in {place}, not typed in Switchyard. Your final answer to this message is posted back to that Slack thread.)"
+                "{history}<slack from=\"{who}\" in=\"{place}\">\n{text}\n</slack>\n(From {who} on Slack, in {place}, not typed in Switchyard. Your final answer to this message is posted back to that Slack thread.)"
             )
         }
         _ => text.to_string(),
@@ -187,6 +203,16 @@ pub fn from_hub(origin: &Value) -> Option<Value> {
             if origin["watched"].as_bool() == Some(true) {
                 o["watched"] = json!(true);
                 o["count"] = json!(origin["count"].as_u64().unwrap_or(1));
+            }
+            if let Some(key) = slack_place(origin) {
+                o["placeKey"] = json!(clip(key, 200));
+                o["placeLabel"] = json!(text("placeLabel"));
+                o["guest"] = json!(slack_guest(origin));
+                o["history"] = crate::slack::bounded_history(&origin["history"]);
+            }
+            if origin["accessId"].is_string() {
+                o["accessId"] = json!(text("accessId"));
+                o["requestText"] = json!(clip(origin["requestText"].as_str().unwrap_or(""), 2_000));
             }
             Some(o)
         }

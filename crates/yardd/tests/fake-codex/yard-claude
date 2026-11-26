@@ -70,6 +70,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 import { CHART_URI, chartCall, rpc } from "./chart.mjs";
 import { afterCalls, callTools, toolMarkers } from "./agent-tools.mjs";
 import { describe as describeTool, toolStarted } from "../../../../sidecar/yard-claude/src/tools.ts";
+import { restrictedProfile } from "../../../../sidecar/yard-claude/src/restricted.ts";
 import { answeredInput, questionRequest } from "../../../../sidecar/yard-claude/src/questions.ts";
 
 // The connector scope `start` gave (see sidecar/yard-claude/src/scope.ts), for the log.
@@ -378,6 +379,7 @@ async function runSubagent(text) {
   emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: `Echo: ${text}` });
   emit({ type: "turn_completed", status: "completed" });
 }
+let start;
 for await (const line of console) {
   let msg;
   try {
@@ -386,6 +388,7 @@ for await (const line of console) {
     continue;
   }
   if (msg.type === "start") {
+    start = msg;
     log(`start pid=${process.pid} config=${process.env.CLAUDE_CONFIG_DIR ?? ""} resume=${msg.resume ?? ""}${msg.restricted ? " restricted=true" : ""}${msg.tools ? " tools=switchyard" : ""}${mcpScope(msg.mcp)}`);
     tools = msg.tools ?? null;
     out({ type: "session", claudeSessionId: msg.resume ?? `fake-claude-${process.pid}` });
@@ -413,6 +416,19 @@ for await (const line of console) {
     // Claude is the fallback, so it answers a title for "[name-fail]" (Codex failed it).
     if (text.startsWith("Name this coding session")) {
       emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: text.includes("[name-fail]") ? "Claude named session" : "" });
+      emit({ type: "turn_completed", status: "completed" });
+      continue;
+    }
+    if (start?.slackGuest && start.restricted) {
+      const profile = restrictedProfile(start);
+      if (dir) appendFileSync(`${dir}/slack-claude.jsonl`, JSON.stringify({
+        profile, input: text, permission: msg.permission, resume: start.resume,
+        tools: start.tools, mcp: start.mcp, cwd: start.cwd,
+      }) + "\n");
+      const current = text.split("<slack from=").at(-1).split("</slack>")[0];
+      const reply = current.includes("[needs-access]") || current.includes("[try-tools]")
+        ? "SWITCHYARD_REQUEST_ACCESS" : `Echo: ${current.split("\n").slice(1).join("\n").trim()}`;
+      emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: reply });
       emit({ type: "turn_completed", status: "completed" });
       continue;
     }

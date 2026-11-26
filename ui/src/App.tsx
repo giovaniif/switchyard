@@ -10,7 +10,7 @@ import { Subscriptions, UsageStrip, type UsageAccount } from "./UsageMeters";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { HOST_NAME_LIMIT, nameFromDestination } from "./addHost";
-import { AgentAvatar, AgentBar, AgentForm, AgentRequests, AgentRunPickers, AgentsPage, AgentStart, EarlierConversations, NewAgentRedirect, agentSettings, useAgentMove, useAgentSave } from "./AgentsPage";
+import { AgentAvatar, AgentBar, AgentForm, AgentPlaces, AgentRequests, AgentRunPickers, AgentsPage, AgentStart, EarlierConversations, NewAgentRedirect, agentSettings, useAgentMove, useAgentSave } from "./AgentsPage";
 import { SlackIcons } from "./SlackIcon";
 import { agentHost, agentOf, agentsAttention, agentStatus, conversationOf, handleOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
 import { size, stateText } from "./hosts";
@@ -165,7 +165,10 @@ function AgentView({ state, actions, id }: { state: State; actions: Actions; id:
   }, [asked, id]);
   if (!agent) return <AgentsPage state={state} actions={actions} />;
   // What it said on a host it moved away from stays there, a click away.
-  const earlier = <EarlierConversations state={state} actions={actions} agent={agent} />;
+  const earlier = <>
+    <AgentPlaces state={state} actions={actions} agent={agent} />
+    <EarlierConversations state={state} actions={actions} agent={agent} />
+  </>;
   if (!chat) return <AgentStart key={agent.id} state={state} actions={actions} agent={agent} earlier={earlier} />;
   return (
     <PeekScope sessionId={chat.id} peek={actions.peekPr}>
@@ -1034,7 +1037,8 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   // Runs of automations live on the Automations page, and agents'
   // conversations on the Agents page, not in this list.
   const everything = Object.values(state.sessions);
-  const all = everything.filter((s) => !hiddenFromSidebar(s) && !isAgentConversation(s, state.agents));
+  const slackSessions = new Set(state.slack?.places?.map((p) => p.sessionId));
+  const all = everything.filter((s) => !hiddenFromSidebar(s) && !isAgentConversation(s, state.agents) && !slackSessions.has(s.id));
   const { pinned, ungrouped: active, groups, archived } = sidebarLayout(all);
   // Every group a session can be moved to, including ones whose only live
   // members are pinned.
@@ -1102,8 +1106,12 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   const agentOpen = route.page === "agent" ? state.agents.find((a) => a.id === route.id)?.chat ?? null : null;
   const seen = useSeen(state.sessions, route.page === "session" ? route.id : agentOpen, state.restore);
   // The Agents row carries what the sidebar would show for their conversations.
-  const agentsMark = agentsAttention(state.agents, state.sessions, seen.seenAt);
-  const inAgent = route.page === "session" && !!state.sessions[route.id] && isAgentConversation(state.sessions[route.id], state.agents);
+  const slackWaiting = state.slack?.places?.some((p) => {
+    const session = state.sessions[p.sessionId];
+    return session?.status === "needs_approval" && hostOnline(state, hostOf(session));
+  });
+  const agentsMark = slackWaiting ? "approval" : agentsAttention(state.agents, state.sessions, seen.seenAt);
+  const inAgent = route.page === "session" && !!state.sessions[route.id] && (slackSessions.has(route.id) || isAgentConversation(state.sessions[route.id], state.agents));
   // Going to an archived session shows the section, so its row stays in
   // view. Only on going there: archiving the session already open leaves the
   // section as it was (it used to spring open on every archive).
@@ -1176,7 +1184,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
           <Icon d={PLUS} />
           New session
         </button>
-        <button className={`nav-row ${route.page === "agents" || route.page === "agent" || route.page === "agentEdit" || inAgent ? "active" : ""}`} onClick={() => actions.go({ page: "agents" })}>
+        <button aria-label="Agents" className={`nav-row ${route.page === "agents" || route.page === "agent" || route.page === "agentEdit" || inAgent ? "active" : ""}`} onClick={() => actions.go({ page: "agents" })}>
           <Icon d={AT} />
           Agents
           {agentsMark && <span className={`dot dot-agents dot-${agentsMark}`} role="img" aria-label={AGENTS_MARK[agentsMark]} title={AGENTS_MARK[agentsMark]} />}
@@ -3103,9 +3111,10 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
   const accounts = accountsOn(state, host);
   const sessionAccount = accountLabel(accounts, meta);
   // The engines' own /login cannot run inside a session; the app's does it.
-  const agent = agentOf(state.agents, meta);
+  const place = state.slack?.places?.find((p) => p.sessionId === meta.id);
+  const agent = agentOf(state.agents, meta) ?? state.agents.find((a) => a.id === place?.agentId);
   // A conversation an agent left behind when it moved: read, not answered.
-  const earlier = !!agent && isEarlierConversation(agent, meta.id);
+  const earlier = !!agent && (isEarlierConversation(agent, meta.id) || (!!place && host !== agentHost(agent)));
   // The agents live on the hub: a remote session's box offers them only in
   // an agent's own conversation.
   const mentionable = host === "local" || !!agent;
@@ -3206,7 +3215,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
       <main className="thread">
         {agent ? (
           <AgentBar state={state} agent={agent} actions={actions} host={host} busy={busy && !earlier}>
-            {busy && online && (
+            {busy && online && !meta.slackAccess && (
               <button className="btn-text" onClick={() => actions.interrupt(meta.id)}>
                 Stop
               </button>
@@ -3271,7 +3280,15 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
           }}
         >
           <div className="column">
-            {before}
+            {place && agent && (
+            <div className="note agent-earlier">
+              {place.name}
+              <button className="btn-text note-link" onClick={() => actions.go({ page: "agent", id: agent.id })}>
+                Back to {agent.name}
+              </button>
+            </div>
+          )}
+          {before}
             {rows.map((row) => (
               <RowView key={row.key} row={row} render={renderItem} widget={(t) => t.app && <WidgetFrame sessionId={meta.id} app={t.app} actions={actions} />} />
             ))}
@@ -3821,21 +3838,22 @@ export function ApprovalCard({ item, onDecide, asker }: {
   asker?: string;
 }) {
   if (item.questions?.length) return <QuestionCard item={item} questions={item.questions} onDecide={onDecide} asker={asker ?? "The agent"} />;
+  const slackAccess = item.approvalKind === "slackAccess";
   return (
         <div className="approval">
-          <div className="approval-title">{item.approvalKind === "command" ? "Allow this command?" : "Allow this?"}</div>
+          <div className="approval-title">{slackAccess ? "Approve tool access for this Slack request?" : item.approvalKind === "command" ? "Allow this command?" : "Allow this?"}</div>
           <div className="approval-what-row">
-            <code className="approval-what">{item.title}</code>
+            {slackAccess ? <span className="approval-what">{item.title}</span> : <code className="approval-what">{item.title}</code>}
             {item.approvalKind === "command" && item.title.trim() && <CopyButton text={item.title} label="Copy command" />}
           </div>
           {item.detail && <div className="muted small">{item.detail}</div>}
           {item.decision === null && !item.unanswered ? (
             <div className="row">
               <button className="btn-primary" disabled={item.sending} onClick={() => onDecide(item.requestId, "allow")}>
-                Allow once
+                {slackAccess ? "Approve once" : "Allow once"}
               </button>
               <button className="btn" disabled={item.sending} onClick={() => onDecide(item.requestId, "allow_always")}>
-                Always allow
+                {slackAccess ? `Always allow ${item.detail}` : "Always allow"}
               </button>
               <button className="btn-text" disabled={item.sending} onClick={() => onDecide(item.requestId, "deny")}>
                 Deny

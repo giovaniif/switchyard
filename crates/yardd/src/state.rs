@@ -73,6 +73,12 @@ pub struct Meta {
     /// carries the agent's preamble, and the row and thread show who it is.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
+    /// Slack's conversation key on this agent's host.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slack_place: Option<String>,
+    /// A guest's exact request waiting for the owner before any engine with tools sees it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slack_access: Option<crate::slack::Access>,
     /// An agent's conversation needs a new engine thread before its next
     /// turn, and why (see `agents::prepare`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -364,6 +370,22 @@ impl App {
         taken
     }
 
+    /// Atomically claim one place message. A guest's request must never
+    /// share a turn with another request, including an owner's.
+    pub fn take_place_turn(&self, sid: &str) -> Option<Value> {
+        let mut map = self.sessions.lock().unwrap();
+        let session = map.get_mut(sid)?;
+        let meta = &mut session.meta;
+        if meta.status != "idle" || meta.pending.is_empty() {
+            return None;
+        }
+        let item = meta.pending.remove(0);
+        meta.status = "running".into();
+        self.store.meta(meta);
+        self.broadcast(json!({ "op": "session", "session": meta }));
+        Some(item)
+    }
+
     /// Take every queued message, when the session's status passes `ok`.
     pub fn take_all_queued(&self, sid: &str, ok: impl Fn(&str) -> bool) -> Vec<Value> {
         {
@@ -478,6 +500,8 @@ impl App {
             group: None,
             automation: automation.map(str::to_string),
             agent: agent.map(str::to_string),
+            slack_place: None,
+            slack_access: None,
             fresh_context: None,
             notes_changed: false,
             last_message: None,
@@ -622,7 +646,7 @@ impl App {
                 }
             }
             // Whoever waits in Slack hears, once a turn, that the turn waits on an approval.
-            if s.events.last().is_some_and(|e| e["type"] == "approval_request") {
+            if s.events.last().is_some_and(|e| e["type"] == "approval_request" && e["kind"] != "slackAccess") {
                 let origins: Vec<Value> = s.meta.answering.iter().filter(|o| crate::origins::wants_approval_note(o)).cloned().collect();
                 let start = s.events.iter().rposition(|e| e["type"] == "turn_started").unwrap_or(0);
                 if !origins.is_empty() && s.events[start..].iter().filter(|e| e["type"] == "approval_request").count() == 1 {
@@ -668,9 +692,9 @@ impl App {
             }
             if s.meta.pending.is_empty() {
                 None
-            } else if completed {
+            } else if completed || (s.meta.slack_place.is_some() && turn_end.as_deref() == Some("failed")) {
                 Some(Delivery::NextTurn)
-            } else if step && s.meta.status == "running" && s.meta.pending.iter().any(|p| !crate::origins::read_only(&p["origin"])) {
+            } else if step && s.meta.slack_place.is_none() && s.meta.status == "running" && s.meta.pending.iter().any(|p| !crate::origins::read_only(&p["origin"])) {
                 // A read-only message waits for a turn of its own (see origins).
                 Some(Delivery::Steer)
             } else {
@@ -712,6 +736,7 @@ impl App {
     pub fn restore(&self, loaded: Vec<crate::store::Loaded>) {
         let mut interrupted = Vec::new();
         let mut queued = Vec::new();
+        let mut access_cards = Vec::new();
         {
             let mut map = self.sessions.lock().unwrap();
             for mut l in loaded {
@@ -719,6 +744,10 @@ impl App {
                 l.meta.background.clear();
                 if l.meta.status == "queued" {
                     queued.push((l.meta.created_at, l.meta.id.clone(), queued_reason(&l.events)));
+                } else if let Some(access) = &l.meta.slack_access {
+                    if l.meta.status != "needs_approval" {
+                        access_cards.push((l.meta.id.clone(), access.event()));
+                    }
                 } else if l.meta.status != "idle" {
                     interrupted.push(l.meta.id.clone());
                 }
@@ -737,6 +766,9 @@ impl App {
         queued.sort();
         for (_, sid, reason) in queued {
             self.guard.enqueue(&sid, &reason);
+        }
+        for (sid, event) in access_cards {
+            self.emit(&sid, event);
         }
         for sid in interrupted {
             self.emit(&sid, json!({ "type": "error", "message": "yardd restarted during this turn." }));

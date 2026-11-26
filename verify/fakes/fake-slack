@@ -239,6 +239,9 @@ function api(method, p, auth, port) {
       Object.assign(post, { text: p.text, blocks: JSON.parse(p.blocks ?? "[]") });
       return { ok: true, channel: p.channel, ts: p.ts };
     }
+    case "conversations.open":
+      if (kind !== "bot" || p.users !== "UOWNER") return refused;
+      return { ok: true, channel: { id: "D0OWNER" } };
     case "chat.postEphemeral":
       if (kind !== "bot") return refused;
       state.ephemerals.push({ channel: p.channel, user: p.user, text: p.text });

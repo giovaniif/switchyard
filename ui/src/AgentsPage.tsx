@@ -1,6 +1,6 @@
 // Agents: the page of cards, an agent's conversation before its first message,
-// what it asks the owner for, and the edit form. Each agent has one
-// conversation, an ordinary session tagged with it (yardd's agents.rs), kept
+// what it asks the owner for, and the edit form. An agent’s main conversation
+// and its Slack places are sessions tagged with it (yardd’s agents.rs), kept
 // out of the sidebar: this page and the Agents nav row show its state. A new
 // agent is made with a placeholder name and set up by talking to it.
 import { createElement, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -499,9 +499,44 @@ export function EarlierConversations({ state, actions, agent }: { state: State; 
   );
 }
 
+function activePlaces(state: State, agent: Agent) {
+  return (state.slack?.places ?? []).filter((place) => {
+    const session = state.sessions[place.sessionId];
+    return session ? hostOf(session) === agentHost(agent) : place.sessionId.startsWith(`${agentHost(agent)}~`);
+  }).filter((place) => place.agentId === agent.id);
+}
+
+export function AgentPlaces({ state, actions, agent }: { state: State; actions: Actions; agent: Agent }) {
+  const places = activePlaces(state, agent);
+  if (!places.length) return null;
+  return (
+    <section className="agent-places" aria-label="Slack places">
+      <h2 className="small">Slack places</h2>
+      <ul className="connector-list">
+        {places.map((place) => {
+          const waiting = state.sessions[place.sessionId]?.status === "needs_approval";
+          return (
+            <li key={place.sessionId} className="connector">
+              <button className="btn-quiet agent-place" onClick={() => actions.go({ page: "session", id: place.sessionId })}>
+                <span>{place.name}</span>
+                <span className="small muted">
+                  {waiting && <strong>Needs approval · </strong>}
+                  <time dateTime={new Date(place.at).toISOString()}>{new Date(place.at).toLocaleString()}</time>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 function AgentCard({ state, actions, agent, now, seenAt }: { state: State; actions: Actions; agent: Agent; now: number; seenAt(id: string): number }) {
   const chat = conversationOf(agent, state.sessions);
-  const status = agentStatus(agent, state.sessions, now, chat ? seenAt(chat.id) : Infinity, offlineHost(state, agent));
+  const waiting = activePlaces(state, agent).some((p) => state.sessions[p.sessionId]?.status === "needs_approval");
+  const status = waiting ? { tone: "approval" as const, text: "Slack request needs approval" }
+    : agentStatus(agent, state.sessions, now, chat ? seenAt(chat.id) : Infinity, offlineHost(state, agent));
   // What it asked for waits on the owner: that comes before how its last turn went.
   const asks = !!(agent.request?.cwd || agent.request?.permission || agent.request?.slack);
   const tone: AgentTone = asks && status.tone !== "approval" ? "needsYou" : status.tone;

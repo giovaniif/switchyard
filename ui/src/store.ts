@@ -220,7 +220,7 @@ export interface State {
   notice: string | null;
 }
 
-export type SlackOp = "slack.me.retry" | "slack.allow" | "slack.disallow" | "slack.dismiss";
+export type SlackOp = "slack.me.retry" | "slack.allow" | "slack.disallow";
 /** An agent's own Slack app, step by step (`SlackSetup`). */
 export type SlackAppOp = "slack.grant" | "slack.me.create" | "slack.me.authorize" | "slack.me.userToken" | "slack.me.appToken" | "slack.me.remove" | "slack.app.create" | "slack.app.authorize" | "slack.app.botToken" | "slack.app.appToken" | "slack.app.remove" | "slack.app.icon" | "slack.app.mention" | "slack.app.unmention" | "slack.app.watch" | "slack.app.unwatch" | "slack.publicUrl";
 

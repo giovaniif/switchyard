@@ -348,7 +348,8 @@ pub async fn create_session(
         let exclusive = !agent.is_some_and(|a| Path::new(cwd).starts_with(crate::agents::home(a)));
         (app.insert_session(engine, model, effort, cwd, &title, None, exclusive, account, automation, agent)?, None)
     };
-    if let Some(agent) = agent {
+    let place = origin.and_then(crate::origins::slack_place);
+    if let Some(agent) = agent.filter(|_| place.is_none()) {
         crate::agents::set_chat(app, agent, &sid);
     }
     if let Some(script) = setup {
@@ -360,6 +361,8 @@ pub async fn create_session(
     }
     app.update_meta(&sid, |m| {
         m.permission = permission.to_string();
+        m.slack_place = place.map(str::to_string);
+        if place.is_some() { m.title_source = Some("user".into()); }
         m.service_tier = service_tier.map(str::to_string);
     });
     if let Some(direct) = direct {
@@ -380,6 +383,9 @@ pub async fn create_session(
 async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value) -> Result<()> {
     if msg["sessionId"].as_str().is_some_and(crate::private::internal) {
         bail!("that engine thread is private to yardd");
+    }
+    if crate::slack::is_access_approval(msg) {
+        return crate::slack::approve_access(app, msg).await;
     }
     if msg["op"].as_str().is_some_and(|op| op.starts_with("slack.")) {
         return crate::slack::handle(app, direct, msg).await;
@@ -662,6 +668,9 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
         }
         "session.interrupt" => {
             let sid = str_field(msg, "sessionId")?;
+            if app.meta(sid).is_some_and(|m| m.slack_access.is_some()) {
+                bail!("Use Deny on the Slack access card to decline this request.");
+            }
             // Like Esc in Claude Code: what was queued comes back to the
             // reply box of the window that stopped the turn, unsent.
             let items = app.take_all_queued(sid, |_| true);

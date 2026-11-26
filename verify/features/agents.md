@@ -392,6 +392,12 @@ yv drive new --viewport desktop --steps '[{"expect":"role:group:Agents"},{"expec
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"wait":500},{"expect":{"css":".agent-dms .session-row","hasText":"TEST-Reviewer"},"inViewport":true},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"drawer"}]'
 ```
 
+Slack DMs and channel threads open from **Slack places** on the agent’s page.
+Each row has its own session and last activity. A pending Slack access request
+marks the place as needing approval. The Slack map exercises the list and its
+approval card at both viewports in `allow-from-an-agents-app` and follows the
+Slack-origin badge in `answer-in-the-slack-thread`.
+
 ## Gotchas
 
 - Real engines are not exercised here: the scripted Codex echoes what the user

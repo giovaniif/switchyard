@@ -67,22 +67,22 @@ pub mod inbox;
 
 /// A Slack message stays readable below this; longer answers are split.
 const PART: usize = 3500;
-const MAX_REQUESTS: usize = 10;
 const MAX_THREADS: usize = 1000;
 /// With no frame from Slack for this long, the connection is redialled.
 const SILENT: Duration = Duration::from_secs(90);
+
+mod places;
+pub use places::{bounded_history, guest_turn, history_frame, place_hosts, resolve_on_host, resume_approvals, stop_guest_turn, Access};
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 struct Config {
     /// The owner's own Slack app: his direct messages and channels.
     me: Option<MyApp>,
-    /// Slack users who may talk to agents.
+    /// Slack users whose requests may use tools.
     allowed: Vec<Person>,
-    /// Users who tried and are not allowed, newest first, for the owner to approve.
-    requests: Vec<Request>,
-    /// Users already told they are not allowed (told once).
-    told: Vec<String>,
+    places: Vec<places::Place>,
+    approvals: HashMap<String, places::Approval>,
     /// Which agent each routed Slack thread went to (`team/channel/thread_ts`).
     threads: Vec<Link>,
     /// Configuration tokens, one per workspace, for making agents' apps.
@@ -248,16 +248,6 @@ struct Person {
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Request {
-    id: String,
-    name: String,
-    /// Where they wrote: `Direct message` or `#channel`.
-    place: String,
-    at: u64,
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct Link {
     key: String,
     agent: String,
@@ -305,6 +295,9 @@ pub struct Slack {
     changed: watch::Sender<u64>,
     /// Answers are posted one at a time, so a thread reads them in order.
     posting: tokio::sync::Mutex<()>,
+    pub place_creation: tokio::sync::Mutex<()>,
+    deciding: tokio::sync::Mutex<()>,
+    guest_transition: Mutex<()>,
     /// User and channel names by id.
     names: Mutex<HashMap<String, String>>,
     /// Recent `channel:ts`, so a message that comes as an app_mention and a
@@ -379,6 +372,9 @@ impl Slack {
             status: Mutex::new(Status { state: state.into(), ..Default::default() }),
             changed: watch::channel(0).0,
             posting: tokio::sync::Mutex::new(()),
+            place_creation: Default::default(),
+            deciding: Default::default(),
+            guest_transition: Default::default(),
             names: Mutex::new(HashMap::new()),
             seen: Mutex::new(VecDeque::new()),
             http: OnceLock::new(),
@@ -437,7 +433,7 @@ impl Slack {
         json!({
             "me": me,
             "allowed": cfg.allowed,
-            "requests": cfg.requests,
+            "places": cfg.places,
             "workspaces": cfg.workspaces.iter().map(|w| json!({ "teamId": w.team_id, "teamName": if w.team_name.is_empty() { &w.team_id } else { &w.team_name } })).collect::<Vec<_>>(),
             "agentApps": self.apps_view(&cfg),
             // Slack's events to agents' new apps come here, over HTTP.
@@ -916,10 +912,7 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
                 bail!("A Slack member ID looks like U0123ABCD. Find it in Slack under the person's profile, More, Copy member ID.");
             }
             slack.change(|c| {
-                let name = c.requests.iter().find(|r| r.id == user).map(|r| r.name.clone());
-                let name = name.or_else(|| msg["name"].as_str().map(str::to_string)).filter(|n| !n.trim().is_empty()).unwrap_or_else(|| user.clone());
-                c.requests.retain(|r| r.id != user);
-                c.told.retain(|t| *t != user);
+                let name = msg["name"].as_str().filter(|n| !n.trim().is_empty()).unwrap_or(&user).to_string();
                 if !c.allowed.iter().any(|p| p.id == user) {
                     c.allowed.push(Person { id: user.clone(), name });
                 }
@@ -929,10 +922,6 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
             let user = msg["user"].as_str().context("missing `user`")?;
             slack.change(|c| c.allowed.retain(|p| p.id != user));
         }
-        "slack.dismiss" => {
-            let user = msg["user"].as_str().context("missing `user`")?;
-            slack.change(|c| c.requests.retain(|r| r.id != user));
-        }
         other => bail!("unknown op `{other}`"),
     }
     broadcast(app);
@@ -941,6 +930,15 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
 }
 
 /// A rotated configuration token, kept for its workspace. Answers the team.
+pub fn is_access_approval(msg: &Value) -> bool {
+    msg["op"] == "session.approve" && msg["requestId"].as_str().is_some_and(|id| id.starts_with("slack-access-"))
+}
+
+pub async fn approve_access(app: &Arc<App>, msg: &Value) -> Result<()> {
+    let sid = msg["sessionId"].as_str().context("missing sessionId")?;
+    places::decide(app, &msg["requestId"], &msg["decision"], Some(sid), None).await
+}
+
 fn keep_grant(slack: &Slack, v: &Value) -> String {
     let team = v["team_id"].as_str().unwrap_or_default().to_string();
     let w = Workspace {
@@ -994,7 +992,7 @@ fn agent_manifest(name: &str, about: &str, redirects: &[String], events_url: &st
         "oauth_config": oauth,
         "settings": {
             "event_subscriptions": events,
-            "interactivity": { "is_enabled": false },
+            "interactivity": { "is_enabled": events_url.is_empty() },
             "org_deploy_enabled": false,
             "socket_mode_enabled": events_url.is_empty(),
             "token_rotation_enabled": false,
@@ -1282,7 +1280,6 @@ async fn me_installed(app: &Arc<App>, mut rec: MyApp) {
     let (team, team_name) = (rec.team_id.clone(), rec.team_name.clone());
     slack.change(|c| {
         if !id.is_empty() {
-            c.requests.retain(|r| r.id != id);
             if !c.allowed.iter().any(|p| p.id == id) {
                 c.allowed.push(Person { id, name });
             }
@@ -1334,7 +1331,6 @@ async fn installed(app: &Arc<App>, mut rec: AgentApp) {
         rec.owner_name = slack.user_name(&rec.bot_token, &rec.owner).await;
         let (id, name) = (rec.owner.clone(), rec.owner_name.clone());
         slack.change(|c| {
-            c.requests.retain(|r| r.id != id);
             if !c.allowed.iter().any(|p| p.id == id) {
                 c.allowed.push(Person { id, name });
             }
@@ -1367,7 +1363,14 @@ pub async fn remove_app(app: &Arc<App>, agent: &str) {
             eprintln!("yardd: could not delete Slack app {}: {e:#}", rec.app_id);
         }
     }
-    app.slack.change(|c| c.apps.retain(|a| a.agent != agent));
+    app.slack.change(|c| {
+        c.apps.retain(|a| a.agent != agent);
+        c.threads.retain(|l| l.agent != agent);
+        if app.agents.get(agent).is_none() {
+            c.places.retain(|p| p.agent_id != agent);
+            c.approvals.retain(|_, request| request.agent != agent);
+        }
+    });
     let _ = std::fs::remove_file(icon_path(&app.slack, agent));
     broadcast(app);
 }
@@ -1699,6 +1702,7 @@ pub async fn run(app: Arc<App>) {
     tokio::spawn(handle_events(app.clone(), events_rx));
     let _ = app.slack.events.set(events.clone());
     inbox::start(&app);
+    places::resume_approvals(&app, None);
     // Agents' own apps each keep a connection of their own.
     let ready: Vec<String> = app.slack.cfg.lock().unwrap().apps.iter().filter(|a| a.step() == "ready").map(|a| a.agent.clone()).collect();
     for agent in ready {
@@ -1832,7 +1836,7 @@ async fn connect(app: &Arc<App>, app_token: &str, token: &str, events: &mpsc::Un
                         }
                         return Ok(Ended::Refresh);
                     }
-                    "events_api" => {
+                    "events_api" | "interactive" => {
                         let _ = events.send((me.clone(), envelope["payload"].clone()));
                     }
                     _ => {}
@@ -1924,7 +1928,12 @@ fn ws_error(e: &tokio_tungstenite::tungstenite::Error) -> String {
 
 async fn handle_events(app: Arc<App>, mut rx: mpsc::UnboundedReceiver<(Me, Value)>) {
     while let Some((me, payload)) = rx.recv().await {
-        if let Err(e) = on_event(&app, &me, &payload).await {
+        let result = if payload["type"] == "block_actions" {
+            places::on_action(&app, &me, &payload).await
+        } else {
+            on_event(&app, &me, &payload).await
+        };
+        if let Err(e) = result {
             eprintln!("yardd: slack: {e:#}");
         }
     }
@@ -1961,17 +1970,17 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
     let key = format!("{team}/{channel}/{thread}");
     let raw = ev["text"].as_str().unwrap_or("");
     let mention = format!("<@{}", me.bot_user);
-    let known = linked(slack, &key);
+    let known = slack.cfg.lock().unwrap().threads.iter().any(|l| l.key == key && l.agent == agent);
     if kind == "message" && !im {
         // A mention comes as app_mention too; a plain channel message counts
         // only as a follow-up in a thread this agent already has (every app
         // in the channel hears it), and not when it is addressed to someone
         // else (a teammate, another agent's bot).
-        if raw.contains(&mention) || known.as_deref() != Some(agent.as_str()) || ev["thread_ts"].is_null() || addressed_elsewhere(raw, &me.bot_user) {
+        if raw.contains(&mention) || !known || ev["thread_ts"].is_null() || addressed_elsewhere(raw, &me.bot_user) {
             return Ok(());
         }
     }
-    if !slack.first_time(format!("{channel}:{ts}")) {
+    if !slack.first_time(format!("{agent}/{team}/{channel}/{ts}")) {
         return Ok(());
     }
     let token = me.token.clone();
@@ -1979,29 +1988,6 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
         return Ok(());
     }
     let place = slack.channel_name(&token, channel, im).await;
-    let allowed = slack.cfg.lock().unwrap().allowed.iter().any(|p| p.id == user);
-    if !allowed {
-        let name = slack.user_name(&token, user).await;
-        let mut tell = false;
-        slack.change(|c| {
-            c.requests.retain(|r| r.id != user);
-            c.requests.insert(0, Request { id: user.to_string(), name, place: place.clone(), at: now_ms() });
-            c.requests.truncate(MAX_REQUESTS);
-            if !c.told.iter().any(|t| t == user) {
-                c.told.push(user.to_string());
-                tell = true;
-            }
-        });
-        broadcast(app);
-        if tell {
-            let note = format!(
-                "Sorry, you can't talk to these agents yet. The owner can allow you in Switchyard, under Connectors, Slack (your member ID is {user})."
-            );
-            let _ = slack.api(&token, "chat.postEphemeral", &[("channel", channel), ("user", user), ("text", &note)]).await;
-        }
-        return Ok(());
-    }
-    broadcast(app);
     let text = from_slack(&strip_mention(raw, &me.bot_user));
     // An agent's own app is only ever that agent; one deleted meanwhile is gone.
     let Some(name) = app.agents.get(&agent).filter(|a| !a.hosted).map(|a| a.name) else { return Ok(()) };
@@ -2010,16 +1996,41 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
         slack.post(&token, channel, &thread, &note).await?;
         return Ok(());
     }
+    let Some(rec) = slack.app_of(&agent).filter(|r| r.bot_token == token && r.team_id == team) else { return Ok(()) };
+    let trusted = rec.owner == user || slack.cfg.lock().unwrap().allowed.iter().any(|p| p.id == user);
     slack.change(|c| {
-        c.threads.retain(|l| l.key != key);
+        c.threads.retain(|l| l.key != key || l.agent != agent);
         c.threads.push(Link { key: key.clone(), agent: agent.clone(), at: now_ms(), app: true, place: place.clone() });
         if c.threads.len() > MAX_THREADS {
             c.threads.remove(0);
         }
     });
     let user_name = slack.user_name(&token, user).await;
-    let mut origin = json!({
+    let place_key = if im { format!("{team}/{channel}/") } else { key };
+    let first = !slack.cfg.lock().unwrap().places.iter().any(|p| p.key == place_key && p.agent_id == agent
+        && places::on_current_host(app, &agent, &p.session_id));
+    let history = if first || !trusted {
+        places::recent_history(slack, &token, channel, if im { None } else { Some(&thread) }, ts).await
+    } else {
+        Value::Null
+    };
+    let label = if im {
+        format!("DM with {user_name}")
+    } else {
+        let root = history.as_array().into_iter().flatten()
+            .find(|message| message["ts"] == thread)
+            .and_then(|message| message["text"].as_str());
+        let topic = root.map(|text| from_slack(&strip_mention(text, &me.bot_user)));
+        let topic = topic.as_deref().filter(|text| !text.trim().is_empty()).unwrap_or(&text);
+        format!("{place} · thread · {}", clip_line(topic, 64))
+    };
+    let origin = json!({
         "kind": "slack",
+        "placeKey": place_key,
+        "placeLabel": label,
+        "guest": !trusted,
+        "history": history,
+        "app": agent,
         "team": team,
         "channel": channel,
         "channelName": place,
@@ -2028,13 +2039,14 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
         "user": user,
         "userName": user_name,
     });
-    // Answered through the same app.
-    origin["app"] = json!(agent);
     slack.react(&token, channel, ts, "eyes", true).await;
-    if let Err(e) = crate::agents::deliver(app, &agent, text.trim(), &origin).await {
-        slack.react(&token, channel, ts, "eyes", false).await;
-        slack.react(&token, channel, ts, "x", true).await;
-        slack.post(&token, channel, &thread, &format!("Could not reach {name}: {e:#}")).await?;
+    match crate::agents::deliver_place(app, &agent, text.trim(), &origin).await {
+        Ok(sid) => places::record(app, &agent, &place_key, &label, &sid),
+        Err(e) => {
+            slack.react(&token, channel, ts, "eyes", false).await;
+            slack.react(&token, channel, ts, "x", true).await;
+            slack.post(&token, channel, &thread, &format!("Could not reach {name}: {e:#}")).await?;
+        }
     }
     Ok(())
 }
@@ -2189,7 +2201,7 @@ async fn deliver_watched(app: &Arc<App>, agent: &str, channel: &str, b: Batch) {
     slack.change(|c| {
         for i in &b.items {
             let k = format!("{}/{channel}/{}", b.team, i.ts);
-            c.threads.retain(|l| l.key != k);
+            c.threads.retain(|l| l.key != k || l.agent != agent);
             c.threads.push(Link { key: k, agent: agent.to_string(), at: now, app: true, place: b.place.clone() });
         }
         while c.threads.len() > MAX_THREADS {
@@ -2295,10 +2307,6 @@ fn message_text(ev: &Value) -> String {
     parts.join("\n")
 }
 
-fn linked(slack: &Slack, key: &str) -> Option<String> {
-    slack.cfg.lock().unwrap().threads.iter().find(|l| l.key == key).map(|l| l.agent.clone())
-}
-
 /// The Slack arm of the reply hook (`origins::reply`): what a turn owes the
 /// Slack messages it answered, posted once in each of their threads, and the
 /// :eyes: on each message swapped for how the turn ended. `approval` is the
@@ -2306,6 +2314,10 @@ fn linked(slack: &Slack, key: &str) -> Option<String> {
 pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value]) {
     crypto();
     let slack = &app.slack;
+    if owed.status == "slack-access" {
+        places::notify_owner(app, owed, agent, origins).await;
+        return;
+    }
     let _order = slack.posting.lock().await;
     // A message is answered through the agent's app it came in on. One that
     // came through the retired shared bot has nothing left to answer with.
