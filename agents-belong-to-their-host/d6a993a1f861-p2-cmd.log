@@ -1,0 +1,137 @@
+$ bash /tmp/yard-edits/round3-tests.sh
+# exit 101 after 34334 ms at baa81984adc4225247f94a129af042604f5a0a69
+
+
+running 8 tests
+test sending_an_agent_again_is_the_same_hand_over_or_refused ... FAILED
+test a_host_does_not_let_go_mid_turn ... FAILED
+test a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely ... FAILED
+test an_owed_release_from_another_hand_over_never_drops_an_agent ... FAILED
+test a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile ... FAILED
+test a_message_to_a_kept_record_its_host_took_reaches_the_host_s_own ... FAILED
+test a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why ... FAILED
+test an_agent_moved_back_before_its_old_host_let_go_is_never_lost ... FAILED
+
+failures:
+
+---- sending_an_agent_again_is_the_same_hand_over_or_refused stdout ----
+
+thread 'sending_an_agent_again_is_the_same_hand_over_or_refused' (1991253) panicked at crates/yardd/tests/agents.rs:955:5:
+assertion `left == right` failed: {"agent":{"about":"","account":"default","chat":null,"color":"blue","createdAt":1,"cwd":"","effort":"","engine":"codex","face":"","fromHub":"0123456789abcdef0123456789abcdef","handle":"Far","host":"local","id":"g-far","instructions":"","memory":"TEST-other words","model":"fake-fast","name":"Far","permission":"ask","updatedAt":20},"op":"agent.adopted","ref":"a2"}
+  left: (Some("agent.adopted"), Some("TEST-other words"))
+ right: (Some("agent.adopted"), Some("TEST-first"))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1991245-agents-adopt-again-6 for inspection
+
+---- a_host_does_not_let_go_mid_turn stdout ----
+
+thread 'a_host_does_not_let_go_mid_turn' (1991248) panicked at crates/yardd/tests/agents.rs:1085:5:
+assertion `left == right` failed: {"id":"g-busy","op":"agent.released","ref":"r1"}
+  left: String("agent.released")
+ right: "error"
+kept /tmp/yardd-test-1991245-agents-release-busy-0 for inspection
+
+---- a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely stdout ----
+
+thread 'a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely' (1991249) panicked at crates/yardd/tests/agents.rs:628:5:
+assertion `left == right` failed
+  left: 13
+ right: 10
+kept /tmp/yardd-test-1991245-agents-migrate-hub-10 for inspection
+kept /tmp/yardd-test-1991245-agents-migrate-remote-3 for inspection
+
+---- an_owed_release_from_another_hand_over_never_drops_an_agent stdout ----
+
+thread 'an_owed_release_from_another_hand_over_never_drops_an_agent' (1991252) panicked at crates/yardd/tests/agents.rs:1015:5:
+the host kept its agent
+kept /tmp/yardd-test-1991245-agents-release-hub-9 for inspection
+kept /tmp/yardd-test-1991245-agents-release-remote-5 for inspection
+
+---- a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile stdout ----
+
+thread 'a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile' (1991246) panicked at crates/yardd/tests/agents.rs:897:9:
+assertion `left == right` failed: agents.json
+  left: 9
+ right: 0
+kept /tmp/yardd-test-1991245-agents-busy-hub-13 for inspection
+kept /tmp/yardd-test-1991245-agents-busy-remote-1 for inspection
+
+---- a_message_to_a_kept_record_its_host_took_reaches_the_host_s_own stdout ----
+
+thread 'a_message_to_a_kept_record_its_host_took_reaches_the_host_s_own' (1991250) panicked at crates/yardd/tests/common/mod.rs:422:27:
+timed out after 20s waiting for the host's agent listed; last messages:
+{"accounts":[],"agents":[{"about":"","account":"default","chat":null,"color":"blue","createdAt":1,"cwd":"","effort":"low","engine":"codex","face":"","fromHub":"0123456789abcdef0123456789abcdef","handle":"Mid","host":"hTEST7","id":"hTEST7~g-mid","instructions":"","memory":"","model":"fake-fast","name
+{"accounts":[],"automations":[],"home":"/tmp/yardd-test-1991245-agents-window-owner-remote-4/home","host":null,"hostId":"hTEST7","mobile":{"configured":false,"devices":[],"live":[],"origins":[],"testFlightUrl":"https://testflight.apple.com/join/BygX29JY"},"models":{"claude":[{"defaultEffort":"high",
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"op":"usage","usage":{"codex":{"limitId":"codex","primary":{"resetsAt":1795707650,"usedPercent":12,"windowDurationMins":300},"secondary":{"resetsAt":1795973450,"usedPercent":34,"windowDurationMins":10080}}}}
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+kept /tmp/yardd-test-1991245-agents-window-owner-hub-11 for inspection
+kept /tmp/yardd-test-1991245-agents-window-owner-remote-4 for inspection
+
+---- a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why stdout ----
+
+thread 'a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why' (1991247) panicked at crates/yardd/tests/common/mod.rs:422:27:
+timed out after 20s waiting for the refusal on its page; last messages:
+{"accounts":[],"agents":[{"about":"TEST-watches the pager","account":"default","chat":"hTEST6~s1a2180cc5b01","color":"teal","createdAt":1,"cwd":"","effort":"low","engine":"codex","face":"glasses","handle":"On-call","host":"hTEST6","id":"g-oncall","instructions":"TEST-be calm","memory":"TEST-the page
+{"accounts":[],"automations":[],"home":"/tmp/yardd-test-1991245-agents-theirs-remote-2/home","host":null,"hostId":"hTEST6","mobile":{"configured":false,"devices":[],"live":[],"origins":[],"testFlightUrl":"https://testflight.apple.com/join/BygX29JY"},"models":{"claude":[{"defaultEffort":"high","effor
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"op":"usage","usage":{"codex":{"limitId":"codex","primary":{"resetsAt":1795707650,"usedPercent":12,"windowDurationMins":300},"secondary":{"resetsAt":1795973450,"usedPercent":34,"windowDurationMins":10080}}}}
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"op":"slack","slack":{"agentApps":{"g-oncall":{"appId":"A-TEST","canRedirect":false,"eventsUrl":"","handle":"on-call","iconKey":"","mentions":[{"id":"UPAGER","name":"TEST-pager"}],"ownerName":"TEST-Owner","step":"appToken","syncError":"Slack no longer accepts this workspace's configuration token. G
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+kept /tmp/yardd-test-1991245-agents-theirs-hub-12 for inspection
+kept /tmp/yardd-test-1991245-agents-theirs-remote-2 for inspection
+
+---- an_agent_moved_back_before_its_old_host_let_go_is_never_lost stdout ----
+
+thread 'an_agent_moved_back_before_its_old_host_let_go_is_never_lost' (1991251) panicked at crates/yardd/tests/agents.rs:571:9:
+timed out waiting for the box owns it
+kept /tmp/yardd-test-1991245-agents-bounce-hub-8 for inspection
+kept /tmp/yardd-test-1991245-agents-bounce-remote-7 for inspection
+
+
+failures:
+    a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile
+    a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why
+    a_host_does_not_let_go_mid_turn
+    a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely
+    a_message_to_a_kept_record_its_host_took_reaches_the_host_s_own
+    an_agent_moved_back_before_its_old_host_let_go_is_never_lost
+    an_owed_release_from_another_hand_over_never_drops_an_agent
+    sending_an_agent_again_is_the_same_hand_over_or_refused
+
+test result: FAILED. 0 passed; 8 failed; 0 ignored; 0 measured; 13 filtered out; finished in 20.77s
+
+
+running 1 test
+test an_app_being_handed_over_is_not_deleted_in_slack_until_its_old_host_let_go ... FAILED
+
+failures:
+
+---- an_app_being_handed_over_is_not_deleted_in_slack_until_its_old_host_let_go stdout ----
+
+thread 'an_app_being_handed_over_is_not_deleted_in_slack_until_its_old_host_let_go' (1996123) panicked at crates/yardd/tests/slack.rs:974:5:
+assertion `left == right` failed
+  left: String("error")
+ right: "agent.abandoned"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1996122-slack-handover-delete-0 for inspection
+
+
+failures:
+    an_app_being_handed_over_is_not_deleted_in_slack_until_its_old_host_let_go
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.42s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 12.34s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+error: test failed, to rerun pass `-p yardd --test agents`
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 0.69s
+     Running tests/slack.rs (target/debug/build/yardd/7070339f5020f7ad/out/slack-7070339f5020f7ad)
+error: test failed, to rerun pass `-p yardd --test slack`
