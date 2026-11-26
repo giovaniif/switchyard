@@ -1085,6 +1085,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   // Runs of automations live on the Automations page, not in this list.
   const runs = everything.filter(hiddenFromSidebar);
   const runsMark = runsAttention(runs);
+  const archivedMark = runsAttention(archived);
   const inRun = route.page === "session" && !!state.sessions[route.id]?.automation;
   const agentOpen = route.page === "agent" ? state.agents.find((a) => a.id === route.id)?.chat ?? null : null;
   const seen = useSeen(state.sessions, route.page === "session" ? route.id : agentOpen, state.restore);
@@ -1244,6 +1245,10 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
           <button className="list-head list-toggle" aria-expanded={showArchived} onClick={() => setShowArchived(!showArchived)}>
             <span>Archived</span>
             <span className="muted">{archived.length}</span>
+            {/* Archived sessions still run: collapsed, this dot is the only sign one waits for the user. */}
+            {!showArchived && archivedMark && (
+              <span className={`dot ${archivedMark === "approval" ? "dot-needs_approval" : "dot-running"}`} role="img" aria-label={GROUP_MARK[archivedMark]} title={GROUP_MARK[archivedMark]} />
+            )}
             <span className={`tool-chevron ${showArchived ? "open" : ""}`}>
               <Icon d={CHEVRON_RIGHT} size={11} />
             </span>
