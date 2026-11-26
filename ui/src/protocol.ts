@@ -368,6 +368,8 @@ export interface DirList {
   hostId?: string;
   /** Sorted by name, hidden ones included, at most 2000. `git` marks a repository root. */
   dirs?: { name: string; git: boolean }[];
+  /** The first folder on `path` that does not exist, when that is why there is no list. */
+  missing?: string;
   error?: string;
 }
 
