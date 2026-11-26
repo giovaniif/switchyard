@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionMeta } from "./protocol";
-import { navigationEntries, navigationShortcut } from "./navigation";
+import { navigationEntries, navigationShortcut, selectedIndex } from "./navigation";
 
 const session = (id: string, patch: Partial<SessionMeta> = {}): SessionMeta => ({
   id, title: id, engine: "codex", model: "m", effort: "low", cwd: "/work/app", status: "idle", host: "local", createdAt: 0, updatedAt: 0, ...patch,
@@ -72,4 +72,15 @@ test("navigation shortcut preserves Mac Ctrl+K, modifiers, repeats and compositi
   for (const patch of [{ shiftKey: true }, { altKey: true }, { repeat: true }, { isComposing: true }, { key: "j" }]) {
     expect(navigationShortcut({ ...key, ...patch }, true)).toBe(false);
   }
+});
+
+test("the highlight follows its entry when the list re-sorts", () => {
+  const before = [{ id: "session-a" }, { id: "session-b" }, { id: "session-c" }];
+  // c's turn started: it moves to the top while b stays highlighted.
+  const after = [{ id: "session-c" }, { id: "session-a" }, { id: "session-b" }];
+  expect(selectedIndex(before, "session-b")).toBe(1);
+  expect(selectedIndex(after, "session-b")).toBe(2);
+  expect(selectedIndex(after, null)).toBe(0);
+  expect(selectedIndex(after, "session-gone")).toBe(0);
+  expect(selectedIndex([], "session-b")).toBe(0);
 });

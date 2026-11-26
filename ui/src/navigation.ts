@@ -57,6 +57,12 @@ export function navigationEntries(sessions: SessionMeta[], context: { localName:
   return words.length ? [...pages, ...agents, ...rows] : [...rows, ...agents, ...pages];
 }
 
+/** The highlighted row, followed by id; the top row when it is gone or none was picked. */
+export function selectedIndex(rows: Pick<NavigationEntry, "id">[], active: string | null): number {
+  const i = active === null ? -1 : rows.findIndex((r) => r.id === active);
+  return i < 0 ? 0 : i;
+}
+
 /** Keep the Mac's Ctrl-K editing shortcut and composition keys intact. */
 export function navigationShortcut(e: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey" | "repeat" | "isComposing">, mac: boolean): boolean {
   return e.key.toLowerCase() === "k" && (e.metaKey || (!mac && e.ctrlKey)) && !e.shiftKey && !e.altKey && !e.repeat && !e.isComposing;
