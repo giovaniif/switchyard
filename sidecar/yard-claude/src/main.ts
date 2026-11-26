@@ -1,7 +1,8 @@
 // yard-claude: one Claude Code session on the Agent SDK, bridged to yardd.
 // (Or, with `sessions` / `messages <id>`, a one-shot for importing; see oneshot.ts.)
 //
-// stdin  (JSON lines): start | user | set_model | interrupt | permission
+// stdin  (JSON lines): start | user | set_model | interrupt
+//                      | permission { requestId, decision, answers? }
 //                      | mcp_reconnect { server } | mcp_call { ref, server, tool, arguments }
 //                      `user` is { text, attachments?, permission? }: files
 //                      yardd saved on this host (see message.ts); a new
@@ -30,6 +31,7 @@ import { userMessage } from "./message";
 import { createSubagents } from "./subagents";
 import { describe as describeTool, EDIT_TOOLS, patchFor, resultText, short, toolStarted } from "./tools";
 import { oneShot } from "./oneshot";
+import { ASK_TOOL, answeredInput, questionRequest } from "./questions";
 import { createApps } from "./apps";
 import { connectors } from "./connectors";
 import { mergeUsage, type ClaudeUsage } from "./usage";
@@ -78,7 +80,9 @@ async function* input() {
   }
 }
 
-const waiting = new Map<string, (d: Decision) => void>();
+/** What the user answered: a decision, and for a question the answers. */
+type Answer = { decision: Decision; answers?: unknown };
+const waiting = new Map<string, (a: Answer) => void>();
 let q: any = null;
 let apps: ReturnType<typeof createApps> | null = null;
 // Plan usage so far: each rate_limit_event reports one window.
@@ -114,11 +118,23 @@ async function run(start: { restricted?: boolean; cwd: string; model: string; ef
     // Lets the session switch into full access later; it grants nothing by
     // itself while the mode is another one.
     allowDangerouslySkipPermissions: true,
-    canUseTool: async (toolName: string, toolInput: any, ctx: { signal?: AbortSignal; suggestions?: unknown[] }) => {
+    canUseTool: async (toolName: string, toolInput: any, ctx: { signal?: AbortSignal; suggestions?: unknown[]; toolUseID?: string }) => {
       if (readOnly(start)) return { behavior: "deny", message: "This session answers from the evidence yardd supplies, without tools." };
       // Switchyard's own tools (allowedTools covers them; this is the fallback).
       if (start.tools && isOwnTool(toolName)) return { behavior: "allow", updatedInput: toolInput };
       const requestId = nextId("claude");
+      const wait = () =>
+        new Promise<Answer>((resolve) => {
+          waiting.set(requestId, resolve);
+          ctx?.signal?.addEventListener("abort", () => resolve({ decision: "deny" }));
+        }).finally(() => waiting.delete(requestId));
+      // Claude Code asks this even in full access; it needs answers, not a yes.
+      if (toolName === ASK_TOOL) {
+        emit(questionRequest(requestId, toolInput, ctx?.toolUseID));
+        const { decision, answers } = await wait();
+        if (decision === "deny") return { behavior: "deny", message: "The user chose not to answer these questions." };
+        return { behavior: "allow", updatedInput: answeredInput(toolInput, answers) };
+      }
       const d = describeTool(toolName, toolInput, cwd);
       emit({
         type: "approval_request",
@@ -127,11 +143,7 @@ async function run(start: { restricted?: boolean; cwd: string; model: string; ef
         title: d.kind === "command" ? d.detail : `${d.title} ${d.detail}`.trim(),
         detail: typeof toolInput?.description === "string" ? toolInput.description : "",
       });
-      const decision = await new Promise<Decision>((resolve) => {
-        waiting.set(requestId, resolve);
-        ctx?.signal?.addEventListener("abort", () => resolve("deny"));
-      });
-      waiting.delete(requestId);
+      const { decision } = await wait();
       if (decision === "deny") return { behavior: "deny", message: "Denied by the user." };
       if (decision === "allow_always" && ctx?.suggestions?.length) {
         return { behavior: "allow", updatedInput: toolInput, updatedPermissions: ctx.suggestions };
@@ -303,7 +315,7 @@ createInterface({ input: process.stdin }).on("line", async (line) => {
         await q?.setPermissionMode((PERMISSION_MODE[msg.permission] ?? "default") as any);
         break;
       case "permission":
-        waiting.get(msg.requestId)?.(msg.decision as Decision);
+        waiting.get(msg.requestId)?.({ decision: msg.decision as Decision, answers: msg.answers });
         break;
       // A server was signed in elsewhere (the Connectors page): dial it again
       // so its tools work in this session without a restart.

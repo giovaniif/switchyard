@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { encode } from "uqr";
 import { Icon } from "./App";
+import { COPY, copyText } from "./CopyButton";
 import { inMobileApp, mobileHost, mobileLink, phonePageLink, phoneState, testFlightLink, type MobileStatus, type PhoneTarget } from "./mobile";
 
 const PHONE = "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2ZM11 18h2";
-const COPY = "M9 9h11v11H9zM5 15H4V4h11v1";
 const CHECK = "M5 12l5 5 9-11";
 
 /** The address typed by hand, for hosts that list none a phone can open. */
@@ -62,12 +62,9 @@ export function MobileSetup({ mobile, targets }: { mobile: MobileStatus; targets
   };
   const copy = async () => {
     if (!origin) return;
-    try {
-      await navigator.clipboard.writeText(origin);
+    if (await copyText(origin)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // No clipboard here; the address is on screen to copy by hand.
     }
   };
 

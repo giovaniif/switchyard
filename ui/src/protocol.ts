@@ -568,6 +568,22 @@ export interface PrPeekReply {
   error?: string;
 }
 
+/** One question the agent asks the user (an `approval_request` of kind
+ *  `question`): Claude's AskUserQuestion, Codex's request_user_input.
+ *  Answers are keyed by `question`. */
+export interface Question {
+  question: string;
+  /** A short chip, "Database". */
+  header: string;
+  multiSelect: boolean;
+  /** None: the answer is typed. */
+  options: { label: string; description: string }[];
+  /** A password or token: typed hidden, and yardd logs it masked. */
+  secret?: boolean;
+  /** false: only the options, no typed answer of one's own. */
+  other?: boolean;
+}
+
 /** Normalized session events. Both engines produce exactly these. */
 export type AgentEvent =
   /** `session.create` and `session.send` take `attachments: string[]` (ids
@@ -590,8 +606,9 @@ export type AgentEvent =
    *  (a chart), fetched with `widget.get`. */
   | { type: "tool_completed"; itemId: string; ok: boolean; output?: string | null; note?: string | null; ms?: number | null; app?: WidgetRef }
   | { type: "file_change"; itemId: string; files: ChangedFile[] }
-  | { type: "approval_request"; requestId: string; kind: string; title: string; detail: string; /** The call it asks about. */ itemId?: string | null; at?: number }
-  | { type: "approval_resolved"; requestId: string; decision: Decision; at?: number }
+  /** Kind `question`: the agent asks the user to choose (`questions`), answered with `session.approve`'s `answers`. */
+  | { type: "approval_request"; requestId: string; kind: string; title: string; detail: string; /** The call it asks about. */ itemId?: string | null; at?: number; questions?: Question[] }
+  | { type: "approval_resolved"; requestId: string; decision: Decision; at?: number; answers?: Record<string, string> }
   | { type: "error"; message: string }
   /** A quiet line from yardd itself, such as a hand-off or a worktree setup. Changes no status. */
   | { type: "note"; text: string; /** A hand-off note's other session. */ session?: string }
@@ -684,6 +701,10 @@ export type Item =
       title: string;
       detail: string;
       decision: Decision | null;
+      /** The agent's questions, when it asks the user to choose instead of to allow. */
+      questions?: Question[];
+      /** What the user answered them. */
+      answers?: Record<string, string>;
       /** The tool call it asks about, when the engine says. */
       itemId?: string;
       /** The turn ended (Stop, a failure, a yardd restart) before anyone answered. */
@@ -827,6 +848,7 @@ export function applyEvent(items: Item[], ev: AgentEvent, seq: number): Item[] {
       };
       if (ev.itemId) approval.itemId = ev.itemId;
       if (ev.at != null) approval.askedAt = ev.at;
+      if (ev.questions?.length) approval.questions = ev.questions;
       return markAsked([...items, approval], turnStart(items), approval);
     }
     case "approval_resolved": {
@@ -834,7 +856,7 @@ export function applyEvent(items: Item[], ev: AgentEvent, seq: number): Item[] {
       let resolved: Extract<Item, { kind: "approval" }> | undefined;
       const next = items.map((it, i) => {
         if (i >= from && it.kind === "approval" && it.requestId === ev.requestId) {
-          return (resolved = { ...it, decision: ev.decision, ...(ev.at != null ? { answeredAt: ev.at } : {}) });
+          return (resolved = { ...it, decision: ev.decision, ...(ev.at != null ? { answeredAt: ev.at } : {}), ...(ev.answers ? { answers: ev.answers } : {}) });
         }
         return it;
       });

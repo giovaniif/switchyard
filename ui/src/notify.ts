@@ -46,7 +46,7 @@ export interface TurnInfo {
   ms?: number;
   /** The turn's latest answer. */
   answer?: string;
-  approval?: { title: string; detail: string };
+  approval?: { title: string; detail: string; question?: boolean };
   error?: string;
 }
 
@@ -67,8 +67,11 @@ export function noticeText(kind: Notice, title: string, info: TurnInfo = {}): { 
   const join = (head: string, rest?: string) => (rest ? `${head} · ${rest}` : head);
   let body: string;
   if (kind === "approval") {
-    const what = info.approval && plainLine([info.approval.title, info.approval.detail].filter(Boolean).join(": "));
-    body = join("Needs your approval", what);
+    if (info.approval?.question) body = join("Has a question", plainLine(info.approval.title));
+    else {
+      const what = info.approval && plainLine([info.approval.title, info.approval.detail].filter(Boolean).join(": "));
+      body = join("Needs your approval", what);
+    }
   } else if (kind === "failed") {
     body = join(info.ms !== undefined ? `Failed after ${duration(info.ms)}` : "Failed", info.error && plainLine(info.error));
   } else {
@@ -97,7 +100,7 @@ export class StatusWatcher {
         if (ev.text.trim()) turn.answer = ev.text;
         break;
       case "approval_request":
-        turn.approval = { title: ev.title, detail: ev.detail };
+        turn.approval = { title: ev.title, detail: ev.detail, ...(ev.kind === "question" ? { question: true } : {}) };
         break;
       case "error":
         turn.error = ev.message;
