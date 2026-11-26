@@ -3710,30 +3710,30 @@ function WorkEntry({ entry }: { entry: WorkItem }) {
   return (
     <div className="tool">
       <div className="tool-line">
-      <button className="tool-row" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
-        <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
-          <Icon d={CHEVRON_RIGHT} size={12} />
-        </span>
-        {/* Engines title a command "Ran" and an edit "Edited" from the start;
-            while its approval is open or after a denial it never happened. */}
-        <span>{toolLabel(entry)}</span>
-        {entry.detail && <code>{entry.detail}</code>}
-        {entry.state === "running" && entry.asked !== "waiting" && <span className="pulse" aria-label="running" />}
-        {entry.asked === "waiting" && toolLabel(entry) === entry.title && <span className="muted">· waiting</span>}
-        {didNotRun(entry) ? (
-          <span className="muted">· {entry.asked === "denied" ? "denied" : "not answered"}</span>
-        ) : (
-          entry.state === "failed" && <span className="bad">· failed</span>
-        )}
-      </button>
-      {command && <CopyButton text={command} label="Copy command" />}
+        <button className="tool-row" aria-expanded={open} disabled={!expandable} onClick={() => setOpen(!open)}>
+          <span className={`tool-chevron ${open ? "open" : ""} ${expandable ? "" : "hidden"}`}>
+            <Icon d={CHEVRON_RIGHT} size={12} />
+          </span>
+          {/* Engines title a command "Ran" and an edit "Edited" from the start;
+              while its approval is open or after a denial it never happened. */}
+          <span>{toolLabel(entry)}</span>
+          {entry.detail && <code>{entry.detail}</code>}
+          {entry.state === "running" && entry.asked !== "waiting" && <span className="pulse" aria-label="running" />}
+          {entry.asked === "waiting" && toolLabel(entry) === entry.title && <span className="muted">· waiting</span>}
+          {didNotRun(entry) ? (
+            <span className="muted">· {entry.asked === "denied" ? "denied" : "not answered"}</span>
+          ) : (
+            entry.state === "failed" && <span className="bad">· failed</span>
+          )}
+        </button>
+        {command && <CopyButton text={command} label="Copy command" />}
       </div>
       {open && entry.output && <CopyBlock text={entry.output} className="tool-output" label="Copy output" />}
     </div>
   );
 }
 
-/** Preformatted text with Copy in its corner: code, commands' output. */
+/** Preformatted text with Copy beside it: code, commands' output. */
 export function CopyBlock({ text, className, label = "Copy" }: { text: string; className: string; label?: string }) {
   return (
     <div className={`copy-block ${className}-block`}>

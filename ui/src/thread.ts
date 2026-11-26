@@ -199,7 +199,6 @@ export function stepCommand(entry: ToolItem): string | null {
 
 /** A row's verb. Engines title a call by its outcome ("Ran", "Edited") from
  *  the start; until it is allowed and done, it has not happened. */
-
 export function toolLabel(entry: ToolItem): string {
   const verbs = entry.title === "Ran" ? ["Waiting to run", "Did not run", "Running"] : entry.title === "Edited" ? ["Waiting to edit", "Did not edit", "Editing"] : null;
   if (!verbs) return entry.title;
