@@ -1,0 +1,72 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "approvals",
+      "at": "2026-11-26T13:16:39.821Z",
+      "counts": {
+        "pass": 11
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "pending-shows-card",
+          "status": "pass",
+          "ms": 7213
+        },
+        {
+          "label": "allow-once",
+          "status": "pass",
+          "ms": 4781
+        },
+        {
+          "label": "allow-then-follow-up",
+          "status": "pass",
+          "ms": 6015
+        },
+        {
+          "label": "deny",
+          "status": "pass",
+          "ms": 4430
+        },
+        {
+          "label": "waiting-then-denied-command-did-not-run",
+          "status": "pass",
+          "ms": 18716
+        },
+        {
+          "label": "waiting-then-denied-edit-was-not-made",
+          "status": "pass",
+          "ms": 18215
+        },
+        {
+          "label": "always-allow",
+          "status": "pass",
+          "ms": 4842
+        },
+        {
+          "label": "double-click-allow-once",
+          "status": "pass",
+          "ms": 4232
+        },
+        {
+          "label": "approval-wait-is-not-work",
+          "status": "pass",
+          "ms": 18720
+        },
+        {
+          "label": "claude-question-answered",
+          "status": "pass",
+          "ms": 11873
+        },
+        {
+          "label": "claude-question-something-else-and-skip",
+          "status": "pass",
+          "ms": 8432
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
