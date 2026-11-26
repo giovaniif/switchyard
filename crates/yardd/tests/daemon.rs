@@ -3067,3 +3067,48 @@ async fn a_codex_question_takes_the_owners_answers() {
     let answer = c.events(&sid).into_iter().rev().find(|e| e["type"] == "assistant_message").unwrap();
     assert_eq!(answer["text"], "No answers.");
 }
+
+#[tokio::test]
+async fn codex_usage_keeps_the_full_resets_and_every_limit() {
+    // Codex answers its free "Full reset" credits and a limit per id beside
+    // the main windows; yardd kept only the main windows.
+    let sb = Sandbox::new("codex-resets");
+    let d = sb.start();
+    let mut c = d.client().await;
+    let usage = c
+        .wait_for("codex usage", |m| (m["op"] == "usage" || m["op"] == "snapshot") && !m["usage"]["codex"].is_null())
+        .await;
+    let codex = &usage["usage"]["codex"];
+    assert_eq!(codex["primary"]["usedPercent"], 12, "{codex}");
+    assert_eq!(codex["resetCredits"]["availableCount"], 2, "{codex}");
+    assert_eq!(codex["resetCredits"]["credits"][0]["title"], "Full reset", "{codex}");
+    assert_eq!(codex["byLimitId"]["codex_spark"]["primary"]["usedPercent"], 5, "{codex}");
+}
+
+#[tokio::test]
+async fn a_claude_turn_keeps_the_windows_it_did_not_report() {
+    // A turn's rate_limit_events name only the windows that turn touched;
+    // they replaced everything, so the per-model week the usage report had
+    // read (Fable's) vanished from the meters until the next report.
+    let sb = Sandbox::new("usage-merge");
+    let reset = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() + 3 * 86400;
+    std::fs::create_dir_all(sb.data()).unwrap();
+    std::fs::write(
+        sb.data().join("usage.json"),
+        json!({ "claude": { "windows": {
+            "five_hour": { "utilization": 0.1, "resetsAt": reset },
+            "seven_day_fable": { "utilization": 0.04, "resetsAt": reset },
+        } } })
+        .to_string(),
+    )
+    .unwrap();
+    let sidecar = claude_sidecar();
+    let d = sb.start_with(&[("YARD_SIDECAR", &sidecar)]);
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "hi", json!({ "engine": "claude", "model": "claude-haiku-5-5" })).await;
+    assert_eq!(c.wait_turn_done(&sid, 0).await["status"], "completed");
+    let usage = c.wait_for("claude usage", |m| m["op"] == "usage" && m["usage"]["claude"]["windows"]["five_hour"]["utilization"] == 0.47).await;
+    let windows = &usage["usage"]["claude"]["windows"];
+    assert_eq!(windows["seven_day_sonnet"]["utilization"], 0.08, "{windows}");
+    assert_eq!(windows["seven_day_fable"]["utilization"], 0.04, "{windows}");
+}
