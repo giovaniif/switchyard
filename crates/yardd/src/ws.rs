@@ -169,6 +169,21 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
                         let _ = keys.send(msg);
                         continue;
                     }
+                    // Messages are taken here, in the order they came: each in
+                    // its own task, two sent in a row could be queued swapped
+                    // (or the second start the turn), and the agent would read
+                    // them out of order. Only the turn a message opens runs on.
+                    if msg["op"] == "session.send" {
+                        match take_send(&app, &msg) {
+                            Ok((_, sessions::Taken::Done)) => {}
+                            Ok((sid, next)) => {
+                                let app = app.clone();
+                                tokio::spawn(async move { sessions::follow_up(&app, &sid, next).await });
+                            }
+                            Err(e) => { let _ = direct.send(error_reply(&msg, &e)); }
+                        }
+                        continue;
+                    }
                     let app = app.clone();
                     let direct = direct.clone();
                     tokio::spawn(async move {
@@ -188,6 +203,17 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
         app.mobile.disconnected(&name);
         app.broadcast(json!({ "op": "mobile.status", "mobile": app.mobile.status() }));
     }
+}
+
+/// A window's `session.send`, put in its place (see `sessions::take_message`).
+fn take_send(app: &Arc<App>, msg: &Value) -> Result<(String, sessions::Taken)> {
+    let sid = str_field(msg, "sessionId")?;
+    let text = msg["text"].as_str().unwrap_or("").trim();
+    let files = attachments::resolve(&msg["attachments"])?;
+    if text.is_empty() && files.is_empty() {
+        bail!("the message is empty");
+    }
+    Ok((sid.to_string(), sessions::take_message(app, sid, text, &files, None)?))
 }
 
 /// An op's failure. `ref` comes back when the op had one, so a client
@@ -569,15 +595,6 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
         "session.open" => {
             let sid = str_field(msg, "sessionId")?;
             let _ = direct.send(app.history(sid).to_string());
-        }
-        "session.send" => {
-            let sid = str_field(msg, "sessionId")?;
-            let text = msg["text"].as_str().unwrap_or("").trim();
-            let files = attachments::resolve(&msg["attachments"])?;
-            if text.is_empty() && files.is_empty() {
-                bail!("the message is empty");
-            }
-            sessions::send_message(app, sid, text, &files, None).await?;
         }
         // Taken back to edit (or dropped): the asking window gets it, if it
         // had not reached the agent yet.
