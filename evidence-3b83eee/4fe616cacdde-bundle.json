@@ -1,0 +1,207 @@
+{
+  "v": 1,
+  "claim": "Deleting a session from the sidebar with 'Delete and remove the worktree' when its worktree is dirty shows a refusal banner over the open session that does not say which session was refused, so it reads as the open session's.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-7449",
+  "base": "7a7985f24b6dbca59801c9d5440c79a8b2d3ebf2",
+  "head": "3b83eee3ba4f3b05ff4fc2239981b33ba66b6578",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/git.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/worktrees.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-26T07:11:51.996Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "bb995465e722304df186bc78e8eba2a1e4eb46fe",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "9695f343f361fc9690b2f7122bba021f46da2e00048fe48117ccbd6af0d70b45"
+        },
+        {
+          "path": "p1-refused-desktop.png",
+          "sha256": "ff57610bad821e8852718f120cb7cf4696e95289f392f7d8d290ed8031f2032e"
+        }
+      ],
+      "addedAt": "2026-11-26T07:12:03.895Z",
+      "failedApi": [
+        "session.delete: The worktree has uncommitted or untracked changes (1 file). Commit or discard them first. Nothing was deleted."
+      ]
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "bb995465e722304df186bc78e8eba2a1e4eb46fe",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "0dee0e2e6e25a9d463255624f3b3ff788caac3c9012292b54354f374efa148dd"
+        },
+        {
+          "path": "p2-refused-mobile.png",
+          "sha256": "c8db61253cbe88f279739e6ae87d7c7172a7bd7abfed667cb84d6fb83648fedf"
+        }
+      ],
+      "addedAt": "2026-11-26T07:12:08.227Z",
+      "failedApi": [
+        "session.delete: The worktree has uncommitted or untracked changes (1 file). Commit or discard them first. Nothing was deleted."
+      ]
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "bb995465e722304df186bc78e8eba2a1e4eb46fe",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "851716ff011043980be6824466919cc87d3134eb007c86c0f85cc309df7ff5f8"
+        }
+      ],
+      "addedAt": "2026-11-26T07:12:08.278Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd --test daemon removing_a_dirty_worktree_is_refused",
+      "exit": 101
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "3b83eee3ba4f3b05ff4fc2239981b33ba66b6578",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-2-drive.json",
+          "sha256": "bf8b2fd4354b43589035d64bb36e696490f22fb04125fdc95fea20d1461e8a95"
+        },
+        {
+          "path": "p4-2-refused-desktop.png",
+          "sha256": "a425e0780c46c9bca34d740085bb307267490c81bfb1612887cd8575ab3d1afb"
+        }
+      ],
+      "addedAt": "2026-11-26T07:14:51.951Z",
+      "failedApi": [
+        "session.delete: \"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted or untracked changes (1 file). Commit or discard them first."
+      ]
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "3b83eee3ba4f3b05ff4fc2239981b33ba66b6578",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-2-drive.json",
+          "sha256": "8e085580f7190d15d581e5991621fc3e495594f21f09b0c744b1e5fd47d7ec33"
+        },
+        {
+          "path": "p5-2-refused-mobile.png",
+          "sha256": "0e340a13b80f3c42f98374b1d64db7950347f36c383f3a46e2393d6afae066ec"
+        }
+      ],
+      "addedAt": "2026-11-26T07:14:56.159Z",
+      "failedApi": [
+        "session.delete: \"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted or untracked changes (1 file). Commit or discard them first."
+      ]
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "note",
+      "at": "3b83eee3ba4f3b05ff4fc2239981b33ba66b6578",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T07:14:56.204Z",
+      "text": "expected-api: session.delete: refusing to remove a dirty worktree is the behaviour under test (base and head alike); the fix changes only its wording, which now names the refused session"
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "note",
+      "at": "3b83eee3ba4f3b05ff4fc2239981b33ba66b6578",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T07:14:56.247Z",
+      "text": "flake: a first full head test run failed only in gemini_permissions_stop_and_reload_use_its_native_protocol (acp.rs:545, known flaky #393, unrelated to session.delete); the bundle was retargeted to the same head and the suite re-run"
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "test",
+      "at": "3b83eee3ba4f3b05ff4fc2239981b33ba66b6578",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-cmd.log",
+          "sha256": "fe3275bea34d8630383c48728f60e9e8d58573a2dc762c5d5f1a8ada7711b687"
+        }
+      ],
+      "addedAt": "2026-11-26T07:14:56.299Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "regression",
+      "at": "3b83eee3ba4f3b05ff4fc2239981b33ba66b6578",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-map-worktrees.json",
+          "sha256": "0d9819bb7d22ffa944611eed7dd5ac29a4c40501c3940ce423b7cd003e5eda36"
+        }
+      ],
+      "addedAt": "2026-11-26T07:16:01.594Z",
+      "cmd": "verify/yv map run worktrees",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "worktrees/session-gets-worktree",
+        "worktrees/plain-folder-in-place",
+        "worktrees/one-writer-per-folder",
+        "worktrees/delete-removes-clean-worktree",
+        "worktrees/sidebar-delete-refusal-names-the-session",
+        "worktrees/dirty-worktree-is-kept"
+      ]
+    }
+  ]
+}

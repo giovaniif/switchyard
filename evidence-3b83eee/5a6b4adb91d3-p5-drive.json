@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "session:s1a216a950c36",
+  "build": {
+    "sha": "3b83eee3ba4f3b05ff4fc2239981b33ba66b6578",
+    "short": "3b83eee",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T07:12:16.830Z"
+  },
+  "dir": ".verify/evidence/delete-refusal-names-the-session-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3789,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/delete-refusal-names-the-session-head-mobile/refused-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "session.delete",
+          "message": "\"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted or untracked changes (1 file). Commit or discard them first."
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,27 @@
+$ CARGO_BUILD_JOBS=4 cargo test -p yardd --test daemon removing_a_dirty_worktree_is_refused
+# exit 101 after 1175 ms at bb995465e722304df186bc78e8eba2a1e4eb46fe
+
+
+running 1 test
+test removing_a_dirty_worktree_is_refused ... FAILED
+
+failures:
+
+---- removing_a_dirty_worktree_is_refused stdout ----
+
+thread 'removing_a_dirty_worktree_is_refused' (3484772) panicked at crates/yardd/tests/daemon.rs:849:5:
+The worktree has uncommitted or untracked changes (1 file). Commit or discard them first. Nothing was deleted.
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-3484771-rmwt-0 for inspection
+
+
+failures:
+    removing_a_dirty_worktree_is_refused
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 87 filtered out; finished in 0.17s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-7449/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 0.95s
+     Running tests/daemon.rs (target/debug/build/yardd/bc3e500ead7d3ac6/out/daemon-bc3e500ead7d3ac6)
+error: test failed, to rerun pass `-p yardd --test daemon`
