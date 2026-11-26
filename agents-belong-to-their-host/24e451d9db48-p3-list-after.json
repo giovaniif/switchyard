@@ -1,0 +1,14 @@
+{
+  "command": "api",
+  "ok": true,
+  "sent": {
+    "op": "agent.list"
+  },
+  "reply": {
+    "agents": [],
+    "op": "agents"
+  },
+  "saved": {},
+  "received": 1,
+  "problems": []
+}

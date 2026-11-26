@@ -1,0 +1,138 @@
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "hosts",
+      "at": "2026-11-26T15:38:50.718Z",
+      "counts": {
+        "pass": 19,
+        "manual": 1,
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "hosts-page",
+          "status": "pass",
+          "ms": 4977
+        },
+        {
+          "label": "empty-state-tile",
+          "status": "pass",
+          "ms": 4671
+        },
+        {
+          "label": "sessions-list-collapsed",
+          "status": "pass",
+          "ms": 5736
+        },
+        {
+          "label": "add-direct-host",
+          "status": "pass",
+          "ms": 2036
+        },
+        {
+          "label": "remote-session",
+          "status": "pass",
+          "ms": 5934
+        },
+        {
+          "label": "hosts-grid",
+          "status": "pass",
+          "ms": 5247
+        },
+        {
+          "label": "selecting-a-host-shows-its-details",
+          "status": "pass",
+          "ms": 6868
+        },
+        {
+          "label": "ssh-host-unreachable",
+          "status": "pass",
+          "ms": 2213
+        },
+        {
+          "label": "remove-host",
+          "status": "pass",
+          "ms": 6065
+        },
+        {
+          "label": "refused-add-keeps-the-form",
+          "status": "pass",
+          "ms": 6427
+        },
+        {
+          "label": "local-name-right-after-start",
+          "status": "pass",
+          "ms": 2208
+        },
+        {
+          "label": "no-memory-limit-says-load-only",
+          "status": "pass",
+          "ms": 6003
+        },
+        {
+          "label": "ip-destination-keeps-the-whole-address",
+          "status": "pass",
+          "ms": 7385
+        },
+        {
+          "label": "long-name-fits-the-add-button",
+          "status": "pass",
+          "ms": 10909
+        },
+        {
+          "label": "long-derived-name-asks-for-a-shorter-one",
+          "status": "pass",
+          "ms": 12887
+        },
+        {
+          "label": "install-on-host",
+          "status": "manual",
+          "why": "needs a real SSH server"
+        },
+        {
+          "label": "engine-status-keeps-cards-aligned",
+          "status": "pass",
+          "ms": 4694
+        },
+        {
+          "label": "processes-say-the-host-is-offline",
+          "status": "fail",
+          "ms": 17450,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 2 {\"expect\":\"css:.proc-table\",\"timeout\":10000}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/.verify/drives/2026-11-26T15-38-10-497Z/fail-desktop-step2.png and the aria snapshot"
+            }
+          ],
+          "tail": "  - button \\\"Archive TEST-say hello\\\"\\n  - button \\\"Actions for TEST-say hello\\\"\\n  - button \\\"[think] TEST-plan the refactor · Fake Fast · Idle\\\"\\n  - button \\\"Archive [think] TEST-plan the refactor\\\"\\n  - button \\\"Actions for [think] TEST-plan the refactor\\\"\\n  - button \\\"[fail] TEST-failing turn · Fake Fast · Idle\\\"\\n  - button \\\"Archive [fail] TEST-failing turn\\\"\\n  - button \\\"Actions for [fail] TEST-failing turn\\\"\\n  - button \\\"Subscription usage\\\": Usage 47% used\\n  - button \\\"iso-host 11% · 57%\\\"\\n  - button \\\"TEST-remote 10% · 57%\\\"\\n  - button \\\"TEST-ssh Offline\\\"\\n  - button \\\"TEST-devbox Offline\\\"\\n  - button \\\"100.64.0.7 Offline\\\"\\n  - button \\\"100.64.0.8 Offline\\\"\\n  - button \\\"TEST-a-long-host-name-without-any-spaces Offline\\\"\\n  - button \\\"fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c Offline\\\"\\n  - button \\\"TEST-build-phone Offline\\\"\\n  - button \\\"TEST-build-desktop Offline\\\"\\n  - button \\\"TEST-gone Offline\\\"\\n- separator \\\"Resize the sessions sidebar\\\"\\n- main:\\n  - heading \\\"TEST-procs on a host that goes\\\" [level=1]\\n  - code: /tmp/yv-map-hosts-gone-3804990-mwxpvist/work\\n  - text: TEST-gone · offline\\n  - button \\\"Set up iPhone app\\\"\\n  - button \\\"Collapse workspace\\\" [expanded]\\n  - text: TEST-procs on a host that goes\\n  - paragraph: \\\"Echo: TEST-procs on a host that goes\\\"\\n  - text: TEST-gone is offline. This session comes back when it reconnects.\\n  - textbox \\\"Message\\\":\\n    - /placeholder: Offline\\n  - button \\\"Attach files\\\"\\n  - button \\\"Dictate\\\"\\n  - button \\\"Voice mode\\\"\\n  - button \\\"Model Fake Fast\\\": Fake Fast\\n  - 'button \\\"Account: Codex, Default\\\"'\\n  - button \\\"Effort Low\\\": Low\\n  - button \\\"Ask first\\\"\\n  - button \\\"Send\\\" [disabled]\\n- region \\\"Workspace\\\":\\n  - separator \\\"Resize the workspace pane\\\"\\n  - button \\\"Terminal\\\"\\n  - button \\\"Subagents\\\"\\n  - button \\\"Processes\\\" [pressed]\\n  - button \\\"Refresh processes\\\"\\n  - text: Processes are available when this host reconnects.\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 2 {\\\"expect\\\":\\\"css:.proc-table\\\",\\\"timeout\\\":10000}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/.verify/drives/2026-11-26T15-38-10-497Z/fail-desktop-step2.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        },
+        {
+          "label": "new-session-says-the-remembered-host-is-offline",
+          "status": "pass",
+          "ms": 8236
+        },
+        {
+          "label": "sessions-stay-listed-while-their-host-is-down",
+          "status": "pass",
+          "ms": 7206
+        },
+        {
+          "label": "subscriptions-sign-in-opens-the-accounts-host",
+          "status": "pass",
+          "ms": 7792
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "hosts/processes-say-the-host-is-offline",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}

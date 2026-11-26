@@ -1,0 +1,373 @@
+{
+  "v": 1,
+  "claim": "Third verifier FAIL on #478: an agent deleted on its host while the hub's record of its hand-over was still there (release failing, or the adopt answer lost) came back on the host, Slack app included; a lost export answer left the agent leaving for good; a failed shared-bot note after a move left two owners; the agent vanished from the list while a move back was refused; an edit mid-release, or a retry's backups, could drop the owed release or prune the pre-move backups.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224",
+  "base": "41aed8c556db8ef34c3847e45d5d3dfa95437de0",
+  "head": "ec5432c64b3cf68a490fa433363792c2a727a677",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/origins.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/AgentsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackSetup.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/agents.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/agents.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/agents.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T15:35:47.889Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "5d4311c79557d89cf89e3c809f82a7cfa40a4a7a",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "abe2ec9573c94c8cc28f259ae2510c2d176bb2753b1da23954df519079a231ca"
+        },
+        {
+          "path": "p1-fail-mobile-step1.png",
+          "sha256": "d16524c5adb7badcc0c44fa2e2c549ee14fe462a3d82035ed4ac79403727521e"
+        },
+        {
+          "path": "p1-fail-desktop-step1.png",
+          "sha256": "199571f4f7725fc7de640b10e53d213a62cf860b59c4ab87952648a54ddf2aa1"
+        },
+        {
+          "path": "p1-2-fail-desktop-step1.png",
+          "sha256": "199571f4f7725fc7de640b10e53d213a62cf860b59c4ab87952648a54ddf2aa1"
+        },
+        {
+          "path": "p1-2-fail-mobile-step1.png",
+          "sha256": "d16524c5adb7badcc0c44fa2e2c549ee14fe462a3d82035ed4ac79403727521e"
+        },
+        {
+          "path": "p1-list-after.json",
+          "sha256": "4c99d96e53bbade7e08bf6a894d5977852e399a69064d69fc89e6d5780987e10"
+        }
+      ],
+      "addedAt": "2026-11-26T15:35:47.933Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "5d4311c79557d89cf89e3c809f82a7cfa40a4a7a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "6a6a527e282ec91b22804e13a095854b133c9fb6f0fd897391a5fbd3048a082e"
+        }
+      ],
+      "addedAt": "2026-11-26T15:35:47.985Z",
+      "cmd": "bash /tmp/pr478/round4-tests.sh",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "ec5432c64b3cf68a490fa433363792c2a727a677",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "97493e214f4657d31208437a1cbab5d9b267f573d0b74824ff681d66ac990d46"
+        },
+        {
+          "path": "p3-after-delete-mobile.png",
+          "sha256": "92937ed0c40e2506a57f9d3d6a56e9d8b61af19bbdbc994f956b7d8b01d2afde"
+        },
+        {
+          "path": "p3-after-delete-desktop.png",
+          "sha256": "2bc297b1426174db781b09a89962f923bad7b948429fc00d081ec738fbb94f3d"
+        },
+        {
+          "path": "p3-2-after-delete-desktop.png",
+          "sha256": "2bc297b1426174db781b09a89962f923bad7b948429fc00d081ec738fbb94f3d"
+        },
+        {
+          "path": "p3-2-after-delete-mobile.png",
+          "sha256": "92937ed0c40e2506a57f9d3d6a56e9d8b61af19bbdbc994f956b7d8b01d2afde"
+        },
+        {
+          "path": "p3-list-after.json",
+          "sha256": "24e451d9db482bd2b6f9ed86f078a8643f72f06bff46fc97675d8b4280b1280f"
+        }
+      ],
+      "addedAt": "2026-11-26T15:36:21.734Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "regression",
+      "at": "ec5432c64b3cf68a490fa433363792c2a727a677",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-map-hosts.json",
+          "sha256": "34e9221a49f8921360a3599f69da2431f15ab73beb39034595f4ee12b2a034b9"
+        }
+      ],
+      "addedAt": "2026-11-26T15:36:21.781Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 1,
+      "failingRecipes": [
+        "hosts/processes-say-the-host-is-offline"
+      ],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "regression",
+      "at": "ec5432c64b3cf68a490fa433363792c2a727a677",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-map-agents.json",
+          "sha256": "96103ac3a85f79763b6fedf0d168dc7dc5c23fe161e40d70e7eeb6f241decd47"
+        }
+      ],
+      "addedAt": "2026-11-26T15:38:50.763Z",
+      "cmd": "verify/yv map run agents",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "agents/cards-show-the-users-agents",
+        "agents/cards-in-a-row-line-up",
+        "agents/agent-views-on-a-phone",
+        "agents/colours-line-up-under-the-faces",
+        "agents/at-mention-from-new-session-goes-to-the-agents-conversation",
+        "agents/at-mention-in-a-session-goes-to-the-agents-conversation",
+        "agents/one-conversation-and-the-agents-mark",
+        "agents/agents-message-each-other-with-badges",
+        "agents/an-agent-that-needs-you",
+        "agents/an-agents-own-memory-shows-in-the-form",
+        "agents/new-agent-sets-itself-up-in-its-conversation",
+        "agents/new-agent-on-a-phone",
+        "agents/a-working-agent-looks-busy",
+        "agents/edit-an-agent-in-the-form",
+        "agents/a-name-of-a-few-words-is-mentioned-by-its-handle",
+        "agents/face-name-and-what-it-is-for-change-in-place",
+        "agents/the-boxs-pickers-save-the-agent",
+        "agents/add-to-slack-walks-through-the-tokens",
+        "agents/switchys-address-lands-on-the-agents",
+        "agents/deleting-an-agent-deletes-its-conversation",
+        "agents/form-host-and-account-pickers",
+        "agents/a-mention-reaches-an-agent-on-a-remote-host",
+        "agents/a-remote-agents-conversation-on-a-phone",
+        "agents/a-hosts-agents-tools-act-on-its-host",
+        "agents/a-second-mac-lists-the-hosts-agents",
+        "agents/moving-an-agent-says-what-happens-to-its-conversation",
+        "agents/a-host-picked-in-the-box",
+        "agents/a-remote-agents-host-offline",
+        "agents/agents-in-the-sidebar"
+      ]
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "ec5432c64b3cf68a490fa433363792c2a727a677",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "40a3e70f5ea243b1c8d62021b3d7918dca54f93c2b31c452ffb0fbbb2252bc51"
+        }
+      ],
+      "addedAt": "2026-11-26T15:42:56.816Z",
+      "cmd": "verify/yv design-check --base 41aed8c556db",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "test",
+      "at": "ec5432c64b3cf68a490fa433363792c2a727a677",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-cmd.log",
+          "sha256": "fdcf32b50423ffc977751b4100cfaaabc0d3bc317aada0630b9129bfe6d679f8"
+        }
+      ],
+      "addedAt": "2026-11-26T15:42:56.907Z",
+      "cmd": "bash /tmp/pr478/round4-tests.sh && CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test) && (cd sidecar/yard-claude && bun test) && verify/yv selftest",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "base",
+      "kind": "regression",
+      "at": "5d4311c79557d89cf89e3c809f82a7cfa40a4a7a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-hosts.json",
+          "sha256": "522ea94794576ad4c6da4fb5907bcf53b072afd0214e6ac08724e8c7c14b3940"
+        }
+      ],
+      "addedAt": "2026-11-26T15:44:40.551Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 1,
+      "failingRecipes": [
+        "hosts/processes-say-the-host-is-offline"
+      ],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    }
+  ]
+}

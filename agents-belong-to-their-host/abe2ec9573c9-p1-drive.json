@@ -1,0 +1,76 @@
+{
+  "ok": false,
+  "route": "agents",
+  "build": {
+    "sha": "5d4311c79557d89cf89e3c809f82a7cfa40a4a7a",
+    "short": "5d4311c",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T14:11:25.784Z"
+  },
+  "dir": ".verify/evidence/r478-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 32364,
+      "steps": 4,
+      "failed": {
+        "step": 1,
+        "action": {
+          "expect": {
+            "css": ".agent-card",
+            "hasText": "TEST-Pager"
+          },
+          "count": 0
+        },
+        "reason": "expected {\"css\":\".agent-card\",\"hasText\":\"TEST-Pager\"} to be absent or hidden",
+        "screenshot": ".verify/evidence/r478-base/fail-mobile-step1.png",
+        "aria": "- banner:\n  - button \"Open sessions\"\n  - heading \"Agents\" [level=1]\n  - button \"New agent\"\n- region \"TEST-Pager\":\n  - button \"TEST-Pager @TEST-Pager\":\n    - strong: TEST-Pager\n    - text: \"@TEST-Pager\"\n  - text: TEST-agents-box · Fake Fast · Ask first No messages yet\n  - button \"Message\"\n  - 'button \"Edit: TEST-Pager\"'"
+      },
+      "captures": [],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 31790,
+      "steps": 4,
+      "failed": {
+        "step": 1,
+        "action": {
+          "expect": {
+            "css": ".agent-card",
+            "hasText": "TEST-Pager"
+          },
+          "count": 0
+        },
+        "reason": "expected {\"css\":\".agent-card\",\"hasText\":\"TEST-Pager\"} to be absent or hidden",
+        "screenshot": ".verify/evidence/r478-base/fail-desktop-step1.png",
+        "aria": "- navigation \"Sessions\":\n  - button \"Go to session or page\": Switchyard Ctrl K\n  - button \"Collapse sessions sidebar\" [expanded]\n  - button \"New session\"\n  - button \"Agents\"\n  - button \"Automations\"\n  - button \"Connectors\"\n  - button \"Import\"\n  - button \"Settings\"\n  - text: No sessions yet.\n  - group \"Agents\":\n    - text: Agents\n    - button \"TEST-Pager · Idle · On TEST-agents-box\"\n  - button \"Subscription usage\": Usage 47% used\n  - button \"iso-host 10% · 64%\"\n  - button \"TEST-agents-box 10% · 64%\"\n- separator \"Resize the sessions sidebar\"\n- banner:\n  - heading \"Agents\" [level=1]\n  - button \"New agent\"\n- region \"TEST-Pager\":\n  - button \"TEST-Pager @TEST-Pager\":\n    - strong: TEST-Pager\n    - text: \"@TEST-Pager\"\n  - text: TEST-agents-box · Fake Fast · Ask first No messages yet\n  - button \"Message\"\n  - 'button \"Edit: TEST-Pager\"'"
+      },
+      "captures": [],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 1 {\"expect\":{\"css\":\".agent-card\",\"hasText\":\"TEST-Pager\"},\"count\":0}: expected {\"css\":\".agent-card\",\"hasText\":\"TEST-Pager\"} to be absent or hidden",
+      "hint": "see .verify/evidence/r478-base/fail-mobile-step1.png and the aria snapshot"
+    },
+    {
+      "code": "step-failed",
+      "msg": "desktop: step 1 {\"expect\":{\"css\":\".agent-card\",\"hasText\":\"TEST-Pager\"},\"count\":0}: expected {\"css\":\".agent-card\",\"hasText\":\"TEST-Pager\"} to be absent or hidden",
+      "hint": "see .verify/evidence/r478-base/fail-desktop-step1.png and the aria snapshot"
+    }
+  ]
+}

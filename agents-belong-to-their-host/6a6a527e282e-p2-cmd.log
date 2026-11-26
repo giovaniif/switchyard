@@ -1,0 +1,132 @@
+$ bash /tmp/pr478/round4-tests.sh
+# exit 101 after 33683 ms at 5d4311c79557d89cf89e3c809f82a7cfa40a4a7a
+
+
+running 11 tests
+test a_host_takes_an_agent_with_its_slack_app_or_not_at_all ... FAILED
+test an_agent_leaving_by_one_hand_over_is_not_exported_by_another ... FAILED
+test an_agent_moved_back_before_its_old_host_let_go_is_never_lost ... FAILED
+test a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why ... FAILED
+test a_hand_over_tried_again_and_again_backs_up_once_and_is_listed_once ... FAILED
+test an_agent_deleted_on_its_host_mid_hand_over_stays_deleted ... FAILED
+test a_move_between_hosts_whose_adopt_answer_is_lost_still_has_one_owner ... FAILED
+test a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile ... FAILED
+test an_agent_deleted_on_its_host_after_a_lost_adopt_answer_stays_deleted ... FAILED
+test a_move_here_that_cannot_note_the_shared_bot_still_lets_the_old_host_go ... FAILED
+test a_move_whose_export_answer_is_lost_leaves_nothing_leaving ... FAILED
+
+failures:
+
+---- a_host_takes_an_agent_with_its_slack_app_or_not_at_all stdout ----
+
+thread 'a_host_takes_an_agent_with_its_slack_app_or_not_at_all' (3760639) panicked at crates/yardd/tests/agents.rs:1368:5:
+assertion failed: !saved_agents(&sb).iter().any(|a| a["id"] == "g-whole")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-3760635-agents-adopt-whole-0 for inspection
+
+---- an_agent_leaving_by_one_hand_over_is_not_exported_by_another stdout ----
+
+thread 'an_agent_leaving_by_one_hand_over_is_not_exported_by_another' (3760645) panicked at crates/yardd/tests/agents.rs:1390:5:
+assertion `left == right` failed: {"export":{"agent":{"about":"","account":"default","chat":null,"color":"blue","createdAt":1,"cwd":"","effort":"low","engine":"codex","face":"","handle":"Twice","host":"local","id":"g-twice","instructions":"","leaving":"t3","memory":"","model":"fake-fast","name":"Twice","permission":"ask","transfer":"t1","updatedAt":1},"hadChat":false,"recap":"","slack":null},"op":"agent.exported","ref":"e3"}
+  left: String("agent.exported")
+ right: "error"
+kept /tmp/yardd-test-3760635-agents-export-twice-9 for inspection
+
+---- an_agent_moved_back_before_its_old_host_let_go_is_never_lost stdout ----
+
+thread 'an_agent_moved_back_before_its_old_host_let_go_is_never_lost' (3760646) panicked at crates/yardd/tests/agents.rs:1068:5:
+assertion `left == right` failed: {"agents":[],"op":"agents","ref":"l"}
+  left: 0
+ right: 1
+kept /tmp/yardd-test-3760635-agents-bounce-hub-15 for inspection
+kept /tmp/yardd-test-3760635-agents-bounce-remote-10 for inspection
+
+---- a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why stdout ----
+
+thread 'a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why' (3760638) panicked at crates/yardd/tests/agents.rs:938:9:
+assertion `left == right` failed: agents.json
+  left: 0
+ right: 1
+kept /tmp/yardd-test-3760635-agents-theirs-hub-20 for inspection
+kept /tmp/yardd-test-3760635-agents-theirs-remote-2 for inspection
+
+---- a_hand_over_tried_again_and_again_backs_up_once_and_is_listed_once stdout ----
+
+thread 'a_hand_over_tried_again_and_again_backs_up_once_and_is_listed_once' (3760636) panicked at crates/yardd/tests/agents.rs:1219:5:
+assertion `left == right` failed: a backup per try
+  left: 10
+ right: 3
+kept /tmp/yardd-test-3760635-agents-retried-hub-14 for inspection
+kept /tmp/yardd-test-3760635-agents-retried-remote-1 for inspection
+
+---- an_agent_deleted_on_its_host_mid_hand_over_stays_deleted stdout ----
+
+thread 'an_agent_deleted_on_its_host_mid_hand_over_stays_deleted' (3760644) panicked at crates/yardd/tests/agents.rs:1254:5:
+the deleted agent came back
+kept /tmp/yardd-test-3760635-agents-deleted-hub-13 for inspection
+kept /tmp/yardd-test-3760635-agents-deleted-remote-8 for inspection
+
+---- a_move_between_hosts_whose_adopt_answer_is_lost_still_has_one_owner stdout ----
+
+thread 'a_move_between_hosts_whose_adopt_answer_is_lost_still_has_one_owner' (3760640) panicked at crates/yardd/tests/agents.rs:1327:5:
+assertion `left == right` failed
+  left: Err("the host did not answer in time: deadline has elapsed")
+ right: Ok(String("h1a2187fd2ec2~g1a2187fd3161"))
+kept /tmp/yardd-test-3760635-agents-r2r-hub-18 for inspection
+kept /tmp/yardd-test-3760635-agents-r2r-two-12 for inspection
+kept /tmp/yardd-test-3760635-agents-r2r-one-4 for inspection
+
+---- a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile stdout ----
+
+thread 'a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile' (3760637) panicked at crates/yardd/tests/agents.rs:898:9:
+assertion `left == right` failed: agents.json
+  left: 0
+ right: 1
+kept /tmp/yardd-test-3760635-agents-busy-hub-19 for inspection
+kept /tmp/yardd-test-3760635-agents-busy-remote-3 for inspection
+
+---- an_agent_deleted_on_its_host_after_a_lost_adopt_answer_stays_deleted stdout ----
+
+thread 'an_agent_deleted_on_its_host_after_a_lost_adopt_answer_stays_deleted' (3760643) panicked at crates/yardd/tests/agents.rs:1351:5:
+the deleted agent came back
+kept /tmp/yardd-test-3760635-agents-deleted-lost-hub-11 for inspection
+kept /tmp/yardd-test-3760635-agents-deleted-lost-remote-7 for inspection
+
+---- a_move_here_that_cannot_note_the_shared_bot_still_lets_the_old_host_go stdout ----
+
+thread 'a_move_here_that_cannot_note_the_shared_bot_still_lets_the_old_host_go' (3760641) panicked at crates/yardd/tests/agents.rs:571:9:
+timed out waiting for the box let go
+kept /tmp/yardd-test-3760635-agents-moved-unsaved-hub-17 for inspection
+kept /tmp/yardd-test-3760635-agents-moved-unsaved-remote-5 for inspection
+
+---- a_move_whose_export_answer_is_lost_leaves_nothing_leaving stdout ----
+
+thread 'a_move_whose_export_answer_is_lost_leaves_nothing_leaving' (3760642) panicked at crates/yardd/tests/agents.rs:571:9:
+timed out waiting for not leaving
+kept /tmp/yardd-test-3760635-agents-lost-export-hub-16 for inspection
+kept /tmp/yardd-test-3760635-agents-lost-export-remote-6 for inspection
+
+
+failures:
+    a_hand_over_tried_again_and_again_backs_up_once_and_is_listed_once
+    a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile
+    a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why
+    a_host_takes_an_agent_with_its_slack_app_or_not_at_all
+    a_move_between_hosts_whose_adopt_answer_is_lost_still_has_one_owner
+    a_move_here_that_cannot_note_the_shared_bot_still_lets_the_old_host_go
+    a_move_whose_export_answer_is_lost_leaves_nothing_leaving
+    an_agent_deleted_on_its_host_after_a_lost_adopt_answer_stays_deleted
+    an_agent_deleted_on_its_host_mid_hand_over_stays_deleted
+    an_agent_leaving_by_one_hand_over_is_not_exported_by_another
+    an_agent_moved_back_before_its_old_host_let_go_is_never_lost
+
+test result: FAILED. 0 passed; 11 failed; 0 ignored; 0 measured; 18 filtered out; finished in 21.96s
+
+
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 11.66s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+error: test failed, to rerun pass `-p yardd --test agents`

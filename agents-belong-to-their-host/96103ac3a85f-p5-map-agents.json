@@ -1,0 +1,162 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "agents",
+      "at": "2026-11-26T15:42:56.771Z",
+      "counts": {
+        "pass": 29
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "cards-show-the-users-agents",
+          "status": "pass",
+          "ms": 5077
+        },
+        {
+          "label": "cards-in-a-row-line-up",
+          "status": "pass",
+          "ms": 2394
+        },
+        {
+          "label": "agent-views-on-a-phone",
+          "status": "pass",
+          "ms": 3146
+        },
+        {
+          "label": "colours-line-up-under-the-faces",
+          "status": "pass",
+          "ms": 8400
+        },
+        {
+          "label": "at-mention-from-new-session-goes-to-the-agents-conversation",
+          "status": "pass",
+          "ms": 4856
+        },
+        {
+          "label": "at-mention-in-a-session-goes-to-the-agents-conversation",
+          "status": "pass",
+          "ms": 5330
+        },
+        {
+          "label": "one-conversation-and-the-agents-mark",
+          "status": "pass",
+          "ms": 8707
+        },
+        {
+          "label": "agents-message-each-other-with-badges",
+          "status": "pass",
+          "ms": 9931
+        },
+        {
+          "label": "an-agent-that-needs-you",
+          "status": "pass",
+          "ms": 13514
+        },
+        {
+          "label": "an-agents-own-memory-shows-in-the-form",
+          "status": "pass",
+          "ms": 9497
+        },
+        {
+          "label": "new-agent-sets-itself-up-in-its-conversation",
+          "status": "pass",
+          "ms": 8690
+        },
+        {
+          "label": "new-agent-on-a-phone",
+          "status": "pass",
+          "ms": 6020
+        },
+        {
+          "label": "a-working-agent-looks-busy",
+          "status": "pass",
+          "ms": 5985
+        },
+        {
+          "label": "edit-an-agent-in-the-form",
+          "status": "pass",
+          "ms": 12259
+        },
+        {
+          "label": "a-name-of-a-few-words-is-mentioned-by-its-handle",
+          "status": "pass",
+          "ms": 7637
+        },
+        {
+          "label": "face-name-and-what-it-is-for-change-in-place",
+          "status": "pass",
+          "ms": 19872
+        },
+        {
+          "label": "the-boxs-pickers-save-the-agent",
+          "status": "pass",
+          "ms": 17409
+        },
+        {
+          "label": "add-to-slack-walks-through-the-tokens",
+          "status": "pass",
+          "ms": 7146
+        },
+        {
+          "label": "switchys-address-lands-on-the-agents",
+          "status": "pass",
+          "ms": 3907
+        },
+        {
+          "label": "deleting-an-agent-deletes-its-conversation",
+          "status": "pass",
+          "ms": 4179
+        },
+        {
+          "label": "form-host-and-account-pickers",
+          "status": "pass",
+          "ms": 17087
+        },
+        {
+          "label": "a-mention-reaches-an-agent-on-a-remote-host",
+          "status": "pass",
+          "ms": 4444
+        },
+        {
+          "label": "a-remote-agents-conversation-on-a-phone",
+          "status": "pass",
+          "ms": 4630
+        },
+        {
+          "label": "a-hosts-agents-tools-act-on-its-host",
+          "status": "pass",
+          "ms": 14254
+        },
+        {
+          "label": "a-second-mac-lists-the-hosts-agents",
+          "status": "pass",
+          "ms": 7419
+        },
+        {
+          "label": "moving-an-agent-says-what-happens-to-its-conversation",
+          "status": "pass",
+          "ms": 10807
+        },
+        {
+          "label": "a-host-picked-in-the-box",
+          "status": "pass",
+          "ms": 8321
+        },
+        {
+          "label": "a-remote-agents-host-offline",
+          "status": "pass",
+          "ms": 6898
+        },
+        {
+          "label": "agents-in-the-sidebar",
+          "status": "pass",
+          "ms": 6708
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "ec5432c64b3cf68a490fa433363792c2a727a677",
+    "short": "ec5432c",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T14:13:30.951Z"
+  },
+  "dir": ".verify/evidence/r478-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4045,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/r478-head/after-delete-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3178,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/r478-head/after-delete-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

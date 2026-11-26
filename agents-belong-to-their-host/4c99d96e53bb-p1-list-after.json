@@ -1,0 +1,36 @@
+{
+  "command": "api",
+  "ok": true,
+  "sent": {
+    "op": "agent.list"
+  },
+  "reply": {
+    "agents": [
+      {
+        "about": "",
+        "account": "default",
+        "chat": null,
+        "color": "blue",
+        "createdAt": 1795702286229,
+        "cwd": "",
+        "effort": "",
+        "engine": "codex",
+        "face": "",
+        "handle": "TEST-Pager",
+        "host": "h1a2183267241",
+        "id": "h1a2183267241~g1a2183267952",
+        "instructions": "",
+        "mcp": [],
+        "memory": "TEST-pages on call",
+        "model": "",
+        "name": "TEST-Pager",
+        "permission": "ask",
+        "updatedAt": 1795702286686
+      }
+    ],
+    "op": "agents"
+  },
+  "saved": {},
+  "received": 1,
+  "problems": []
+}
