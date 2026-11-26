@@ -284,6 +284,23 @@ yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","group":null}'
 yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","group":null}]}'
 ```
 
+### collapsed-archived-dock-shows-a-waiting-approval
+Viewports: both
+Archived sessions still open and run, so one can wait for approval (archived
+while asking, or asking after it was archived). The Archived dock is collapsed
+by default and showed only "Archived 1": nothing said a turn was waiting on
+you. While collapsed, the dock's header carries the same amber dot as a
+collapsed group ("A session needs approval"); open, the row's own mark says it.
+
+```sh
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","status":"needs_approval"}]}'
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","archived":true}' --wait '{"op":"session","session":{"id":"{{sid_cmd}}","archived":true}}'
+yv drive new --viewport desktop --steps '[{"expect":{"css":".archived-dock .list-toggle","hasText":"Archived"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"},"visible":false},{"expect":"role:img:A session needs approval"},{"shot":"collapsed-archived-approval"},{"click":{"css":".archived-dock .list-toggle"}},{"expect":{"css":".session-row","hasText":"[cmd] TEST-run the migration"}},{"expect":"role:img:A session needs approval","visible":false}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":{"css":".archived-dock .list-toggle","hasText":"Archived"}},{"expect":"role:img:A session needs approval"},{"shot":"collapsed-archived-approval"}]'
+yv api '{"op":"session.update","sessionId":"{{sid_cmd}}","archived":false}' --wait '{"op":"session","session":{"id":"{{sid_cmd}}","archived":false}}'
+yv state --expect '{"sessions":[{"id":"{{sid_cmd}}","status":"needs_approval","archived":false}]}'
+```
+
 ### archived-header-stays-at-bottom
 With many sessions the list scrolls, but the Archived header stays at the bottom of the session list, just above the sidebar's footer (usage meters, host rows), and opening it expands upward with its own scroll.
 

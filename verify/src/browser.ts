@@ -298,7 +298,9 @@ interface Capture {
 
 async function snap(page: Page, dir: string, label: string, vp: ViewportName, problems: Result["problems"]): Promise<Capture> {
   const file = join(dir, `${label}-${vp}.png`);
-  await page.screenshot({ path: file });
+  // Finish CSS transitions first: a shot right after "Open sessions" caught
+  // the phone drawer mid-slide (0.2 s), half off screen, with every step passing.
+  await page.screenshot({ path: file, animations: "disabled" });
   const size = pngSize(file);
   const want = VIEWPORTS[vp];
   if (size.width !== want.width * want.deviceScaleFactor || size.height !== want.height * want.deviceScaleFactor)
