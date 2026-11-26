@@ -92,6 +92,20 @@ export interface AvatarPaint {
 /** A colour from computed style, safe inside an attribute; else null. */
 const paint = (c: string) => (/^[#a-zA-Z0-9(),.%\s-]{1,64}$/.test(c.trim()) ? c.trim() : null);
 
+/** The face with its ids renamed in the order they appear (`face-0`, …), and
+ *  every `#id` reference with them. The page names a face's gradients and
+ *  clips after where React mounted it (`useId`), which differs between a
+ *  phone-sized and a desktop window, and between pages; the picture does not.
+ *  Without this each window size had its own icon key and sent the icon again. */
+export function stableIds(face: string): string {
+  const names = new Map<string, string>();
+  for (const m of face.matchAll(/\sid="([^"]+)"/g)) if (!names.has(m[1])) names.set(m[1], `face-${names.size}`);
+  if (!names.size) return face;
+  // Longest first, and never a prefix of a longer name: `x-skin` is not `x-skin-2`.
+  const ids = [...names.keys()].sort((a, b) => b.length - a.length).map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return face.replace(new RegExp(`(\\sid="|#)(${ids.join("|")})(?![\\w-])`, "g"), (_, lead: string, id: string) => lead + names.get(id));
+}
+
 /** The agent's avatar as a standalone square SVG, for Slack's app icon: its
  *  face (`face`, the rendered avatar's own `<svg>` with its styles inlined)
  *  on its colour, lit from above as on the page. Slack rounds the corners.
@@ -105,14 +119,23 @@ export function avatarIconSvg(face: string, colors: AvatarPaint, px = 1024): str
     `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 24 24">` +
     `<defs><linearGradient id="yard-light" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${light}"/><stop offset="0.7" stop-color="${clear}"/></linearGradient></defs>` +
     `<rect width="24" height="24" fill="${bg}"/><rect width="24" height="24" fill="url(#yard-light)"/>` +
-    face +
+    stableIds(face) +
     `</svg>`
   );
 }
 
+/** Whether a window sends an agent app's icon now: Slack has another
+ *  picture (`has`), this window has not tried this one (`tried`), and the
+ *  agent's host can take it. An offline host would refuse it on every page
+ *  view; the picture waits, and goes when the host is back. */
+export function sendsIcon(key: string, has: string, tried: string, hostOnline: boolean): boolean {
+  return hostOnline && key !== has && key !== tried;
+}
+
 /** A short key for an icon's SVG. yardd keeps the key of the icon Slack
  *  has, so a window sends a picture only when the face, its colour or its
- *  drawing changed, and every window agrees on the key. */
+ *  drawing changed, and every window agrees on the key (`avatarIconSvg`
+ *  leaves nothing in the SVG that depends on the window). */
 export function iconKey(svg: string): string {
   let a = 0x811c9dc5;
   let b = (0x01000193 ^ svg.length) >>> 0;
