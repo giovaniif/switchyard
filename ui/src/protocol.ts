@@ -543,14 +543,20 @@ export interface PrPeekReply {
   error?: string;
 }
 
-/** One of Claude's AskUserQuestion questions (an `approval_request` of kind
- *  `question`). Answers are keyed by `question`. */
+/** One question the agent asks the user (an `approval_request` of kind
+ *  `question`): Claude's AskUserQuestion, Codex's request_user_input.
+ *  Answers are keyed by `question`. */
 export interface Question {
   question: string;
   /** A short chip, "Database". */
   header: string;
   multiSelect: boolean;
+  /** None: the answer is typed. */
   options: { label: string; description: string }[];
+  /** A password or token: typed hidden, and yardd logs it masked. */
+  secret?: boolean;
+  /** false: only the options, no typed answer of one's own. */
+  other?: boolean;
 }
 
 /** Normalized session events. Both engines produce exactly these. */
@@ -575,7 +581,7 @@ export type AgentEvent =
    *  (a chart), fetched with `widget.get`. */
   | { type: "tool_completed"; itemId: string; ok: boolean; output?: string | null; note?: string | null; ms?: number | null; app?: WidgetRef }
   | { type: "file_change"; itemId: string; files: ChangedFile[] }
-  /** Kind `question`: Claude asks the user to choose (`questions`), answered with `session.approve`'s `answers`. */
+  /** Kind `question`: the agent asks the user to choose (`questions`), answered with `session.approve`'s `answers`. */
   | { type: "approval_request"; requestId: string; kind: string; title: string; detail: string; /** The call it asks about. */ itemId?: string | null; at?: number; questions?: Question[] }
   | { type: "approval_resolved"; requestId: string; decision: Decision; at?: number; answers?: Record<string, string> }
   | { type: "error"; message: string }
@@ -670,7 +676,7 @@ export type Item =
       title: string;
       detail: string;
       decision: Decision | null;
-      /** Claude's questions, when it asks the user to choose instead of to allow. */
+      /** The agent's questions, when it asks the user to choose instead of to allow. */
       questions?: Question[];
       /** What the user answered them. */
       answers?: Record<string, string>;

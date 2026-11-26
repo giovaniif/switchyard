@@ -3189,6 +3189,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
         actions.startNow(meta.id);
       }}
       onDecide={(id, d, answers) => actions.approve(meta.id, id, d, answers)}
+      asker={ENGINE_NAME[meta.engine]}
       agents={state.agents}
     />
     </Fragment>
@@ -3794,11 +3795,13 @@ function AgentEntry({ entry, card = false }: { entry: ToolItem; card?: boolean }
 
 type OnDecide = (requestId: string, decision: "allow" | "allow_always" | "deny", answers?: Record<string, string>) => void;
 
-export function ApprovalCard({ item, onDecide }: {
+export function ApprovalCard({ item, onDecide, asker }: {
   item: Extract<Item, {kind: "approval"}>;
   onDecide: OnDecide;
+  /** Who asks a question: "Claude", "Codex". */
+  asker?: string;
 }) {
-  if (item.questions?.length) return <QuestionCard item={item} questions={item.questions} onDecide={onDecide} />;
+  if (item.questions?.length) return <QuestionCard item={item} questions={item.questions} onDecide={onDecide} asker={asker ?? "The agent"} />;
   return (
         <div className="approval">
           <div className="approval-title">{item.approvalKind === "command" ? "Allow this command?" : "Allow this?"}</div>
@@ -3831,12 +3834,14 @@ export function ApprovalCard({ item, onDecide }: {
 );
 }
 
-/** Claude's AskUserQuestion: choose, or type your own, then Send. Skip tells
- *  Claude the user chose not to answer. Claude's text: React text only. */
-function QuestionCard({ item, questions, onDecide }: {
+/** The agent asks the user to choose (Claude's AskUserQuestion, Codex's
+ *  request_user_input): choose, or type your own, then Send. Skip tells it the
+ *  user chose not to answer. The agent's text: React text only. */
+function QuestionCard({ item, questions, onDecide, asker }: {
   item: Extract<Item, {kind: "approval"}>;
   questions: Question[];
   onDecide: OnDecide;
+  asker: string;
 }) {
   const [picks, setPicks] = useState<Record<string, Pick>>({});
   const open = item.decision === null && !item.unanswered;
@@ -3844,7 +3849,7 @@ function QuestionCard({ item, questions, onDecide }: {
   const set = (q: Question, pick: Pick) => setPicks((p) => ({ ...p, [q.question]: pick }));
   return (
     <div className="approval question-card">
-      <div className="approval-title">{questions.length > 1 ? `Claude has ${questions.length} questions` : "Claude has a question"}</div>
+      <div className="approval-title">{questions.length > 1 ? `${asker} has ${questions.length} questions` : `${asker} has a question`}</div>
       {questions.map((q, qi) => {
         const pick = picks[q.question] ?? noPick;
         const given = item.answers?.[q.question];
@@ -3875,18 +3880,19 @@ function QuestionCard({ item, questions, onDecide }: {
                     </button>
                   ))}
                 </div>
-                <input
+                {q.other !== false && <input
                   className="field question-other"
-                  type="text"
-                  placeholder={q.multiSelect ? "Something else (optional)" : "Something else"}
-                  aria-label={`Something else: ${q.question}`}
+                  type={q.secret ? "password" : "text"}
+                  autoComplete="off"
+                  placeholder={!q.options.length ? "Your answer" : q.multiSelect ? "Something else (optional)" : "Something else"}
+                  aria-label={q.options.length ? `Something else: ${q.question}` : q.question}
                   value={pick.other}
                   disabled={item.sending}
                   onChange={(e) => set(q, typeOther(q, pick, e.target.value))}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && answers && !item.sending) onDecide(item.requestId, "allow", answers);
                   }}
-                />
+                />}
                 {q.multiSelect && <div className="muted small">Choose any that apply.</div>}
               </>
             ) : (
@@ -3940,6 +3946,8 @@ function ItemView(props: {
   loadAttachment(a: Attachment): Promise<string>;
   onStart(): void;
   onDecide: OnDecide;
+  /** Who asks a question card's questions: "Claude", "Codex". */
+  asker?: string;
   /** Whose face goes on a message from another agent. */
   agents: Agent[];
 }) {
@@ -3995,7 +4003,7 @@ function ItemView(props: {
         </>
       );
     case "approval":
-      return <ApprovalCard item={item} onDecide={onDecide} />;
+      return <ApprovalCard item={item} onDecide={onDecide} asker={props.asker} />;
     case "error":
       return <div className="error-line">{item.message}</div>;
     case "queued":

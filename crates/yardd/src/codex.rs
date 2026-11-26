@@ -36,6 +36,17 @@ pub struct Client {
     threads: Mutex<HashMap<String, String>>,
     /// our request id -> the JSON-RPC id the server is waiting on
     approvals: Mutex<HashMap<String, Value>>,
+    /// our request id -> the questions of a `requestUserInput`, which Codex
+    /// answers by id while the card answers by question text
+    questions: Mutex<HashMap<String, Vec<Asked>>>,
+}
+
+/// One question of Codex's `item/tool/requestUserInput`.
+struct Asked {
+    id: String,
+    question: String,
+    /// A password or token: its answer goes to Codex but never into the log.
+    secret: bool,
 }
 
 impl Client {
@@ -46,6 +57,9 @@ impl Client {
         }
         let mut child = cmd
             .arg("app-server")
+            // Codex offers its question tool only in Plan mode unless this is
+            // on; without it a question arrives as plain text in the reply.
+            .args(["-c", "features.default_mode_request_user_input=true"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
@@ -80,6 +94,7 @@ impl Client {
             next: AtomicU64::new(1),
             threads: Mutex::new(HashMap::new()),
             approvals: Mutex::new(HashMap::new()),
+            questions: Mutex::new(HashMap::new()),
         });
 
         let reader = client.clone();
@@ -191,6 +206,10 @@ impl Client {
             // Codex asks before an MCP tool runs. Switchyard's own tools act
             // only on the agent's own conversation and are capped, so they
             // run unasked; any other server's question is not ours to answer.
+            "item/tool/requestUserInput" => {
+                self.on_question(app, sid, id, p);
+                return;
+            }
             "mcpServer/elicitation/request" if p["serverName"] == crate::agent_tools::SERVER && sid.as_deref().is_some_and(|s| crate::agent_tools::offered(app, s)) => {
                 self.send(json!({ "id": id, "result": { "action": "accept", "content": {} } }));
                 return;
@@ -223,16 +242,85 @@ impl Client {
         );
     }
 
+    /// Codex asks the user to choose: the same question card as Claude's
+    /// AskUserQuestion. Nobody to ask (no session, a restricted one) gets no
+    /// answers, which Codex takes as unanswered.
+    fn on_question(&self, app: &Arc<App>, sid: Option<String>, id: &Value, p: &Value) {
+        let Some(sid) = sid.filter(|s| !crate::private::restricted(app, s)) else {
+            self.send(json!({ "id": id, "result": { "answers": {} } }));
+            return;
+        };
+        let raw = p["questions"].as_array().cloned().unwrap_or_default();
+        let asked: Vec<Asked> = raw
+            .iter()
+            .map(|q| Asked {
+                id: q["id"].as_str().unwrap_or("").to_string(),
+                question: q["question"].as_str().unwrap_or("").to_string(),
+                secret: q["isSecret"].as_bool().unwrap_or(false),
+            })
+            .collect();
+        let questions: Vec<Value> = raw
+            .iter()
+            .map(|q| {
+                let options: Vec<Value> = q["options"]
+                    .as_array()
+                    .map(|o| o.iter().map(|o| json!({ "label": o["label"], "description": o["description"] })).collect())
+                    .unwrap_or_default();
+                let mut out = json!({ "question": q["question"], "header": q["header"], "multiSelect": false, "options": options });
+                if q["isSecret"].as_bool() == Some(true) {
+                    out["secret"] = json!(true);
+                }
+                // Only the listed options, unless Codex takes its own answer too.
+                if !options.is_empty() && q["isOther"].as_bool() != Some(true) {
+                    out["other"] = json!(false);
+                }
+                out
+            })
+            .collect();
+        let request_id = format!("codex-{id}");
+        let first = asked.first().map(|q| q.question.as_str()).unwrap_or("");
+        let title = format!("Asked {}", first.chars().take(200).collect::<String>());
+        self.questions.lock().unwrap().insert(request_id.clone(), asked);
+        self.approvals.lock().unwrap().insert(request_id.clone(), id.clone());
+        app.emit(
+            &sid,
+            json!({
+                "type": "approval_request",
+                "requestId": request_id,
+                "kind": "question",
+                "title": title,
+                "detail": "",
+                "itemId": p["itemId"],
+                "questions": questions,
+            }),
+        );
+    }
+
     /// `resolved` runs once the request is known to be pending and before
-    /// Codex hears the answer, so nothing Codex does next can be logged first.
-    pub fn approve(&self, request_id: &str, decision: &str, resolved: impl FnOnce()) -> Result<()> {
+    /// Codex hears the answer, so nothing Codex does next can be logged
+    /// first. It gets the answers to log: a secret one is masked.
+    pub fn approve(&self, request_id: &str, decision: &str, answers: Option<&Value>, resolved: impl FnOnce(Option<Value>)) -> Result<()> {
         let id = self
             .approvals
             .lock()
             .unwrap()
             .remove(request_id)
             .context("approval is no longer pending")?;
-        resolved();
+        if let Some(asked) = self.questions.lock().unwrap().remove(request_id) {
+            // Skip answers nothing; Codex hears no answers either way.
+            let given = answers.filter(|_| decision != "deny").and_then(Value::as_object);
+            let mut to_codex = serde_json::Map::new();
+            let mut logged = serde_json::Map::new();
+            for q in &asked {
+                let Some(a) = given.and_then(|g| g.get(&q.question)).and_then(Value::as_str) else { continue };
+                to_codex.insert(q.id.clone(), json!({ "answers": [a] }));
+                logged.insert(q.question.clone(), json!(if q.secret { "••••••" } else { a }));
+            }
+            resolved(given.map(|_| Value::Object(logged)));
+            self.send(json!({ "id": id, "result": { "answers": to_codex } }));
+            return Ok(());
+        }
+        resolved(None);
         let decision = match decision {
             "allow" => "accept",
             "allow_always" => "acceptForSession",
@@ -824,8 +912,14 @@ pub async fn interrupt(app: &Arc<App>, sid: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn approve(app: &Arc<App>, sid: &str, request_id: &str, decision: &str) -> Result<()> {
-    client_of(app, sid).await?.approve(request_id, decision, || crate::sessions::approval_resolved(app, sid, request_id, decision))
+pub async fn approve(app: &Arc<App>, sid: &str, request_id: &str, decision: &str, answers: Option<&Value>) -> Result<()> {
+    client_of(app, sid).await?.approve(request_id, decision, answers, |logged| {
+        let mut ev = json!({ "type": "approval_resolved", "requestId": request_id, "decision": decision });
+        if let Some(logged) = logged {
+            ev["answers"] = logged;
+        }
+        app.emit(sid, ev);
+    })
 }
 
 #[cfg(test)]

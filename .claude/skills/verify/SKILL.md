@@ -38,7 +38,7 @@ shell blocks, `verify/yv var get name` elsewhere): `repo`, `plain`, `work`,
 PR #4242 from the fake gh), `sid_think` (thinking), `sid_fail` (engine error),
 `sid_claude` (scripted Claude sidecar), `sid_cmd` (waiting for approval).
 
-Prompt markers for the fake Codex: `[cmd]` approval, `[edit]` file change,
+Prompt markers for the fake Codex: `[cmd]` approval, `[question]` (request_user_input: a color and a secret token, on the question card), `[edit]` file change,
 `[slow]` runs until Stop, `[stuck]` ignores Stop, `[fail]` error, `[think]`
 reasoning; anything else echoes `Echo: <prompt>`. The fake Claude sidecar
 knows `[die]`, `[stuck]`, `[steps]` and `[subagent]` (a Task call with a nested
