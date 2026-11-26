@@ -1,0 +1,46 @@
+{
+  "command": "shot",
+  "ok": true,
+  "route": "session:s1a218734ab3c",
+  "build": {
+    "sha": "bca9140d6ba9bd8fa39b58992fba71af446ca674",
+    "short": "bca9140",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T15:20:58.823Z"
+  },
+  "dir": ".verify/evidence/slack-approval-reference",
+  "shots": [
+    {
+      "viewport": "mobile",
+      "file": ".verify/evidence/slack-approval-reference/session_s1a218734ab3c-mobile.png",
+      "size": {
+        "width": 780,
+        "height": 1688
+      },
+      "settled": true,
+      "banners": [],
+      "ms": 3035,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "file": ".verify/evidence/slack-approval-reference/session_s1a218734ab3c-desktop.png",
+      "size": {
+        "width": 2880,
+        "height": 1800
+      },
+      "settled": true,
+      "banners": [],
+      "ms": 3101,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

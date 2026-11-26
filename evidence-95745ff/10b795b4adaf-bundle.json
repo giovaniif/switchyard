@@ -1,0 +1,289 @@
+{
+  "v": 1,
+  "claim": "Direct messages and channel threads shared the owner’s agent conversation. Guest requests now get their own place and require the installer’s approval before tool access.",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/codex-slack-agents",
+  "base": "7e2a5cd48cc8fca18b2bb9ff7c57dd2ca9ae4423",
+  "head": "95745ff1c03554b3fda00b2081d47fe999b8b143",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/claude.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/origins.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/sessions.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/yardd/src/slack/places.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/yard-claude"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/main.ts"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/restricted.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/AgentsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackCard.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/fakes/fake-slack"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/agents.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T15:17:52.920Z",
+  "proofs": [
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "95fb42b76d37a01aafe9d6f6691d7be71865d17d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "6b1d8d25a5d9c16a02d10b647fca7905998c2baea06fa3726637e0fd041ebe22"
+        }
+      ],
+      "addedAt": "2026-11-26T15:19:48.092Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack slack_places_are_distinct_and_history_is_framed_as_data",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "repro",
+      "at": "95fb42b76d37a01aafe9d6f6691d7be71865d17d",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-slack-evidence-base-drive.json",
+          "sha256": "2ae220d97fdedd1216bd50a2c3b60153452eaf712c68310ad6ed6ee36d315179"
+        },
+        {
+          "path": "p3-shared-conversation-mobile.png",
+          "sha256": "c4dc1e2b4247241871d925011dfde30e78d50c9a26312af77b3a67824940c987"
+        },
+        {
+          "path": "p3-shared-conversation-desktop.png",
+          "sha256": "7d0d866095554afce89e619a0b8b5c4d4aa92b87d265c34e3aaa7e5a7b86ce4c"
+        }
+      ],
+      "addedAt": "2026-11-26T15:20:34.860Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "note",
+      "at": "95745ff1c03554b3fda00b2081d47fe999b8b143",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T15:44:37.203Z",
+      "text": "Rebased onto main after #496 and #497 were squashed (the branch began on #496's pre-squash commits). Base proofs kept with --force: taken at this PR's test-only commit, whose test is unchanged by the rebase (now b1579fe)."
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "95745ff1c03554b3fda00b2081d47fe999b8b143",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-3-drive.json",
+          "sha256": "bb832f822462b4485f5fc1d4d70e0bc7c522cac46b0a9b6433d9466f7504fd75"
+        },
+        {
+          "path": "p4-2-places-desktop.png",
+          "sha256": "c44bb1d15b70331739146c5fd3ccb58f4664174f50f09d75ab264cf2d0f8fb02"
+        },
+        {
+          "path": "p4-2-approval-desktop.png",
+          "sha256": "dac3c296790957c53c4edb42746cf40f69af2e3630fcef2a49f9170037ec2cca"
+        }
+      ],
+      "addedAt": "2026-11-26T15:44:41.897Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "95745ff1c03554b3fda00b2081d47fe999b8b143",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "993ecae41c9dee9c41219c89fb9b5acd70b199d711b341859d160c8ab91be1a8"
+        },
+        {
+          "path": "p5-places-mobile.png",
+          "sha256": "49669f627ec818168cbcd7ff05d54425c86a7a735c04eb91fcdb7ec139598c6c"
+        },
+        {
+          "path": "p5-approval-mobile.png",
+          "sha256": "76f72d194197a6eb1e27bc07ae502d1bc92d41090986ad700371bff34eb793ba"
+        }
+      ],
+      "addedAt": "2026-11-26T15:44:46.335Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "95745ff1c03554b3fda00b2081d47fe999b8b143",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "f8597705a609fa84873fcf4efcaa7bee7b0cd62b37dfabec2b52d1f3810c6e29"
+        }
+      ],
+      "addedAt": "2026-11-26T15:44:46.513Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack && (cd ui && bun test) && (cd sidecar/yard-claude && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "95745ff1c03554b3fda00b2081d47fe999b8b143",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "eece9554700a4ad65abc8948a0ba9fa58bdaa315fd0d0184d290b0a587d57ba0"
+        }
+      ],
+      "addedAt": "2026-11-26T15:45:06.744Z",
+      "cmd": "verify/yv design-check --base 7e2a5cd48cc8",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "95745ff1c03554b3fda00b2081d47fe999b8b143",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-slack.json",
+          "sha256": "46a33c93dbd5f9d701517191170d35d51c1626820bf0177314d2286ea0f6d20e"
+        }
+      ],
+      "addedAt": "2026-11-26T15:45:06.833Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/not-connected",
+        "slack/an-agents-own-slack-app",
+        "slack/allow-from-an-agents-app",
+        "slack/answer-in-the-slack-thread",
+        "slack/connect-your-slack",
+        "slack/tokens-stay-in-yardd",
+        "slack/your-direct-messages",
+        "slack/reply-react-and-read",
+        "slack/someone-new-writes",
+        "slack/one-token-with-a-public-address",
+        "slack/a-watched-channel"
+      ]
+    }
+  ]
+}

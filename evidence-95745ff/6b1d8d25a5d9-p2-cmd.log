@@ -1,0 +1,39 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack slack_places_are_distinct_and_history_is_framed_as_data
+# exit 101 after 36096 ms at 95fb42b76d37a01aafe9d6f6691d7be71865d17d
+
+
+running 1 test
+test slack_places_are_distinct_and_history_is_framed_as_data ... FAILED
+
+failures:
+
+---- slack_places_are_distinct_and_history_is_framed_as_data stdout ----
+
+thread 'slack_places_are_distinct_and_history_is_framed_as_data' (3507470) panicked at crates/yardd/tests/common/mod.rs:422:27:
+timed out after 20s waiting for the agent's Slack place; last messages:
+{"op":"slack","slack":{"agentApps":{"g1a218713c5c1":{"appId":"A0AGENT","canRedirect":true,"error":null,"eventsUrl":"","handle":"reviewer","iconKey":"","mentions":[],"ownerName":"TEST-Owner","state":"connected","step":"ready","syncError":null,"teamId":"T0TEST","teamName":"TEST-workspace","watched":[]
+{"op":"slack","slack":{"agentApps":{"g1a218713c5c1":{"appId":"A0AGENT","canRedirect":true,"error":null,"eventsUrl":"","handle":"reviewer","iconKey":"","mentions":[],"ownerName":"TEST-Owner","state":"connected","step":"ready","syncError":null,"teamId":"T0TEST","teamName":"TEST-workspace","watched":[]
+{"op":"session","session":{"account":"default","agent":"g1a218713c5c1","answering":[{"app":"g1a218713c5c1","channel":"D0OWNER","channelName":"Direct message","kind":"slack","team":"T0TEST","threadTs":"1700000001.000100","ts":"1700000001.000100","user":"UOWNER","userName":"TEST-Owner"}],"archived":fa
+{"event":{"origin":{"app":"g1a218713c5c1","channel":"D0OWNER","channelName":"Direct message","kind":"slack","team":"T0TEST","threadTs":"1700000001.000100","ts":"1700000001.000100","user":"UOWNER","userName":"TEST-Owner"},"text":"TEST-DM","type":"user_message"},"op":"event","seq":7,"sessionId":"s1a21
+{"event":{"at":1795706404092,"type":"turn_started"},"op":"event","seq":8,"sessionId":"s1a218713c852"}
+{"op":"session","session":{"account":"default","agent":"g1a218713c5c1","answering":[{"app":"g1a218713c5c1","channel":"D0OWNER","channelName":"Direct message","kind":"slack","team":"T0TEST","threadTs":"1700000001.000100","ts":"1700000001.000100","user":"UOWNER","userName":"TEST-Owner"}],"archived":fa
+{"event":{"itemId":"msg-3507512-5","text":"Echo: <slack from=\"TEST-Owner\" in=\"a direct message\">\nTEST-DM\n</slack>\n(","type":"assistant_delta"},"op":"event","seq":9,"sessionId":"s1a218713c852"}
+{"event":{"itemId":"msg-3507512-5","text":"From TEST-Owner on Slack, in a direct message, not typed in Switchyard. ","type":"assistant_delta"},"op":"event","seq":10,"sessionId":"s1a218713c852"}
+{"event":{"itemId":"msg-3507512-5","text":"Your final answer to this message is posted back to that Slack thread.)","type":"assistant_delta"},"op":"event","seq":11,"sessionId":"s1a218713c852"}
+{"event":{"itemId":"msg-3507512-5","text":"Echo: <slack from=\"TEST-Owner\" in=\"a direct message\">\nTEST-DM\n</slack>\n(From TEST-Owner on Slack, in a direct message, not typed in Switchyard. Your final answer to this message is posted back to that Slack thread.)","type":"assistant_message"},"op":
+{"event":{"at":1795706404095,"status":"completed","type":"turn_completed"},"op":"event","seq":13,"sessionId":"s1a218713c852"}
+{"op":"session","session":{"account":"default","agent":"g1a218713c5c1","archived":false,"automation":null,"branch":null,"createdAt":1795706403973,"cwd":"/tmp/yardd-test-3507469-slack-places-0/data/agents/g1a218713c5c1","effort":"low","engine":"codex","host":"local","id":"s1a218713c852","lastMessage"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-3507469-slack-places-0 for inspection
+
+
+failures:
+    slack_places_are_distinct_and_history_is_framed_as_data
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 10 filtered out; finished in 20.32s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/.yard/wt/better-than-claude-code/codex-slack-agents/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 15.72s
+     Running tests/slack.rs (target/debug/build/yardd/7070339f5020f7ad/out/slack-7070339f5020f7ad)
+error: test failed, to rerun pass `-p yardd --test slack`
