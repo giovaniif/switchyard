@@ -1780,3 +1780,10 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .slack-channel-list { display: grid; max-height: 320px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
 .slack-channel { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .slack-channel-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* Calling an agent: the composer's @ list, over the Slack reply box. */
+.slack-compose { position: relative; }
+.slack-compose .mention-list { left: 24px; right: 24px; bottom: calc(100% - 2px); }
+.slack-mention-list .picker-item { display: flex; align-items: baseline; gap: 8px; width: 100%; }
+@media (max-width: 700px) {
+  .slack-compose .mention-list { left: 14px; right: 14px; }
+}

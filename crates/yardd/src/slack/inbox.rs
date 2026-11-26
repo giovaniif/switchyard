@@ -347,6 +347,29 @@ fn mentions(text: &str) -> Vec<String> {
     out
 }
 
+/// `@handle` as a word (not inside another handle or an address) made a
+/// Slack mention of `user`.
+fn mention_handle(text: &str, handle: &str, user: &str) -> String {
+    let needle = format!("@{handle}");
+    let word = |c: char| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.');
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(i) = rest.find(&needle) {
+        let before = rest[..i].chars().next_back();
+        let after = rest[i + needle.len()..].chars().next();
+        let alone = before.is_none_or(|c| !word(c)) && after.is_none_or(|c| !word(c) || (c == '.' && rest[i + needle.len() + 1..].chars().next().is_none_or(|c| !word(c))));
+        out.push_str(&rest[..i]);
+        if alone {
+            out.push_str(&format!("<@{user}>"));
+        } else {
+            out.push_str(&needle);
+        }
+        rest = &rest[i + needle.len()..];
+    }
+    out.push_str(rest);
+    out
+}
+
 /// One line for the sidebar: Slack markup read as text, clipped.
 fn preview(text: &str) -> String {
     super::clip_line(&super::from_slack(text), 120)
@@ -390,6 +413,12 @@ pub fn snapshot(app: &App) -> Value {
 /// Remembers who a user is (name from Slack, cached).
 async fn learn_user(app: &App, token: &str, team: &str, user: &str) {
     if user.is_empty() || app.slack.inbox.name_of(team, user).is_some() {
+        return;
+    }
+    // An agent's own bot reads as the agent.
+    let agent = app.slack.cfg.lock().unwrap().apps.iter().find(|a| a.bot_user == user).map(|a| a.agent.clone());
+    if let Some(name) = agent.and_then(|id| app.agents.get(&id)).map(|a| a.name) {
+        app.slack.inbox.put_user(team, user, &name);
         return;
     }
     let name = app.slack.user_name(token, user).await;
@@ -781,7 +810,16 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
             anyhow::ensure!(!text.is_empty(), "Write something first.");
             anyhow::ensure!(text.len() <= 40_000, "That message is too long for Slack.");
             inbox.conversation(&team, &channel).context("no such conversation")?;
-            let escaped = text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+            let mut escaped = text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+            // Agents he called by handle (`mentions`, their ids): a real
+            // mention of each one's bot, so its app answers there. Only
+            // agents with an app in this workspace; nothing else he typed
+            // becomes a mention.
+            for id in msg["mentions"].as_array().into_iter().flatten().filter_map(Value::as_str).take(10) {
+                if let Some(rec) = app.slack.app_of(id).filter(|r| r.team_id == team && !r.bot_user.is_empty() && !r.handle.is_empty()) {
+                    escaped = mention_handle(&escaped, &rec.handle, &rec.bot_user);
+                }
+            }
             let mut form = vec![("channel", channel.as_str()), ("text", escaped.as_str())];
             if !thread.is_empty() {
                 form.push(("thread_ts", thread.as_str()));
@@ -846,6 +884,12 @@ pub fn forget(app: &App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_agents_handle_becomes_a_mention_only_as_a_word() {
+        assert_eq!(mention_handle("@reviewer look, cc @reviewer.", "reviewer", "UA"), "<@UA> look, cc <@UA>.");
+        assert_eq!(mention_handle("@reviewers a@reviewer @reviewer-2 @reviewer.x", "reviewer", "UA"), "@reviewers a@reviewer @reviewer-2 @reviewer.x");
+    }
 
     #[test]
     fn mentions_are_user_ids_only() {

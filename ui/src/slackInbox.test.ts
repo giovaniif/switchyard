@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SlackConversation, SlackMessage } from "./protocol";
-import { applyMessage, initials, mergePage, pageKey, shownConversations, startsGroup } from "./slackInbox";
+import { applyMessage, calledAgents, initials, mentionQuery, mergePage, pageKey, shownConversations, startsGroup } from "./slackInbox";
 import { initial, parseHash, reduce, routeHash } from "./store";
 
 const msg = (ts: string, extra: Partial<SlackMessage> = {}): SlackMessage => ({ ts, user: "U1", text: `m${ts}`, edited: false, deleted: false, replyCount: 0, reactions: [], files: [], ...extra });
@@ -52,6 +52,21 @@ describe("the Slack inbox's pages", () => {
     expect(startsGroup(msg("100"), msg("160", { user: "U2" }))).toBe(true);
     expect(initials("TEST-Ana")).toBe("TA");
     expect(initials("gio")).toBe("GI");
+  });
+});
+
+describe("calling an agent from the reply box", () => {
+  const agents = [{ id: "g1", name: "Reviewer", handle: "reviewer" }, { id: "g2", name: "Deploy Bot", handle: "deploy-bot" }];
+  test("suggests while an @handle is typed at the caret", () => {
+    expect(mentionQuery("hi @rev", 7)).toBe("rev");
+    expect(mentionQuery("@", 1)).toBe("");
+    expect(mentionQuery("mail a@rev", 10)).toBeNull();
+    expect(mentionQuery("hi @rev there", 13)).toBeNull();
+  });
+  test("calls each agent whose handle is written as a word", () => {
+    expect(calledAgents("@reviewer and @deploy-bot, please", agents)).toEqual(["g1", "g2"]);
+    expect(calledAgents("@reviewers a@reviewer @deploy-bot2", agents)).toEqual([]);
+    expect(calledAgents("thanks @reviewer.", agents)).toEqual(["g1"]);
   });
 });
 
