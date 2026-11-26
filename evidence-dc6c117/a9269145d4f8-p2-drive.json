@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "9065c618c28525510ea219818be62e143f969636",
+    "short": "9065c61",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T20:03:16.490Z"
+  },
+  "dir": ".verify/evidence/usage-resets-base-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2322,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/usage-resets-base-mobile/row-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/usage-resets-base-mobile/popover-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

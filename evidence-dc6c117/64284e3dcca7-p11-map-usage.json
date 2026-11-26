@@ -1,0 +1,77 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "usage",
+      "at": "2026-11-26T20:11:17.520Z",
+      "counts": {
+        "pass": 12
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "usage-strip-in-sidebar",
+          "status": "pass",
+          "ms": 7211
+        },
+        {
+          "label": "usage-strip-claude",
+          "status": "pass",
+          "ms": 5751
+        },
+        {
+          "label": "picker-has-no-meters",
+          "status": "pass",
+          "ms": 6645
+        },
+        {
+          "label": "picker-other-engine-collapsed",
+          "status": "pass",
+          "ms": 3308
+        },
+        {
+          "label": "picker-current-model-marked",
+          "status": "pass",
+          "ms": 3069
+        },
+        {
+          "label": "meters-zero-after-reset",
+          "status": "pass",
+          "ms": 138978
+        },
+        {
+          "label": "claude-usage-after-restart",
+          "status": "pass",
+          "ms": 5308
+        },
+        {
+          "label": "strip-names-every-account",
+          "status": "pass",
+          "ms": 6156
+        },
+        {
+          "label": "picker-names-the-account",
+          "status": "pass",
+          "ms": 2636
+        },
+        {
+          "label": "subscriptions-note-names-every-silent-engine",
+          "status": "pass",
+          "ms": 4521
+        },
+        {
+          "label": "every-window-reset-at-a-glance",
+          "status": "pass",
+          "ms": 7924
+        },
+        {
+          "label": "sign-in-from-usage-while-on-hosts",
+          "status": "pass",
+          "ms": 5875
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,27 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test daemon --test acp -- codex_usage_keeps_the_full_resets a_claude_turn_keeps_the_windows grok_reports_its_credit
+# exit 101 after 5654 ms at 9065c618c28525510ea219818be62e143f969636
+
+
+running 1 test
+test grok_reports_its_credit_allowance_and_when_it_resets ... FAILED
+
+failures:
+
+---- grok_reports_its_credit_allowance_and_when_it_resets stdout ----
+
+thread 'grok_reports_its_credit_allowance_and_when_it_resets' (1733829) panicked at crates/yardd/tests/acp.rs:635:5:
+{"for":"usage.refresh","message":"this engine does not report subscription limits","op":"error","ref":"out"}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1733828-grok-usage-0 for inspection
+
+
+failures:
+    grok_reports_its_credit_allowance_and_when_it_resets
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.12s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/usage-resets/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 5.47s
+     Running tests/acp.rs (target/debug/build/yardd/dfaa4ce3d714b03a/out/acp-dfaa4ce3d714b03a)
+error: test failed, to rerun pass `-p yardd --test acp`

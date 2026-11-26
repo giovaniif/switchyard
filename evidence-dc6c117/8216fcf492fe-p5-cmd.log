@@ -1,0 +1,40 @@
+$ cd sidecar/yard-claude && bun test src/usage.test.ts
+# exit 1 after 12 ms at 9065c618c28525510ea219818be62e143f969636
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/usage.test.ts:
+78 |         { kind: "weekly_scoped", group: "weekly", percent: 30, resets_at: "2026-11-27T04:00:00+00:00", scope: { model: null, surface: { display_name: "Claude Design" } } },
+79 |         { kind: "monthly_all", group: "monthly", percent: 5, resets_at: "2026-12-01T00:00:00+00:00", scope: null },
+80 |       ],
+81 |     },
+82 |   };
+83 |   expect(fromUsageReport(report)).toEqual({
+                                       ^
+error: expect(received).toEqual(expected)
+
+@@ -6,12 +6,2 @@
+      },
+-     "monthly_all": {
+-       "label": "Monthly",
+-       "resetsAt": 1796083200,
+-       "utilization": 0.05,
+-     },
+-     "seven_day_claude_design": {
+-       "label": "Week · Claude Design",
+-       "resetsAt": 1795752000,
+-       "utilization": 0.3,
+-     },
+    },
+
+- Expected  - 10
++ Received  + 0
+
+      at <anonymous> (/home/giovani/www/better-than-claude-code/.claude/worktrees/usage-resets/sidecar/yard-claude/src/usage.test.ts:83:35)
+(fail) report rows beyond session and the weeks are kept, labelled, so a new limit shows without a release [0.49ms]
+
+ 7 pass
+ 1 fail
+ 17 expect() calls
+Ran 8 tests across 1 file. [7.00ms]

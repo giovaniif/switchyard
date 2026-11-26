@@ -1,0 +1,356 @@
+{
+  "v": 1,
+  "claim": "Switchyard did not show when usage limits reset at a glance, for every engine: the sidebar Usage row read only '47% used'; other accounts in the popover showed only their first window's percent with no reset; Subscriptions gave only 'resets in X'; yardd dropped Codex's 'Full reset' credits and its other limits, a Claude turn wiped the per-model week the usage report had read, and Grok's credit allowance was never read. Now every window of every engine and account shows its % used and its reset (time and countdown); OpenCode and Gemini are named as not reporting limits.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/usage-resets",
+  "base": "b343ccbc371607e6d7d866ee502d60e0ae86f4d0",
+  "head": "dc6c11754e509cf94e4bd5beef8152c3b3b3ee76",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/acp.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/claude.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/codex.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/grok.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/yardd/src/usage.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/acp.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/acp-agent.mjs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/codex"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/usage.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/usage.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/UsageMeters.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/usage.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/usage.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/usageResets.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/acp-engines.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/focused-pages.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/usage.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T20:03:04.331Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "9065c618c28525510ea219818be62e143f969636",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "9e3c7dd09aab668cd6104a10808564696c39c4690491dbc27263aa547f9957b7"
+        },
+        {
+          "path": "p1-row-desktop.png",
+          "sha256": "f637ebc6f021e76292cd7e56415efc0aab92f41265518d275b2b81c61fdce8e5"
+        },
+        {
+          "path": "p1-popover-desktop.png",
+          "sha256": "9ab07fe92382589580e3b426f1be8a5b5f76e6f32027feb474830036f582435e"
+        }
+      ],
+      "addedAt": "2026-11-26T20:03:33.166Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "9065c618c28525510ea219818be62e143f969636",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "a9269145d4f8b09d3f1e6f63b6b8e6c45c0c8e661c764a1016db200dd99035ed"
+        },
+        {
+          "path": "p2-row-mobile.png",
+          "sha256": "32b9dbe5ef86abdb99330170c20297e29b92c594202005355acae8a265b560bb"
+        },
+        {
+          "path": "p2-popover-mobile.png",
+          "sha256": "c60444be6faff45df44d266d27e7368ae51b8d448f638bde3569d28a164eac40"
+        }
+      ],
+      "addedAt": "2026-11-26T20:03:33.213Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "9065c618c28525510ea219818be62e143f969636",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "1cd3edf483f969b0802bc5cb34727c57af59f8f9e97410cd5fc1aa8914725076"
+        }
+      ],
+      "addedAt": "2026-11-26T20:03:33.324Z",
+      "cmd": "cd ui && bun test src/usageResets.test.tsx",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "test",
+      "at": "9065c618c28525510ea219818be62e143f969636",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "8ee601b397eccb1a303bbc70686d60a6ba2d10c9f0a155cca004c11aa2de3c1c"
+        }
+      ],
+      "addedAt": "2026-11-26T20:03:37.450Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test daemon --test acp -- codex_usage_keeps_the_full_resets a_claude_turn_keeps_the_windows grok_reports_its_credit",
+      "exit": 101
+    },
+    {
+      "id": 5,
+      "ref": "base",
+      "kind": "test",
+      "at": "9065c618c28525510ea219818be62e143f969636",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "8216fcf492fe982daf35232a2f4d5a86911d3626fab843516d0af9465ff90fc7"
+        }
+      ],
+      "addedAt": "2026-11-26T20:03:43.229Z",
+      "cmd": "cd sidecar/yard-claude && bun test src/usage.test.ts",
+      "exit": 1
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "dc6c11754e509cf94e4bd5beef8152c3b3b3ee76",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p6-drive.json",
+          "sha256": "8eaa5a0001dbad95cd93df6601ff9bff4f6f763bb7b094ea9cf7bc97fa05e0d1"
+        },
+        {
+          "path": "p6-row-desktop.png",
+          "sha256": "da07d052697855794b2b289dd8982269d7983376608d2c72a9a0b7490a8dbf2a"
+        },
+        {
+          "path": "p6-popover-desktop.png",
+          "sha256": "47cd63c4e1559a7e093ece4883b099aa5102682f7f83b953c7359af610578f0d"
+        },
+        {
+          "path": "p6-subscriptions-desktop.png",
+          "sha256": "e90e0a4250e2a8a309535c5567e3644c2402164bf6ac13f94594c732a059c772"
+        }
+      ],
+      "addedAt": "2026-11-26T20:04:31.002Z",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "fix",
+      "at": "dc6c11754e509cf94e4bd5beef8152c3b3b3ee76",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p7-drive.json",
+          "sha256": "8b459449df47d2c5aba1436cc678c7f6cb2625eab72ffda8453e80460488a2ec"
+        },
+        {
+          "path": "p7-row-mobile.png",
+          "sha256": "a199790153b8467c582a279d3399a2d490f7bd3fdacb4263304e5f3e1334776e"
+        },
+        {
+          "path": "p7-popover-mobile.png",
+          "sha256": "8cc8efa5b7f14dae25a0788b3cc4de2da6bc2eac23f47d23697540315109e813"
+        }
+      ],
+      "addedAt": "2026-11-26T20:04:31.047Z",
+      "failedApi": []
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "fix",
+      "at": "dc6c11754e509cf94e4bd5beef8152c3b3b3ee76",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p8-drive.json",
+          "sha256": "096483212de9aca8a533f8bb3d809e25fbf4abeff488e6b181a10388c7e95b77"
+        },
+        {
+          "path": "p8-subscriptions-mobile.png",
+          "sha256": "b38dfd1bdc2871e31a05424663a54b978264344c18c1c135de70100c00f54aaf"
+        }
+      ],
+      "addedAt": "2026-11-26T20:04:31.090Z",
+      "failedApi": []
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "design",
+      "at": "dc6c11754e509cf94e4bd5beef8152c3b3b3ee76",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-design.json",
+          "sha256": "0b3ccd363ca362f5bd4ae597b7caf29b432c040474c03ee2c2c12c5fc65b12be"
+        }
+      ],
+      "addedAt": "2026-11-26T20:04:31.180Z",
+      "cmd": "verify/yv design-check --base b343ccbc3716",
+      "exit": 0
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "test",
+      "at": "dc6c11754e509cf94e4bd5beef8152c3b3b3ee76",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-cmd.log",
+          "sha256": "06de4eeb064f10921c3a7039ba731a5f54ce58eddc574dfbd396d84cbef3489c"
+        }
+      ],
+      "addedAt": "2026-11-26T20:04:34.366Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --no-fail-fast && (cd ui && bun test) && (cd sidecar/yard-claude && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "regression",
+      "at": "dc6c11754e509cf94e4bd5beef8152c3b3b3ee76",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-map-usage.json",
+          "sha256": "64284e3dcca73c1d1986c0e0c1cf976271eb52f120e386e9e0021302f6263a28"
+        }
+      ],
+      "addedAt": "2026-11-26T20:07:59.286Z",
+      "cmd": "verify/yv map run usage",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "usage/usage-strip-in-sidebar",
+        "usage/usage-strip-claude",
+        "usage/picker-has-no-meters",
+        "usage/picker-other-engine-collapsed",
+        "usage/picker-current-model-marked",
+        "usage/meters-zero-after-reset",
+        "usage/claude-usage-after-restart",
+        "usage/strip-names-every-account",
+        "usage/picker-names-the-account",
+        "usage/subscriptions-note-names-every-silent-engine",
+        "usage/every-window-reset-at-a-glance",
+        "usage/sign-in-from-usage-while-on-hosts"
+      ]
+    }
+  ]
+}

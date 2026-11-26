@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "subscriptions",
+  "build": {
+    "sha": "dc6c11754e509cf94e4bd5beef8152c3b3b3ee76",
+    "short": "dc6c117",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T20:03:58.820Z"
+  },
+  "dir": ".verify/evidence/usage-resets-head-mobile-subs",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2032,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/usage-resets-head-mobile-subs/subscriptions-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
