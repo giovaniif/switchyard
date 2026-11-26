@@ -83,10 +83,15 @@ export function isSlack(origin: MessageOrigin | undefined): origin is SlackOrigi
   return origin?.kind === "slack";
 }
 
-/** The badge's words over a message from Slack: `From Gio on Slack · #general`. */
+/** The badge's words over a message from Slack: `From Gio on Slack · #general`,
+ *  or for a watched channel's notice `Watched on Slack · #alerts · 3 messages`. */
 export function slackFrom(origin: SlackOrigin): string {
   const who = origin.userName || origin.user || "someone";
   const place = origin.channelName || origin.channel;
+  if (origin.watched) {
+    const n = origin.count ?? 1;
+    return [`Watched on Slack`, place, n === 1 ? `from ${who}` : `${n} messages`].filter(Boolean).join(" · ");
+  }
   return place ? `From ${who} on Slack · ${place}` : `From ${who} on Slack`;
 }
 

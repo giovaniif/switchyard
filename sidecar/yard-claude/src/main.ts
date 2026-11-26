@@ -3,8 +3,9 @@
 //
 // stdin  (JSON lines): start | user | set_model | interrupt | permission
 //                      | mcp_reconnect { server } | mcp_call { ref, server, tool, arguments }
-//                      `user` is { text, attachments? }: files yardd saved on
-//                      this host (see message.ts)
+//                      `user` is { text, attachments?, permission? }: files
+//                      yardd saved on this host (see message.ts); a new
+//                      turn's permission mode (see permission.ts)
 // stdout (JSON lines): { type: "event", event } | { type: "usage", usage }
 //                      | { type: "session", claudeSessionId }
 //                      | { type: "reply", ref, result } | { type: "reply", ref, error }
@@ -32,6 +33,7 @@ import { oneShot } from "./oneshot";
 import { createApps } from "./apps";
 import { connectors } from "./connectors";
 import { mergeUsage, type ClaudeUsage } from "./usage";
+import { modeFor, PERMISSION_MODE } from "./permission";
 
 type Decision = "allow" | "allow_always" | "deny";
 
@@ -83,16 +85,15 @@ let apps: ReturnType<typeof createApps> | null = null;
 let usage: ClaudeUsage | null = null;
 let cwd = process.cwd();
 
-/** yardd's permission modes, as the SDK names them. */
-const PERMISSION_MODE: Record<string, string> = {
-  ask: "default",
-  acceptEdits: "acceptEdits",
-  plan: "plan",
-  full: "bypassPermissions",
-};
+// The mode `start` set, and whether no turn has come yet (see modeFor).
+let startMode = "ask";
+let firstTurn = true;
+// `user` lines are handled one after another: one may wait for a mode switch.
+let userLines: Promise<void> = Promise.resolve();
 
 async function run(start: { restricted?: boolean; cwd: string; model: string; effort?: string; permission?: string; resume?: string | null; tools?: Record<string, unknown> | null; mcp?: McpScope }) {
   cwd = start.cwd;
+  startMode = start.permission ?? "ask";
   const subagents = createSubagents(cwd);
 
   // Keep the parent session's markers out of the child Claude Code process.
@@ -272,8 +273,25 @@ createInterface({ input: process.stdin }).on("line", async (line) => {
         );
         break;
       case "user":
-        queue.push(userMessage(String(msg.text ?? ""), Array.isArray(msg.attachments) ? msg.attachments : []));
-        wake?.();
+        userLines = userLines.then(async () => {
+          // A new turn names its mode (a message joining a running turn does not).
+          const switchTo = modeFor(msg.permission, startMode, firstTurn);
+          if (typeof msg.permission === "string" && msg.permission) firstTurn = false;
+          if (switchTo) {
+            try {
+              await q?.setPermissionMode(switchTo as any);
+            } catch (error: any) {
+              // A read-only turn never runs in a mode that can act.
+              if (switchTo === "plan") {
+                emit({ type: "error", message: `Could not switch to Plan for this read-only turn: ${String(error?.message ?? error)}` });
+                emit({ type: "turn_completed", status: "failed" });
+                return;
+              }
+            }
+          }
+          queue.push(userMessage(String(msg.text ?? ""), Array.isArray(msg.attachments) ? msg.attachments : []));
+          wake?.();
+        });
         break;
       case "set_model":
         await q?.setModel(msg.model);

@@ -946,8 +946,9 @@ pub async fn send(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) 
     let c = client(app, &meta.account).await?;
     let input = user_input(text, attachments);
     // Model, effort and permission mode ride on every turn, so switching
-    // needs no extra call.
-    let (approval, sandbox) = if crate::private::restricted(app, sid) { (json!("never"), json!({"type":"readOnly", "networkAccess":false})) } else { turn_policy(&meta.permission) };
+    // needs no extra call. A turn on a watched channel's notice is read-only.
+    let permission = crate::origins::turn_permission(&meta.permission, &meta.answering);
+    let (approval, sandbox) = if crate::private::restricted(app, sid) { (json!("never"), json!({"type":"readOnly", "networkAccess":false})) } else { turn_policy(&permission) };
     let mut params = json!({
         "threadId": thread_id,
         "input": input,

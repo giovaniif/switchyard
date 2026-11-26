@@ -198,7 +198,7 @@ impl Tools {
 
     /// Count a use against the hourly cap; refused with when the oldest use
     /// leaves the window.
-    fn take(&self, agent: &str, tool: &str, max: usize, now: u64) -> std::result::Result<(), u64> {
+    pub fn take(&self, agent: &str, tool: &str, max: usize, now: u64) -> std::result::Result<(), u64> {
         let mut used = self.used.lock().unwrap();
         let times = used.entry(format!("{agent}:{tool}")).or_default();
         while times.front().is_some_and(|t| now.saturating_sub(*t) >= HOUR_MS) {
@@ -461,6 +461,12 @@ async fn call(app: &Arc<App>, sid: &str, tool: &str, args: &Value) -> (String, b
 async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Result<Done> {
     let (me, sid) = (&caller.me, caller.sid.as_str());
     let arg = |k: &str| args[k].as_str().unwrap_or("").trim().to_string();
+    // A turn on a watched channel's notice read text anyone could write: it
+    // changes nothing of its own that later turns would trust.
+    let read_only = caller.answering.iter().any(origins::read_only);
+    if read_only && matches!(tool, "remember" | "set_memory" | "update_setup") {
+        bail!("Not done: this turn works on a notice from a watched Slack channel, so it is read-only and cannot change your memory or setup. Suggest the change in your answer and the user can ask for it.");
+    }
     match tool {
         "notify_owner" => {
             let message = arg("message");
@@ -505,7 +511,11 @@ async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Resul
             if let Err(until) = app.tools.take(&me.id, tool, MESSAGES_PER_HOUR, now_ms()) {
                 bail!("Not sent: you already sent {MESSAGES_PER_HOUR} messages to agents in the last hour. Try again after {}.", at_clock(until));
             }
-            let origin = json!({ "kind": "agent", "agentId": me.id, "name": me.name, "handle": crate::agents::mention(me), "hops": hops });
+            let mut origin = json!({ "kind": "agent", "agentId": me.id, "name": me.name, "handle": crate::agents::mention(me), "hops": hops });
+            // Passing a watched notice on to another agent does not get it more access.
+            if read_only {
+                origin["readOnly"] = json!(true);
+            }
             let text = clip(&text, MESSAGE_BYTES);
             // Delivery may start the target's engine: the tool answers now,
             // and a message that cannot be delivered comes back as a reply.

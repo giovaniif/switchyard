@@ -48,6 +48,7 @@
 // FAKE_CODEX_DIR gets `sidecar.log`: one line per start, with its resume id,
 // CLAUDE_CONFIG_DIR (`config=`, empty for the default account) and the
 // session's connector scope when it has one (`mcp=only:a,b` / `mcp=except:a`),
+// one per turn with the permission mode yardd named for it (`turn permission=plan`),
 // and one per one-shot `sessions` / `messages <id>` call.
 //
 // `usage` answers the plan limits the real one reads from Claude Code's usage
@@ -353,6 +354,7 @@ for await (const line of console) {
     steps.folded.push(String(msg.text ?? ""));
   } else if (msg.type === "user") {
     const text = String(msg.text ?? "");
+    if (msg.permission) log(`turn permission=${msg.permission}`);
     // Session naming, before any marker: its prompt quotes the conversation.
     // Claude is the fallback, so it answers a title for "[name-fail]" (Codex failed it).
     if (text.startsWith("Name this coding session")) {
