@@ -1,0 +1,190 @@
+{
+  "v": 1,
+  "claim": "On the 'Allow this command?' card the Copy button hangs about 3 CSS px (7 screenshot px) below the command line and makes the card about 7 px taller, at both viewports; the Copy recipe clicked the step row's Copy instead of the card's, so the card's own Copy went untested.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/approval-copy-align",
+  "base": "b0274c51f0fee084109329992cb2faa5b85d0447",
+  "head": "5ecbe256f4c35f0cee5101af3461dd53846799f9",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/thread.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T23:16:42.492Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "def31acb2d7eec4fd466092a00bb8c9f73782790",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "88782ebb91a1dcc4b6c408713dbf7bfdd6dbd8b31962c79072752574bf54a109"
+        },
+        {
+          "path": "p1-approval-card-mobile.png",
+          "sha256": "147c640c9b89ca90b0b37b32c2dc0d323215a2cdfb6b178684f152c4098de7bf"
+        },
+        {
+          "path": "p1-approval-card-desktop.png",
+          "sha256": "dad18da8e8a2f155ba3e8337f3703ec6135ed1212260763fc901572752f3375a"
+        }
+      ],
+      "addedAt": "2026-11-26T23:17:03.150Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "def31acb2d7eec4fd466092a00bb8c9f73782790",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "4a80fdfee188a18e441b8bd8a2378d968c614b682fcff7d24f4885b9dee492ea"
+        }
+      ],
+      "addedAt": "2026-11-26T23:17:03.236Z",
+      "cmd": "verify/yv map run thread --recipe copy-commands-code-and-output",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "5ecbe256f4c35f0cee5101af3461dd53846799f9",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "d1203daf6f2d8181b9d20bf18c8c7bcd86a62a4c348695e4c88d46e7b55a1795"
+        },
+        {
+          "path": "p3-approval-card-mobile.png",
+          "sha256": "4adf299985679c1d906d6e66327b8857c4cb5c2c547dc57ebc90c26c53723def"
+        },
+        {
+          "path": "p3-approval-copied-mobile.png",
+          "sha256": "4fd17f1ed772ef96a0d2e8c451b91aa219b54b0048d1d912831e4537561b6d7c"
+        },
+        {
+          "path": "p3-approval-card-desktop.png",
+          "sha256": "f8bce86c0325a729be565462f2f1b739efd7cfc686e092670f2ec39b4a1f5ed1"
+        },
+        {
+          "path": "p3-approval-copied-desktop.png",
+          "sha256": "5dfb02d9a1ebbb3b91cfc9ebc7376efb72fd81124b546161ea79b4ef1bb91b0e"
+        }
+      ],
+      "addedAt": "2026-11-26T23:17:53.185Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "5ecbe256f4c35f0cee5101af3461dd53846799f9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "90e9f6e78858f2233fcdd326ac86266f411ba943790fd44c939108b12c12f5ca"
+        }
+      ],
+      "addedAt": "2026-11-26T23:17:53.268Z",
+      "cmd": "verify/yv map run thread --recipe copy-commands-code-and-output && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "5ecbe256f4c35f0cee5101af3461dd53846799f9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "17e940afc47dfd37e673ec00228513e44a8b9e5e67e7e0892c5b6129d3855b45"
+        }
+      ],
+      "addedAt": "2026-11-26T23:18:23.709Z",
+      "cmd": "verify/yv design-check --base b0274c51f0fe",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "5ecbe256f4c35f0cee5101af3461dd53846799f9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-thread.json",
+          "sha256": "60a7441d59b0a81a494c7192c1dc4862cf7fe9bf0616e9fae5921cff12feec81"
+        }
+      ],
+      "addedAt": "2026-11-26T23:18:26.901Z",
+      "cmd": "verify/yv map run thread",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "thread/reply-renders",
+        "thread/markdown-table-renders",
+        "thread/markdown-blocks-without-blank-lines",
+        "thread/web-links-open-outside-the-thread",
+        "thread/thinking-folds",
+        "thread/edit-shows-diff",
+        "thread/failed-turn-shows-error",
+        "thread/follow-up-turn",
+        "thread/claude-session-renders",
+        "thread/reply-to-part-of-answer",
+        "thread/comments-go-with-their-parts",
+        "thread/no-reply-on-own-message",
+        "thread/queue-a-message-while-working",
+        "thread/remove-a-queued-message",
+        "thread/steer-a-running-turn",
+        "thread/steer-a-selected-queued-message",
+        "thread/stop-returns-the-queue",
+        "thread/edit-a-queued-message",
+        "thread/edit-a-queued-reply-keeps-its-quotes",
+        "thread/draft-survives-switching-sessions",
+        "thread/workspace-subagents",
+        "thread/workspace-subagents-line-up",
+        "thread/subagent-nests-and-expands",
+        "thread/fold-names-the-subagent",
+        "thread/working-line-stays-in-view",
+        "thread/pr-link-hover-card",
+        "thread/pr-link-card-states",
+        "thread/pr-link-card-error",
+        "thread/pr-link-keyboard-and-touch",
+        "thread/links-inside-bold-text",
+        "thread/file-links-download",
+        "thread/file-viewer-kinds",
+        "thread/file-reload-reads-it-again",
+        "thread/numbered-steps-across-code-blocks",
+        "thread/history-reloads-after-resync",
+        "thread/copy-commands-code-and-output"
+      ]
+    }
+  ]
+}

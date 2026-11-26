@@ -1,0 +1,129 @@
+{
+  "ok": true,
+  "route": "session:s1a21a2624972",
+  "build": {
+    "sha": "5ecbe256f4c35f0cee5101af3461dd53846799f9",
+    "short": "5ecbe25",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T23:17:16.874Z"
+  },
+  "dir": ".verify/evidence/approval-copy-align-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2676,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/approval-copy-align-head/approval-card-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/approval-copy-align-head/approval-copied-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 0,
+          "eval": "(Object.defineProperty(navigator, \"clipboard\", { configurable: true, value: { writeText: (t) => { window.__copied = t; return Promise.resolve(); } } }), 1)",
+          "value": 1
+        },
+        {
+          "step": 2,
+          "eval": "(() => { const row = document.querySelector('.approval .approval-what-row'); const cmd = row.querySelector('.approval-what').getBoundingClientRect(); const btn = row.querySelector('.copy-btn').getBoundingClientRect(); const line = parseFloat(getComputedStyle(row.querySelector('.approval-what')).lineHeight); return { commandLineCentre: cmd.top + line / 2, copyCentre: btn.top + btn.height / 2, offset: (btn.top + btn.height / 2) - (cmd.top + line / 2), rowHeight: row.getBoundingClientRect().height, commandHeight: cmd.height }; })()",
+          "value": {
+            "commandLineCentre": 207.075,
+            "copyCentre": 207.078125,
+            "offset": 0.0031250000000113687,
+            "rowHeight": 17.40625,
+            "commandHeight": 17.390625
+          }
+        },
+        {
+          "step": 3,
+          "eval": "(() => { const row = document.querySelector('.approval .approval-what-row'); const cmd = row.querySelector('.approval-what').getBoundingClientRect(); const btn = row.querySelector('.copy-btn').getBoundingClientRect(); const line = parseFloat(getComputedStyle(row.querySelector('.approval-what')).lineHeight); return Math.abs(btn.top + btn.height / 2 - (cmd.top + line / 2)) <= 2 && row.getBoundingClientRect().height <= cmd.height + 1; })()",
+          "value": true
+        },
+        {
+          "step": 7,
+          "eval": "window.__copied",
+          "value": "echo approved"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 2841,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/approval-copy-align-head/approval-card-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/approval-copy-align-head/approval-copied-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 0,
+          "eval": "(Object.defineProperty(navigator, \"clipboard\", { configurable: true, value: { writeText: (t) => { window.__copied = t; return Promise.resolve(); } } }), 1)",
+          "value": 1
+        },
+        {
+          "step": 2,
+          "eval": "(() => { const row = document.querySelector('.approval .approval-what-row'); const cmd = row.querySelector('.approval-what').getBoundingClientRect(); const btn = row.querySelector('.copy-btn').getBoundingClientRect(); const line = parseFloat(getComputedStyle(row.querySelector('.approval-what')).lineHeight); return { commandLineCentre: cmd.top + line / 2, copyCentre: btn.top + btn.height / 2, offset: (btn.top + btn.height / 2) - (cmd.top + line / 2), rowHeight: row.getBoundingClientRect().height, commandHeight: cmd.height }; })()",
+          "value": {
+            "commandLineCentre": 215.075,
+            "copyCentre": 215.078125,
+            "offset": 0.0031250000000113687,
+            "rowHeight": 17.40625,
+            "commandHeight": 17.390625
+          }
+        },
+        {
+          "step": 3,
+          "eval": "(() => { const row = document.querySelector('.approval .approval-what-row'); const cmd = row.querySelector('.approval-what').getBoundingClientRect(); const btn = row.querySelector('.copy-btn').getBoundingClientRect(); const line = parseFloat(getComputedStyle(row.querySelector('.approval-what')).lineHeight); return Math.abs(btn.top + btn.height / 2 - (cmd.top + line / 2)) <= 2 && row.getBoundingClientRect().height <= cmd.height + 1; })()",
+          "value": true
+        },
+        {
+          "step": 7,
+          "eval": "window.__copied",
+          "value": "echo approved"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

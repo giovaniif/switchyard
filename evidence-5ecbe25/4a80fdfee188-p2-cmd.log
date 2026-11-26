@@ -1,0 +1,40 @@
+$ verify/yv map run thread --recipe copy-commands-code-and-output
+# exit 1 after 4760 ms at def31acb2d7eec4fd466092a00bb8c9f73782790
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "thread",
+      "at": "2026-11-26T23:17:07.993Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "copy-commands-code-and-output",
+          "status": "fail",
+          "ms": 3904,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 2 {\"eval\":\"(() => { const row = document.querySelector(\\\".approval .approval-what-row\\\"); const cmd = row.querySelector(\\\".approval-what\\\").getBoundingClientRect(); const btn = row.querySelector(\\\".copy-btn\\\").getBoundingClientRect(); const line = parseFloat(getComputedStyle(row.querySelector(\\\".approval-what\\\")).lineHeight); return Math.abs(btn.top + btn.height / 2 - (cmd.top + line / 2)) <= 2 && row.getBoundingClientRect().height <= cmd.height + 1; })()\",\"equals\":true}: eval returned false, expected true",
+              "hint": "see /home/giovani/www/better-than-claude-code/.claude/worktrees/approval-copy-align/.verify/drives/2026-11-26T23-17-04-398Z/fail-desktop-step2.png and the aria snapshot"
+            }
+          ],
+          "tail": "- button \\\"Always allow\\\"\\n  - button \\\"Deny\\\"\\n  - textbox \\\"Message\\\":\\n    - /placeholder: Queue a message for the agent\\n  - button \\\"Attach files\\\"\\n  - button \\\"Dictate\\\"\\n  - button \\\"Voice mode\\\"\\n  - button \\\"Model Fake Fast\\\": Fake Fast\\n  - 'button \\\"Account: Codex, Default\\\"'\\n  - button \\\"Effort Low\\\": Low\\n  - button \\\"Ask first\\\"\\n  - button \\\"Add to queue\\\" [disabled]\\n- region \\\"Workspace\\\":\\n  - separator \\\"Resize the workspace pane\\\"\\n  - button \\\"Terminal\\\" [pressed]\\n  - button \\\"Subagents\\\"\\n  - button \\\"Processes\\\"\\n  - tablist \\\"Terminals\\\":\\n    - tab \\\"1\\\" [selected]\\n    - button \\\"Close terminal\\\"\\n    - button \\\"New terminal\\\"\\n    - button \\\"Attach\\\"\\n  - textbox \\\"Terminal input\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [\n        {\n          \"step\": 0,\n          \"eval\": \"(Object.defineProperty(navigator, \\\"clipboard\\\", { configurable: true, value: { writeText: (t) => { window.__copied = t; return Promise.resolve(); } } }), 1)\",\n          \"value\": 1\n        },\n        {\n          \"step\": 2,\n          \"eval\": \"(() => { const row = document.querySelector(\\\".approval .approval-what-row\\\"); const cmd = row.querySelector(\\\".approval-what\\\").getBoundingClientRect(); const btn = row.querySelector(\\\".copy-btn\\\").getBoundingClientRect(); const line = parseFloat(getComputedStyle(row.querySelector(\\\".approval-what\\\")).lineHeight); return Math.abs(btn.top + btn.height / 2 - (cmd.top + line / 2)) <= 2 && row.getBoundingClientRect().height <= cmd.height + 1; })()\",\n          \"value\": false\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 2 {\\\"eval\\\":\\\"(() => { const row = document.querySelector(\\\\\\\".approval .approval-what-row\\\\\\\"); const cmd = row.querySelector(\\\\\\\".approval-what\\\\\\\").getBoundingClientRect(); const btn = row.querySelector(\\\\\\\".copy-btn\\\\\\\").getBoundingClientRect(); const line = parseFloat(getComputedStyle(row.querySelector(\\\\\\\".approval-what\\\\\\\")).lineHeight); return Math.abs(btn.top + btn.height / 2 - (cmd.top + line / 2)) <= 2 && row.getBoundingClientRect().height <= cmd.height + 1; })()\\\",\\\"equals\\\":true}: eval returned false, expected true\",\n      \"hint\": \"see /home/giovani/www/better-than-claude-code/.claude/worktrees/approval-copy-align/.verify/drives/2026-11-26T23-17-04-398Z/fail-desktop-step2.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "thread/copy-commands-code-and-output",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

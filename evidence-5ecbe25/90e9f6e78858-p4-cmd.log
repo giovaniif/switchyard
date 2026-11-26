@@ -1,0 +1,32 @@
+$ verify/yv map run thread --recipe copy-commands-code-and-output && (cd ui && bun test)
+# exit 0 after 30399 ms at 5ecbe256f4c35f0cee5101af3461dd53846799f9
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "thread",
+      "at": "2026-11-26T23:18:23.238Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "copy-commands-code-and-output",
+          "status": "pass",
+          "ms": 29112
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+bun test v1.4.4 (38afee6c8)
+
+
+ 536 pass
+ 0 fail
+ 5134 expect() calls
+Ran 536 tests across 39 files. [416.00ms]
