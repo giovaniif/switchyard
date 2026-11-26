@@ -112,6 +112,18 @@ Enter does not take it: the chip keeps the folder it had.
 yv drive new --steps '[{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{work}}/TEST-no-such-folder"},{"expect":"css:.picker-empty","text":"No folder in"},{"expect":"css:.picker-empty","text":"TEST-no-such-folder"},{"shot":"no-match"},{"press":"Enter"},{"expect":"css:.picker-empty","text":"TEST-no-such-folder"},{"press":"Escape"},{"expect":{"role":"button","name":"work","exact":true}}]'
 ```
 
+### typed-path-under-a-missing-folder-names-it
+Viewports: both
+A typed path whose parent folder does not exist (a typo higher up, or a
+folder deleted since) names the first folder that is not there, in words,
+and offers no "Use" row for it: Enter keeps the folder the chip had.
+(Before #462 the list showed yardd's raw "cannot read …: No such file or
+directory (os error 2)" and offered "Use <the missing folder>".)
+
+```sh
+yv drive new --steps '[{"click":"role:button:work"},{"fill":"role:textbox:Folder","value":"{{work}}/TEST-gone/TEST-deeper/b"},{"expect":"css:.picker-empty","text":"TEST-gone doesn’t exist."},{"expect":"text:os error","count":0},{"shot":"missing-parent"},{"fill":"role:textbox:Folder","value":"{{work}}/TEST-gone/"},{"expect":"css:.picker-empty","text":"TEST-gone doesn’t exist."},{"expect":"role:option","count":0},{"press":"Enter"},{"press":"Escape"},{"expect":{"role":"button","name":"work","exact":true}}]'
+```
+
 ### remembered-folder-that-is-gone-says-so
 Viewports: both
 The page reopens on the folder last used. When that folder was deleted since,
