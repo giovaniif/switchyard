@@ -81,6 +81,21 @@ async fn an_idle_codex_thread_is_released_and_resumed_by_the_next_turn() {
     assert!(!c.event_types(&sid).contains(&"error".to_string()), "{:?}", c.events(&sid));
 }
 
+// A turn can be over before yardd reads the answer to its turn/start (a
+// busy machine, a turn that ends at once). The late answer must not make
+// it the running turn again: that thread would never be released. The
+// fake's `[instant]` sends the whole turn before the answer, so this
+// happens every time instead of now and then under load.
+#[tokio::test]
+async fn a_turn_over_before_its_start_was_answered_still_lets_the_thread_go() {
+    let sb = Sandbox::new("release-instant");
+    let d = sb.start_with(&[("YARD_RELEASE_IDLE_MS", "400")]);
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "[instant] TEST-hi", json!({})).await;
+    assert_eq!(c.wait_turn_done(&sid, 0).await["status"], "completed");
+    until("the idle thread to be unsubscribed", 10, || sb.codex_log().contains("req thread/unsubscribe")).await;
+}
+
 #[tokio::test]
 async fn a_session_waiting_on_an_approval_keeps_its_thread() {
     let sb = Sandbox::new("release-busy");

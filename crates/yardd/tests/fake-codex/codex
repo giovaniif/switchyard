@@ -30,6 +30,8 @@
 //           server the thread was given (`mcp_servers.switchyard` in
 //           thread/start or thread/resume `config`; see agent-tools.mjs), as
 //           `mcpToolCall` items, then "Called NAME: <result>" per call
+//   [instant] a plain reply whose events all go out before the turn/start
+//           answer: what yardd reads when it gets to the answer late
 //
 // MCP: `mcpServerStatus/list` lists `chart` (connected, from mcp-chart) and
 // `fake-oauth` (not logged in until its sign-in completes); `app/list` one
@@ -285,6 +287,10 @@ async function handle(msg) {
       // Registered before the reply, so an interrupt that arrives before the
       // turn's first event still finds it.
       running.set(turn.id, { interrupted: false, wake: () => {} });
+      if (typed(text).includes("[instant]")) {
+        runTurn(p.threadId, thread.cwd, turn, text);
+        return reply({ turn });
+      }
       reply({ turn });
       // After the reply, as the real server does.
       setTimeout(() => runTurn(p.threadId, thread.cwd, turn, text), 0);
