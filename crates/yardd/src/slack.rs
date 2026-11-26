@@ -63,6 +63,8 @@ use crate::{
     state::{now_ms, App},
 };
 
+pub mod inbox;
+
 /// A Slack message stays readable below this; longer answers are split.
 const PART: usize = 3500;
 const MAX_REQUESTS: usize = 10;
@@ -340,11 +342,14 @@ pub struct Slack {
     batches: Mutex<HashMap<String, Batch>>,
     /// Watched texts lately passed on: (`agent/channel`, hash, when).
     recent_watched: Mutex<VecDeque<(String, u64, u64)>>,
+    /// The owner's own DMs, kept in yard.db.
+    pub inbox: inbox::Inbox,
 }
 
 impl Slack {
     pub fn load(dir: PathBuf) -> Slack {
         let file = dir.join("slack.json");
+        let inbox = inbox::Inbox::open(&dir);
         let cfg = match std::fs::read_to_string(&file) {
             Ok(text) => serde_json::from_str(&text).unwrap_or_else(|e| {
                 eprintln!("yardd: {} is unreadable ({e}); Slack starts unset", file.display());
@@ -390,6 +395,7 @@ impl Slack {
             team_urls: Mutex::default(),
             batches: Mutex::default(),
             recent_watched: Mutex::default(),
+            inbox,
         }
     }
 
@@ -413,6 +419,7 @@ impl Slack {
                 "teamId": m.team_id,
                 "teamName": m.team_name,
                 "userName": m.user_name,
+                "userId": m.user_id,
                 "canRedirect": !m.redirects.is_empty(),
                 "userToken": hint(&m.user_token),
                 "appToken": hint(&m.app_token),
@@ -716,6 +723,9 @@ fn user_id_ok(id: &str) -> bool {
 /// in the UI). Every change broadcasts `slack`; the asking window also gets
 /// it as the answer to its `ref`.
 pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value) -> Result<()> {
+    if msg["op"].as_str().is_some_and(|op| op.starts_with("slack.inbox.")) {
+        return inbox::handle(app, direct, msg).await;
+    }
     let slack = &app.slack;
     let agent = || -> Result<crate::agents::Agent> { app.agents.get(msg["agentId"].as_str().context("missing `agentId`")?).filter(|a| !a.hosted).context("no such agent") };
     let token = || msg["token"].as_str().unwrap_or("").trim().to_string();
@@ -1294,6 +1304,8 @@ async fn me_installed(app: &Arc<App>, mut rec: MyApp) {
 async fn remove_me(app: &Arc<App>) {
     let Some(rec) = app.slack.me() else { return };
     app.slack.change(|c| c.me = None);
+    // His DMs go with his Slack.
+    inbox::forget(app);
     app.slack.changed.send_modify(|n| *n += 1);
     if let Ok(token) = config_token(&app.slack, &rec.team_id).await {
         if let Err(e) = app.slack.api(&token, "apps.manifest.delete", &[("app_id", &rec.app_id)]).await {
@@ -1686,6 +1698,7 @@ pub async fn run(app: Arc<App>) {
     // two quick messages in a thread reach the agent in order.
     tokio::spawn(handle_events(app.clone(), events_rx));
     let _ = app.slack.events.set(events.clone());
+    inbox::start(&app);
     // Agents' own apps each keep a connection of their own.
     let ready: Vec<String> = app.slack.cfg.lock().unwrap().apps.iter().filter(|a| a.step() == "ready").map(|a| a.agent.clone()).collect();
     for agent in ready {
@@ -1732,9 +1745,12 @@ pub async fn run(app: Arc<App>) {
                 if up {
                     backoff = Duration::from_secs(1);
                 }
+                // Messages may have come while it was down.
+                app.slack.inbox.due.store(true, std::sync::atomic::Ordering::SeqCst);
                 backoff
             }
             Err(e) => {
+                app.slack.inbox.due.store(true, std::sync::atomic::Ordering::SeqCst);
                 let error = format!("{e:#}");
                 eprintln!("yardd: slack: {error}");
                 app.slack.set_status(&app, |s| {
@@ -1802,7 +1818,12 @@ async fn connect(app: &Arc<App>, app_token: &str, token: &str, events: &mpsc::Un
                         let status = Status { state: "connected".into(), team: team.clone(), who: handle.clone(), error: None };
                         match agent {
                             Some(agent) => app_status(app, agent, status),
-                            None => slack.set_status(app, |s| *s = status),
+                            None => {
+                                slack.set_status(app, |s| *s = status);
+                                if slack.inbox.due.swap(false, std::sync::atomic::Ordering::SeqCst) {
+                                    tokio::spawn(inbox::sync(app.clone()));
+                                }
+                            }
                         }
                     }
                     "disconnect" => {
@@ -1911,12 +1932,12 @@ async fn handle_events(app: Arc<App>, mut rx: mpsc::UnboundedReceiver<(Me, Value
 
 /// One Slack event. To an agent's app: a DM, an @mention, or a channel
 /// message that may be a follow-up in a thread routed to it. The owner's own
-/// events are acknowledged and not kept yet.
+/// go to his inbox (`inbox::on_event`).
 async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
     let slack = &app.slack;
     let ev = &payload["event"];
     let kind = ev["type"].as_str().unwrap_or("");
-    let Some(agent) = me.agent.clone() else { return Ok(()) };
+    let Some(agent) = me.agent.clone() else { return inbox::on_event(app, me, payload).await };
     if kind != "app_mention" && kind != "message" {
         return Ok(());
     }

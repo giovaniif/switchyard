@@ -812,6 +812,7 @@ impl App {
             "agents": self.agents.list(),
             "mobile": self.mobile.status(),
             "slack": self.slack.view(),
+            "slackInbox": crate::slack::inbox::snapshot(self),
         })
     }
 }

@@ -5,6 +5,7 @@ import type { LoginProvider, LoginState, Question } from "./protocol";
 import { answersFrom, noPick, toggle, typeOther, type Pick } from "./questions";
 import type { AccountEntry, Agent, Attachment, PendingMessage, ChangedFile, Engine, EngineState, EngineStates, Host, HostEntry, Item, ModelInfo, Models, SessionMeta, Status, ToolItem, Usage } from "./protocol";
 import { ROW_LABEL, type RowState, rowState, useSeen } from "./rowState";
+import { SlackConversationPage, SlackSidebar } from "./SlackPage";
 import { Subscriptions, UsageStrip, type UsageAccount } from "./UsageMeters";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { shownHosts, useHiddenHosts } from "./sidebarHosts";
@@ -440,6 +441,7 @@ export function App() {
           {route.page === "sessions" && <SessionsPage state={state} actions={actions} />}
           {route.page === "settings" && <SettingsPage state={state} actions={actions} />}
           {route.page === "automations" && <AutomationsPage state={state} actions={actions} />}
+          {route.page === "slack" && <SlackConversationPage key={`${route.team}/${route.channel}`} state={state} actions={actions} team={route.team} channel={route.channel} />}
           {route.page === "connectors" && <ConnectorsPage state={state} actions={actions} usage={<UsageStrip {...usage} compact />} />}
           {route.page === "automation" &&
             // The form reads its automation once, on mount: after a reload it waits on the list
@@ -1233,6 +1235,8 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
             </div>
           );
         })}
+        {/* The owner's own Slack: his direct messages and group DMs. */}
+        <SlackSidebar state={state} actions={actions} route={route} />
         {/* Agents, like direct messages: the list's last section. */}
         {state.agents.length > 0 && (
           <div className="agent-dms" role="group" aria-label="Agents">

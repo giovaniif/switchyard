@@ -1,7 +1,8 @@
 # Slack
 
-The Slack connector on the Connectors page, under Messaging, and agents'
-own Slack apps. The card connects the owner's own Slack: an app of his with
+The Slack connector on the Connectors page, under Messaging, the owner's own
+Slack in the sidebar (his DMs and group DMs, read and answered as him), and
+agents' own Slack apps. The card connects the owner's own Slack: an app of his with
 user scopes (his direct messages and the channels he is in, as him), made from
 a configuration token (one click for a workspace an agent's app already has),
 approved in Slack (which comes back to `https://yard.test/slack/oauth`, the
@@ -161,6 +162,63 @@ yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app"}' --wait
 yv drive connectors --viewport desktop --steps '[{"expect":"css:.slack-card .slack-tokens","text":"xoxp-…TEST · xapp-…TEST"},{"eval":"!document.body.innerText.includes(\"you-TEST\")","equals":true}]'
 ! grep -q "you-TEST" "$(v data)/yardd.log"
 ls -l "$(v data)/slack.json" | cut -c1-10 | grep -qx -- "-rw-------"
+```
+
+### your-direct-messages
+Viewports: both
+Connected, the owner's DMs and group DMs with a message in the last 60 days
+are in the sidebar's Slack section, newest first, with unread counts (the
+group DM has one); one quiet for longer is not. A conversation shows its
+messages grouped by author and day, Slack's markup as text (bold, a link, a
+mention by name), reactions, and "1 reply"; the thread opens in a pane (the
+whole screen on a phone). Load older brings the messages older than 60 days
+from Slack, and then there is no more to load.
+
+```sh
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app"}' --wait '{"op":"slack"}'
+for i in $(seq 100); do yv state --full 2>/dev/null | grep -q D0ANA && break; sleep 0.2; done
+yv drive 'slack:TEST-Ana' --viewport desktop --steps '[{"expect":{"css":".slack-dms .slack-row","hasText":"TEST-Ana, TEST-Stranger"},"text":"1"},{"eval":"!document.querySelector(\".slack-dms\").innerText.includes(\"TEST-Old\")","equals":true},{"expect":"role:heading:TEST-Ana"},{"expect":{"css":".slack-text strong","hasText":"bold"}},{"expect":{"css":".slack-text a","hasText":"a link"}},{"eval":"document.querySelector(\".slack-text a\").getAttribute(\"href\")","equals":"https://example.com"},{"expect":{"css":".slack-mention","hasText":"@TEST-Ana"}},{"expect":"role:button:thumbsup, 1"},{"shot":"dm"},{"click":"role:button:Load older messages"},{"expect":{"css":".slack-messages"},"text":"TEST-old news"},{"expect":"role:button:Load older messages","count":0},{"click":"role:button:1 reply"},{"expect":{"css":".slack-thread"},"text":"TEST-sure, noon"},{"shot":"thread"}]'
+yv drive 'slack:TEST-Ana' --viewport mobile --steps '[{"expect":{"css":".slack-messages"},"text":"TEST-lunch tomorrow?"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"dm"},{"click":"role:button:1 reply"},{"expect":{"css":".slack-thread"},"text":"TEST-sure, noon"},{"eval":"getComputedStyle(document.querySelector(\".slack-main\")).display","equals":"none"},{"shot":"thread"}]'
+```
+
+### reply-react-and-read
+Viewports: both
+From Switchyard, as the owner: a message posted in the DM shows at once and
+reaches Slack with his user token (what he typed stays plain text); a
+reaction from a message's actions; a reply in the thread. Opening the group
+DM reads it: its unread count goes, here and in Slack (`conversations.mark`).
+
+```sh
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app"}' --wait '{"op":"slack"}'
+for i in $(seq 100); do yv state --full 2>/dev/null | grep -q D0ANA && break; sleep 0.2; done
+for vp in desktop mobile; do
+# Each viewport reacts on a message of its own: the same reaction again would take it off.
+if [ $vp = desktop ]; then M="TEST-yes,"; else M="TEST-are you around"; fi
+yv drive 'slack:TEST-Ana' --viewport $vp --steps '[{"fill":"label:Message TEST-Ana","value":"TEST-on my way <'$vp'>"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"TEST-on my way <'$vp'>"},{"click":{"css":".slack-message","hasText":"'"$M"'"}},{"click":"role:button:React white_check_mark"},{"expect":"role:button:white_check_mark, 1"},{"shot":"sent"},{"click":"css:.slack-replies"},{"fill":"label:Reply in the thread","value":"TEST-thread reply '$vp'"},{"click":{"css":".slack-thread button[aria-label=Send]"}},{"expect":{"css":".slack-thread"},"text":"TEST-thread reply '$vp'"},{"shot":"thread-reply"}]'
+done
+curl -sf "$(v slack)/_fake/state" | jq -e '(.posts | map(select(.app == "you")) | (any(.text == "TEST-on my way &lt;desktop&gt;") and any(.thread_ts != null and (.text | startswith("TEST-thread reply"))))) and (.calls | any(.method == "reactions.add" and .token == "user"))'
+yv drive 'slack:TEST-Stranger' --viewport desktop --steps '[{"expect":{"css":".slack-messages"},"text":"TEST-hello all"},{"expect":{"css":".slack-row.active .slack-unread"},"count":0}]'
+for i in $(seq 50); do curl -sf "$(v slack)/_fake/state" | jq -e '.marks | any(.channel == "G0TRIO")' > /dev/null && break; sleep 0.2; done
+curl -sf "$(v slack)/_fake/state" | jq -e '.marks | any(.channel == "G0TRIO")'
+```
+
+### someone-new-writes
+Viewports: desktop
+A first message from someone the owner never wrote to (a DM yardd has not
+seen) comes in live: the new conversation tops the Slack section with one
+unread, and opens.
+
+```sh
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app"}' --wait '{"op":"slack"}'
+for i in $(seq 100); do yv state --full 2>/dev/null | grep -q D0ANA && break; sleep 0.2; done
+curl -sf -XPOST "$(v slack)/_fake/message" -d '{"app":"you","user":"UNEW","channel":"D0NEW","text":"TEST-hi, I am new here"}' > /dev/null
+yv drive 'slack:TEST-UNEW' --viewport desktop --steps '[{"expect":{"css":".slack-messages"},"text":"TEST-hi, I am new here"},{"expect":"role:heading:TEST-UNEW"},{"shot":"new-dm"}]'
 ```
 
 ### one-token-with-a-public-address

@@ -33,7 +33,11 @@ import {
   type McpAuthState,
   type McpStatus,
   type SlackView,
+  type SlackConversation,
+  type SlackMessage,
+  type SlackPage,
 } from "./protocol";
+import { applyMessage, mergePage, pageKey } from "./slackInbox";
 import type { WidgetRecord } from "./widget";
 import { createNotifier } from "./notify";
 import { inMobileApp, type MobileStatus } from "./mobile";
@@ -66,6 +70,8 @@ export type Route =
   | { page: "automations" }
   /** Every engine account's MCP servers (connectors), per host. */
   | { page: "connectors" }
+  /** One of the owner's own Slack conversations. */
+  | { page: "slack"; team: string; channel: string }
   /** The create/edit form; `id` is `new` for a new automation. */
   | { page: "automation"; host: string; id: string };
 
@@ -96,6 +102,8 @@ export function routeHash(route: Route): string {
       return "#/automations";
     case "connectors":
       return "#/connectors";
+    case "slack":
+      return `#/slack/${encodeURIComponent(route.team)}/${encodeURIComponent(route.channel)}`;
     case "automation":
       return `#/automations/${encodeURIComponent(route.host)}/${encodeURIComponent(route.id)}`;
     default:
@@ -111,6 +119,8 @@ export function parseHash(hash: string): Route {
     if (e) return { page: "agentEdit", id: decodeURIComponent(e[1]) };
     const g = /^#\/agents\/([^/]+)$/.exec(hash);
     if (g) return { page: "agent", id: decodeURIComponent(g[1]) };
+    const k = /^#\/slack\/([^/]+)\/([^/]+)$/.exec(hash);
+    if (k) return { page: "slack", team: decodeURIComponent(k[1]), channel: decodeURIComponent(k[2]) };
     const a = /^#\/automations\/([^/]+)\/([^/]+)$/.exec(hash);
     if (a) return { page: "automation", host: decodeURIComponent(a[1]), id: decodeURIComponent(a[2]) };
   } catch {
@@ -146,6 +156,10 @@ export interface State {
   hostMobile: Record<string, MobileStatus>;
   /** The hub's Slack connection; null until the snapshot. */
   slack: SlackView | null;
+  /** The owner's own Slack conversations, newest first. */
+  slackInbox: SlackConversation[];
+  /** Loaded messages, by `pageKey` (a conversation, or a thread). */
+  slackPages: Record<string, SlackPage>;
   /** The hub's agents (agents live on this yardd only). */
   agents: Agent[];
   connected: boolean;
@@ -224,6 +238,8 @@ export const initial: State = {
   mobile: { configured: false },
   hostMobile: {},
   slack: null,
+  slackInbox: [],
+  slackPages: {},
   agents: [],
   connected: false,
   route: { page: "new" },
@@ -399,6 +415,26 @@ function reduceServer(state: State, msg: any): State {
       return msg.hostId ? state : { ...state, agents: (msg.agents as Agent[] | undefined) ?? [] };
     case "slack":
       return msg.hostId ? state : { ...state, slack: msg.slack as SlackView };
+    case "slack.inbox": {
+      if (msg.hostId) return state;
+      const list = (msg.conversations as SlackConversation[] | undefined) ?? [];
+      // Disconnected: what was loaded goes too.
+      return { ...state, slackInbox: list, slackPages: list.length ? state.slackPages : {} };
+    }
+    case "slack.inbox.loading": {
+      const key = pageKey(msg.team, msg.channel, msg.thread);
+      const old = state.slackPages[key];
+      return { ...state, slackPages: { ...state.slackPages, [key]: { messages: old?.messages ?? [], users: old?.users ?? {}, more: old?.more ?? false, loading: true } } };
+    }
+    case "slack.inbox.messages": {
+      if (msg.hostId) return state;
+      const key = pageKey(msg.team, msg.channel, msg.thread);
+      const page = mergePage(state.slackPages[key], (msg.messages as SlackMessage[]) ?? [], msg.users ?? {}, !!msg.more, !!msg.before);
+      return { ...state, slackPages: { ...state.slackPages, [key]: page } };
+    }
+    case "slack.inbox.message":
+      if (msg.hostId) return state;
+      return { ...state, slackPages: applyMessage(state.slackPages, msg.team, msg.channel, msg.message as SlackMessage, msg.users ?? {}) };
     case "snapshot": {
       const hosts = (msg.hosts ?? []) as HostEntry[];
       const known = new Set(hosts.map((h) => h.id));
@@ -415,6 +451,7 @@ function reduceServer(state: State, msg: any): State {
         ...next,
         mobile: msg.mobile ?? { configured: false },
         slack: (msg.slack as SlackView | undefined) ?? null,
+        slackInbox: (msg.slackInbox as SlackConversation[] | undefined) ?? [],
         agents: (msg.agents as Agent[] | undefined) ?? [],
         sessions,
         route,
@@ -753,6 +790,15 @@ export interface Actions {
   mcpAuthClear(host: string, engine: Engine, account: string, server: string): void;
   /** Slack on the hub: `slack.allow`, `slack.me.retry`, ...; answers as `slack`. */
   slack(op: SlackOp, fields?: Record<string, unknown>): void;
+  /** The owner's own Slack: a conversation's newest page, an older one
+   *  (`before`), or a thread (`thread`); answered as `slack.inbox.messages`. */
+  slackLoad(team: string, channel: string, opts?: { before?: string; thread?: string }): void;
+  /** His read mark, here and in Slack. */
+  slackRead(team: string, channel: string, ts: string): void;
+  /** A message as him (in a thread with `thread`); the error, if Slack refused it. */
+  slackSend(team: string, channel: string, text: string, thread?: string): Promise<{ error?: string }>;
+  /** His reaction on a message, on or off. */
+  slackReact(team: string, channel: string, ts: string, name: string, add: boolean): Promise<{ error?: string }>;
   /** A tool call's widget: its HTML, CSP, input and result. */
   widget(sessionId: string, id: string): Promise<{ widget?: WidgetRecord; error?: string }>;
   /** A call a widget makes to its own server. */
@@ -1101,6 +1147,19 @@ export function useYard(): { state: State; actions: Actions } {
       mcpChangeClear: (host, engine, account, name) => dispatch({ t: "server", msg: { op: "mcp.change", host, engine, account, name, state: null } }),
       mcpAuthClear: (host, engine, account, server) => dispatch({ t: "server", msg: { op: "mcp.auth", host, engine, account, server, state: null } }),
       slack: (op, fields = {}) => post({ ...fields, op }),
+      slackLoad: (team, channel, opts = {}) => {
+        dispatch({ t: "server", msg: { op: "slack.inbox.loading", team, channel, thread: opts.thread } });
+        post({ op: "slack.inbox.messages", team, channel, ...(opts.before ? { before: opts.before } : {}), ...(opts.thread ? { thread: opts.thread } : {}) });
+      },
+      slackRead: (team, channel, ts) => post({ op: "slack.inbox.read", team, channel, ts }),
+      slackSend: async (team, channel, text, thread) => {
+        const reply = await ask({ op: "slack.inbox.send", team, channel, text, ...(thread ? { thread } : {}) }, 30_000);
+        return reply.error ? { error: reply.error as string } : {};
+      },
+      slackReact: async (team, channel, ts, name, add) => {
+        const reply = await ask({ op: "slack.inbox.react", team, channel, ts, name, add }, 30_000);
+        return reply.error ? { error: reply.error as string } : {};
+      },
       widget: (sessionId, id) => {
         const key = `${sessionId}\n${id}`;
         let p = widgets.get(key);

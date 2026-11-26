@@ -181,7 +181,7 @@ async function openDrawer(page: Page): Promise<boolean> {
   return true;
 }
 
-/** Opens a route: new, hosts, settings, connectors, agents, automations, or session:<id | title text>. */
+/** Opens a route: new, hosts, settings, connectors, agents, automations, session:<id | title text>, or slack:<conversation name>. */
 async function goRoute(page: Page, iso: Iso, route: string, w: Watch) {
   if (!page.url().startsWith(iso.url)) {
     await page.goto(iso.url, { waitUntil: "domcontentloaded" });
@@ -245,8 +245,18 @@ async function goRoute(page: Page, iso: Iso, route: string, w: Watch) {
       }
       if (!found) fail("no-session", `no sidebar row opens ${key} (title ${title})`, "verify/yv state");
     }
+  } else if (route.startsWith("slack:")) {
+    // One of the owner's own Slack conversations, by its name in the sidebar.
+    const name = route.slice("slack:".length);
+    const row = page.locator(".slack-row", { hasText: name });
+    if ((await row.count()) === 0) {
+      const all = page.locator(".slack-dms .list-toggle", { hasText: "Show all" });
+      if (await all.count()) await all.click();
+    }
+    if ((await row.count()) === 0) fail("no-session", `no Slack conversation ${name} in the sidebar`, "verify/yv state");
+    await row.first().click();
   } else if (route !== "") {
-    throw new Usage(`unknown route ${route}: new | hosts | subscriptions | sessions | settings | connectors | session:<id or title>`);
+    throw new Usage(`unknown route ${route}: new | hosts | subscriptions | sessions | settings | connectors | agents | automations | session:<id or title> | slack:<conversation name>`);
   }
   // Picking a row closes the drawer; a shot taken mid-slide would show it half open.
   if (drawer) await page.locator(".sidebar").waitFor({ state: "hidden", timeout: 5000 });
