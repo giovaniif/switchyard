@@ -61,11 +61,13 @@ Viewports: both
 Deleting the edit session (uncommitted change) from the sidebar, with another
 session open, is refused, and the banner over the open session names the one
 it refused. (Before: "The worktree has uncommitted…", read as the open
-session's.) The refusal is an API error, hence `--allow-errors`.
+session's.) On a phone the refusal closes the drawer, so the banner is not
+left behind its scrim (#483; before, only "Dismiss" peeked out and the drawer
+said nothing). The refusal is an API error, hence `--allow-errors`.
 
 ```sh
 yv drive 'session:{{sid_echo}}' --viewport desktop --allow-errors --steps '[{"click":"role:button:Actions for [edit] TEST-fix the greeting"},{"click":"role:menuitem:Delete…"},{"click":"role:menuitem:Delete and remove the worktree"},{"expect":"css:.banner-error","text":"\"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted"},{"shot":"refused"}]'
-yv drive 'session:{{sid_echo}}' --viewport mobile --allow-errors --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Actions for [edit] TEST-fix the greeting"},{"click":"role:menuitem:Delete…"},{"click":"role:menuitem:Delete and remove the worktree"},{"click":"role:button:Close sessions"},{"expect":"css:.banner-error","text":"\"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted"},{"shot":"refused"}]'
+yv drive 'session:{{sid_echo}}' --viewport mobile --allow-errors --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Actions for [edit] TEST-fix the greeting"},{"click":"role:menuitem:Delete…"},{"click":"role:menuitem:Delete and remove the worktree"},{"expect":"css:.banner-error","text":"\"[edit] TEST-fix the greeting\" was not deleted: the worktree has uncommitted"},{"expect":"role:button:Close sessions","visible":false},{"shot":"refused"},{"click":"role:button:Dismiss"},{"expect":"css:.banner-error","visible":false}]'
 yv state --expect '{"sessions":[{"id":"{{sid_edit}}"}]}'
 ```
 

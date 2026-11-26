@@ -300,6 +300,14 @@ export function App() {
   // Routes that change without a pick (an import's or a notification's session opening) close it too.
   const where = routeHash(route);
   useEffect(() => setDrawer(false), [where]);
+  // A refusal of something picked in it (a row's Delete…) lands in the banner
+  // over the page, which the open drawer would hide behind its scrim.
+  const errorsSeen = useRef(state.errorCount);
+  useEffect(() => {
+    if (state.errorCount === errorsSeen.current) return;
+    errorsSeen.current = state.errorCount;
+    if (drawer) closeDrawer();
+  }, [state.errorCount]);
   const drawerCtx = useMemo(() => ({
     open: drawer,
     show: (trigger: HTMLButtonElement) => {
