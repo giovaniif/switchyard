@@ -164,6 +164,21 @@ yv drive hosts --viewport mobile --steps '[{"click":"role:button:Add host"},{"fi
 yv drive hosts --viewport desktop --steps '[{"click":"role:button:Add host"},{"fill":"label:SSH destination","value":"test@fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"},{"eval":"(() => { const b = document.querySelector(\".add-host .btn-primary\"); return b.scrollWidth <= b.clientWidth && b.scrollHeight <= b.clientHeight + 1; })()","equals":true},{"shot":"ipv6-label-whole"},{"click":"role:button:Add fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"},{"expect":"role:button:Select fd7a:115c:a1e0:ab12:4843:cd96:6263:d71c"}]'
 ```
 
+### long-derived-name-asks-for-a-shorter-one
+Viewports: both
+An SSH destination whose first DNS label is over 40 characters (a label may
+be up to 63) derives a name yardd refuses. The form says so before sending:
+Options opens with the Name field and "Use 40 characters or fewer." under it,
+and Add stays disabled (also on Enter), so no "the host name must be at most
+40 plain characters" banner pointing at a field the user could not see. A
+shorter name under Options adds the host. One drive per viewport: both share
+the daemon, so each adds its own name.
+
+```sh
+yv drive hosts --viewport mobile --steps '[{"click":"role:button:Add host"},{"fill":"label:SSH destination","value":"test@build-machine-with-a-really-long-hostname-for-testing.tail914724.ts.net"},{"expect":"css:#host-name","visible":true},{"expect":"css:.add-host","text":"Use 40 characters or fewer."},{"expect":{"css":".add-host .btn-primary"},"enabled":false},{"press":"Enter"},{"wait":500},{"expect":"css:.banner-error","count":0},{"shot":"too-long"},{"fill":"css:#host-name","value":"TEST-build-phone"},{"expect":{"css":".add-host","hasText":"Use 40 characters or fewer."},"count":0},{"click":"role:button:Add TEST-build-phone"},{"expect":"role:button:Select TEST-build-phone"},{"expect":"css:.banner-error","count":0},{"shot":"added"}]'
+yv drive hosts --viewport desktop --steps '[{"click":"role:button:Add host"},{"fill":"label:SSH destination","value":"test@build-machine-with-a-really-long-hostname-for-testing.tail914724.ts.net"},{"expect":"css:#host-name","visible":true},{"expect":"css:.add-host","text":"Use 40 characters or fewer."},{"expect":{"css":".add-host .btn-primary"},"enabled":false},{"press":"Enter"},{"wait":500},{"expect":"css:.banner-error","count":0},{"shot":"too-long"},{"fill":"css:#host-name","value":"TEST-build-desktop"},{"expect":{"css":".add-host","hasText":"Use 40 characters or fewer."},"count":0},{"click":"role:button:Add TEST-build-desktop"},{"expect":"role:button:Select TEST-build-desktop"},{"expect":"css:.banner-error","count":0},{"shot":"added"}]'
+```
+
 ### install-on-host (manual: needs a real SSH server)
 "Install Switchyard" runs scripts/remote-install.sh over ssh; the daemon suite
 covers it with a fake ssh and a file:// release.

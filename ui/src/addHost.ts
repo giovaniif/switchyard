@@ -1,3 +1,6 @@
+/** yardd refuses a host name longer than this (`host.add` in remote.rs). */
+export const HOST_NAME_LIMIT = 40;
+
 /** The name a new SSH host gets when none is typed: `user@box.tailnet.ts.net`
  * → `box`. An IP address stays whole: its first part names nothing, and every
  * tailnet address starts with `100.`, so a second one would be refused as a
