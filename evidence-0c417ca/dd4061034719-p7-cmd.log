@@ -1,0 +1,32 @@
+$ (cd ui && bun test) && verify/yv map run automations --recipe time-fields-fit-hh-mm
+# exit 0 after 10923 ms at 0c417ca2eb7c6e565ed1609f4d86bebbc2d20b19
+
+bun test v1.4.4 (38afee6c8)
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "automations",
+      "at": "2026-11-26T02:34:56.035Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "time-fields-fit-hh-mm",
+          "status": "pass",
+          "ms": 9627
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
+
+ 486 pass
+ 0 fail
+ 4955 expect() calls
+Ran 486 tests across 35 files. [339.00ms]

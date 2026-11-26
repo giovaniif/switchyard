@@ -1,0 +1,40 @@
+$ verify/yv map run automations --recipe time-fields-fit-hh-mm
+# exit 1 after 5523 ms at 336edeba3d86e09914728598f154bcda962111d8
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "automations",
+      "at": "2026-11-26T02:34:30.764Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "time-fields-fit-hh-mm",
+          "status": "fail",
+          "ms": 4537,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 4 {\"eval\":\"(() => { const s = document.querySelector(\\\"[aria-label='Window start']\\\").getBoundingClientRect(), e = document.querySelector(\\\"[aria-label='Window end']\\\").getBoundingClientRect(), n = document.querySelector(\\\"[aria-label='Repeat every']\\\").getBoundingClientRect(); return Math.abs(s.top - e.top) < 2 && s.width <= n.width + 0.5 && e.width <= n.width + 0.5 && e.right <= innerWidth; })()\",\"equals\":true}: eval returned false, expected true",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-fb24/.verify/drives/2026-11-26T02-34-26-659Z/fail-mobile-step4.png and the aria snapshot"
+            }
+          ],
+          "tail": "\\\":\\n  - /placeholder: HH:MM\\n  - text: 09:00\\n- group \\\"Window start days\\\":\\n  - button \\\"Window starts on Sunday\\\": Sun\\n  - button \\\"Window starts on Monday\\\": Mon\\n  - button \\\"Window starts on Tuesday\\\": Tue\\n  - button \\\"Window starts on Wednesday\\\": Wed\\n  - button \\\"Window starts on Thursday\\\": Thu\\n  - button \\\"Window starts on Friday\\\": Fri\\n  - button \\\"Window starts on Saturday\\\": Sat\\n- text: Every day; days name when the window starts, including overnight runs. Every hour · 21:00–09:00, in iso-host's local time zone. A run missed while Switchyard was off starts once when it is back, only inside the window. Skip a run\\n- checkbox \\\"While the previous run is still going\\\" [checked]\\n- text: While the previous run is still going When 5-hour usage is above\\n- spinbutton \\\"5-hour usage limit percent\\\"\\n- text: \\\"% When weekly usage is above\\\"\\n- spinbutton \\\"Weekly usage limit percent\\\"\\n- text: \\\"% Applies to scheduled runs; Run now always starts one. The limits read the Codex plan usage.\\\"\\n- button \\\"Save automation\\\"\\n- button \\\"Cancel\\\"\\n- button \\\"Delete automation\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [\n        {\n          \"step\": 4,\n          \"eval\": \"(() => { const s = document.querySelector(\\\"[aria-label='Window start']\\\").getBoundingClientRect(), e = document.querySelector(\\\"[aria-label='Window end']\\\").getBoundingClientRect(), n = document.querySelector(\\\"[aria-label='Repeat every']\\\").getBoundingClientRect(); return Math.abs(s.top - e.top) < 2 && s.width <= n.width + 0.5 && e.width <= n.width + 0.5 && e.right <= innerWidth; })()\",\n          \"value\": false\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 4 {\\\"eval\\\":\\\"(() => { const s = document.querySelector(\\\\\\\"[aria-label='Window start']\\\\\\\").getBoundingClientRect(), e = document.querySelector(\\\\\\\"[aria-label='Window end']\\\\\\\").getBoundingClientRect(), n = document.querySelector(\\\\\\\"[aria-label='Repeat every']\\\\\\\").getBoundingClientRect(); return Math.abs(s.top - e.top) < 2 && s.width <= n.width + 0.5 && e.width <= n.width + 0.5 && e.right <= innerWidth; })()\\\",\\\"equals\\\":true}: eval returned false, expected true\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-fb24/.verify/drives/2026-11-26T02-34-26-659Z/fail-mobile-step4.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "automations/time-fields-fit-hh-mm",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+
