@@ -221,6 +221,27 @@ curl -sf -XPOST "$(v slack)/_fake/message" -d '{"app":"you","user":"UNEW","chann
 yv drive 'slack:TEST-UNEW' --viewport desktop --steps '[{"expect":{"css":".slack-messages"},"text":"TEST-hi, I am new here"},{"expect":"role:heading:TEST-UNEW"},{"shot":"new-dm"}]'
 ```
 
+### import-a-channel
+Viewports: both
+Connected, the card says direct messages all come and channels only when
+imported. Choose channels lists the ones he is in (#general, and
+#secret-plans marked private), each with an Import switch; switched on,
+#general's messages load and it shows in the sidebar's Slack section with a
+# mark, and opens like a DM. Switched off, it leaves the sidebar.
+
+```sh
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app"}' --wait '{"op":"slack"}'
+for i in $(seq 100); do yv state --full 2>/dev/null | grep -q D0ANA && break; sleep 0.2; done
+yv api '{"op":"slack.inbox.import","channel":"C0GENERAL","on":false,"ref":"off"}' --wait '{"op":"slack.inbox.imported"}'
+yv drive connectors --viewport desktop --steps '[{"expect":{"css":".slack-channels"},"text":"all of them, new ones too"},{"click":"role:button:Choose channels"},{"expect":{"role":"switch","name":"Import #general"}},{"expect":{"css":".slack-channel","hasText":"#secret-plans"},"text":"private"},{"eval":"(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), true)","equals":true},{"shot":"channels"},{"click":{"role":"switch","name":"Import #general"}},{"eval":"document.querySelector(\"[aria-label=\\\"Import #general\\\"]\").getAttribute(\"aria-checked\")","equals":"true"},{"expect":{"css":".slack-dms .slack-row","hasText":"#general"}}]'
+yv drive 'slack:#general' --viewport desktop --steps '[{"expect":"role:heading:#general"},{"expect":{"css":".slack-messages"},"text":"TEST-shipping today"},{"expect":{"css":".slack-row.active .slack-face"},"text":"#"},{"shot":"channel"}]'
+yv drive 'slack:#general' --viewport mobile --steps '[{"expect":{"css":".slack-messages"},"text":"TEST-standup in 5"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"channel"}]'
+yv drive connectors --viewport mobile --steps '[{"click":"role:button:Choose channels"},{"click":{"role":"switch","name":"Import #general"}},{"eval":"document.querySelector(\"[aria-label=\\\"Import #general\\\"]\").getAttribute(\"aria-checked\")","equals":"false"},{"eval":"(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), document.documentElement.scrollWidth <= document.documentElement.clientWidth)","equals":true},{"shot":"channels"}]'
+for i in $(seq 50); do yv state --full 2>/dev/null | grep -q C0GENERAL || break; sleep 0.2; done
+```
+
 ### one-token-with-a-public-address
 Viewports: both
 With a public address for Slack (opt-in, set here by the `slack.publicUrl`

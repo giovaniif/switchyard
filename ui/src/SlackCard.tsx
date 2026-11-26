@@ -4,7 +4,7 @@
 // talk to agents through their own apps. yardd keeps the tokens; this page
 // only ever sees their kind and last four characters.
 import { useState } from "react";
-import type { SlackView } from "./protocol";
+import type { SlackChannel, SlackView } from "./protocol";
 import type { Actions, SlackAppOp, State } from "./store";
 import { Icon } from "./App";
 import { SLACK_MARK, TokenField } from "./SlackSetup";
@@ -35,6 +35,7 @@ export function SlackCard({ state, actions }: { state: State; actions: Actions }
         )}
       </header>
       {me?.step !== "ready" && <ConnectMe view={view} actions={actions} />}
+      {me?.step === "ready" && <Channels actions={actions} />}
       <ul className="connector-list">
         {view.requests.map((r) => (
           <li key={r.id} className="connector">
@@ -87,6 +88,87 @@ export function SlackCard({ state, actions }: { state: State; actions: Actions }
         </footer>
       )}
     </section>
+  );
+}
+
+/** The channels he is in, each with an Import switch: an imported one comes
+ *  into his Slack inbox (60 days, then live). Direct messages always do. */
+function Channels({ actions }: { actions: Actions }) {
+  const [open, setOpen] = useState(false);
+  const [list, setList] = useState<SlackChannel[] | null>(null);
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const load = async () => {
+    setError(null);
+    const r = await actions.slackChannels();
+    if (r.error) setError(r.error);
+    else setList(r.channels ?? []);
+  };
+  const flip = async (c: SlackChannel) => {
+    setBusy(c.id);
+    const r = await actions.slackImport(c.id, !c.imported);
+    setBusy(null);
+    if (r.error) setError(r.error);
+    else setList((l) => l?.map((x) => (x.id === c.id ? { ...x, imported: !c.imported } : x)) ?? null);
+  };
+  const words = query.toLowerCase().trim();
+  const shown = (list ?? []).filter((c) => !words || c.name.toLowerCase().includes(words));
+  const imported = (list ?? []).filter((c) => c.imported).length;
+  return (
+    <ul className="connector-list slack-channels">
+      <li className="connector">
+      <div className="connector-row">
+        <span className="connector-id">
+          <span className="dot connector-dot-connected" aria-hidden="true" />
+          <span className="connector-name">Direct messages</span>
+          <span className="muted small connector-via">all of them, new ones too</span>
+        </span>
+      </div>
+      </li>
+      <li className="connector">
+      <div className="connector-row">
+        <span className="connector-id">
+          <span className={`dot ${imported ? "connector-dot-connected" : "dot-spacer"}`} aria-hidden="true" />
+          <span className="connector-name">Channels</span>
+          <span className="muted small connector-via">{list ? (imported ? `${imported} imported` : "none imported") : "only the ones you import"}</span>
+        </span>
+        <span className="connector-side">
+          <button
+            className="btn btn-small"
+            aria-expanded={open}
+            onClick={() => {
+              if (!open && !list) void load();
+              setOpen(!open);
+            }}
+          >
+            {open ? "Done" : "Choose channels"}
+          </button>
+        </span>
+      </div>
+      {open && (
+        <div className="slack-channel-picker">
+          {list && list.length > 8 && <input className="field" aria-label="Search channels" placeholder="Search channels" value={query} onChange={(e) => setQuery(e.target.value)} />}
+          {!list && !error && <p className="muted small">Loading your channels…</p>}
+          {list && !list.length && <p className="muted small">You are in no channels.</p>}
+          <ul className="slack-channel-list">
+            {shown.map((c) => (
+              <li key={c.id} className="slack-channel">
+                <span className="slack-channel-name">
+                  {c.name}
+                  {c.private && <span className="muted small"> · private</span>}
+                </span>
+                <button className="switch" role="switch" aria-checked={c.imported} aria-label={`Import ${c.name}`} disabled={busy === c.id} onClick={() => void flip(c)}>
+                  <span className="switch-knob" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          {error && <p className="small automation-reason" role="alert">{error}</p>}
+        </div>
+      )}
+      </li>
+    </ul>
   );
 }
 

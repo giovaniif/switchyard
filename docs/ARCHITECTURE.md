@@ -1052,7 +1052,18 @@ its engine framing and one arm in `origins::reply`.
     up from its newest ts. One at a time (the client waits out 429s twice).
     Internal apps are not under Slack's 2025 history limits for distributed
     apps.
-  - **Live**: `message` in an `im`/`mpim` (an unknown one is looked up with
+  - **Channels** (phase 4): the card's Channels row lists the channels he is
+    in (`slack.inbox.channels`: `users.conversations
+    types=public_channel,private_channel`, imported first), each with an
+    Import switch (`slack.inbox.import { channel, on }`, a `C…`/`G…` id that
+    `conversations.info` confirms is a channel). On: the conversation is kept
+    with `imported = 1` and its 60 days load in the background, then it is
+    live and caught up like a DM, listed with them (a `#` mark). Off: its
+    messages and row are deleted. A message in a channel not imported is
+    ignored. A channel's read mark stays in Switchyard: `conversations.mark`
+    on a channel needs `channels:write`/`groups:write`, which can also make
+    and archive channels, and his app does not ask for them.
+  - **Live**: `message` in an `im`/`mpim` or an imported channel (an unknown DM is looked up with
     `conversations.info` first: someone new wrote), `message_changed`,
     `message_deleted` (kept as deleted, text dropped), `message_replied`,
     `reaction_added`/`removed`. A reply live for the first time is one more
