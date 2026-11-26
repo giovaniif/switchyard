@@ -1,0 +1,89 @@
+{
+  "v": 1,
+  "claim": "A yv shot taken right after opening the phone drawer caught it mid-slide (0.2 s transition), half off screen, while every step passed; shots now finish CSS transitions first.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-25-4f14",
+  "base": "bdcce592a84b02a8e1516264584136bb918ad270",
+  "head": "8fbb38ef91a31f5e1d7f1b88bc76be6277b4026e",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/src/browser.ts"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-26T00:25:22.689Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "bdcce592a84b02a8e1516264584136bb918ad270",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "93d32f8380fe9c730f260588cbdb896ee904474b8318b57cdb9d027987a50c41"
+        },
+        {
+          "path": "p1-drawer-mobile.png",
+          "sha256": "e7fb3344af6c10beeec9e9c43152f6d78aec52c63450a0c03f9215d22429570e"
+        }
+      ],
+      "addedAt": "2026-11-26T00:25:29.820Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "bdcce592a84b02a8e1516264584136bb918ad270",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T00:25:29.865Z",
+      "text": "no-failing-test: screenshots have no unit test (verify/src/cli.test.ts covers no browser code); the repro drive is the check: its shot shows the drawer half off screen at base and whole at head"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "8fbb38ef91a31f5e1d7f1b88bc76be6277b4026e",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-2-drive.json",
+          "sha256": "7d3966c45b86e7852fd759142ab5717c00075b09e616702f1b508b5e395a8cfd"
+        },
+        {
+          "path": "p3-2-drawer-mobile.png",
+          "sha256": "0f34793c42c8a621271d5c37667477b2ce5445e1385ac5529b2172482bef71e4"
+        }
+      ],
+      "addedAt": "2026-11-26T00:25:44.964Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "8fbb38ef91a31f5e1d7f1b88bc76be6277b4026e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "13888a31d5e161b7f15718b2d919d76e14935b95be4916259d5aea465f83dc00"
+        }
+      ],
+      "addedAt": "2026-11-26T00:25:53.257Z",
+      "cmd": "verify/yv selftest",
+      "exit": 0
+    }
+  ]
+}

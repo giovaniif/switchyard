@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "bdcce592a84b02a8e1516264584136bb918ad270",
+    "short": "bdcce59",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T00:25:27.305Z"
+  },
+  "dir": ".verify/evidence/yv-shot-transitions-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 1869,
+      "steps": 2,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/yv-shot-transitions-base/drawer-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
