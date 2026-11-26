@@ -1,4 +1,4 @@
-//! Engine hand-off: move a piece of work to another engine.
+//! Hand-off: continue work with a different engine, account or model.
 //!
 //! Engines cannot share a thread, so a hand-off is a new session on the
 //! engine the message names, in the same folder, seeded with a brief of the old one.
@@ -47,11 +47,13 @@ async fn handoff(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &V
         bail!("unknown engine {engine}");
     }
     let source = app.meta(sid).context("no such session")?;
-    if source.engine == engine {
-        bail!("this session already runs on {}; pick a model in the picker instead", engine_name(engine));
+    // Accounts are engine-specific. Clients that omit the target use Default.
+    let account = msg["account"].as_str().filter(|s| !s.is_empty()).unwrap_or(crate::accounts::DEFAULT);
+    if source.engine == engine && source.model == model && source.account == account {
+        bail!("this session already runs on {} with that account and model", engine_name(engine));
     }
     // Two agents must not write to one folder at the same time.
-    if source.status == "running" || source.status == "needs_approval" {
+    if matches!(source.status.as_str(), "running" | "needs_approval" | "queued") {
         bail!("stop the running turn before handing off");
     }
     if !std::path::Path::new(&source.cwd).is_dir() {
@@ -66,16 +68,14 @@ async fn handoff(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &V
         (Some(branch), Some(repo)) => Some(Worktree { branch, repo }),
         _ => None,
     };
-    // The source's account belongs to its engine, so the new session runs on
-    // the target engine's Default unless the message names one of its accounts.
-    let account = msg["account"].as_str().filter(|a| !a.is_empty()).unwrap_or(crate::accounts::DEFAULT);
     app.accounts.check(engine, account)?;
-    let new_sid = app.new_session(engine, model, effort, &source.cwd, &source.title, worktree, account);
+    let new_sid = app.insert_session(engine, model, effort, &source.cwd, &source.title, worktree, true, account, None, None)?;
     app.update_meta(&new_sid, |m| {
         m.parent = Some(sid.to_string());
         m.permission = source.permission.clone();
         // The work goes on here, so it sits where the user filed the source.
         m.group = source.group.clone();
+        m.archived = source.archived;
     });
     // Each note names the other side, so its link survives a sibling being
     // deleted; both sessions keep one title, so nothing else tells them apart.
@@ -85,7 +85,7 @@ async fn handoff(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &V
         json!({ "type": "note", "text": format!("Handed off from {}.", engine_name(&source.engine)), "session": sid }),
     );
     let _ = direct.send(json!({ "op": "created", "sessionId": new_sid }).to_string());
-    sessions::begin(app, &new_sid, &brief, &[]).await;
+    sessions::begin(app, &new_sid, &brief, &[], None).await;
     Ok(())
 }
 

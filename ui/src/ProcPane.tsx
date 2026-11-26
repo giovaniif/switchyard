@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { hostErrorText, hostOf, hostOnline, type Actions, type State } from "./store";
 import type { ProcRow, SessionMeta } from "./protocol";
-import { ENGINE_HINT, procSummary, procTree, memText, pruneKills, rowActions, shortCommand, type KillSignal, type KillState } from "./procs";
+import { ENGINE_HINT, procsBlank, procSummary, procTree, memText, pruneKills, rowActions, shortCommand, type KillSignal, type KillState } from "./procs";
 import { duration } from "./thread";
 import { Icon } from "./App";
 
@@ -43,34 +43,29 @@ export function ProcPane(props: { meta: SessionMeta; state: State; actions: Acti
     actions.loadProcs(meta.id);
   };
 
-  if (!rows) return <div className="scroll pane-body" style={{ display: visible ? "flex" : "none" }}><div className="muted">Loading…</div></div>;
+  const blank = procsBlank(rows, connected);
+  if (blank !== null || !rows) return <div className="scroll pane-body" style={{ display: visible ? "flex" : "none" }}><div className="muted">{blank}</div></div>;
   const tree = procTree(rows);
   return (
     <div className="scroll pane-body" style={{ display: visible ? "flex" : "none" }}>
-      {tree.length === 0 ? (
-        <div className="muted">Nothing is running for this session.</div>
-      ) : (
-        <>
-          <div className="muted small">{procSummary(rows)}</div>
-          <table className="proc-table">
-            <thead>
-              <tr>
-                <th>PID</th>
-                <th>Command</th>
-                <th className="num">CPU</th>
-                <th className="num">Memory</th>
-                <th className="num">Running</th>
-                <th aria-label="Stop" />
-              </tr>
-            </thead>
-            <tbody>
-              {tree.map(({ row, depth }) => (
-                <ProcLine key={row.pid} row={row} depth={depth} offers={rowActions(row, rows, kills[row.pid])} onKill={(signal, t) => kill(row, signal, t)} />
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
+      <div className="muted small">{procSummary(rows)}</div>
+      <table className="proc-table">
+        <thead>
+          <tr>
+            <th>PID</th>
+            <th>Command</th>
+            <th className="num">CPU</th>
+            <th className="num">Memory</th>
+            <th className="num">Running</th>
+            <th aria-label="Stop" />
+          </tr>
+        </thead>
+        <tbody>
+          {tree.map(({ row, depth }) => (
+            <ProcLine key={row.pid} row={row} depth={depth} offers={rowActions(row, rows, kills[row.pid])} onKill={(signal, t) => kill(row, signal, t)} />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -80,6 +75,9 @@ export function ProcPane(props: { meta: SessionMeta; state: State; actions: Acti
 function ProcLine(props: { row: ProcRow; depth: number; offers: ReturnType<typeof rowActions>; onKill(signal: KillSignal, tree: boolean): void }) {
   const { row, depth, offers, onKill } = props;
   const [armed, setArmed] = useState<"stop" | "force" | null>(null);
+  // The column clips a command to a few characters on a phone, and a touch
+  // screen never shows the title: a tap shows the whole line, wrapped.
+  const [whole, setWhole] = useState(false);
   useEffect(() => {
     if (!armed) return;
     const timer = setTimeout(() => setArmed(null), ARMED_MS);
@@ -92,36 +90,32 @@ function ProcLine(props: { row: ProcRow; depth: number; offers: ReturnType<typeo
     onKill(signal, tree);
   };
   const label = `${row.pid} ${shortCommand(row.cmd, 40)}`;
+  // Two choices side by side are wider than the pane leaves the last column:
+  // they go on a line under the row, as a note does, so the table keeps its widths.
+  const choices = armed === "stop" && offers.stop && offers.withChildren;
 
   return (
     <>
-      <tr className="proc-row">
+      <tr className={whole ? "proc-row whole" : "proc-row"}>
         <td className="muted">{row.pid}</td>
-        <td className="proc-cmd" title={row.cmd}>
-          <span style={{ paddingLeft: `${depth * 12}px` }}>
+        <td className="proc-cmd" title={whole ? undefined : row.cmd}>
+          <button type="button" className="proc-cmd-toggle" aria-expanded={whole} style={{ paddingLeft: `${depth * 12}px` }} onClick={() => setWhole(!whole)}>
             {depth === 0 && (
               <span className="proc-tag" title={row.engine ? ENGINE_HINT : undefined}>
                 {row.origin}
               </span>
             )}
-            <code>{shortCommand(row.cmd)}</code>
-          </span>
+            <code>{whole ? row.cmd : shortCommand(row.cmd)}</code>
+          </button>
         </td>
         <td className="num">{Math.round(row.cpu)}%</td>
         <td className="num">{memText(row.memBytes)}</td>
         <td className="num">{duration(row.ageSecs * 1000)}</td>
         <td className="proc-act">
-          {armed === "stop" && offers.stop ? (
-            <>
-              <button className="btn-text danger" aria-label={`Confirm stop process ${label}`} onClick={() => fire("term", false)}>
-                {offers.withChildren ? "Stop" : "Stop?"}
-              </button>
-              {offers.withChildren && (
-                <button className="btn-text danger" aria-label={`Stop process ${label} with its children`} onClick={() => fire("term", true)}>
-                  Stop with children
-                </button>
-              )}
-            </>
+          {choices ? null : armed === "stop" && offers.stop ? (
+            <button className="btn-text danger" aria-label={`Confirm stop process ${label}`} onClick={() => fire("term", false)}>
+              Stop?
+            </button>
           ) : armed === "force" && offers.force ? (
             <button className="btn-text danger" aria-label={`Confirm force kill process ${label}`} onClick={() => fire("kill", offers.forceTree)}>
               Force kill?
@@ -137,6 +131,19 @@ function ProcLine(props: { row: ProcRow; depth: number; offers: ReturnType<typeo
           ) : null}
         </td>
       </tr>
+      {choices && (
+        <tr className="proc-choices">
+          <td />
+          <td colSpan={5}>
+            <button className="btn-text danger" aria-label={`Confirm stop process ${label}`} onClick={() => fire("term", false)}>
+              Stop
+            </button>
+            <button className="btn-text danger" aria-label={`Stop process ${label} with its children`} onClick={() => fire("term", true)}>
+              Stop with children
+            </button>
+          </td>
+        </tr>
+      )}
       {offers.note && (
         <tr className="proc-note">
           <td />

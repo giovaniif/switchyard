@@ -31,6 +31,7 @@ const TITLE = (kind: string) => `Loop ${kind}`;
 const PAUSED = () => join(SHARED, "loops", "paused");
 /** A yardd from before manual automations refuses the schedule by name (serde's message). */
 const OLD_YARDD = /unknown variant `manual`/;
+const OLD_WINDOW = /unknown field [`'"]?window|does not support active windows/i;
 
 const expand = (p: string) => p.replace(/^~(?=\/|$)/, homedir());
 
@@ -167,6 +168,7 @@ function automationSpec(kind: Kind, cfg: any, checkout: string, model: string, l
       permission: "full",
       base: "main",
       schedule: { kind: "manual" },
+      window: null,
       skipWhileRunning: false,
       maxFiveHour: null,
       maxWeek: null,
@@ -185,6 +187,7 @@ function automationSpec(kind: Kind, cfg: any, checkout: string, model: string, l
     permission: "full",
     base: "main",
     schedule: l.schedule,
+    window: l.window ?? null,
     skipWhileRunning: true,
     maxFiveHour: five ?? null,
     maxWeek: week ?? null,
@@ -239,6 +242,10 @@ async function ensure(request: Request, list: any[], spec: Record<string, unknow
   const automation = p.have ? { id: p.have.id, ...spec } : { ...spec, enabled: true };
   const r = await request({ op: "automation.save", automation }, "automation.saved");
   if (r.op === "error") return { automation: p.have ?? null, action: "refused", changes: p.changes, refused: String(r.message) };
+  // Older serde builds may silently discard unknown fields instead of refusing them.
+  if (spec.window && changed({ window: spec.window }, r.automation).length) {
+    return { automation: r.automation, action: "refused", changes: p.changes, refused: "yardd does not support active windows (automation.save discarded window)" };
+  }
   return { automation: r.automation, action: p.have ? "updated" : "created", changes: p.changes };
 }
 
@@ -422,6 +429,7 @@ async function installAutomations(a: Args): Promise<Result> {
       name: x.name,
       enabled: x.enabled,
       schedule: x.schedule,
+      window: x.window ?? null,
       nextRun: x.nextRun ? new Date(x.nextRun).toISOString() : null,
       lastRun: x.lastRun ?? null,
     });
@@ -444,6 +452,9 @@ async function installAutomations(a: Args): Promise<Result> {
         // The scheduled loops still go in; loop run falls back to sessions until yardd is updated.
         saved.push({ name: p.spec.name, action: "needs-newer-yardd", error: e.refused, hint: "update yardd, then rerun verify/yv loop automations --apply" });
         continue;
+      }
+      if (e.refused && p.spec.window && OLD_WINDOW.test(e.refused)) {
+        fail("old-yardd", `automation.save ${p.spec.name}: ${e.refused}`, "Update yardd, then rerun verify/yv loop automations --apply", { oldYardd: true, automations: saved });
       }
       if (e.refused) fail("automation-error", `automation.save ${p.spec.name}: ${e.refused}`, undefined, { automations: saved });
       saved.push({ ...show(e.automation), action: e.action, ...(e.changes.length ? { changes: e.changes } : {}) });
@@ -551,4 +562,4 @@ export async function loop(a: Args): Promise<Result> {
   throw new Usage("loop run <kind> [--pr N] [--engine e --model m --effort x] [--dry-run] [--force] [--iso n] [--checkout dir] | loop automations [--apply] [--iso n] [--checkout dir] | loop status | loop log <sessionId> [--last n] | loop tidy | loop pause | loop resume");
 }
 
-export const _test = { skipReason, prompt, automationPrompt, automationSpec, manualPrompt, changed, planFor, ensure, OLD_YARDD, matches, statSync };
+export const _test = { skipReason, prompt, automationPrompt, automationSpec, manualPrompt, changed, planFor, ensure, OLD_YARDD, OLD_WINDOW, matches, statSync };

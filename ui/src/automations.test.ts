@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Automation, SessionMeta } from "./protocol";
-import { describeSchedule, describeNext, describeLast, runsOf, hiddenFromSidebar, scheduleProblem, runTime, runOutcome, RUN_LABEL, runSummary, runTag, runLabel, stripRuns, scheduleLine, cardStatus } from "./automations";
+import { describeSchedule, describeNext, describeLast, runsOf, hiddenFromSidebar, runsAttention, scheduleProblem, runTime, runOutcome, RUN_LABEL, runSummary, runTag, runLabel, stripRuns, scheduleLine, scheduleParts, cardStatus } from "./automations";
 import { initial, reduce } from "./store";
 
 const MIN = 60_000;
@@ -12,6 +12,21 @@ describe("the schedule in words", () => {
     expect(describeSchedule({ kind: "interval", every: 30, unit: "minutes" })).toBe("Every 30 minutes");
     expect(describeSchedule({ kind: "interval", every: 1, unit: "hours" })).toBe("Every hour");
     expect(describeSchedule({ kind: "interval", every: 6, unit: "hours" })).toBe("Every 6 hours");
+  });
+  test("active windows name hours and start days compactly", () => {
+    const s = { kind: "interval", every: 1, unit: "hours" } as const;
+    expect(describeSchedule(s, { start: "21:00", end: "09:00" })).toBe("Every hour · 21:00–09:00");
+    expect(describeSchedule(s, { start: "21:00", end: "09:00", days: [5, 3, 1, 4, 2] })).toBe("Every hour · 21:00–09:00, Mon–Fri");
+    expect(describeSchedule(s, { start: "09:00", end: "17:00", days: [1, 3, 5] })).toBe("Every hour · 09:00–17:00, Mon, Wed, Fri");
+    expect(describeSchedule(s, { start: "21:00", end: "09:00", days: [0, 6] })).toBe("Every hour · 21:00–09:00, Sat–Sun");
+    expect(describeSchedule(s, { start: "21:00", end: "09:00", days: [0,1,2,3,4,5,6] })).toBe("Every hour · 21:00–09:00");
+    expect(describeSchedule(s, null)).toBe("Every hour");
+  });
+  test("window validation agrees with the daemon", () => {
+    const s = { kind: "interval", every: 1, unit: "hours" } as const;
+    for (const window of [{ start: "9:00", end: "17:00" }, { start: "09:00", end: "09:00" }, { start: "09:00", end: "17:00", days: [1,1] }, { start: "09:00", end: "17:00", days: [7] }, { start: "09:00", end: "17:00", days: [] }]) expect(scheduleProblem(s, window)).not.toBeNull();
+    expect(scheduleProblem(s, { start: "21:00", end: "09:00" })).toBeNull();
+    expect(scheduleProblem({ kind: "manual" }, { start: "21:00", end: "09:00" })).toContain("interval");
   });
   test("daily and weekly name the time, and weekly the day", () => {
     expect(describeSchedule({ kind: "daily", time: "09:30" })).toBe("Daily at 09:30");
@@ -94,6 +109,13 @@ describe("runs", () => {
     expect(hiddenFromSidebar(run("a", "x", { pinned: true }))).toBe(false);
     expect(hiddenFromSidebar(run("a", null))).toBe(false);
   });
+  test("the Automations button's dot: a run waiting for approval outranks a working one", () => {
+    expect(runsAttention([])).toBe(null);
+    expect(runsAttention([run("a", "x", { status: "idle" }), run("b", "x", { status: "queued" })])).toBe(null);
+    expect(runsAttention([run("a", "x", { status: "running" })])).toBe("working");
+    expect(runsAttention([run("a", "x", { status: "needs_approval" })])).toBe("approval");
+    expect(runsAttention([run("a", "x", { status: "running" }), run("b", "y", { status: "needs_approval" })])).toBe("approval");
+  });
 });
 
 const auto = (id: string): Automation => ({
@@ -175,6 +197,7 @@ describe("the card at a glance", () => {
 
   test("the schedule line: when it runs and when next, or off", () => {
     expect(scheduleLine(a({ schedule: { kind: "interval", every: 1, unit: "hours" }, nextRun: now + 30 * MIN }), now)).toBe("Every hour · next in 30 min");
+    expect(scheduleLine(a({ schedule: { kind: "interval", every: 1, unit: "hours" }, window: { start: "21:00", end: "09:00" }, nextRun: at(21) }), now)).toBe("Every hour · 21:00–09:00 · next today 21:00");
     expect(scheduleLine(a({ schedule: { kind: "daily", time: "03:30" }, nextRun: at(3, 30, 17) }), now)).toBe("Daily at 03:30 · next tomorrow 03:30");
     expect(scheduleLine(a({ enabled: false, nextRun: null }), now)).toBe("Daily at 09:00 · off");
   });
@@ -182,6 +205,9 @@ describe("the card at a glance", () => {
   test("a manual automation has no next run: it runs when started", () => {
     expect(scheduleLine(a({ schedule: { kind: "manual" }, nextRun: null }), now)).toBe("Manual · runs when started");
     expect(scheduleLine(a({ schedule: { kind: "manual" }, enabled: false, nextRun: null }), now)).toBe("Manual · off");
+    // The card cuts the first part when the line is too long, so the next run is always the second.
+    expect(scheduleParts(a({ schedule: { kind: "interval", every: 5, unit: "minutes" }, window: { start: "21:00", end: "09:00", days: [1, 3, 5] }, nextRun: at(21) }), now)).toEqual(["Every 5 minutes · 21:00–09:00, Mon, Wed, Fri", "next today 21:00"]);
+    expect(scheduleParts(a({ schedule: { kind: "manual" }, nextRun: null }), now)).toEqual(["Manual", "runs when started"]);
   });
 
   test("a run started for a pull request is labelled with it, a plain run by its time alone", () => {

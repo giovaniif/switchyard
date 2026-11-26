@@ -62,7 +62,7 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
         "pr.get" => {
             let sid = msg["sessionId"].as_str().context("missing `sessionId`")?;
             let meta = app.meta(sid).context("no such session")?;
-            let pr = match get(&meta.cwd).await {
+            let pr = match get(&meta.cwd, msg["linkOnly"].as_bool() == Some(true)).await {
                 Ok(pr) => pr,
                 Err(e) => json!({ "error": format!("{e:#}") }),
             };
@@ -93,17 +93,19 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
     Ok(())
 }
 
-async fn get(cwd: &str) -> Result<Value> {
+async fn get(cwd: &str, link_only: bool) -> Result<Value> {
     crate::git::ensure_folder(cwd)?;
     let (is_repo, _) = git(cwd, &["rev-parse", "--is-inside-work-tree"]).await?;
     if !is_repo {
-        bail!("not a git repository");
+        // An answer, not a failure: the session header asks every minute, and
+        // a plain folder can still become a repository later (`git init`).
+        return Ok(json!({ "repo": false }));
     }
     // Past this point the folder is a repository, so the pane can still offer
     // a review (it reads `git diff`, not GitHub) when the PR cannot be read.
     // That review needs a base this repository has; a repo with no origin
     // has no origin/HEAD.
-    match get_in_repo(cwd).await {
+    match get_in_repo(cwd, link_only).await {
         Ok(pr) => Ok(pr),
         Err(e) => Ok(json!({
             "error": format!("{e:#}"),
@@ -113,14 +115,15 @@ async fn get(cwd: &str) -> Result<Value> {
     }
 }
 
-async fn get_in_repo(cwd: &str) -> Result<Value> {
+async fn get_in_repo(cwd: &str, link_only: bool) -> Result<Value> {
     let (_, branch) = git(cwd, &["branch", "--show-current"]).await?;
     let branch = branch.trim().to_string();
     if branch.is_empty() {
         bail!("no branch is checked out");
     }
 
-    let view = match gh(cwd, &["pr", "view", "--json", PR_FIELDS]).await? {
+    let fields = if link_only { "number,title,url" } else { PR_FIELDS };
+    let view = match gh(cwd, &["pr", "view", "--json", fields]).await? {
         Ok(out) => out,
         Err(stderr) if stderr.contains("no pull requests found") => {
             return Ok(json!({
@@ -132,6 +135,10 @@ async fn get_in_repo(cwd: &str) -> Result<Value> {
         Err(stderr) => bail!("{}", short_gh_error(&stderr)),
     };
     let pr: Value = serde_json::from_str(&view).context("gh returned something that is not JSON")?;
+
+    if link_only {
+        return Ok(json!({ "number": pr["number"], "title": pr["title"], "url": pr["url"] }));
+    }
 
     let rollup = pr["statusCheckRollup"].as_array().cloned().unwrap_or_default();
     let checks: Vec<Value> = rollup.iter().take(MAX_CHECKS).map(check).collect();

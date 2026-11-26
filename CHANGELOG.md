@@ -2,6 +2,139 @@
 
 Each version is a [GitHub release](https://github.com/giovaniif/better-than-claude-code/releases) with the signed Mac app and the Linux packages. The section for a version becomes its release notes.
 
+## 0.22.0 (2026-11-25)
+
+- **A native iPhone app, with Liquid Glass.** Switchyard for iPhone and iPad is rebuilt in SwiftUI for iOS 26 and talks to your host directly. Sessions are grouped into Needs you, Working, Pinned and Recent, with search, swipe to pin or archive, and your host's CPU and memory. Replies stream in with formatting, thinking and tool steps (a subagent's steps nested under it). Approvals are cards with Allow once, Always and Deny, and the reply box is a floating glass bar with attachments, dictation, Stop and voice mode. Start sessions from the phone: pick the engine, model, folder, worktree and permission. Terminals, changes and pull requests open the host's page from a session's menu. It needs iOS 26 or later; install it from TestFlight.
+- **Voice mode works on the iPhone, in Safari and in the Mac app.** It used to ignore everything you said after it read its own greeting or an answer, so it never sent anything there. On the iPhone, dictation and voice mode now run natively (speech is recognized on the phone when it can be), and you can talk over an answer to interrupt it.
+- **Set up the iPhone app with a QR code.** On Hosts, the iPhone card shows a QR code for your host's address. Point the iPhone's Camera at it and Switchyard opens with the address filled in. The card says which phone is connected now, or when one was last seen. The phone icon in the header goes away once a phone has connected to any of your hosts. Before, the Mac app showed an empty address box and a link that did nothing on a Mac.
+- **Fixed:** a subagent working in the background keeps its session marked as working.
+
+## 0.21.0 (2026-11-25)
+
+- **Agents in the sidebar, like direct messages.** A new Agents section at the bottom of the sidebar lists every agent with its face and name. Its badge shows when it is working, needs you or has an answer you have not read. Click one to open its conversation.
+- **Updates no longer interrupt you.** The app installs a new version in the background without a dialog. Then the menu item reads "Restart to Update to X.Y.Z…" and Switchyard shows a small "ready" notice with What's new. Open it to see the release notes and Install and Restart, or Later. "Check for Updates…" now gives one clear answer.
+- **Releases are one step** for whoever makes them: write the changelog, run `scripts/release.sh X.Y.Z`, and the release publishes itself once its checks pass.
+
+## 0.20.0 (2026-11-25)
+
+- **Comment on parts of an answer.** Select text in an agent's answer and choose Comment. Each part gets its own card with its own comment, numbered when there are several, and is highlighted in the answer until you send. The agent receives each part with your comment under it, so comments no longer get mixed up.
+- **You see what the agent wrote while it worked.** Messages an agent writes between its steps stay in the conversation after the turn ends; only the tool steps fold into a line.
+- **Sending scrolls to your message.**
+- **Agents look alive.** Faces are friendly 3D characters that breathe, blink, look around, follow your pointer and hop, and look busy while the agent works.
+- **Agent names can have spaces**, like "Custom Domains Triage". You mention it as `@Custom-Domains-Triage`; mentions you already wrote keep working.
+- **Set up an agent from its own page.** The chat box has the server, model, account, effort and permission pickers. Click the face to change face and colour, or click the name or description to edit them in place.
+- **Simpler Slack setup for an agent's own app.** Paste the configuration token, approve in Slack (it comes back to Switchyard on its own, also from the Mac app), then paste the connection token. Renaming an agent renames its Slack bot, and its face becomes the Slack app's icon.
+- **Fixed:**
+  - Agents' folders no longer show up as recent folders or the default folder in New session.
+  - A turn that ran a subagent says "Ran 1 subagent", not "1 other step".
+  - Removing an account in use names the sessions that use it, archived ones too.
+  - Subscriptions offers Sign in for an account that needs it, and Sign in opens that account's host.
+  - Sidebar: a collapsed group shows when one of its sessions waits for approval, and its session count stays readable.
+  - Automation cards keep the next run in view when the schedule has a window.
+  - On a phone, error banners and the Add host button no longer push their buttons off screen.
+
+## 0.19.0 (2026-11-24)
+
+- **New agents set themselves up.** New agent opens a conversation instead of a form: tell the agent what it's for, and it picks its own name, writes its description and instructions, and chooses a face, colour and model. It can't give itself your project folder, more access or a place in Slack: it asks, and you answer with a button above the reply box. Edit is still there for changes by hand, or just tell the agent what to change.
+- **Each agent can have its own Slack app**, so people @mention it by name. Choose Add to Slack in the agent's header:
+  1. Paste a Slack configuration token (once per workspace).
+  2. Switchyard creates the agent's app.
+  3. Approve the install in Slack.
+  4. Paste the app's connection token.
+
+  Whoever installed it can ask right away. The shared Switchyard bot on the Connectors page still works as before.
+- **Faces come alive.** Agents' faces blink and glance around, look busy while the agent works, and hop when you point at them. They stay still if your system asks for reduced motion.
+- **Scout is gone.** The built-in host agent and its conversation are removed.
+- **File links open in a workspace viewer** (Markdown, CSV, images, text) with Download.
+- **Sidebar rows are one line**, with the harness's logo and a status badge; archive on hover.
+- **Fixed:**
+  - The agent form's colours line up under the faces and are round again.
+  - A conversation whose history was dropped while it kept streaming reloads instead of staying blank.
+
+## 0.18.0 (2026-11-24)
+
+- **Agents.** The Agents page replaces Switchy. An agent is a name you mention (`@Reviewer`) with a colour, what it's for, how it runs (engine, model, effort, folder, permission) and two notes: instructions and memory. Each agent keeps one ongoing conversation. Type `@Name` in any message box to send it there, or start a new chat from its card. **Scout** is built in and answers quick questions about your hosts, read-only, like Switchy did. Switchy's old history isn't carried over.
+- **Agents have their own tools**, on every engine:
+  - **Needs you:** an agent can notify you. The notification opens its conversation, and its card shows "Needs you" until you look.
+  - **Ask another agent:** an agent can message another agent and gets the reply back in its own conversation. Each message is labelled "From @Name" or "Reply from @Name".
+  - **Memory:** an agent can update its own memory, which you see in its form.
+  - Limits stop runaway loops: 3 notifications an hour, 3 hops per chain, and no messaging itself.
+- **Per-agent accounts and agents on a remote host.** The agent form picks which account an agent uses when its engine has more than one. It can also run an agent on a connected remote host, in its own folder there. The agent's tools, @mentions and Slack all work as they do here. When that host is offline, the card says so and sending is refused. Moving an agent to another host starts its conversation fresh there, carrying over the latest messages. Remote hosts need this version too.
+- **Slack for agents.** Connect a Slack app on the Connectors page (new Messaging section; the guide includes a manifest to copy). DM the bot or @mention it with an agent's name, and the message goes into that agent's conversation with a "From <you> on Slack" label. The answer is posted back to your Slack thread. Only people you allow can reach your agents; anyone else is ignored and listed for you to Allow or Dismiss.
+- **Sessions are named as they start**, from the task, and again once the work is clearer. Sessions that were never named get a name after their next turn.
+- **Subagents pane.** Each subagent is its own aligned card: the task, then its type and state, then its latest step.
+- **Automations** shows an amber dot when a run is waiting for your approval.
+- **Sessions page** search also matches the account name shown on each row.
+- **Fixed:**
+  - Messaging a session whose folder was removed (for example, a worktree cleaned up after its PR merged) now says the folder no longer exists, instead of a misleading Claude "failed to launch… musl" error.
+  - The first terminal opens at its pane's size, so the prompt no longer shows twice.
+  - A denied edit reads "Did not edit", and stopping an OpenCode/Grok/Gemini call that was asking for approval reads "1 command not run".
+  - When the agent form refuses a name, it says why under the name field.
+
+## 0.17.0 (2026-11-23)
+
+- **Sessions name themselves.** A new session no longer stays titled with the first line of its task. After its first reply, and again after its third, a small model reads the conversation and gives it a short, clear name such as "Fix login redirect loop". It uses Codex `gpt-5.6-luna` at low effort, else Claude Haiku: a few hundred tokens of your plan per name, in a private thread with no tools. A name you set with Rename is never changed, and automation runs keep their names. `YARD_SESSION_NAMES=off` turns it off.
+- **Remote and offline hosts.** Sessions on an offline remote host stay listed after a reload, and New session says when the remembered host is offline.
+- **Usage.** The usage popover opens on the account whose percent the trigger shows, and an account that needs sign-in shows no stale percent.
+- **Phone improvements.** A long account name no longer pushes Log in or the Session setup rows off screen, and tapping a command in Processes shows all of it.
+- **Fixed:**
+  - Numbered steps split by code blocks keep their numbers.
+  - Opening a session with a diagram lands on the latest reply.
+  - Tab on a Recent folder in the folder menu opens it.
+  - Switchy's All hosts scope shows the cloud icon, not this machine's.
+
+## 0.16.1 (2026-11-20)
+
+- **Clickable links in bold replies.** Markdown links keep their labels and open the right destination when they appear inside bold text. GitHub PR links keep their hover cards.
+- **More reliable sessions.** Voice mode continues from the new-session screen into the conversation. Deleting a session and opening a session in a plain folder no longer raise spurious errors. Handovers from pinned sessions stay in their groups.
+- **Phone improvements.** Host selection scrolls to the host's details, login actions and delete choices fit their bars, and models without an effort setting no longer display an old effort in Session setup.
+- **Clearer status and layout.** Gemini login checks report when sign-in is still needed. Connectors place account rows directly under their headers, session row dividers align, and disabled outlined buttons show their state.
+
+## 0.16.0 (2026-11-19)
+
+- **Collapse Sessions and Workspace.** Hide either desktop sidebar and reopen it from its panel button. Switchyard remembers each panel’s width and collapsed state. Reopening Workspace keeps its tab and terminal output. The Sessions drawer also has a close button on phones.
+- **Scroll the Model picker.** Long catalogs scroll in their own list with a visible scrollbar. The Model heading and Speed control stay in place, and reopening brings the selected model into view.
+
+## 0.15.0 (2026-11-19)
+
+- **Hand over a session.** Choose Handover in the session’s sidebar menu to continue with another agent, account, or model. The new subsession uses the same folder, receives a summary of the conversation, and appears beneath the original in the sidebar.
+- **Dropdowns fit the window.** Effort and Codex speed descriptions fit inside their rows, and speed opens within the Model picker. Connectors and Automations use Switchyard’s own menus. Workspace tabs have more space, and the Connectors refresh icon lines up with its label.
+- **Open old conversations without a missing-folder banner.** If a session’s folder was removed, the error appears in Terminal with a retry button, and the conversation remains accessible.
+
+## 0.14.0 (2026-11-19)
+
+- **Codex speed.** Choose Standard, Fast, or Ultrafast in the model menu when the selected host reports those options. Speed changes apply to the next turn.
+- **Steer queued messages.** Send one queued message into the current Claude or Codex turn while the other messages stay queued.
+- **See subagents in Workspace.** Open Subagents beside Terminal to see status, steps, and reports from Claude and Codex when available.
+- **Rename sessions.** Use Rename in the session menu to change the title across clients. Conversation history and the worktree stay with the session.
+- **Clearer Usage and navigation.** Usage opens above its sidebar row on desktop and as a bottom sheet on phones. It shows reset times and warns on individual limits. Open Hosts from a host status row or page search.
+- **Cleaner terminal scrollback.** Reloading a terminal no longer feeds replies to historical terminal queries back into the live shell.
+- **Readable composer controls.** Narrow composers group settings before model, account, effort, or access labels get squeezed.
+
+## 0.13.0 (2026-11-18)
+
+- **Simpler Workspace.** Terminal opens first, and Processes sits beside it. The conversation header links to the branch’s pull request on GitHub.
+- **One composer toolbar.** Attach, dictate, use voice, and send from one row. In narrow windows, Setup holds the model, account, effort, and permissions. Full access is marked in amber.
+- **Clearer account controls.** Usage shows the current account’s limits and reset times first. Connectors are grouped by account, with status, filters, and an Add connector action.
+- **Quieter session setup.** A remembered offline host stays selected without an error banner. Web links in agent replies open in the browser.
+
+## 0.12.0 (2026-11-18)
+
+- **Active hours for automations.** Limit an interval to a local time window, including overnight hours and selected start days. Hourly 21:00–09:00 runs from 21:00 through 08:00; daytime hours create no sessions, even after a restart. The form and cards show the hours and real next slot; Run now remains available anytime. Loop patrol now uses this overnight window once the server is updated and loop automations are applied.
+
+## 0.11.0 (2026-11-18)
+
+- **Gemini CLI joins the engines.** Start Gemini sessions alongside Claude Code, Codex, OpenCode and Grok, with streaming replies, tools and diffs, approvals, permission modes, Stop, resume and hand-offs. Install `@google/gemini-cli` on the host; Switchyard reuses its login and discovers its models. Added accounts keep separate logins. For a fresh Google login, Hosts shows the terminal command and checks it when you return. Gemini does not report plan limits or offer an effort control here.
+- **Dedicated Hosts, Sessions and Subscriptions pages.** Browse hosts and open one host's details, manage engine accounts separately, find sessions with tabs and search, and inspect subscription limits across hosts. The sidebar's compact Usage row opens a summary with a link to the full Subscriptions page. Empty session searches offer Clear search.
+- **Save defaults deliberately.** Settings keeps independent default hosts, models and efforts for new sessions and for Switchy. A one-off selection does not overwrite them. Removing a default host falls back to an available host while keeping your saved model when possible.
+- **More control over Switchy.** Host and source scope, model and effort, voice and access controls work together; questions wait when their inference host is busy. Answers show readable model names. A stopped answer is a quiet note, while a refused question keeps its reason visible in red under the message box.
+- **iPhone and iPad companion foundation.** A SwiftUI app loads your privately reachable Switchyard host, with native voice and local notifications, simulator tests and a TestFlight build workflow. Hosts always offers phone setup, and the session's Workspace sheet gives phones access to Changes, Terminal, Pull request and Processes. A TestFlight invitation appears when one is configured.
+- **Attachments stay with your message.** Editing a queued message or stopping its turn restores its files to the reply box. Selecting more than 20 files explains the limit and disables Send rather than losing the message. On phones, a long attachment list scrolls within its own row so Send stays reachable.
+- **Clearer process controls.** Stop with children fits inside the process table, including on phones. Opening Processes for an offline host says it is offline instead of leaving a stale process list on screen.
+- **More reliable turn history.** Work durations exclude time spent waiting for your approval. OpenCode and Grok output arriving after a stopped turn is dropped instead of leaking into the next answer. Long first prompts get useful titles, including prompts that begin with a long URL.
+- **Layout fixes across desktop and phone.** Connectors' filter tabs stay on one row; folder and effort menus stay on screen; long host, folder and account names preserve their icons and chevrons. Desktop account chips show the whole name, and Import always shows the last-used age on phones. Host and session rows align with their pages, Workspace lines up with Delete, and disabled primary buttons look disabled.
+- **Release and verification maintenance.** Releases now prepare their version change in a PR and publish only the tag after it is merged, preserving required CI on `main`. Verification recipes and session routing were repaired, and failed post-merge jobs get one retry before a revert is proposed.
+
 ## 0.10.0 (2026-11-18)
 
 - **Connectors, focused on what you use.** The page opens on connected services for one host and engine account. Unused entries stay under Available; search, status filters and eight-row pages keep long catalogs manageable. Sign-in progress stays visible through completion.

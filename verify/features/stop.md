@@ -94,6 +94,23 @@ yv drive 'session:{{unans_sid}}' --viewport desktop --steps '[{"expect":"role:bu
 yv drive 'session:{{unans_sid}}' --steps '[{"click":"role:button:1 command not run"},{"expect":"css:.approval","text":"Not answered before the turn ended"},{"expect":{"css":".tool-row","hasText":"echo approved"},"text":"Did not run"},{"expect":{"css":".tool-row","hasText":"echo approved"},"text":"not answered"},{"expect":"css:.thread .tool-row .bad","count":0},{"expect":{"css":".approval","hasText":"Denied"},"count":0},{"shot":"not-answered"}]'
 ```
 
+### acp-stop-while-asking-says-not-run
+Viewports: both
+The same for an ACP engine (OpenCode), which fails the asked call itself on
+Stop before the turn ends: a command reads "1 command not run" and "Did not
+run", an edit "1 file not edited" and "Did not edit", and nothing in the fold
+is marked failed. Until 2026-11-24 they read "Ran 1 command · 1 failed" and
+"Waiting to edit notes.txt · failed".
+
+```sh
+for vp in desktop mobile; do
+  yv api '{"op":"session.create","engine":"opencode","model":"opencode/fake-free","effort":"","cwd":"{{repo}}","worktree":true,"permission":"ask","text":"[cmd] TEST-acp halt cmd '$vp'"}' --wait '{"op":"created"}' --save acp_cmd_sid=sessionId
+  yv drive 'session:{{acp_cmd_sid}}' --viewport $vp --steps '[{"expect":"role:button:Allow once","timeout":15000},{"click":{"role":"button","name":"Stop","exact":true}},{"expect":{"role":"button","name":"Stop","exact":true},"visible":false,"timeout":15000},{"click":"role:button:1 command not run"},{"expect":"css:.approval","text":"Not answered before the turn ended"},{"expect":{"css":".tool-row","hasText":"echo"},"text":"Did not run"},{"expect":"css:.thread .tool-row .bad","count":0},{"shot":"acp-cmd-not-run"}]'
+  yv api '{"op":"session.create","engine":"opencode","model":"opencode/fake-free","effort":"","cwd":"{{repo}}","worktree":true,"permission":"ask","text":"[edit] TEST-acp halt edit '$vp'"}' --wait '{"op":"created"}' --save acp_edit_sid=sessionId
+  yv drive 'session:{{acp_edit_sid}}' --viewport $vp --steps '[{"expect":"role:button:Allow once","timeout":15000},{"click":{"role":"button","name":"Stop","exact":true}},{"expect":{"role":"button","name":"Stop","exact":true},"visible":false,"timeout":15000},{"click":"role:button:1 file not edited"},{"expect":"css:.approval","text":"Not answered before the turn ended"},{"expect":{"css":".tool-row","hasText":"notes.txt"},"text":"Did not edit"},{"expect":{"css":".tool-row","hasText":"notes.txt"},"text":"not answered"},{"expect":"css:.thread .tool-row .bad","count":0},{"shot":"acp-edit-not-edited"}]'
+done
+```
+
 ## Gotchas
 - The Stop button only shows while the session is running or waiting for approval.
 - `role:button:Stop` matches by substring, so it also hits a sidebar row whose title contains "stop" (such as "TEST-stop while asking") and opens that session instead. Use `{"role":"button","name":"Stop","exact":true}`.

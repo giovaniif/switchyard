@@ -343,6 +343,25 @@ describe("loop automations", () => {
     }
     expect(loopTest.automationSpec("patrol", cfg, "/x", "m").effort).toBe("high");
   });
+  test("a window reaches save, stays unchanged, changes, and clears", async () => {
+    const spec = loopTest.automationSpec("patrol", cfg, "/x", "m");
+    expect(spec.window).toEqual({ start: "21:00", end: "09:00" });
+    const sent: any[] = [];
+    const request = async (m: any) => { sent.push(m); return { op: "automation.saved", automation: { id: "a1", ...m.automation } }; };
+    expect((await loopTest.ensure(request, [], spec)).action).toBe("created");
+    expect(sent.pop()).toMatchObject({ op: "automation.save", automation: { window: spec.window } });
+    const have = { id: "a1", ...spec, window: { end: "09:00", start: "21:00" } };
+    expect((await loopTest.ensure(request, [have], spec)).action).toBe("unchanged");
+    expect(sent).toEqual([]);
+    expect(loopTest.changed({ window: { start: "22:00", end: "09:00", days: [5] } }, have)).toEqual(["window"]);
+    expect(loopTest.changed({ window: null }, have)).toEqual(["window"]);
+    expect(loopTest.changed({ window: null }, {})).toEqual([]);
+    const old = await loopTest.ensure(async () => ({ op: "automation.saved", automation: { id: "a1" } }), [], spec);
+    expect(old.action).toBe("refused");
+    expect(loopTest.OLD_WINDOW.test(old.refused!)).toBe(true);
+    expect(loopTest.OLD_WINDOW.test("unknown field `window`")).toBe(true);
+    expect(loopTest.OLD_WINDOW.test("the prompt is empty")).toBe(false);
+  });
   test("the fixed prompt names the skill and has the agent read the clock", () => {
     const p = loopTest.automationPrompt("patrol", cfg.loops.patrol);
     expect(p).toContain(".claude/skills/patrol/SKILL.md");

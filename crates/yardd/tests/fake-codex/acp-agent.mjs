@@ -13,6 +13,10 @@
 //            it streams a thought and "Late words", then still never ends
 //   [fail]   the prompt fails with an error
 //   [exit]   the agent process exits mid-turn
+//   [[tool NAME {json}]]  calls Switchyard's agent tool NAME through the
+//            `switchyard` server in the session's `mcpServers` (see
+//            agent-tools.mjs): a `switchyard_NAME` tool call that asks
+//            permission first, then "Called NAME: <result>" per call
 //   other    "Echo: <prompt>" in three chunks
 //
 // FAKE_CODEX_DIR gets `acp.log` (a line per start, request and answer) and
@@ -21,6 +25,7 @@
 // restarted agent resumes one it made and refuses one it never saw.
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { afterCalls, callTools, toolMarkers } from "./agent-tools.mjs";
 
 export function runAgent({ engine, state, account, loggedIn }) {
   const dir = process.env.FAKE_CODEX_DIR;
@@ -44,6 +49,9 @@ export function runAgent({ engine, state, account, loggedIn }) {
       write({ id, method, params });
     });
   const cancelled = new Map();
+  // Each session's `switchyard` server, as session/new, resume or load gave it.
+  const tools = new Map();
+  const keepTools = (sid, servers) => tools.set(sid, (servers ?? []).find((s) => s.name === "switchyard") ?? null);
 
   const MODELS = [
     { modelId: "fake-small", name: "Fake Small", efforts: ["low", "high"] },
@@ -103,6 +111,24 @@ export function runAgent({ engine, state, account, loggedIn }) {
       });
     const allowed = (answer) => answer?.outcome?.outcome === "selected" && answer.outcome.optionId !== "reject";
 
+    const calls = toolMarkers(text);
+    if (calls.length) {
+      const results = [];
+      for (const c of calls) {
+        const call = { toolCallId: `call-${++n}`, title: `switchyard_${c.tool}`, kind: "other", status: "pending", rawInput: c.args };
+        update(sid, { sessionUpdate: "tool_call", ...call });
+        if (!allowed(await permission(call))) {
+          update(sid, { sessionUpdate: "tool_call_update", toolCallId: call.toolCallId, status: "failed" });
+          results.push({ ...c, text: "refused", isError: true });
+          continue;
+        }
+        const [r] = await callTools(tools.get(sid), [c]);
+        update(sid, { sessionUpdate: "tool_call_update", toolCallId: call.toolCallId, status: "completed", content: [{ type: "content", content: { type: "text", text: r.text } }] });
+        results.push(r);
+      }
+      await say(afterCalls(results));
+      return write({ id, result: { stopReason: "end_turn" } });
+    }
     if (text.includes("[fail]")) return write({ id, error: { code: -32603, message: "fake failure" } });
     if (text.includes("[exit]")) {
       update(sid, { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "Going…" } });
@@ -204,11 +230,14 @@ export function runAgent({ engine, state, account, loggedIn }) {
         const sid = `${engine}-ses-${process.pid}-${++n}`;
         sessions.set(sid, { cwd: p.cwd, model: modelIds[0], effort: "default", mode: engine === "opencode" ? "build" : "default" });
         save();
+        keepTools(sid, p.mcpServers);
+        log(`mcpServers ${(p.mcpServers ?? []).map((s) => s.name).join(",")}`);
         return write({ id: msg.id, result: { sessionId: sid, ...opened(sid) } });
       }
       case "session/resume":
       case "session/load": {
         if (!sessions.has(p.sessionId)) return write({ id: msg.id, error: { code: -32002, message: `Session not found: ${p.sessionId}` } });
+        keepTools(p.sessionId, p.mcpServers);
         if (msg.method === "session/load") {
           update(p.sessionId, { sessionUpdate: "user_message_chunk", content: { type: "text", text: "old prompt" } });
           update(p.sessionId, { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "old answer" } });

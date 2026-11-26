@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { base64ToBlob, dragHasFiles, humanSize, pastedFiles, Replies, tooLarge } from "./attach";
-import { MAX_ATTACHMENT_BYTES } from "./protocol";
+import { base64ToBlob, dragHasFiles, humanSize, pastedFiles, Replies, tooLarge, tooMany } from "./attach";
+import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE } from "./protocol";
 
 describe("attachments in the browser", () => {
   test("sizes read like yardd's", () => {
@@ -13,6 +13,12 @@ describe("attachments in the browser", () => {
     expect(tooLarge(MAX_ATTACHMENT_BYTES)).toBeNull();
     expect(tooLarge(MAX_ATTACHMENT_BYTES + 1)).toBe("Too large: 10.0 MB. The limit is 10.0 MB.");
     expect(tooLarge(25 * 1024 * 1024)).toBe("Too large: 25.0 MB. The limit is 10.0 MB.");
+  });
+
+  test("the per-message file count is checked before Send, like yardd's", () => {
+    expect(MAX_ATTACHMENTS_PER_MESSAGE).toBe(20);
+    expect(tooMany(20)).toBeNull();
+    expect(tooMany(21)).toBe("Too many files: 21. The limit is 20 per message.");
   });
 
   test("a paste attaches files, unless it is rich text with a picture of itself", () => {

@@ -1,7 +1,7 @@
 // Attachments in the browser: size checks, base64, and matching upload and
 // fetch replies to the request that asked. The bytes skip the reducer, so a
 // 10 MB upload never sits in React state.
-import { MAX_ATTACHMENT_BYTES } from "./protocol";
+import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE } from "./protocol";
 
 export function humanSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -13,6 +13,14 @@ export function humanSize(bytes: number): string {
 export function tooLarge(size: number): string | null {
   if (size <= MAX_ATTACHMENT_BYTES) return null;
   return `Too large: ${humanSize(size)}. The limit is ${humanSize(MAX_ATTACHMENT_BYTES)}.`;
+}
+
+/** Why the files cannot all go on one message. Checked before Send: the
+ *  session composer clears as it sends, so a refusal from yardd would lose
+ *  the message and the files with it. */
+export function tooMany(count: number): string | null {
+  if (count <= MAX_ATTACHMENTS_PER_MESSAGE) return null;
+  return `Too many files: ${count}. The limit is ${MAX_ATTACHMENTS_PER_MESSAGE} per message.`;
 }
 
 /** Image types both engines take inline, which the thread shows as thumbnails. */

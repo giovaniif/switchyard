@@ -268,7 +268,10 @@ pub fn shell_pids(app: &Arc<App>) -> Vec<(String, u32)> {
         .collect()
 }
 
-/// Kill every terminal of the session.
+/// Kill every terminal of the session, which is being deleted. No
+/// `term.listChanged`: an open pane would ask for the list of a session that
+/// is gone by then, and the refusal showed as a "no such session" banner.
+/// `session.deleted` closes the pane.
 pub fn close_session(app: &Arc<App>, session_id: &str) {
     let gone: Vec<Term> = {
         let mut inner = app.terms.inner.lock().unwrap();
@@ -281,11 +284,7 @@ pub fn close_session(app: &Arc<App>, session_id: &str) {
             .collect();
         ids.iter().filter_map(|id| inner.map.remove(id)).collect()
     };
-    if gone.is_empty() {
-        return;
-    }
     for term in gone {
         reap(term);
     }
-    list_changed(app, session_id);
 }

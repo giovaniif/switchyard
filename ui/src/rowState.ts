@@ -24,6 +24,8 @@ export function rowState(s: SessionMeta, seen: number, online: boolean, unread =
   if (s.status === "running") return "working";
   if (s.status === "needs_approval") return "approval";
   if (s.status === "queued") return "queued";
+  // Its turn ended, but a subagent it started is still at work.
+  if (s.background?.length) return "working";
   if (unread) return "unread";
   if (s.status === "error") return "failed";
   if (s.turnEndedAt !== undefined && s.turnEndedAt !== null && s.turnEndedAt > seen) {

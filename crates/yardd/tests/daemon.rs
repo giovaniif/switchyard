@@ -40,7 +40,11 @@ async fn snapshot_has_its_shape_and_the_fake_models() {
     assert_eq!(
         codex,
         json!([
-            { "id": "fake-fast", "name": "Fake Fast", "efforts": ["low", "high"], "defaultEffort": "low", "isDefault": true },
+            { "id": "fake-fast", "name": "Fake Fast", "efforts": ["low", "high"], "defaultEffort": "low", "isDefault": true,
+                "serviceTiers": [
+                    { "id": "priority", "name": "Fast", "description": "Higher speed, increased usage" },
+                    { "id": "ultrafast", "name": "Ultrafast", "description": "Fastest available responses" },
+                ] },
             { "id": "fake-deep", "name": "Fake Deep", "efforts": ["medium", "xhigh"], "defaultEffort": "medium", "isDefault": false },
         ])
     );
@@ -359,6 +363,51 @@ async fn a_queued_message_can_be_taken_back_to_edit() {
     assert_eq!(back["id"], id);
     c.wait_after(from, "the empty queue", |m| m["op"] == "session" && m["session"]["id"] == sid && m["session"]["pending"].as_array().map_or(true, |p| p.is_empty())).await;
     c.send(json!({ "op": "session.interrupt", "sessionId": sid })).await;
+}
+
+#[tokio::test]
+async fn codex_speed_is_used_for_new_turns_and_survives_restarts() {
+    let sb = Sandbox::new("codex-speed");
+    let d = sb.start();
+    let mut c = d.client().await;
+    c.wait_for("Codex models", |m| m["models"]["codex"].as_array().is_some_and(|models| !models.is_empty())).await;
+    let sid = c.create(&sb.folder("proj"), "first", json!({ "serviceTier": "ultrafast" })).await;
+    c.wait_turn_done(&sid, 0).await;
+    let tier = || {
+        fs::read_to_string(sb.fake_state().join("turn-inputs.jsonl")).unwrap()
+            .lines().last().map(|line| serde_json::from_str::<Value>(line).unwrap()["serviceTierForTurn"].clone()).unwrap()
+    };
+    assert_eq!(tier(), "ultrafast");
+    c.send(json!({ "op": "session.setServiceTier", "sessionId": sid, "serviceTier": "default" })).await;
+    c.wait_for("standard speed", |m| m["op"] == "session" && m["session"]["id"] == sid && m["session"]["serviceTier"] == "default").await;
+    let deadline = Instant::now() + WAIT;
+    while saved_meta(&sb, &sid).map(|m| m["serviceTier"] == "default") != Some(true) {
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    d.kill();
+    let d = sb.start();
+    let mut c = d.client().await;
+    c.send(json!({ "op": "session.send", "sessionId": sid, "text": "second" })).await;
+    c.wait_for("second reply", |m| is_event(m, &sid) && m["event"]["text"] == "Echo: second").await;
+    assert_eq!(tier(), "default");
+}
+
+#[tokio::test]
+async fn codex_subagent_activity_keeps_one_agent_and_its_report() {
+    let sb = Sandbox::new("codex-subagent");
+    let d = sb.start();
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("repo"), "[subagent] TEST-codex delegation", json!({})).await;
+    c.wait_turn_done(&sid, 0).await;
+    let events = c.events(&sid);
+    let started: Vec<_> = events.iter().filter(|ev| ev["type"] == "tool_started" && ev["agent"] == "Codex").collect();
+    assert_eq!(started.len(), 1, "{events:?}");
+    assert_eq!(started[0]["detail"], "TEST-check the migration");
+    assert!(events.iter().any(|ev| ev["type"] == "tool_completed"
+        && ev["itemId"] == started[0]["itemId"]
+        && ev["ok"] == true
+        && ev["output"] == "TEST-Codex subagent report"), "{events:?}");
 }
 
 #[tokio::test]
@@ -731,6 +780,15 @@ async fn folders_are_listed_for_the_picker() {
     c.send(json!({ "op": "fs.dirs", "path": "relative/path" })).await;
     let refused = c.wait_for("fs.dirs refusal", |m| m["op"] == "fs.dirs" && m["path"] == "relative/path").await;
     assert!(refused["error"].as_str().unwrap().contains("absolute"), "{refused}");
+
+    // A typo higher up the path names the first folder that is not there,
+    // not the io error of the folder the picker asked for.
+    let gone = Path::new(&parent).join("TEST-gone");
+    let deep = gone.join("deeper").to_str().unwrap().to_string();
+    c.send(json!({ "op": "fs.dirs", "path": deep })).await;
+    let missing = c.wait_for("fs.dirs missing", |m| m["op"] == "fs.dirs" && m["path"] == deep.as_str()).await;
+    assert_eq!(missing["missing"], gone.to_str().unwrap(), "{missing}");
+    assert!(missing["error"].is_null(), "{missing}");
 }
 
 #[tokio::test]
@@ -788,7 +846,7 @@ async fn removing_a_dirty_worktree_is_refused() {
 }
 
 #[tokio::test]
-async fn handoff_to_the_same_engine_or_mid_turn_is_refused() {
+async fn handoff_to_the_same_target_or_mid_turn_is_refused() {
     let sb = Sandbox::new("handoff");
     let d = sb.start();
     let mut c = d.client().await;
@@ -806,10 +864,32 @@ async fn handoff_to_the_same_engine_or_mid_turn_is_refused() {
     c.wait_status(&sid, "idle").await;
 
     let from = c.mark();
-    c.send(json!({ "op": "session.handoff", "sessionId": sid, "engine": "codex", "model": "fake-deep", "effort": "medium" }))
+    c.send(json!({ "op": "session.handoff", "sessionId": sid, "engine": "codex", "model": "fake-fast", "effort": "low" }))
         .await;
     assert!(c.wait_error(from, "session.handoff").await.contains("already runs on Codex"));
     assert!(!c.log.iter().any(|m| m["op"] == "created" && m["sessionId"] != sid));
+}
+
+#[tokio::test]
+async fn handoff_can_change_the_account_or_model_without_changing_engines() {
+    let sb = Sandbox::new("handoff-target");
+    let d = sb.start();
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "original work", json!({})).await;
+    c.wait_status(&sid, "idle").await;
+    let account = add_account(&mut c, "codex", "TEST-Other").await;
+    for (model, target_account) in [("fake-fast", account.as_str()), ("fake-deep", "default")] {
+        let from = c.mark();
+        c.send(json!({ "op": "session.handoff", "sessionId": sid, "engine": "codex", "model": model, "effort": "low", "account": target_account })).await;
+        let created = c.wait_after(from, "handover created", |m| m["op"] == "created" || m["op"] == "error").await;
+        assert_eq!(created["op"], "created", "{created}");
+        let id = created["sessionId"].as_str().unwrap();
+        let child = c.wait_for("handover parent and target", |m| m["op"] == "session" && m["session"]["id"] == id && m["session"]["parent"] == sid).await;
+        assert_eq!(child["session"]["model"], model);
+        assert_eq!(child["session"]["account"], target_account);
+        c.wait_turn_done(id, 0).await;
+        c.wait_status(id, "idle").await;
+    }
 }
 
 #[tokio::test]
@@ -974,6 +1054,30 @@ async fn resizing_an_exited_terminal_is_not_an_error() {
     assert_eq!(again["exited"], true);
 }
 
+#[tokio::test]
+async fn deleting_a_session_does_not_ask_its_terminal_pane_to_reload() {
+    let sb = Sandbox::new("term-delete");
+    let d = sb.start();
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "hi", json!({})).await;
+
+    let from = c.mark();
+    c.send(json!({ "op": "term.open", "sessionId": sid, "cols": 80, "rows": 24 })).await;
+    c.wait_after(from, "term.opened", |m| m["op"] == "term.opened").await;
+    // Opening it changed the list too; that broadcast may trail the reply.
+    c.wait_after(from, "term.listChanged for the open", |m| m["op"] == "term.listChanged" && m["sessionId"] == sid).await;
+
+    // An open terminal pane answers `term.listChanged` with `term.list`. Sent
+    // for a session being deleted, that ask reached yardd after the session
+    // was gone, and the refusal ("no such session") showed as an error banner
+    // over the page the user landed on. `session.deleted` already closes the pane.
+    let from = c.mark();
+    c.send(json!({ "op": "session.delete", "sessionId": sid })).await;
+    c.wait_after(from, "session.deleted", |m| m["op"] == "session.deleted" && m["sessionId"] == sid).await;
+    let reloads: Vec<&Value> = c.log[from..].iter().filter(|m| m["op"] == "term.listChanged" && m["sessionId"] == sid).collect();
+    assert!(reloads.is_empty(), "a deleted session's terminal pane was told to reload its list: {reloads:?}");
+}
+
 fn b64(s: &str) -> Vec<u8> {
     base64::engine::general_purpose::STANDARD.decode(s).unwrap()
 }
@@ -1082,6 +1186,40 @@ async fn a_hub_runs_sessions_on_a_direct_host() {
     let history = c.history(&sid).await;
     let kept: Vec<&str> = types(&history).into_iter().filter(|t| *t != "assistant_delta").collect();
     assert_eq!(kept, ["user_message", "turn_started", "assistant_message", "turn_completed"]);
+}
+
+#[tokio::test]
+async fn a_page_opened_while_a_host_is_down_still_lists_its_sessions() {
+    let remote_sb = Sandbox::new("remote-down");
+    let remote = remote_sb.start();
+    let hub_sb = Sandbox::new("hub-down");
+    let hub = hub_sb.start();
+    let mut c = hub.client().await;
+
+    c.send(json!({ "op": "host.add", "name": "box", "kind": "direct", "url": remote.url() })).await;
+    let hosts = c
+        .wait_for("the direct host to connect", |m| {
+            m["op"] == "hosts" && m["hosts"].as_array().is_some_and(|h| h.iter().any(|h| h["status"] == "connected"))
+        })
+        .await;
+    let host = hosts["hosts"][0]["id"].as_str().unwrap().to_string();
+    c.wait_for("the host's snapshot", |m| m["op"] == "host.snapshot" && m["hostId"] == host).await;
+    let sid = c.create(&remote_sb.folder("proj"), "hello remote", json!({ "host": host })).await;
+    assert_eq!(c.wait_turn_done(&sid, 0).await["status"], "completed");
+
+    remote.stop();
+    c.wait_for("the host to go offline", |m| {
+        m["op"] == "hosts" && m["hosts"].as_array().is_some_and(|h| h.iter().any(|h| h["status"] != "connected"))
+    })
+    .await;
+
+    // A page opened now (a reload, another window) still lists the host's
+    // sessions, marked offline by the host.down that follows.
+    let mut late = hub.client().await;
+    let snap = late.wait_for("the offline host's last snapshot", |m| m["op"] == "host.snapshot" && m["hostId"] == host).await;
+    let ids: Vec<&str> = snap["sessions"].as_array().unwrap().iter().filter_map(|s| s["id"].as_str()).collect();
+    assert_eq!(ids, [sid.as_str()]);
+    late.wait_for("the host marked down", |m| m["op"] == "host.down" && m["hostId"] == host).await;
 }
 
 #[tokio::test]
@@ -1206,6 +1344,14 @@ async fn attachments_reach_codex_as_a_local_image_and_a_path() {
     assert_eq!(names, ["shot.png", "notes.txt"]);
     assert_eq!(user["attachments"][0]["path"], shot_path);
     assert_eq!(user["attachments"][1]["size"], 18);
+
+    // A file the agent links is read from the session's folder, whatever
+    // dialect the link is in; a missing one says so.
+    fs::write(Path::new(&cwd).join("report.csv"), "org,domain\n").unwrap();
+    assert_eq!(c.file(&sid, "report.csv:2").await.unwrap(), ("report.csv".to_string(), b"org,domain\n".to_vec()));
+    assert_eq!(c.file(&sid, "sandbox:/mnt/data/report.csv").await.unwrap().1, b"org,domain\n");
+    let missing = c.file(&sid, "gone.csv").await.unwrap_err();
+    assert!(missing.contains("gone.csv was not found"), "{missing}");
 
     // Thumbnails: the bytes come back for this session's attachments only.
     assert_eq!(c.fetch(&sid, shot["id"].as_str().unwrap()).await.unwrap(), png(300));
@@ -1340,6 +1486,12 @@ async fn attachments_land_on_the_remote_host_through_the_hub() {
     let history = c.history(&sid).await;
     assert_eq!(history[0]["attachments"][0]["path"], shot_path.as_str());
     assert_eq!(c.fetch(&sid, shot["id"].as_str().unwrap()).await.unwrap(), big);
+    // A linked file is read on the remote host, at the size cap, through the hub.
+    let csv = vec![b'x'; 10 * 1024 * 1024];
+    fs::write(Path::new(&cwd).join("big.csv"), &csv).unwrap();
+    assert_eq!(c.file(&sid, &format!("{cwd}/big.csv")).await.unwrap(), ("big.csv".to_string(), csv));
+    let over = c.file(&sid, "../proj").await.unwrap_err();
+    assert!(over.contains("is a folder"), "{over}");
 
     // Over the cap through the hub: refused by the remote, the link stays up.
     let err = c.upload("huge.bin", "", &vec![0u8; 10 * 1024 * 1024 + 1], json!({ "host": host })).await.unwrap_err();
@@ -1434,6 +1586,49 @@ async fn codex_reasoning_streams_as_thinking() {
     let think = events.iter().position(|e| e["type"] == "reasoning").unwrap();
     let reply = events.iter().position(|e| e["type"] == "assistant_message").unwrap();
     assert!(think < reply, "thinking comes before the answer");
+}
+
+#[tokio::test]
+async fn renaming_a_session_updates_other_clients_and_survives_restart() {
+    let sb = Sandbox::new("rename-session");
+    let d = sb.start();
+    let mut c = d.client().await;
+    let cwd = make_repo(&sb, "proj");
+    let sid = c.create(&cwd, "original title", json!({ "worktree": true })).await;
+    c.wait_turn_done(&sid, 0).await;
+    c.wait_status(&sid, "idle").await;
+    let mut other = d.client().await;
+    let previous = other.log[0]["sessions"][0].clone();
+
+    let title = "Revisão do lançamento ⚽";
+    c.send(json!({ "op": "session.rename", "sessionId": sid, "title": format!("  {title}  "), "ref": "rename" })).await;
+    let ack = c.wait_for("rename reply", |m| m["ref"] == "rename").await;
+    assert_eq!(ack["op"], "session.renamed", "{ack}");
+    let renamed = other.wait_for("renamed session", |m| m["op"] == "session" && m["session"]["title"] == title).await;
+    for key in ["id", "cwd", "branch", "status"] {
+        assert_eq!(renamed["session"][key], previous[key], "{key}");
+    }
+
+    for (i, invalid) in [String::from(" "), String::from("two\nlines"), "🔧".repeat(61)].into_iter().enumerate() {
+        let reference = format!("invalid-{i}");
+        c.send(json!({ "op": "session.rename", "sessionId": sid, "title": invalid, "ref": reference })).await;
+        let reply = c.wait_for("rename rejected", |m| m["ref"] == reference && m["op"] == "error").await;
+        assert_eq!(reply["for"], "session.rename");
+    }
+
+    let deadline = Instant::now() + WAIT;
+    while saved_meta(&sb, &sid).map(|m| m["title"] == title) != Some(true) {
+        assert!(Instant::now() < deadline, "the new title never reached the database");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    d.kill();
+
+    let d = sb.start();
+    let mut c = d.client().await;
+    assert_eq!(c.log[0]["sessions"][0]["title"], title);
+    c.send(json!({ "op": "session.open", "sessionId": sid })).await;
+    let history = c.wait_for("same history", |m| m["op"] == "history" && m["sessionId"] == sid).await;
+    assert_eq!(history["events"][0]["text"], "original title");
 }
 
 #[tokio::test]
@@ -1841,6 +2036,32 @@ async fn automations_are_saved_listed_edited_and_deleted() {
 }
 
 #[tokio::test]
+async fn automation_window_survives_partial_edits_and_null_clears_it() {
+    let sb = Sandbox::new("auto-window");
+    let cwd = sb.folder("proj");
+    let d = sb.start_with(&[("TZ", "UTC")]);
+    let mut c = d.client().await;
+    let window = json!({ "start": "21:00", "end": "09:00", "days": [1, 5] });
+    let a = save_automation(&mut c, automation_of(&cwd, json!({ "window": window }))).await.unwrap();
+    assert_eq!(a["window"], window);
+    let id = a["id"].as_str().unwrap();
+    let off = save_automation(&mut c, json!({ "id": id, "enabled": false })).await.unwrap();
+    assert_eq!(off["window"], window);
+    let on = save_automation(&mut c, json!({ "id": id, "enabled": true })).await.unwrap();
+    assert_eq!(on["window"], window);
+    assert_eq!(d.client().await.log[0]["automations"][0]["window"], window);
+    for schedule in [json!({ "kind": "daily", "time": "09:00" }), json!({ "kind": "weekly", "day": 1, "time": "09:00" }), json!({ "kind": "manual" })] {
+        assert!(save_automation(&mut c, json!({ "id": id, "schedule": schedule })).await.unwrap_err().contains("interval"));
+    }
+    let before = chrono::Utc::now().timestamp_millis() as u64;
+    let clear = save_automation(&mut c, json!({ "id": id, "window": null })).await.unwrap();
+    let after = chrono::Utc::now().timestamp_millis() as u64;
+    assert!(clear["window"].is_null());
+    let next = clear["nextRun"].as_u64().unwrap();
+    assert!((before + 3_600_000..=after + 3_600_000).contains(&next), "clearing the window recomputes the ordinary interval");
+}
+
+#[tokio::test]
 async fn run_now_starts_a_worktree_session_that_is_archived_when_it_ends() {
     let sb = Sandbox::new("auto-run");
     let repo = make_repo(&sb, "repo");
@@ -2101,6 +2322,28 @@ async fn the_scheduler_fires_a_missed_run_once_and_automations_survive_a_restart
 }
 
 #[tokio::test]
+async fn a_missed_run_outside_the_window_creates_no_session_but_run_now_does() {
+    use chrono::{Duration, Utc};
+    let sb = Sandbox::new("auto-window-missed");
+    let cwd = sb.folder("proj");
+    let now = Utc::now();
+    let window = json!({ "start": (now + Duration::hours(2)).format("%H:%M").to_string(), "end": (now + Duration::hours(3)).format("%H:%M").to_string() });
+    let mut a = automation_of(&cwd, json!({ "id": "a1", "window": window, "nextRun": 1, "createdAt": 1 }));
+    a["enabled"] = json!(true);
+    fs::write(sb.data().join("automations.json"), json!([a]).to_string()).unwrap();
+    let d = sb.start_with(&[("TZ", "UTC"), ("YARD_AUTOMATION_TICK_MS", "30")]);
+    let mut c = d.client().await;
+    // The scheduler may move the slot before the client connects; its first
+    // snapshot is just as conclusive as a later rescheduling broadcast.
+    let moved = c.wait_for("rescheduled instead of fired", |m| (m["op"] == "automations" || m["op"] == "snapshot") && m["automations"][0]["nextRun"].as_u64().is_some_and(|n| n > now.timestamp_millis() as u64)).await;
+    let next = moved["automations"][0]["nextRun"].as_i64().unwrap();
+    assert_eq!(chrono::DateTime::from_timestamp_millis(next).unwrap().format("%H:%M").to_string(), window["start"].as_str().unwrap());
+    assert!(d.client().await.log[0]["sessions"].as_array().unwrap().is_empty());
+    assert!(moved["automations"][0]["lastRun"].is_null(), "not even a skipped run");
+    assert_eq!(run_automation(&mut c, "a1", true).await["outcome"], "started", "Run now ignores active hours");
+}
+
+#[tokio::test]
 async fn a_hub_routes_automations_to_the_host_that_runs_them() {
     let remote_sb = Sandbox::new("auto-remote");
     let remote = remote_sb.start();
@@ -2117,12 +2360,15 @@ async fn a_hub_routes_automations_to_the_host_that_runs_them() {
     c.wait_for("the host's snapshot", |m| m["op"] == "host.snapshot" && m["hostId"] == host).await;
 
     let cwd = remote_sb.folder("proj");
+    let window = json!({ "start": "21:00", "end": "09:00", "days": [5] });
     let from = c.mark();
-    c.send(json!({ "op": "automation.save", "host": host, "automation": automation_of(&cwd, json!({})), "ref": "save" })).await;
+    c.send(json!({ "op": "automation.save", "host": host, "automation": automation_of(&cwd, json!({ "window": window })), "ref": "save" })).await;
     let saved = c.wait_after(from, "saved on the remote", |m| m["op"] == "automation.saved" && m["ref"] == "save").await;
     let id = saved["automation"]["id"].as_str().unwrap().to_string();
     let list = c.wait_after(from, "the remote's list", |m| m["op"] == "automations" && m["hostId"] == host).await;
     assert_eq!(list["automations"][0]["id"], id);
+    assert_eq!(list["automations"][0]["window"], window);
+    assert_eq!(remote.client().await.log[0]["automations"][0]["window"], window);
 
     // It lives on the remote; the hub keeps none of its own.
     assert_eq!(remote.client().await.log[0]["automations"][0]["id"], id);
@@ -2447,6 +2693,25 @@ async fn procs_with(c: &mut Client, sid: &str, needle: &str) -> Vec<Value> {
     panic!("no process with `{needle}` in the list of {sid}");
 }
 
+/// A subagent Claude runs in the background outlives its turn: the session
+/// says it is still at work (`background`) until the subagent reports.
+#[tokio::test]
+async fn a_background_subagent_keeps_its_session_marked_working() {
+    let sb = Sandbox::new("background-agent");
+    let sidecar = claude_sidecar();
+    let d = sb.start_with(&[("YARD_SIDECAR", &sidecar)]);
+    let mut c = d.client().await;
+    let extra = json!({ "engine": "claude", "model": "claude-haiku-5-5" });
+    let sid = c.create(&sb.folder("proj"), "[background-agent] TEST-go", extra).await;
+    assert_eq!(c.wait_turn_done(&sid, 0).await["status"], "completed");
+    let meta = c.wait_for("idle with a subagent at work", |m| m["op"] == "session" && m["session"]["id"] == sid.as_str() && m["session"]["status"] == "idle" && m["session"]["background"].as_array().is_some_and(|b| b.len() == 1)).await;
+    let item = meta["session"]["background"][0].as_str().unwrap().to_string();
+    // It reports after the turn: the mark goes.
+    let from = c.mark();
+    c.wait_after(from, "the subagent done", |m| m["op"] == "session" && m["session"]["id"] == sid.as_str() && m["session"].get("background").is_none()).await;
+    assert!(c.history(&sid).await.iter().any(|e| e["type"] == "tool_completed" && e["itemId"] == item.as_str()));
+}
+
 #[tokio::test]
 async fn session_procs_lists_what_a_session_is_running() {
     let sb = Sandbox::new("procs");
@@ -2543,6 +2808,30 @@ async fn a_session_whose_folder_is_gone_says_so() {
 }
 
 #[tokio::test]
+async fn a_message_to_a_session_whose_folder_is_gone_says_so() {
+    let sb = Sandbox::new("gonesend");
+    let d = sb.start();
+    let mut c = d.client().await;
+    for engine in ["codex", "claude"] {
+        let folder = sb.folder(&format!("proj-{engine}"));
+        // As the merged-worktree sweep leaves it: Claude's sidecar stopped, folder gone.
+        let first = if engine == "claude" { "[die] hi" } else { "hi" };
+        let sid = c.create(&folder, first, json!({ "engine": engine })).await;
+        c.wait_turn_done(&sid, 0).await;
+        c.wait_status(&sid, "idle").await;
+        fs::remove_dir_all(&folder).unwrap();
+
+        // The engine would fail its own way: Claude Code's SDK blames libc.
+        let seq = c.next_seq(&sid);
+        c.send(json!({ "op": "session.send", "sessionId": sid, "text": "keep going" })).await;
+        let error = c.wait_event(&sid, "error", seq).await;
+        let message = error["message"].as_str().unwrap_or_default();
+        assert!(message.contains("no longer exists") && message.contains(&folder), "{engine}: {error}");
+        assert_eq!(c.wait_turn_done(&sid, seq).await["status"], "failed", "{engine}");
+    }
+}
+
+#[tokio::test]
 async fn claude_usage_survives_a_restart() {
     // Claude reports its limits only during a turn, so without saving them a
     // restart blanks the meters and lets a usage-capped automation run.
@@ -2613,13 +2902,41 @@ async fn pr_get_says_when_the_folder_is_a_repository_it_cannot_read_a_pr_for() {
     assert_eq!(reply["pr"]["error"], "no branch is checked out", "{reply}");
     assert_eq!(reply["pr"]["repo"], true, "{reply}");
 
-    // A plain folder has nothing to review.
+    // A plain folder has nothing to review and no PR, and that is an answer,
+    // not a failure: the session header asks every minute (#309).
     let plain = sb.folder("plain");
     let sid = c.create(&plain, "hello", json!({})).await;
     c.wait_turn_done(&sid, 0).await;
     let from = c.mark();
     c.send(json!({ "op": "pr.get", "sessionId": sid })).await;
     let reply = c.wait_after(from, "a pr reply", |m| m["op"] == "pr" && m["sessionId"] == sid).await;
-    assert_eq!(reply["pr"]["error"], "not a git repository", "{reply}");
-    assert!(reply["pr"]["repo"].is_null(), "{reply}");
+    assert_eq!(reply["pr"]["repo"], false, "{reply}");
+    assert!(reply["pr"]["error"].is_null(), "{reply}");
+}
+
+#[tokio::test]
+async fn removing_an_account_in_use_names_its_sessions() {
+    let sb = Sandbox::new("accounts-rm-in-use");
+    let d = sb.start();
+    let mut c = d.client().await;
+    let id = add_account(&mut c, "codex", "Work").await;
+    async fn refusal(c: &mut Client, id: &str) -> String {
+        let from = c.mark();
+        c.send(json!({ "op": "account.remove", "id": id })).await;
+        c.wait_error(from, "account.remove").await
+    }
+
+    // An archived session is not in the sidebar, so the refusal has to say
+    // which one it is and where it went.
+    let old = c.create(&sb.folder("old"), "fix the login page", json!({ "account": id })).await;
+    c.wait_turn_done(&old, 0).await;
+    c.send(json!({ "op": "session.update", "sessionId": old, "archived": true })).await;
+    c.wait_for("the archived session", |m| m["op"] == "session" && m["session"]["id"] == old && m["session"]["archived"] == true).await;
+    let one = refusal(&mut c, &id).await;
+    assert_eq!(one, "The session \"fix the login page\" (archived) still uses this account. Delete it first.");
+
+    let new = c.create(&sb.folder("new"), "write the docs", json!({ "account": id })).await;
+    c.wait_turn_done(&new, 0).await;
+    let two = refusal(&mut c, &id).await;
+    assert_eq!(two, "2 sessions still use this account: \"fix the login page\" (archived) and \"write the docs\". Delete them first.");
 }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ProcRow } from "./protocol";
-import { procSummary, procTree, pruneKills, rowActions, shortCommand } from "./procs";
+import { procsBlank, procSummary, procTree, pruneKills, rowActions, shortCommand } from "./procs";
 
 const row = (pid: number, ppid: number, cmd: string, extra: Partial<ProcRow> = {}): ProcRow => ({
   pid,
@@ -132,5 +132,17 @@ describe("pruneKills", () => {
     // Nothing to drop: the same object, so React state does not change.
     const same = { 12: kills[12] };
     expect(pruneKills(same, rows)).toBe(same);
+  });
+});
+
+describe("procsBlank", () => {
+  const rows = [row(10, 1, "sleep 30")];
+  test("the list, a wait, or nothing running, while the host is online", () => {
+    expect(procsBlank(rows, true)).toBeNull();
+    expect(procsBlank(undefined, true)).toBe("Loading…");
+    expect(procsBlank([], true)).toBe("Nothing is running for this session.");
+  });
+  test("an offline host says so rather than a stale list, a wait that never ends, or nothing running", () => {
+    for (const r of [rows, undefined, []]) expect(procsBlank(r, false)).toBe("Processes are available when this host reconnects.");
   });
 });

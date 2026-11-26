@@ -1,6 +1,7 @@
 // Labels and patches for Claude Code tool calls, shared by a live session
 // (main.ts) and an imported one (history.ts).
 import { relative } from "node:path";
+import { ownToolLabel } from "./agentTools";
 
 export const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 export const short = (s: unknown, n = 160) => {
@@ -39,6 +40,8 @@ export function describe(name: string, toolInput: any, cwd: string): { kind: str
     case "TodoWrite":
       return { kind: "other", title: "Updated tasks", detail: "" };
     default: {
+      const own = ownToolLabel(name, toolInput);
+      if (own) return { kind: "other", ...own };
       // An MCP tool: `mcp__<server>__<tool>` reads better as the tool, then its server.
       const mcp = /^mcp__(.+?)__(.+)$/.exec(name);
       if (mcp) return { kind: "other", title: mcp[2], detail: `${mcp[1]} · ${short(toolInput, 100)}` };
@@ -102,7 +105,10 @@ export function resultText(content: unknown): string {
 export function toolStarted(block: { id: string; name: string; input?: any }, cwd: string, parent?: string) {
   const d = describe(block.name, block.input, cwd);
   const event: Record<string, unknown> = { type: "tool_started", itemId: block.id, kind: d.kind, title: d.title, detail: d.detail };
-  if (d.title === "Agent" && typeof block.input?.subagent_type === "string") event.agent = block.input.subagent_type;
+  // Without a type, Claude Code runs its general-purpose agent. Untyped, the
+  // call read as an ordinary step: folded away when the turn ended while the
+  // agent still ran in the background, with nothing saying it was working.
+  if (d.title === "Agent") event.agent = typeof block.input?.subagent_type === "string" && block.input.subagent_type ? block.input.subagent_type : "general-purpose";
   if (parent) event.parent = parent;
   return event;
 }

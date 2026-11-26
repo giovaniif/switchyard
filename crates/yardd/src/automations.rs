@@ -15,7 +15,7 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
-use chrono::{Datelike, Local, NaiveTime, TimeZone};
+use chrono::{Datelike, Local, NaiveDateTime, NaiveTime, TimeZone};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
@@ -41,6 +41,62 @@ pub enum Schedule {
     Weekly { day: u8, time: String },
     /// Never on its own: only Run now or `automation.run` start a run.
     Manual,
+}
+
+/// An interval's active hours. Days name the local date the window starts.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Window {
+    pub start: String,
+    pub end: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub days: Option<Vec<u8>>,
+}
+
+impl Window {
+    fn validate(&self, schedule: &Schedule) -> Result<()> {
+        if !matches!(schedule, Schedule::Interval { .. }) {
+            bail!("an active window requires an interval schedule");
+        }
+        if parse_time(&self.start)? == parse_time(&self.end)? {
+            bail!("the window start and end must differ");
+        }
+        if let Some(days) = &self.days {
+            if days.is_empty() || days.iter().any(|d| *d > 6) {
+                bail!("window days must contain at least one day from 0 (Sunday) to 6 (Saturday)");
+            }
+            let mut unique = days.clone();
+            unique.sort_unstable();
+            unique.dedup();
+            if unique.len() != days.len() {
+                bail!("window days must be unique");
+            }
+        }
+        Ok(())
+    }
+
+    fn spans<Tz: TimeZone>(&self, from: u64, tz: &Tz) -> Option<Vec<(NaiveDateTime, NaiveDateTime)>> {
+        let today = tz.timestamp_millis_opt(i64::try_from(from).ok()?).single()?.date_naive();
+        let start = parse_time(&self.start).ok()?;
+        let end = parse_time(&self.end).ok()?;
+        let mut spans = Vec::new();
+        // Yesterday owns the after-midnight part of a wrapping window.
+        // Eight more days cover any selected weekday and a DST gap.
+        for offset in -1..=8 {
+            let date = today + chrono::Duration::days(offset);
+            if self.days.as_ref().is_some_and(|days| !days.contains(&(date.weekday().num_days_from_sunday() as u8))) {
+                continue;
+            }
+            let end_date = if start > end { date.succ_opt()? } else { date };
+            spans.push((date.and_time(start), end_date.and_time(end)));
+        }
+        Some(spans)
+    }
+
+    fn contains<Tz: TimeZone>(&self, now: u64, tz: &Tz) -> bool {
+        self.spans(now, tz).is_some_and(|spans| spans.into_iter().any(|(start, end)| {
+            local_ms(start, tz).zip(local_ms(end, tz)).is_some_and(|(s, e)| s <= now && now < e)
+        }))
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -70,6 +126,8 @@ pub struct Automation {
     #[serde(default)]
     pub base: String,
     pub schedule: Schedule,
+    #[serde(default)]
+    pub window: Option<Window>,
     #[serde(default = "yes")]
     pub skip_while_running: bool,
     /// Skip a scheduled run while the engine's 5-hour usage is above this percentage.
@@ -82,8 +140,8 @@ pub struct Automation {
     pub enabled: bool,
     #[serde(default)]
     pub created_at: u64,
-    /// When the next run is due; `None` while disabled. A run missed while
-    /// yardd was down is due immediately and fires once.
+    /// When the next run is due; `None` while disabled. A missed run fires
+    /// once, inside the active window when one is set.
     #[serde(default)]
     pub next_run: Option<u64>,
     #[serde(default)]
@@ -101,7 +159,7 @@ fn default_permission() -> String {
 fn parse_time(time: &str) -> Result<NaiveTime> {
     let bad = || anyhow::anyhow!("`{time}` is not a valid time (HH:MM)");
     let (h, m) = time.split_once(':').ok_or_else(bad)?;
-    if h.len() != 2 || m.len() != 2 {
+    if h.len() != 2 || m.len() != 2 || !h.bytes().chain(m.bytes()).all(|b| b.is_ascii_digit()) {
         return Err(bad());
     }
     NaiveTime::from_hms_opt(h.parse().map_err(|_| bad())?, m.parse().map_err(|_| bad())?, 0).ok_or_else(bad)
@@ -133,10 +191,40 @@ impl Schedule {
     }
 }
 
-/// The first run strictly after `from` (epoch ms), in `tz`. A daily or weekly
+/// The first run strictly after `from` (epoch ms), in `tz`. Windowed intervals
+/// align wall-clock slots to each window's start. A daily or weekly
 /// time that does not exist that day (a daylight saving gap) runs an hour
 /// later; one that happens twice runs the first time.
-pub fn next_after<Tz: TimeZone>(schedule: &Schedule, from: u64, tz: &Tz) -> Option<u64> {
+pub fn next_after<Tz: TimeZone>(schedule: &Schedule, window: Option<&Window>, from: u64, tz: &Tz) -> Option<u64> {
+    if let Some(window) = window {
+        window.validate(schedule).ok()?;
+        let Schedule::Interval { every, unit } = schedule else {
+            return None;
+        };
+        let minutes = i64::from(*every) * if unit == "hours" { 60 } else { 1 };
+        if minutes == 0 {
+            return None;
+        }
+        let mut next = None;
+        for (start, end) in window.spans(from, tz)? {
+            let (Some(lo), Some(hi)) = (local_ms(start, tz), local_ms(end, tz)) else {
+                continue;
+            };
+            let mut slot = start;
+            while slot < end {
+                if let Some(ms) = local_ms(slot, tz) {
+                    if ms > from && ms >= lo && ms < hi {
+                        next = Some(next.map_or(ms, |n: u64| n.min(ms)));
+                    }
+                }
+                if minutes >= (end - slot).num_minutes() {
+                    break;
+                }
+                slot += chrono::Duration::minutes(minutes);
+            }
+        }
+        return next;
+    }
     match schedule {
         Schedule::Interval { every, unit } => {
             let step = if unit == "hours" { 3_600_000 } else { 60_000 };
@@ -156,19 +244,19 @@ fn next_at<Tz: TimeZone>(from: u64, tz: &Tz, time: NaiveTime, day: Option<u8>) -
         if day.is_some_and(|d| date.weekday().num_days_from_sunday() != u32::from(d)) {
             continue;
         }
-        let naive = date.and_time(time);
-        let local = tz
-            .from_local_datetime(&naive)
-            .earliest()
-            .or_else(|| tz.from_local_datetime(&(naive + chrono::Duration::hours(1))).earliest());
-        if let Some(l) = local {
-            let ms = l.timestamp_millis();
-            if ms > from as i64 {
-                return u64::try_from(ms).ok();
+        if let Some(ms) = local_ms(date.and_time(time), tz) {
+            if ms > from {
+                return Some(ms);
             }
         }
     }
     None
+}
+
+fn local_ms<Tz: TimeZone>(naive: NaiveDateTime, tz: &Tz) -> Option<u64> {
+    let local = tz.from_local_datetime(&naive).earliest()
+        .or_else(|| tz.from_local_datetime(&(naive + chrono::Duration::hours(1))).earliest())?;
+    u64::try_from(local.timestamp_millis()).ok()
 }
 
 /// Why a run should not start on usage grounds, from yardd's usage figures.
@@ -268,19 +356,23 @@ impl Automations {
     /// Enabled automations that are due: each is moved to its next slot after
     /// `now` before it is returned, so a backlog fires once and a slow run
     /// does not fire again on the next tick.
-    fn take_due(&self, now: u64) -> Vec<String> {
+    fn take_due<Tz: TimeZone>(&self, now: u64, tz: &Tz) -> (Vec<String>, bool) {
         let mut list = self.list.lock().unwrap();
         let mut due = Vec::new();
+        let mut changed = false;
         for a in list.iter_mut() {
             if a.enabled && a.next_run.is_some_and(|n| n <= now) {
-                a.next_run = next_after(&a.schedule, now, &Local);
-                due.push(a.id.clone());
+                a.next_run = next_after(&a.schedule, a.window.as_ref(), now, tz);
+                changed = true;
+                if a.window.as_ref().map_or(true, |w| w.contains(now, tz)) {
+                    due.push(a.id.clone());
+                }
             }
         }
-        if !due.is_empty() {
+        if changed {
             self.persist(&list);
         }
-        due
+        (due, changed)
     }
 }
 
@@ -337,10 +429,13 @@ fn save(app: &App, input: &Value) -> Result<Automation> {
         }
     }
     a.schedule.validate()?;
+    if let Some(window) = &a.window {
+        window.validate(&a.schedule)?;
+    }
     a.next_run = match (&existing, a.enabled) {
         (_, false) => None,
-        (Some(old), true) if old.enabled && old.schedule == a.schedule && old.next_run.is_some() => old.next_run,
-        _ => next_after(&a.schedule, now_ms(), &Local),
+        (Some(old), true) if old.enabled && old.schedule == a.schedule && old.window == a.window && old.next_run.is_some() => old.next_run,
+        _ => next_after(&a.schedule, a.window.as_ref(), now_ms(), &Local),
     };
     a.last_run = existing.and_then(|e| e.last_run);
 
@@ -504,7 +599,7 @@ async fn run(app: &Arc<App>, a: &Automation, force: bool, over: &RunOverride) ->
     if let Some(base) = base {
         create["base"] = json!(base);
     }
-    let sid = crate::ws::create_session(app, None, &create, Some(&title), Some(&a.id)).await?;
+    let sid = crate::ws::create_session(app, None, &create, Some(&title), Some(&a.id), None, None).await?;
     Ok(Ok(sid))
 }
 
@@ -516,7 +611,11 @@ pub async fn run_scheduler(app: Arc<App>) {
         .unwrap_or(DEFAULT_TICK_MS);
     loop {
         tokio::time::sleep(Duration::from_millis(tick)).await;
-        for id in app.automations.take_due(now_ms()) {
+        let (due, changed) = app.automations.take_due(now_ms(), &Local);
+        if changed {
+            broadcast(&app);
+        }
+        for id in due {
             let app = app.clone();
             tokio::spawn(async move {
                 if let Err(e) = fire(&app, &id, false, &RunOverride::default()).await {
@@ -543,32 +642,32 @@ mod tests {
     #[test]
     fn intervals_count_from_the_given_moment() {
         let s = Schedule::Interval { every: 90, unit: "minutes".into() };
-        assert_eq!(next_after(&s, 1_000, &Utc), Some(1_000 + 90 * 60_000));
+        assert_eq!(next_after(&s, None, 1_000, &Utc), Some(1_000 + 90 * 60_000));
         let s = Schedule::Interval { every: 2, unit: "hours".into() };
-        assert_eq!(next_after(&s, 0, &Utc), Some(2 * 3_600_000));
+        assert_eq!(next_after(&s, None, 0, &Utc), Some(2 * 3_600_000));
     }
 
     #[test]
     fn daily_is_the_next_time_strictly_after_now() {
         let utc = Utc;
         // 2026-11-16 is a Monday.
-        assert_eq!(next_after(&daily("09:30"), at(&utc, 2026, 11, 16, 8, 0), &utc), Some(at(&utc, 2026, 11, 16, 9, 30)));
-        assert_eq!(next_after(&daily("09:30"), at(&utc, 2026, 11, 16, 9, 30), &utc), Some(at(&utc, 2026, 11, 17, 9, 30)));
-        assert_eq!(next_after(&daily("09:30"), at(&utc, 2026, 11, 16, 23, 59), &utc), Some(at(&utc, 2026, 11, 17, 9, 30)));
-        assert_eq!(next_after(&daily("00:00"), at(&utc, 2026, 12, 31, 12, 0), &utc), Some(at(&utc, 2027, 1, 1, 0, 0)));
+        assert_eq!(next_after(&daily("09:30"), None, at(&utc, 2026, 11, 16, 8, 0), &utc), Some(at(&utc, 2026, 11, 16, 9, 30)));
+        assert_eq!(next_after(&daily("09:30"), None, at(&utc, 2026, 11, 16, 9, 30), &utc), Some(at(&utc, 2026, 11, 17, 9, 30)));
+        assert_eq!(next_after(&daily("09:30"), None, at(&utc, 2026, 11, 16, 23, 59), &utc), Some(at(&utc, 2026, 11, 17, 9, 30)));
+        assert_eq!(next_after(&daily("00:00"), None, at(&utc, 2026, 12, 31, 12, 0), &utc), Some(at(&utc, 2027, 1, 1, 0, 0)));
     }
 
     #[test]
     fn the_time_zone_decides_what_9_30_means() {
         let tz = FixedOffset::west_opt(3 * 3600).unwrap(); // UTC-3
         let from = at(&Utc, 2026, 11, 16, 11, 0); // 08:00 local
-        assert_eq!(next_after(&daily("09:30"), from, &tz), Some(at(&Utc, 2026, 11, 16, 12, 30)));
+        assert_eq!(next_after(&daily("09:30"), None, from, &tz), Some(at(&Utc, 2026, 11, 16, 12, 30)));
         let after = at(&Utc, 2026, 11, 16, 13, 0); // 10:00 local: tomorrow
-        assert_eq!(next_after(&daily("09:30"), after, &tz), Some(at(&Utc, 2026, 11, 17, 12, 30)));
+        assert_eq!(next_after(&daily("09:30"), None, after, &tz), Some(at(&Utc, 2026, 11, 17, 12, 30)));
         // Late evening UTC is already the next day in UTC+9.
         let east = FixedOffset::east_opt(9 * 3600).unwrap();
         let from = at(&Utc, 2026, 11, 16, 20, 0); // 05:00 on the 17th local
-        assert_eq!(next_after(&daily("09:30"), from, &east), Some(at(&east, 2026, 11, 17, 9, 30)));
+        assert_eq!(next_after(&daily("09:30"), None, from, &east), Some(at(&east, 2026, 11, 17, 9, 30)));
     }
 
     #[test]
@@ -576,10 +675,10 @@ mod tests {
         let utc = Utc;
         let monday = |d| Schedule::Weekly { day: d, time: "08:00".into() };
         let from = at(&utc, 2026, 11, 16, 9, 0); // Monday 09:00
-        assert_eq!(next_after(&monday(1), from, &utc), Some(at(&utc, 2026, 11, 23, 8, 0)), "this Monday's slot is past");
-        assert_eq!(next_after(&monday(1), at(&utc, 2026, 11, 16, 7, 0), &utc), Some(at(&utc, 2026, 11, 16, 8, 0)));
-        assert_eq!(next_after(&monday(0), from, &utc), Some(at(&utc, 2026, 11, 22, 8, 0)), "Sunday");
-        assert_eq!(next_after(&monday(6), from, &utc), Some(at(&utc, 2026, 11, 21, 8, 0)), "Saturday");
+        assert_eq!(next_after(&monday(1), None, from, &utc), Some(at(&utc, 2026, 11, 23, 8, 0)), "this Monday's slot is past");
+        assert_eq!(next_after(&monday(1), None, at(&utc, 2026, 11, 16, 7, 0), &utc), Some(at(&utc, 2026, 11, 16, 8, 0)));
+        assert_eq!(next_after(&monday(0), None, from, &utc), Some(at(&utc, 2026, 11, 22, 8, 0)), "Sunday");
+        assert_eq!(next_after(&monday(6), None, from, &utc), Some(at(&utc, 2026, 11, 21, 8, 0)), "Saturday");
     }
 
     #[test]
@@ -596,7 +695,7 @@ mod tests {
 
     #[test]
     fn a_manual_schedule_has_no_next_run() {
-        assert_eq!(next_after(&Schedule::Manual, 1_000, &Utc), None);
+        assert_eq!(next_after(&Schedule::Manual, None, 1_000, &Utc), None);
         let s: Schedule = serde_json::from_value(json!({ "kind": "manual" })).unwrap();
         assert_eq!(s, Schedule::Manual);
         assert_eq!(serde_json::to_value(&s).unwrap(), json!({ "kind": "manual" }));
@@ -614,6 +713,7 @@ mod tests {
             permission: "ask".into(),
             base: String::new(),
             schedule: Schedule::Interval { every, unit: "minutes".into() },
+            window: None,
             skip_while_running: true,
             max_five_hour: None,
             max_week: None,
@@ -637,13 +737,116 @@ mod tests {
             off.enabled = false;
             off
         }];
-        assert_eq!(store.take_due(now), ["a1"], "once, and not the disabled one");
+        assert_eq!(store.take_due(now, &Utc).0, ["a1"], "once, and not the disabled one");
         let next = store.get("a1").unwrap().next_run.unwrap();
         assert!(next > now && next <= now + 60 * 60_000 + 1000, "{next}");
-        assert!(store.take_due(now + 1000).is_empty(), "not again on the next tick");
+        assert!(store.take_due(now + 1000, &Utc).0.is_empty(), "not again on the next tick");
         // It was saved: a new load sees the moved slot.
         assert_eq!(Automations::load(dir.clone()).get("a1").unwrap().next_run, Some(next));
         std::fs::remove_dir_all(dir).ok();
+    }
+
+    fn window(start: &str, end: &str, days: Option<Vec<u8>>) -> Window {
+        Window { start: start.into(), end: end.into(), days }
+    }
+
+    #[test]
+    fn windows_align_slots_inside_and_outside_and_exclude_the_end() {
+        let hourly = Schedule::Interval { every: 1, unit: "hours".into() };
+        let night = window("21:00", "09:00", None);
+        let next = |d, h, m| next_after(&hourly, Some(&night), at(&Utc, 2026, 11, d, h, m), &Utc);
+        assert_eq!(next(16, 14, 0), Some(at(&Utc, 2026, 11, 16, 21, 0)));
+        assert_eq!(next(16, 23, 10), Some(at(&Utc, 2026, 11, 17, 0, 0)));
+        assert_eq!(next(16, 20, 59), Some(at(&Utc, 2026, 11, 16, 21, 0)));
+        assert_eq!(next(16, 21, 0), Some(at(&Utc, 2026, 11, 16, 22, 0)));
+        assert_eq!(next(17, 7, 59), Some(at(&Utc, 2026, 11, 17, 8, 0)));
+        assert_eq!(next(17, 8, 0), Some(at(&Utc, 2026, 11, 17, 21, 0)));
+        assert_eq!(next(17, 9, 0), Some(at(&Utc, 2026, 11, 17, 21, 0)));
+        let huge = Schedule::Interval { every: u32::MAX, unit: "hours".into() };
+        assert_eq!(next_after(&huge, Some(&night), at(&Utc, 2026, 11, 16, 22, 0), &Utc), Some(at(&Utc, 2026, 11, 17, 21, 0)));
+        let day = window("09:00", "17:00", None);
+        assert_eq!(next_after(&hourly, Some(&day), at(&Utc, 2026, 11, 16, 8, 0), &Utc), Some(at(&Utc, 2026, 11, 16, 9, 0)));
+        assert_eq!(next_after(&hourly, Some(&day), at(&Utc, 2026, 11, 16, 10, 10), &Utc), Some(at(&Utc, 2026, 11, 16, 11, 0)));
+        assert_eq!(next_after(&hourly, Some(&day), at(&Utc, 2026, 11, 16, 16, 0), &Utc), Some(at(&Utc, 2026, 11, 17, 9, 0)));
+    }
+
+    #[test]
+    fn friday_owns_its_saturday_morning_and_ninety_minutes_stay_aligned() {
+        let night = window("21:00", "09:00", Some(vec![5]));
+        let s = Schedule::Interval { every: 90, unit: "minutes".into() };
+        // Friday November 20: the eight slots stop at 07:30 Saturday.
+        let mut from = at(&Utc, 2026, 11, 20, 14, 0);
+        for (d, h, m) in [(20,21,0),(20,22,30),(21,0,0),(21,1,30),(21,3,0),(21,4,30),(21,6,0),(21,7,30),(27,21,0)] {
+            let next = next_after(&s, Some(&night), from, &Utc).unwrap();
+            assert_eq!(next, at(&Utc, 2026, 11, d, h, m));
+            from = next;
+        }
+        assert!(night.contains(at(&Utc, 2026, 11, 21, 8, 59), &Utc));
+        assert!(!night.contains(at(&Utc, 2026, 11, 21, 9, 0), &Utc));
+        assert!(!night.contains(at(&Utc, 2026, 11, 22, 1, 0), &Utc));
+    }
+
+    #[test]
+    fn windows_validate_times_days_and_schedule() {
+        let s = Schedule::Interval { every: 1, unit: "hours".into() };
+        for w in [window("9:00", "17:00", None), window("09:60", "17:00", None), window("25:00", "17:00", None), window("+1:00", "17:00", None), window("09:00", "09:00", None), window("09:00", "17:00", Some(vec![7])), window("09:00", "17:00", Some(vec![1,1])), window("09:00", "17:00", Some(vec![]))] {
+            assert!(w.validate(&s).is_err(), "{w:?}");
+        }
+        let w = window("21:00", "09:00", Some(vec![0, 6]));
+        assert!(w.validate(&s).is_ok());
+        for s in [daily("09:00"), Schedule::Weekly { day: 1, time: "09:00".into() }, Schedule::Manual] {
+            assert!(w.validate(&s).unwrap_err().to_string().contains("interval"));
+        }
+        let mut legacy = serde_json::to_value(sample(None, 60)).unwrap();
+        legacy.as_object_mut().unwrap().remove("window");
+        assert!(serde_json::from_value::<Automation>(legacy).unwrap().window.is_none());
+    }
+
+    #[test]
+    fn missed_window_runs_fire_once_inside_but_only_reschedule_outside() {
+        let dir = std::env::temp_dir().join(format!("yardd-window-unit-{}", std::process::id()));
+        let store = Automations::load(dir.clone());
+        let mut a = sample(Some(at(&Utc, 2026, 11, 16, 21, 0)), 60);
+        a.window = Some(window("21:00", "09:00", None));
+        *store.list.lock().unwrap() = vec![a.clone()];
+        let now = at(&Utc, 2026, 11, 17, 1, 10);
+        assert_eq!(store.take_due(now, &Utc), (vec!["a1".into()], true));
+        assert_eq!(store.get("a1").unwrap().next_run, Some(at(&Utc, 2026, 11, 17, 2, 0)));
+        assert_eq!(store.take_due(now + 1000, &Utc), (vec![], false));
+        *store.list.lock().unwrap() = vec![a];
+        let now = at(&Utc, 2026, 11, 17, 14, 0);
+        assert_eq!(store.take_due(now, &Utc), (vec![], true));
+        let expected = Some(at(&Utc, 2026, 11, 17, 21, 0));
+        assert_eq!(store.get("a1").unwrap().next_run, expected);
+        assert_eq!(Automations::load(dir.clone()).get("a1").unwrap().next_run, expected);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn window_dst_uses_local_gap_and_fold_policy() {
+        // Use the system's DST zone in a child: changing TZ in this parallel
+        // test process would race every other user of chrono::Local.
+        const CHILD: &str = "YARD_WINDOW_DST_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "automations::tests::window_dst_uses_local_gap_and_fold_policy"])
+                .env("TZ", "America/New_York").env(CHILD, "1").status().unwrap();
+            assert!(status.success());
+            return;
+        }
+        let s = Schedule::Interval { every: 1, unit: "hours".into() };
+        let night = window("21:00", "09:00", None);
+        // Spring: 01:00 EST's next slot is 03:00 EDT (02:00 shifts an hour).
+        let spring = at(&Utc, 2026, 3, 8, 6, 0);
+        assert_eq!(next_after(&s, Some(&night), spring, &Local), Some(at(&Utc, 2026, 3, 8, 7, 0)));
+        // Fall: resolve the repeated hour exactly as next_at does, once.
+        // Do not assume the order chrono::Local returns ambiguous offsets in.
+        let before_fold = at(&Utc, 2026, 11, 1, 4, 0);
+        let fold_slot = next_after(&daily("01:00"), None, before_fold, &Local).unwrap();
+        assert_eq!(next_after(&s, Some(&night), before_fold, &Local), Some(fold_slot));
+        assert_eq!(next_after(&s, Some(&night), fold_slot, &Local), Some(at(&Utc, 2026, 11, 1, 7, 0)));
+        let gap_start = window("02:30", "05:00", None);
+        assert_eq!(next_after(&s, Some(&gap_start), at(&Utc, 2026, 3, 8, 6, 0), &Local), Some(at(&Utc, 2026, 3, 8, 7, 30)));
     }
 
     #[test]

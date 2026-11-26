@@ -1,5 +1,5 @@
 // Words for automations: schedules, next and last run, and which sessions are runs.
-import type { Automation, LastRun, Schedule, SessionMeta } from "./protocol";
+import type { Automation, AutomationWindow, LastRun, Schedule, SessionMeta } from "./protocol";
 import { duration } from "./thread";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -7,7 +7,27 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 
-export function describeSchedule(s: Schedule): string {
+export function describeSchedule(s: Schedule, window?: AutomationWindow | null): string {
+  const schedule = describeBaseSchedule(s);
+  if (!window || s.kind !== "interval") return schedule;
+  const days = window.days && window.days.length < 7 ? describeWindowDays(window.days) : "";
+  return `${schedule} · ${window.start}–${window.end}${days ? `, ${days}` : ""}`;
+}
+
+/** Consecutive start days read as a range; Sunday comes last in the week. */
+function describeWindowDays(days: number[]): string {
+  const sorted = [1, 2, 3, 4, 5, 6, 0].filter((d) => days.includes(d));
+  const groups: string[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const first = i;
+    while (i + 1 < sorted.length && (sorted[i] + 1) % 7 === sorted[i + 1]) i++;
+    const name = (d: number) => DAYS[d].slice(0, 3);
+    groups.push(i === first ? name(sorted[i]) : `${name(sorted[first])}–${name(sorted[i])}`);
+  }
+  return groups.join(", ");
+}
+
+function describeBaseSchedule(s: Schedule): string {
   switch (s.kind) {
     case "interval": {
       const unit = s.unit === "hours" ? "hour" : "minute";
@@ -23,8 +43,19 @@ export function describeSchedule(s: Schedule): string {
 }
 
 /** Why a schedule cannot be saved, or null. */
-export function scheduleProblem(s: Schedule): string | null {
-  const badTime = (t: string) => !/^([01]\d|2[0-3]):[0-5]\d$/.test(t);
+export function scheduleProblem(s: Schedule, window?: AutomationWindow | null): string | null {
+  const problem = baseScheduleProblem(s);
+  if (problem || !window) return problem;
+  if (s.kind !== "interval") return "An active window requires an interval schedule.";
+  if (badTime(window.start) || badTime(window.end)) return "Enter window times as HH:MM.";
+  if (window.start === window.end) return "The window start and end must differ.";
+  if (window.days && (!window.days.length || new Set(window.days).size !== window.days.length || window.days.some((d) => !Number.isInteger(d) || d < 0 || d > 6))) return "Pick unique window days from Sunday to Saturday.";
+  return null;
+}
+
+const badTime = (t: string) => !/^([01]\d|2[0-3]):[0-5]\d$/.test(t);
+
+function baseScheduleProblem(s: Schedule): string | null {
   switch (s.kind) {
     case "interval":
       return Number.isInteger(s.every) && s.every >= 1 ? null : "The interval must be at least 1.";
@@ -134,10 +165,16 @@ export const runSummary = (s: SessionMeta, now: number, name = ""): string =>
 export const stripRuns = (runs: SessionMeta[], max: number): SessionMeta[] => runs.slice(0, max).reverse();
 
 export function scheduleLine(a: Automation, now: number): string {
+  return scheduleParts(a, now).join(" · ");
+}
+
+/** The line's two halves: the schedule, and when it runs next. A card cuts the
+ *  first when the line is too long, never the second: the next run is what changes. */
+export function scheduleParts(a: Automation, now: number): [string, string] {
   // A manual automation has no next run: it runs when someone (or a script) starts it.
-  if (a.schedule.kind === "manual") return `Manual · ${a.enabled ? "runs when started" : "off"}`;
+  if (a.schedule.kind === "manual") return ["Manual", a.enabled ? "runs when started" : "off"];
   const next = a.enabled && a.nextRun != null ? `next ${describeNext(a.nextRun, true, now)}` : "off";
-  return `${describeSchedule(a.schedule)} · ${next}`;
+  return [describeSchedule(a.schedule, a.window), next];
 }
 
 /** yardd's skip reasons, cut to what fits a card's line; the tooltip keeps the whole one. */
@@ -195,6 +232,15 @@ export function runsOf(sessions: Record<string, SessionMeta>, host: string, auto
   return Object.values(sessions)
     .filter((s) => s.automation === automation && (s.host || "local") === host)
     .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** The sidebar Automations button's dot. Runs stay out of the sidebar, so a
+ *  run waiting for approval must outrank one that is only working: this dot is
+ *  the only sign there that it waits for the user. */
+export function runsAttention(runs: SessionMeta[]): "approval" | "working" | null {
+  if (runs.some((s) => s.status === "needs_approval")) return "approval";
+  if (runs.some((s) => s.status === "running")) return "working";
+  return null;
 }
 
 /** Runs live on the Automations page; pinning one brings it back to the list. */

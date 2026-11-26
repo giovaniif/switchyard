@@ -9,13 +9,16 @@ import {
   isEcho,
   isStopWord,
   joinDictation,
+  markEnd,
   recognitionProblem,
   SILENCE_MS,
+  START,
   speechChunks,
   VOICE_OFF,
   voiceStep,
   type Cue,
   type Heard,
+  type Mark,
   type VoiceEffect,
   type VoiceInput,
   type VoiceMode,
@@ -45,7 +48,15 @@ export interface VoiceOptions {
   cue?: { n: number; cue: Cue } | null;
   /** Voice mode turns off when this changes (another session). */
   scope?: string;
+  /** The new-session page: a task voice mode sent goes on in its session. */
+  carry?: boolean;
 }
+
+// The new-session page unmounts as the session it started opens. Voice mode
+// waiting there for the answer goes on in the next reply box that mounts,
+// so the answer is read and it listens again, as in a session.
+const CARRY_MS = 30_000;
+let carriedAt = 0;
 
 export function useVoice(opts: VoiceOptions) {
   const o = useRef(opts);
@@ -63,7 +74,7 @@ export function useVoice(opts: VoiceOptions) {
   const stopping = useRef<any>(null);
   // The box held `base` when this recognition started; results before `from` are used up.
   const base = useRef("");
-  const from = useRef(0);
+  const from = useRef<Mark>(START);
   const results = useRef<Heard[]>([]);
   const restarts = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -120,13 +131,13 @@ export function useVoice(opts: VoiceOptions) {
     const phase = modeRef.current.phase;
     if (want.current === "voice" && phase === "speaking") {
       if (isEcho(spoken, speaking.current)) {
-        from.current = list.length;
+        from.current = markEnd(list);
         return;
       }
       if (isStopWord(spoken)) {
         // Wait for the final words: "stop" may go on to be a real request.
-        if (list.slice(from.current).every((r) => r.final)) {
-          from.current = list.length;
+        if (list.slice(from.current.i).every((r) => r.final)) {
+          from.current = markEnd(list);
           dispatch({ type: "stop" });
         }
         return;
@@ -163,7 +174,7 @@ export function useVoice(opts: VoiceOptions) {
     rec.current = r;
     const startedAt = Date.now();
     base.current = o.current.text();
-    from.current = 0;
+    from.current = START;
     results.current = [];
     r.onresult = (e: any) => {
       if (r !== rec.current && r !== stopping.current) return;
@@ -267,7 +278,13 @@ export function useVoice(opts: VoiceOptions) {
 
   // Another session, or the composer going away, ends it all.
   useEffect(() => {
+    if (!o.current.carry && carriedAt && Date.now() - carriedAt < CARRY_MS) {
+      modeRef.current = { phase: "waiting", after: "listen" };
+      setMode(modeRef.current);
+    }
+    carriedAt = 0;
     return () => {
+      if (o.current.carry && modeRef.current.phase === "waiting") carriedAt = Date.now();
       stopAll();
       modeRef.current = VOICE_OFF;
       setMode(VOICE_OFF);
@@ -359,7 +376,7 @@ export function useVoice(opts: VoiceOptions) {
     /** The user typed: dictation carries on after their text. */
     typed: (text: string) => {
       base.current = text;
-      from.current = results.current.length;
+      from.current = markEnd(results.current);
     },
   };
 }

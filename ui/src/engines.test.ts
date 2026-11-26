@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ENGINES, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, pickerEngines, queuedHint, reviewEngine } from "./engines";
+import { ENGINES, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, pickerEngines, queuedHint, reviewEngine, shownEffort } from "./engines";
 import type { ModelInfo, Models } from "./protocol";
 
 const m = (id: string): ModelInfo => ({ id, name: id, efforts: [] });
@@ -52,4 +52,18 @@ test("Gemini is offered on hosts that have it and queues messages for the next t
   expect(pickerEngines({ gemini: [m("auto")] })).toEqual(["claude", "codex", "gemini"]);
   expect(queuedHint("gemini")).toBe("sent when the current turn ends");
   expect(reviewEngine("gemini", { claude: [m("c")] })).toBe("claude");
+});
+
+describe("shownEffort", () => {
+  const models: Models = {
+    claude: [{ id: "opus", name: "Opus", efforts: ["low", "high"] }],
+    opencode: [m("opencode/free")],
+  };
+  test("a model without efforts shows none, whatever the choice still carries", () => {
+    expect(shownEffort(models, "opencode", "opencode/free", "high")).toBe("");
+    expect(shownEffort(models, "opencode", "unknown", "high")).toBe("");
+  });
+  test("a model with efforts shows the chosen one", () => {
+    expect(shownEffort(models, "claude", "opus", "high")).toBe("high");
+  });
 });

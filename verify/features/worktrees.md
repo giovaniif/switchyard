@@ -66,3 +66,13 @@ yv state --expect '{"sessions":[{"id":"{{sid_edit}}"}]}'
 
 ## Gotchas
 - Files a setup script creates count as untracked unless gitignored, so they block removal.
+- `plain-folder-in-place` failed on main (#309): the session page polls
+  `pr.get` every 60 s, and for a folder that is not a repository yardd
+  answered `{ "pr": { "error": "not a git repository" } }`, which `yv drive`
+  counts as a failed API call. Nothing showed (the chip renders only a PR with
+  a number). yardd now answers `{ "pr": { "repo": false } }`, and the recipe
+  passes.
+- Deleting a session on desktop showed a "no such session" banner (#307):
+  closing its terminals told the open terminal pane to reload a list yardd
+  could no longer give. `delete-removes-clean-worktree` catches it as a failed
+  `term.list` call. Fixed by #308; the recipe passes on 2026-11-20.

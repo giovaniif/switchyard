@@ -48,6 +48,12 @@ out; `--pressure` makes the queue hold new sessions. `[chart]` on either engine 
 A dev server that does not watch files serves stale code: after changing
 `crates/` or `ui/`, `verify/yv iso restart` (rebuilds when stale). Every shot
 and drive records the build it ran against (`build.sha`, `build.dirty`).
+A restart ends every turn in flight, like a user's yardd restart: the seeded
+`sid_cmd` comes back idle ("yardd restarted during this turn."), not waiting
+for approval. A proof that needs a live approval or a running turn after a
+restart starts a new one first (`api session.send` with `[cmd]` or `[slow]`,
+`--wait` for `approval_request`) and checks it with `state --expect`, at base
+and at head alike. Otherwise the base "repro" shows a quiet session and proves nothing.
 
 ## Drive it
 

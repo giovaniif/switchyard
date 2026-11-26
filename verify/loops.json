@@ -1,5 +1,5 @@
 {
-  "$comment": "Agent loops on the live yardd (see verify/loops/README.md). patrol, maintain and review are yardd automations (Automations page, never the sidebar) built from this file by verify/yv loop automations --apply: rerun it after changing them. Their schedule is in the host's time zone; an interval counts from when it was saved. verify and babysit are manual automations (never fire on their own): verify/yv loop run verify|babysit --pr N saves them when they differ and starts a run with that PR's prompt. Changing this file is a self-or-CI change.",
+  "$comment": "Agent loops on the live yardd (see verify/loops/README.md). patrol, maintain and review are yardd automations (Automations page, never the sidebar) built from this file by verify/yv loop automations --apply: rerun it after changing them. Their schedule is in the host's time zone; an interval counts from when it was saved, or aligns to its optional active window start. verify and babysit are manual automations (never fire on their own): verify/yv loop run verify|babysit --pr N saves them when they differ and starts a run with that PR's prompt. Changing this file is a self-or-CI change.",
   "yardUrl": "ws://127.0.0.1:47717/ws",
   "checkout": "~/.local/share/switchyard-loops/switchyard",
   "budget": {
@@ -10,7 +10,7 @@
   },
   "fallback": null,
   "loops": {
-    "patrol": { "engine": "claude", "model": "claude-opus-5-5", "effort": "high", "minutes": 50, "skill": ".claude/skills/patrol/SKILL.md", "schedule": { "kind": "interval", "every": 1, "unit": "hours" } },
+    "patrol": { "engine": "claude", "model": "claude-opus-5-5", "effort": "high", "minutes": 50, "skill": ".claude/skills/patrol/SKILL.md", "schedule": { "kind": "interval", "every": 1, "unit": "hours" }, "window": { "start": "21:00", "end": "09:00" } },
     "maintain": { "engine": "claude", "model": "claude-opus-5-5", "effort": "medium", "minutes": 50, "skill": ".claude/skills/map-maintenance/SKILL.md", "schedule": { "kind": "daily", "time": "03:30" } },
     "review": { "engine": "claude", "model": "claude-opus-5-5", "effort": "medium", "minutes": 30, "skill": ".claude/skills/weekly-review/SKILL.md", "schedule": { "kind": "weekly", "day": 1, "time": "08:00" } },
     "verify": { "engine": "claude", "model": "claude-opus-5-5", "effort": "high", "minutes": 40, "skill": ".claude/skills/verifier/SKILL.md" },

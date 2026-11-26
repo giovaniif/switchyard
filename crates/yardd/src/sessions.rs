@@ -16,33 +16,104 @@ const STOP_GRACE: Duration = Duration::from_secs(5);
 ///
 /// While the host is under pressure the session is queued instead: it keeps
 /// its prompt, and the host sampler starts it once there is room.
-pub async fn begin(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) {
+///
+/// `origin`: where the first message came from when the owner did not type
+/// it (see `origins`).
+pub async fn begin(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value], origin: Option<&Value>) {
+    let items = [item(text, attachments, origin)];
     if let Some(reason) = app.guard.admit() {
-        app.emit(sid, user_message(text, attachments));
+        record(app, sid, &items, false);
         let mut queued = json!({ "type": "queued", "reason": reason, "text": text });
         if !attachments.is_empty() {
             queued["attachments"] = json!(attachments);
+        }
+        if crate::origins::is_tagged(origin) {
+            queued["origin"] = origin.cloned().unwrap_or_default();
         }
         app.emit(sid, queued);
         app.guard.enqueue(sid, &reason);
         return;
     }
-    if let Err(e) = start_engine(app, sid).await {
-        app.emit(sid, user_message(text, attachments));
-        fail_turn(app, sid, &e);
-        return;
+    // A restricted session gets a fresh engine with each turn (agents::prepare).
+    if !crate::private::restricted(app, sid) {
+        if let Err(e) = start_engine(app, sid).await {
+            record(app, sid, &items, false);
+            fail_turn(app, sid, &e);
+            return;
+        }
     }
-    send_turn(app, sid, text, attachments).await;
+    send_turn(app, sid, &items).await;
+}
+
+/// A message for a session: queued while a turn runs (see Meta::pending),
+/// else the next turn, with anything still queued going first.
+pub async fn send_message(app: &Arc<App>, sid: &str, text: &str, files: &[Value], origin: Option<&Value>) -> anyhow::Result<()> {
+    let meta = app.meta(sid).ok_or_else(|| anyhow::anyhow!("no such session"))?;
+    if meta.status == "running" || meta.status == "needs_approval" {
+        app.queue_message(sid, text, files, origin.filter(|o| crate::origins::is_tagged(Some(o))));
+        return Ok(());
+    }
+    if meta.status == "queued" {
+        anyhow::bail!("this session is queued; start it first");
+    }
+    let mut items = app.take_all_queued(sid, |_| true);
+    items.push(item(text, files, origin));
+    send_turn(app, sid, &items).await;
+    Ok(())
+}
+
+/// One message: its text, attachments and, unless the owner typed it, origin.
+pub fn item(text: &str, attachments: &[Value], origin: Option<&Value>) -> Value {
+    let mut item = json!({ "text": text, "attachments": attachments });
+    if crate::origins::is_tagged(origin) {
+        item["origin"] = origin.cloned().unwrap_or_default();
+    }
+    item
 }
 
 /// The `user_message` event. Attachments ride along (metadata only) so the
-/// thread can show them after a reload and on other clients.
-fn user_message(text: &str, attachments: &[Value]) -> Value {
+/// thread can show them after a reload and on other clients; so does the
+/// origin of a message the owner did not type.
+fn user_message(text: &str, attachments: &[Value], origin: Option<&Value>) -> Value {
     let mut ev = json!({ "type": "user_message", "text": text });
     if !attachments.is_empty() {
         ev["attachments"] = json!(attachments);
     }
+    if crate::origins::is_tagged(origin) {
+        ev["origin"] = origin.cloned().unwrap_or_default();
+    }
     ev
+}
+
+/// Log messages that go to the engine together, and note where they came
+/// from: the turn's answer is owed to those origins. The owner's messages
+/// read as one, as before; once any came from elsewhere, each is its own
+/// message, so each keeps its badge. `steered`: they joined the running turn
+/// (whose `answering` the caller already grew).
+fn record(app: &App, sid: &str, items: &[Value], steered: bool) {
+    let tagged = origins_of(items);
+    let mut events = Vec::new();
+    if tagged.is_empty() {
+        let (text, files) = combine(items);
+        events.push(user_message(&text, &files, None));
+    } else {
+        for i in items {
+            let files = i["attachments"].as_array().cloned().unwrap_or_default();
+            events.push(user_message(i["text"].as_str().unwrap_or(""), &files, Some(&i["origin"])));
+        }
+    }
+    // Before the events: a turn that ends at once must still owe its answer.
+    if !steered && (!tagged.is_empty() || app.meta(sid).is_some_and(|m| !m.answering.is_empty())) {
+        app.update_meta(sid, |m| m.answering = tagged);
+    }
+    for mut ev in events {
+        if steered {
+            ev["steered"] = json!(true);
+            // When the agent got it, so the thread can time the work after it.
+            ev["at"] = json!(crate::state::now_ms());
+        }
+        app.emit(sid, ev);
+    }
 }
 
 /// Start a session taken off the queue, with the prompt it was queued with.
@@ -56,15 +127,18 @@ pub async fn start_queued(app: &Arc<App>, sid: &str) {
         fail_turn(app, sid, &anyhow::anyhow!("the queued prompt was lost"));
         return;
     };
-    if let Err(e) = start_engine(app, sid).await {
-        fail_turn(app, sid, &e);
-        return;
+    if !crate::private::restricted(app, sid) {
+        if let Err(e) = start_engine(app, sid).await {
+            fail_turn(app, sid, &e);
+            return;
+        }
     }
+    let origin = queued.as_ref().map(|e| e["origin"].clone()).filter(Value::is_object);
     let attachments = queued.and_then(|e| e["attachments"].as_array().cloned()).unwrap_or_default();
-    start_turn(app, sid, &text, &attachments).await;
+    start_turn(app, sid, &crate::origins::engine_text(&text, origin.as_ref()), &attachments).await;
 }
 
-async fn start_engine(app: &Arc<App>, sid: &str) -> anyhow::Result<()> {
+pub async fn start_engine(app: &Arc<App>, sid: &str) -> anyhow::Result<()> {
     let engine = app.meta(sid).map(|m| m.engine).unwrap_or_default();
     match engine.as_str() {
         "codex" => codex::create(app, sid).await,
@@ -89,36 +163,41 @@ pub async fn deliver(app: &Arc<App>, sid: &str, when: Delivery) {
             if items.is_empty() {
                 return;
             }
-            let (text, attachments) = combine(&items);
-            send_turn(app, sid, &text, &attachments).await;
+            send_turn(app, sid, &items).await;
         }
-        Delivery::Steer => {
+        Delivery::Steer | Delivery::SteerOne(_) => {
             let engine = app.meta(sid).map(|m| m.engine).unwrap_or_default();
             // The engine cannot take input mid-turn: it waits for the next one.
             if !crate::engines::can_steer(&engine) {
                 return;
             }
-            let items = app.take_all_queued(sid, |s| s == "running");
+            let items = match when {
+                Delivery::SteerOne(id) => app.take_queued(sid, &id, true).into_iter().collect(),
+                _ => app.take_all_queued(sid, |s| s == "running"),
+            };
             if items.is_empty() {
                 return;
             }
-            let (text, attachments) = combine(&items);
+            let (text, attachments) = engine_input(&items);
+            // Owed before the engine reads them, so a turn that ends right
+            // after still answers them.
+            let tagged = origins_of(&items);
+            if !tagged.is_empty() {
+                app.update_meta(sid, |m| m.answering.extend(tagged.iter().cloned()));
+            }
             let sent = match engine.as_str() {
                 "codex" => codex::steer(app, sid, &text, &attachments).await,
                 _ => claude::push(app, sid, &text, &attachments),
             };
             match sent {
-                Ok(()) => {
-                    let mut ev = user_message(&text, &attachments);
-                    ev["steered"] = json!(true);
-                    // When the agent got it, so the thread can time the work after it.
-                    ev["at"] = json!(crate::state::now_ms());
-                    app.emit(sid, ev);
-                }
+                Ok(()) => record(app, sid, &items, true),
                 Err(e) => {
                     // The turn may have ended under us: back in the queue,
                     // and on to the next turn if it already completed.
                     eprintln!("yardd: could not steer {sid}: {e:#}");
+                    if !tagged.is_empty() {
+                        app.update_meta(sid, |m| m.answering.retain(|o| !tagged.contains(o)));
+                    }
                     app.requeue(sid, items);
                     if app.meta(sid).is_some_and(|m| m.status == "idle") {
                         Box::pin(deliver(app, sid, Delivery::NextTurn)).await;
@@ -129,22 +208,75 @@ pub async fn deliver(app: &Arc<App>, sid: &str, when: Delivery) {
     }
 }
 
-/// Record the user's message and hand it to the session's engine.
-pub async fn send_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) {
-    app.emit(sid, user_message(text, attachments));
-    start_turn(app, sid, text, attachments).await;
+/// Record the messages and hand them to the session's engine as one turn.
+pub async fn send_turn(app: &Arc<App>, sid: &str, items: &[Value]) {
+    record(app, sid, items, false);
+    let (text, attachments) = engine_input(items);
+    start_turn(app, sid, &text, &attachments).await;
+}
+
+/// What the engine reads for messages that go together: each framed with
+/// where it came from (see `origins::engine_text`), joined like `combine`.
+fn engine_input(items: &[Value]) -> (String, Vec<Value>) {
+    let framed: Vec<Value> = items
+        .iter()
+        .map(|i| {
+            let origin = Some(&i["origin"]).filter(|o| o.is_object());
+            json!({ "text": crate::origins::engine_text(i["text"].as_str().unwrap_or(""), origin), "attachments": i["attachments"] })
+        })
+        .collect();
+    combine(&framed)
+}
+
+fn origins_of(items: &[Value]) -> Vec<Value> {
+    items.iter().filter(|i| crate::origins::is_tagged(Some(&i["origin"]))).map(|i| i["origin"].clone()).collect()
 }
 
 async fn start_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) {
     app.emit(sid, json!({ "type": "turn_started" }));
+    // The sweep removes a merged PR's worktree under an idle session. An
+    // engine started there fails its own way: Claude Code's SDK reports
+    // ENOENT as a libc mismatch, which sends the user after the wrong thing.
+    if let Some(meta) = app.meta(sid) {
+        if crate::git::ensure_folder(&meta.cwd).is_err() {
+            let e = anyhow::anyhow!("This session's folder no longer exists: {}. Start a new session to keep working.", meta.cwd);
+            fail_turn(app, sid, &e);
+            return;
+        }
+    }
+    let original = text;
+    // An agent's session gives its engine more than the user typed.
+    let text = match crate::agents::prepare(app, sid, text).await {
+        Ok(input) => input,
+        Err(e) => {
+            fail_turn(app, sid, &e);
+            return;
+        }
+    };
     let engine = app.meta(sid).map(|m| m.engine).unwrap_or_default();
-    let sent = match engine.as_str() {
+    let mut sent = send_to(app, sid, &engine, &text, attachments).await;
+    // An agent's conversation outlives its engine thread: one that cannot
+    // be resumed is replaced, with the conversation so far, and tried again.
+    if let Err(e) = &sent {
+        if crate::agents::may_refresh(app, sid) {
+            eprintln!("yardd: {sid}: {e:#}; starting a fresh context");
+            app.update_meta(sid, |m| m.fresh_context = Some("the engine could not continue the conversation".into()));
+            sent = match crate::agents::prepare(app, sid, original).await {
+                Ok(input) => send_to(app, sid, &engine, &input, attachments).await,
+                Err(e) => Err(e),
+            };
+        }
+    }
+    if let Err(e) = sent {
+        fail_turn(app, sid, &e);
+    }
+}
+
+async fn send_to(app: &Arc<App>, sid: &str, engine: &str, text: &str, attachments: &[Value]) -> anyhow::Result<()> {
+    match engine {
         "codex" => codex::send(app, sid, text, attachments).await,
         "opencode" | "grok" | "gemini" => acp::send(app, sid, text, attachments).await,
         _ => claude::send(app, sid, text, attachments),
-    };
-    if let Err(e) = sent {
-        fail_turn(app, sid, &e);
     }
 }
 

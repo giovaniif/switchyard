@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { appendToComposer, cleanQuote, draftOf, keepDraft, onAppend, quoteInComposer, quoteSegments, returnToComposer, SELECTION_CAP, splitQuotes, withQuotes, type Addition, snippetBlock, fenceSegments } from "./compose";
+import { appendToComposer, cleanQuote, COMMENTS_HEADER, draftOf, keepDraft, onAppend, quoteInComposer, quoteSegments, returnToComposer, SELECTION_CAP, splitComments, splitQuotes, withQuotes, type Addition, snippetBlock, fenceSegments } from "./compose";
 
 describe("cleanQuote", () => {
   test("keeps a selection's lines as they are", () => {
@@ -39,25 +39,67 @@ describe("withQuotes", () => {
 describe("splitQuotes", () => {
   test("takes the leading blockquotes back out as quotes", () => {
     expect(splitQuotes("> Run the migration first.\n> Then restart.\n\n> Use the flag.\n\nWhy both?")).toEqual({
-      quotes: ["Run the migration first.\nThen restart.", "Use the flag."],
+      quotes: [{ text: "Run the migration first.\nThen restart." }, { text: "Use the flag." }],
       text: "Why both?",
     });
   });
   test("round-trips what withQuotes sends", () => {
     const quotes = ["one\n\ntwo", "  indented", "> nested"];
-    expect(splitQuotes(withQuotes(quotes, "reply\n> not a leading quote"))).toEqual({ quotes, text: "reply\n> not a leading quote" });
+    expect(splitQuotes(withQuotes(quotes, "reply\n> not a leading quote"))).toEqual({ quotes: quotes.map((text) => ({ text })), text: "reply\n> not a leading quote" });
   });
   test("a quote with no space after > still counts", () => {
-    expect(splitQuotes(">a\n>b\n\nok")).toEqual({ quotes: ["a\nb"], text: "ok" });
+    expect(splitQuotes(">a\n>b\n\nok")).toEqual({ quotes: [{ text: "a\nb" }], text: "ok" });
   });
   test("quotes alone leave no text", () => {
-    expect(splitQuotes("> a\n\n> b")).toEqual({ quotes: ["a", "b"], text: "" });
+    expect(splitQuotes("> a\n\n> b")).toEqual({ quotes: [{ text: "a" }, { text: "b" }], text: "" });
   });
   test("a quote that runs straight into text stays text", () => {
     expect(splitQuotes("> a\nreply")).toEqual({ quotes: [], text: "> a\nreply" });
   });
   test("a message without quotes is all text", () => {
     expect(splitQuotes("plain\n\n> later")).toEqual({ quotes: [], text: "plain\n\n> later" });
+  });
+});
+
+describe("comments on parts of an answer", () => {
+  const parts = [
+    { text: "Run the migration first.\nThen restart.", note: "Which migration? There are two." },
+    { text: "Use the flag.", note: "Which flag?\n\nThe docs list --force and --yes." },
+    { text: "Then deploy." },
+  ];
+  test("each part and its own comment are one numbered item, after a header and before the text", () => {
+    expect(withQuotes(parts, "Otherwise fine.")).toBe(
+      [
+        COMMENTS_HEADER,
+        "",
+        "1. > Run the migration first.\n   > Then restart.\n   Which migration? There are two.",
+        "",
+        "2. > Use the flag.\n   Which flag?\n\n   The docs list --force and --yes.",
+        "",
+        "3. > Then deploy.\n   (no comment on this part)",
+        "",
+        "Otherwise fine.",
+      ].join("\n"),
+    );
+  });
+  test("without any comment, quotes go as before", () => {
+    expect(withQuotes([{ text: "a" }, { text: "b", note: "  " }], "why?")).toBe("> a\n\n> b\n\nwhy?");
+  });
+  test("round-trip: Edit and Stop give the parts back with their comments", () => {
+    const sent = withQuotes(parts, "Otherwise fine.\n\n> a quote I typed");
+    expect(splitQuotes(sent)).toEqual({
+      quotes: [parts[0], parts[1], { text: "Then deploy." }],
+      text: "Otherwise fine.\n\n> a quote I typed",
+    });
+    expect(splitQuotes(withQuotes(parts, ""))).toEqual({ quotes: [parts[0], parts[1], { text: "Then deploy." }], text: "" });
+  });
+  test("a quote with blank lines and a comment that starts with > stay apart", () => {
+    const q = [{ text: "one\n\ntwo", note: "> not part of the quote" }];
+    expect(splitQuotes(withQuotes(q, "ok"))).toEqual({ quotes: q, text: "ok" });
+  });
+  test("only a message that starts with the header is read as comments", () => {
+    expect(splitComments("hello\n" + COMMENTS_HEADER)).toBeNull();
+    expect(splitComments(COMMENTS_HEADER + "\n\njust text")).toBeNull();
   });
 });
 
@@ -96,7 +138,7 @@ describe("composer additions", () => {
     quoteInComposer("s1", "\nRun the migration first.\n");
     quoteInComposer("s1", "   ");
     stop();
-    expect(got).toEqual([{ quotes: ["Run the migration first."] }]);
+    expect(got).toEqual([{ quotes: [{ text: "Run the migration first.", range: undefined }], focusQuote: true }]);
   });
   test("terminal text arrives as text", () => {
     const { got, stop } = listen("s2");
@@ -108,7 +150,15 @@ describe("composer additions", () => {
     const { got, stop } = listen("s3");
     returnToComposer("s3", "> Use the flag.\n\nWhy?");
     stop();
-    expect(got).toEqual([{ quotes: ["Use the flag."], text: "Why?" }]);
+    expect(got).toEqual([{ quotes: [{ text: "Use the flag." }], text: "Why?" }]);
+  });
+  test("a message given back for editing brings its files back too", () => {
+    const file = { id: "a1", name: "shot.png", mime: "image/png", size: 42, path: "/data/attachments/a1/shot.png" };
+    const { got, stop } = listen("s5");
+    returnToComposer("s5", "Look", [file]);
+    returnToComposer("s5", "", [file]);
+    stop();
+    expect(got).toEqual([{ text: "Look", attachments: [file] }, { text: "", attachments: [file] }]);
   });
   test("only the session's own composer hears it", () => {
     const { got, stop } = listen("s4");

@@ -53,8 +53,13 @@ export interface MdTable {
 
 export type MdSegment =
   | { kind: "text"; lines: string[] }
-  | { kind: "heading"; text: string }
-  | { kind: "ul" | "ol"; items: string[] }
+  /** `level` is the number of `#`s; the thread shows every level alike. */
+  | { kind: "heading"; text: string; level: number }
+  /** `> ` lines; a document shows them as a quote. */
+  | { kind: "quote"; lines: string[] }
+  | { kind: "ul"; items: string[] }
+  /** `start` when the first item is not 1: steps split by code blocks keep their numbers. */
+  | { kind: "ol"; items: string[]; start?: number }
   | { kind: "table"; table: MdTable };
 
 /** A row's cells: outer pipes dropped, split on pipes that are neither
@@ -93,7 +98,8 @@ function alignments(line: string): Align[] | null {
 }
 
 // Closing hashes need a space before them, as in GFM: "## Use C#" keeps its "#".
-const HEADING = /^#{1,6} +(.+?)(?:\s+#+)?\s*$/;
+const HEADING = /^(#{1,6}) +(.+?)(?:\s+#+)?\s*$/;
+const QUOTE = /^ {0,3}> ?(.*)$/;
 const BULLET = /^\s*[-*+] +(.*)$/;
 const NUMBERED = /^\s*(\d{1,9})[.)] +(.*)$/;
 
@@ -111,7 +117,15 @@ export function blockSegments(lines: string[]): MdSegment[] {
     const line = lines[i];
     const heading = line.match(HEADING);
     if (heading) {
-      out.push({ kind: "heading", text: heading[1] });
+      out.push({ kind: "heading", text: heading[2], level: heading[1].length });
+      i++;
+      continue;
+    }
+    const quote = line.match(QUOTE);
+    if (quote) {
+      const prevQuote = last();
+      if (prevQuote?.kind === "quote") prevQuote.lines.push(quote[1]);
+      else out.push({ kind: "quote", lines: [quote[1]] });
       i++;
       continue;
     }
@@ -122,7 +136,9 @@ export function blockSegments(lines: string[]): MdSegment[] {
     if (bullet || (numbered && (out.length === 0 || inList || numbered[1] === "1"))) {
       const kind = bullet ? "ul" : "ol";
       const text = bullet ? bullet[1] : numbered![2];
+      const start = numbered && !bullet ? Number(numbered[1]) : 1;
       if (prev && prev.kind === kind) prev.items.push(text);
+      else if (kind === "ol" && start !== 1) out.push({ kind, items: [text], start });
       else out.push({ kind, items: [text] });
       i++;
       continue;
