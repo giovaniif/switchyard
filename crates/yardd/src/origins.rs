@@ -179,7 +179,7 @@ pub fn from_hub(origin: &Value) -> Option<Value> {
             for k in ["team", "channel", "channelName", "threadTs", "ts", "user", "userName"] {
                 o[k] = json!(text(k));
             }
-            // Which agent's own Slack app it came through (empty: the shared bot).
+            // Which agent's own Slack app it came through (none: the retired shared bot).
             if origin["app"].is_string() {
                 o["app"] = json!(text("app"));
             }

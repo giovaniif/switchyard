@@ -219,10 +219,6 @@ impl Agents {
         Value::Array(shown)
     }
 
-    pub fn all(&self) -> Vec<Agent> {
-        self.list.lock().unwrap().clone()
-    }
-
     pub fn get(&self, id: &str) -> Option<Agent> {
         self.list.lock().unwrap().iter().find(|a| a.id == id).cloned()
     }

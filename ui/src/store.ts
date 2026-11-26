@@ -206,9 +206,9 @@ export interface State {
   notice: string | null;
 }
 
-export type SlackOp = "slack.tokens" | "slack.disconnect" | "slack.retry" | "slack.allow" | "slack.disallow" | "slack.dismiss" | "slack.route";
+export type SlackOp = "slack.me.retry" | "slack.allow" | "slack.disallow" | "slack.dismiss";
 /** An agent's own Slack app, step by step (`SlackSetup`). */
-export type SlackAppOp = "slack.grant" | "slack.app.create" | "slack.app.authorize" | "slack.app.botToken" | "slack.app.appToken" | "slack.app.remove" | "slack.app.icon" | "slack.app.mention" | "slack.app.unmention" | "slack.app.watch" | "slack.app.unwatch" | "slack.publicUrl";
+export type SlackAppOp = "slack.grant" | "slack.me.create" | "slack.me.authorize" | "slack.me.userToken" | "slack.me.appToken" | "slack.me.remove" | "slack.app.create" | "slack.app.authorize" | "slack.app.botToken" | "slack.app.appToken" | "slack.app.remove" | "slack.app.icon" | "slack.app.mention" | "slack.app.unmention" | "slack.app.watch" | "slack.app.unwatch" | "slack.publicUrl";
 
 type Action =
   | { t: "socket"; connected: boolean }
@@ -750,7 +750,7 @@ export interface Actions {
   mcpChangeClear(host: string, engine: Engine, account: string, name: string): void;
   /** Forget a finished or abandoned sign-in on this page. */
   mcpAuthClear(host: string, engine: Engine, account: string, server: string): void;
-  /** Slack on the hub: `slack.tokens`, `slack.allow`, `slack.route`, ...; answers as `slack`. */
+  /** Slack on the hub: `slack.allow`, `slack.me.retry`, ...; answers as `slack`. */
   slack(op: SlackOp, fields?: Record<string, unknown>): void;
   /** A tool call's widget: its HTML, CSP, input and result. */
   widget(sessionId: string, id: string): Promise<{ widget?: WidgetRecord; error?: string }>;
