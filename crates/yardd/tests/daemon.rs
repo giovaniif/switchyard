@@ -835,16 +835,18 @@ async fn removing_a_dirty_worktree_is_refused() {
     let sid = c.create(&repo, "scratch", json!({ "worktree": true })).await;
     c.wait_turn_done(&sid, 0).await;
     c.wait_status(&sid, "idle").await;
-    let wt = c.wait_for("the worktree session", |m| m["op"] == "session" && m["session"]["id"] == sid).await["session"]["cwd"]
-        .as_str()
-        .unwrap()
-        .to_string();
+    let session = c.wait_for("the worktree session", |m| m["op"] == "session" && m["session"]["id"] == sid).await["session"].clone();
+    let wt = session["cwd"].as_str().unwrap().to_string();
 
     fs::write(Path::new(&wt).join("notes.txt"), "unsaved\n").unwrap();
     let from = c.mark();
     c.send(json!({ "op": "session.delete", "sessionId": sid, "removeWorktree": true })).await;
     let refused = c.wait_error(from, "session.delete").await;
     assert!(refused.contains("uncommitted or untracked"), "{refused}");
+    // Deleting from the sidebar shows the refusal over whatever session is
+    // open, so it names the one that was refused.
+    let title = session["title"].as_str().unwrap();
+    assert!(refused.starts_with(&format!("\"{title}\" was not deleted: ")), "{refused}");
     assert!(Path::new(&wt).join("notes.txt").is_file(), "nothing was deleted");
 
     // Clean again, it goes, with its branch.
