@@ -61,7 +61,9 @@ function group(items: Item[], liveTail: boolean): Row[] {
     if (it.kind === "turn") continue;
     const last = rows[rows.length - 1];
     if (isWork(it)) {
-      if (last?.type === "work") last.entries.push(it);
+      // A subagent still at work keeps a row of its own: folded into "Ran 4
+      // commands, ran 2 subagents" it read as done while it still ran.
+      if (last?.type === "work" && !goingOn(it) && !last.entries.some(goingOn)) last.entries.push(it);
       else rows.push({ type: "work", key: it.key, entries: [it], live: false });
       if (it.kind === "tool" && it.app) rows.push(widgetRow(it));
     } else {

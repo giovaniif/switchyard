@@ -18,6 +18,9 @@
 //   [background-agent] an Agent call run in the background, as Claude does by
 //           default: the turn answers and completes at once, and the
 //           subagent reports 1.5 s later (its `tool_completed` after the turn)
+//   [background-agents] the owner's shape: a command, two background Agent
+//           calls, a message between steps, then the turn completes; the
+//           two keep taking steps (`parent`) and report 20 s later
 //   [chart] an MCP call to `chart` (verify/fakes/mcp-chart) that ends with
 //           its widget on `tool_completed` (`app`), then "Here is the chart."
 //   [[tool NAME {json}]]  calls Switchyard's agent tool NAME through the
@@ -249,6 +252,28 @@ async function runBackgroundAgent(text) {
   emit({ type: "tool_completed", itemId: id, ok: true, output: "TEST-background report", ms: 1500 });
 }
 
+async function runBackgroundAgents(text) {
+  const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+  const step = (kind, title, detail, parent) => {
+    const id = `tool-${process.pid}-${++n}`;
+    emit({ type: "tool_started", itemId: id, kind, title, detail, ...(parent ? { parent } : {}) });
+    emit({ type: "tool_completed", itemId: id, ok: true, output: `${detail} done` });
+  };
+  step("command", "Ran", "free -h");
+  const agents = ["TEST-read the agents' conversations", "TEST-measure memory pressure"].map((detail) => ({ id: `tool-${process.pid}-${++n}`, detail }));
+  for (const a of agents) emit({ type: "tool_started", itemId: a.id, kind: "other", title: "Agent", detail: a.detail, agent: "general-purpose" });
+  step("command", "Ran", "gh pr list");
+  emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: "Meanwhile I'll review the PRs." });
+  step("command", "Ran", "git diff");
+  emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: `Echo: ${text}` });
+  emit({ type: "turn_completed", status: "completed" });
+  for (let i = 0; i < 4; i++) {
+    await pause(5000);
+    for (const a of agents) step("command", "Ran", `TEST-step ${i + 1}`, a.id);
+  }
+  for (const a of agents) emit({ type: "tool_completed", itemId: a.id, ok: true, output: `${a.detail}: report`, ms: 20000 });
+}
+
 async function runSubagents(text) {
   const pause = (ms) => new Promise((r) => setTimeout(r, ms));
   const agents = [
@@ -340,6 +365,10 @@ for await (const line of console) {
     }
     if (behaviorText.includes("[chart]")) {
       runChart(text);
+      continue;
+    }
+    if (behaviorText.includes("[background-agents]")) {
+      runBackgroundAgents(text);
       continue;
     }
     if (behaviorText.includes("[background-agent]")) {

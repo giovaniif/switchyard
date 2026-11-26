@@ -3260,6 +3260,11 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
               <RowView key={row.key} row={row} render={renderItem} widget={(t) => t.app && <WidgetFrame sessionId={meta.id} app={t.app} actions={actions} />} />
             ))}
             {working && <Working since={turnStart} />}
+            {/* The turn is over but subagents it started still work (yardd's
+                `background`): said here, not only on the sidebar row. */}
+            {!busy && !!meta.background?.length && (
+              <Working label={meta.background.length === 1 ? "1 subagent still working" : `${meta.background.length} subagents still working`} since={null} />
+            )}
           </div>
         </div>
         {online && !earlier && <QuoteReply sessionId={meta.id} />}
@@ -3576,10 +3581,10 @@ function Elapsed({ since }: { since: number }) {
   return <span ref={ref} />;
 }
 
-function Working({ since }: { since: number | null }) {
+function Working({ since, label = "Working" }: { since: number | null; label?: string }) {
   return (
     <div className="working" role="status">
-      <span className="shimmer">Working</span>
+      <span className="shimmer">{label}</span>
       {since != null && (
         <span className="muted small">
           for <Elapsed since={since} />
