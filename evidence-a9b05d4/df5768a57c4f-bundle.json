@@ -1,0 +1,256 @@
+{
+  "v": 1,
+  "claim": "Named agents only react to @mentions: alerts (bot_id) and top-level messages in a channel they should watch never reach them. New: owner-set watched channels deliver them as batched, read-only data.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-a3bbc9e75bdffc1d7",
+  "base": "2d8913de1e5f4a086f89aa9474b42af97fbe308b",
+  "head": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/acp.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/claude.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/codex.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/origins.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/sessions.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/yard-claude"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/agentTools.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/agentTools.ts"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/main.ts"
+    },
+    {
+      "status": "A",
+      "path": "sidecar/yard-claude/src/permission.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "sidecar/yard-claude/src/permission.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackSetup.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/fakes/fake-slack"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T02:12:13.179Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T02:12:15.999Z",
+      "text": "no-repro: new feature; on base no op sets watched channels and on_event drops every bot message"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T02:12:16.064Z",
+      "text": "no-failing-test: new feature. Mutation check instead: with origins::turn_permission forced to the session mode, both new integration tests in tests/slack.rs (watched) fail at their read-only assertions"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "c5152d9b1bae1761682b092b425df213efb2f34761014825fad6268f80bdf603"
+        },
+        {
+          "path": "p3-watching-desktop.png",
+          "sha256": "7c458259e42cda2a760c3157cc7a52fe1990357d49f0abc2cb05739bbcf7833e"
+        }
+      ],
+      "addedAt": "2026-11-26T02:12:20.677Z",
+      "failedApi": [
+        "slack.app.watch: A Slack channel ID looks like C0123ABCD. Find it in Slack under the channel's name, About, at the bottom."
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "0ddc8c121f7e8c7ac1617e02e4f484aa14018bc8fdb8815e04c49535101dd8e9"
+        },
+        {
+          "path": "p4-notice-desktop.png",
+          "sha256": "c7a9b9f2c5b72776c7b44afa417387ecf788b1ea040f64ef3448b0b9f38f6db9"
+        }
+      ],
+      "addedAt": "2026-11-26T02:12:20.719Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "1a2b90ceb57d206e4700444bdd5a341e1f7b76ba916671c240185f36c9b10974"
+        },
+        {
+          "path": "p5-notice-mobile.png",
+          "sha256": "34f784286528e41da99f5a5d65ae72029c3ad069868a5a77516652ce4019febd"
+        },
+        {
+          "path": "p5-watching-mobile.png",
+          "sha256": "4800356174299c1785ad67d4cad465b7b03ec7ecc502c5697f0526187101a29f"
+        }
+      ],
+      "addedAt": "2026-11-26T02:12:20.761Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "1b14316e40dd383cf4477b93c9d04509b8ec6ccc2338d17f97f4edd83d0d46ad"
+        }
+      ],
+      "addedAt": "2026-11-26T02:12:26.472Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack --test agent_tools --bin yardd && (cd ui && bun test) && (cd sidecar/yard-claude && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "a7ca779a0c1e05a8422bc31ef38f24216bfd77f1f4325ef4ddc8c183a52490d4"
+        }
+      ],
+      "addedAt": "2026-11-26T02:12:57.612Z",
+      "cmd": "verify/yv design-check --base 2d8913de1e5f",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "note",
+      "at": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T02:13:01.080Z",
+      "text": "expected-api: slack.app.watch: the drive types a channel name instead of an ID to show the refusal (C0123ABCD hint), then watches C0INCIDENT"
+    }
+  ]
+}

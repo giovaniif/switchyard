@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+    "short": "a9b05d4",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T02:10:40.693Z"
+  },
+  "dir": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-a3bbc9e75bdffc1d7/.verify/drives/2026-11-26T02-11-49-504Z",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 5003,
+      "steps": 13,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-a3bbc9e75bdffc1d7/.verify/drives/2026-11-26T02-11-49-504Z/watching-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "slack.app.watch",
+          "message": "A Slack channel ID looks like C0123ABCD. Find it in Slack under the channel's name, About, at the bottom."
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

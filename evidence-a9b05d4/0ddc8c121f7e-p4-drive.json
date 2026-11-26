@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+    "short": "a9b05d4",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T02:10:40.693Z"
+  },
+  "dir": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-a3bbc9e75bdffc1d7/.verify/drives/2026-11-26T02-11-56-185Z",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2476,
+      "steps": 6,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-a3bbc9e75bdffc1d7/.verify/drives/2026-11-26T02-11-56-185Z/notice-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

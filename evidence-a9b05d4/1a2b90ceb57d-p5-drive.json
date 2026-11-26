@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "route": "agents",
+  "build": {
+    "sha": "a9b05d44138fbdac593e8520e2ec552e2d42d72e",
+    "short": "a9b05d4",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T02:10:40.693Z"
+  },
+  "dir": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-a3bbc9e75bdffc1d7/.verify/drives/2026-11-26T02-11-59-178Z",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4238,
+      "steps": 11,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-a3bbc9e75bdffc1d7/.verify/drives/2026-11-26T02-11-59-178Z/notice-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-a3bbc9e75bdffc1d7/.verify/drives/2026-11-26T02-11-59-178Z/watching-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        },
+        {
+          "step": 7,
+          "eval": "document.documentElement.scrollWidth <= document.documentElement.clientWidth",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
