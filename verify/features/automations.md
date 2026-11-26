@@ -194,6 +194,20 @@ yv drive new --viewport desktop --steps '[{"expect":{"css":".session-row","hasTe
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":{"css":".session-row","hasText":"TEST-say hello"}},{"expect":{"css":".session-row","hasText":"TEST-Loop verify"},"visible":false},{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Loop verify\"] .automation-when","hasText":"Manual \u00b7 runs when started"}},{"click":"role:button:Runs: TEST-Loop verify"},{"expect":{"css":".automation-run","hasText":"#4242"}},{"shot":"manual-runs"},{"click":"role:button:Edit: TEST-Loop verify"},{"expect":"role:button:Schedule type","text":"Manual: only when started"},{"expect":"label:Time","visible":false},{"shot":"manual-edit"}]'
 ```
 
+### time-fields-fit-hh-mm
+Viewports: both
+The HH:MM fields (Window start, Window end, and a daily or weekly Time) are
+sized for five characters, like Repeat every, so "between 21:00 and 09:00"
+reads on one row at 390 px. (#401: they took a text input's default width,
+about 260 px on a phone, and 09:00 wrapped onto a line of its own.)
+
+```sh
+yv api '{"op":"automation.save","automation":{"name":"TEST-Window fit","prompt":"TEST-window fit","cwd":"{{repo}}","engine":"codex","model":"fake-fast","effort":"low","enabled":false,"schedule":{"kind":"interval","every":1,"unit":"hours"},"window":{"start":"21:00","end":"09:00"}}}' --wait '{"op":"automation.saved"}'
+yv api '{"op":"automation.save","automation":{"name":"TEST-Daily fit","prompt":"TEST-daily fit","cwd":"{{repo}}","engine":"codex","model":"fake-fast","effort":"low","enabled":false,"schedule":{"kind":"daily","time":"09:00"}}}' --wait '{"op":"automation.saved"}'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Automations"},{"click":"role:button:Edit: TEST-Window fit"},{"expect":"label:Window end","value":"09:00"},{"eval":"(() => { const s = document.querySelector(\"[aria-label=\u0027Window start\u0027]\").getBoundingClientRect(), e = document.querySelector(\"[aria-label=\u0027Window end\u0027]\").getBoundingClientRect(), n = document.querySelector(\"[aria-label=\u0027Repeat every\u0027]\").getBoundingClientRect(); return Math.abs(s.top - e.top) < 2 && s.width <= n.width + 0.5 && e.width <= n.width + 0.5 && e.right <= innerWidth; })()","equals":true},{"shot":"window-row"},{"click":"role:button:Cancel"},{"click":"role:button:Edit: TEST-Daily fit"},{"expect":"label:Time","value":"09:00"},{"eval":"document.querySelector(\"[aria-label=\u0027Time\u0027]\").getBoundingClientRect().width <= 80.5","equals":true},{"shot":"daily-time"}]'
+yv drive new --viewport desktop --steps '[{"click":"role:button:Automations"},{"click":"role:button:Edit: TEST-Window fit"},{"expect":"label:Window end","value":"09:00"},{"eval":"(() => { const s = document.querySelector(\"[aria-label=\u0027Window start\u0027]\").getBoundingClientRect(), e = document.querySelector(\"[aria-label=\u0027Window end\u0027]\").getBoundingClientRect(), n = document.querySelector(\"[aria-label=\u0027Repeat every\u0027]\").getBoundingClientRect(); return Math.abs(s.top - e.top) < 2 && s.width <= n.width + 0.5 && e.width <= n.width + 0.5 && e.right <= innerWidth; })()","equals":true},{"shot":"window-row"},{"click":"role:button:Cancel"},{"click":"role:button:Edit: TEST-Daily fit"},{"expect":"label:Time","value":"09:00"},{"eval":"document.querySelector(\"[aria-label=\u0027Time\u0027]\").getBoundingClientRect().width <= 80.5","equals":true},{"shot":"daily-time"}]'
+```
+
 ### interval-active-window
 An interval can be restricted to overnight hours and start days. Editing keeps
 the saved hours and days, invalid equal boundaries disable Save, the card names

@@ -922,7 +922,8 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .automation-prompt { height: auto; min-height: 120px; padding: 10px 12px; font-family: var(--mono); line-height: 1.5; resize: vertical; }
 .automation-pickers { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 0 6px; }
 .automation-schedule .field { width: auto; min-width: 0; font-family: inherit; }
-.automation-schedule input[type="number"] { width: 80px; }
+/* HH:MM is five characters: the time fields share Repeat every's width, so a window reads on one row on a phone. */
+.automation-schedule input[type="number"], .automation-schedule input[type="text"] { width: 80px; }
 .automation-days { gap: 0; }
 .automation-days [aria-pressed="true"] { background: var(--fill); color: var(--ink); font-weight: 600; }
 .automation-limits { gap: 16px; }
