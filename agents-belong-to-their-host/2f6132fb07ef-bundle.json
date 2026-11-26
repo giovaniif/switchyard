@@ -1,0 +1,431 @@
+{
+  "v": 1,
+  "claim": "Third verifier FAIL on #478, carried onto main after the rebase onto #499: an agent deleted on its host while the hub's record of its hand-over was still there (release failing, or the adopt answer lost) came back on the host, Slack app included; a lost export answer left the agent leaving for good; the agent vanished from the list while a move back was refused; an edit mid-release, or a retry's backups, could drop the owed release or prune the pre-move backups. Rebase: a remote agent's Slack place never showed on the hub and a guest approval given on the hub for it went nowhere; a move carried Slack threads, and an approval or place from before a move counted again after a move back. Verifier notes: a hand-over refusal was told apart by its wording, which names the agent, so an agent named \"… was deleted on …\" refused as busy read as deleted and the hub dropped its record and Slack app.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224",
+  "base": "dfbeec0a2b4e0066a08b5b977b54234ddb760cc1",
+  "head": "207cc59fbfb42b67720035bbc9b83b5b5825a893",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/origins.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack/places.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/AgentsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackSetup.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/agents.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/agents.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/navigation.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/slack.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/agents.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T15:35:47.889Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "5d4311c79557d89cf89e3c809f82a7cfa40a4a7a",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "abe2ec9573c94c8cc28f259ae2510c2d176bb2753b1da23954df519079a231ca"
+        },
+        {
+          "path": "p1-fail-mobile-step1.png",
+          "sha256": "d16524c5adb7badcc0c44fa2e2c549ee14fe462a3d82035ed4ac79403727521e"
+        },
+        {
+          "path": "p1-fail-desktop-step1.png",
+          "sha256": "199571f4f7725fc7de640b10e53d213a62cf860b59c4ab87952648a54ddf2aa1"
+        },
+        {
+          "path": "p1-2-fail-desktop-step1.png",
+          "sha256": "199571f4f7725fc7de640b10e53d213a62cf860b59c4ab87952648a54ddf2aa1"
+        },
+        {
+          "path": "p1-2-fail-mobile-step1.png",
+          "sha256": "d16524c5adb7badcc0c44fa2e2c549ee14fe462a3d82035ed4ac79403727521e"
+        },
+        {
+          "path": "p1-list-after.json",
+          "sha256": "4c99d96e53bbade7e08bf6a894d5977852e399a69064d69fc89e6d5780987e10"
+        }
+      ],
+      "addedAt": "2026-11-26T15:35:47.933Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "5d4311c79557d89cf89e3c809f82a7cfa40a4a7a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "6a6a527e282ec91b22804e13a095854b133c9fb6f0fd897391a5fbd3048a082e"
+        }
+      ],
+      "addedAt": "2026-11-26T15:35:47.985Z",
+      "cmd": "bash /tmp/pr478/round4-tests.sh",
+      "exit": 101
+    },
+    {
+      "id": 8,
+      "ref": "base",
+      "kind": "regression",
+      "at": "5d4311c79557d89cf89e3c809f82a7cfa40a4a7a",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-hosts.json",
+          "sha256": "522ea94794576ad4c6da4fb5907bcf53b072afd0214e6ac08724e8c7c14b3940"
+        }
+      ],
+      "addedAt": "2026-11-26T15:44:40.551Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 1,
+      "failingRecipes": [
+        "hosts/processes-say-the-host-is-offline"
+      ],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "test",
+      "at": "c7a73684483b4a27e471ce66b4668e34a555f37e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "caf543634d8e8fffb670c6554661251a685e9f20bfc1e29c1ee68115421b1592"
+        }
+      ],
+      "addedAt": "2026-11-26T18:52:26.415Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --no-fail-fast --test slack --test agents -- a_moved_agents_slack_places slack_reaches_an_agent_on_a_remote_host a_hub_hands_the_agents_it_kept an_agents_slack_app_moves_between",
+      "exit": 101
+    },
+    {
+      "id": 5,
+      "ref": "base",
+      "kind": "test",
+      "at": "243d4a8f1242018a63fb20b1fd5261a35ec4f14e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "da06c2f7b7f5f72e096534483b054c5a43465d9fca963e60e8bb9f8b690a698d"
+        }
+      ],
+      "addedAt": "2026-11-26T19:33:19.025Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents -- a_refusal_is_told_by_its_code",
+      "exit": 101
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "207cc59fbfb42b67720035bbc9b83b5b5825a893",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p6-drive.json",
+          "sha256": "cf7506d5c0dcd4717e77a5b304eecef70e2c4172450d52a11401c42174744b43"
+        },
+        {
+          "path": "p6-after-delete-mobile.png",
+          "sha256": "92937ed0c40e2506a57f9d3d6a56e9d8b61af19bbdbc994f956b7d8b01d2afde"
+        },
+        {
+          "path": "p6-after-delete-desktop.png",
+          "sha256": "e3aa5187a249f33d29c37f894ac615554e39d3103bfdd93c39060004eb25f5a3"
+        }
+      ],
+      "addedAt": "2026-11-26T19:34:13.051Z",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "207cc59fbfb42b67720035bbc9b83b5b5825a893",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "01ae0e2566ab0f2e83d0dbbbbe9b82ebb8235d322e8abad62b6ff2ba3a170a55"
+        }
+      ],
+      "addedAt": "2026-11-26T19:34:13.130Z",
+      "cmd": "verify/yv design-check --base dfbeec0a2b4e",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "test",
+      "at": "207cc59fbfb42b67720035bbc9b83b5b5825a893",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-cmd.log",
+          "sha256": "9ce8da7697223d2e4613427275aa4e151961b2b9c7e9b2e4a0e63eff7ea69b1f"
+        }
+      ],
+      "addedAt": "2026-11-26T19:34:13.309Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test) && (cd sidecar/yard-claude && bun test) && verify/yv selftest",
+      "exit": 0
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "regression",
+      "at": "207cc59fbfb42b67720035bbc9b83b5b5825a893",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-map-agents.json",
+          "sha256": "fa00647147e2ec52ef893faead9a4421d44dc4552d97a5b8732ff1ea93400a23"
+        }
+      ],
+      "addedAt": "2026-11-26T19:37:17.424Z",
+      "cmd": "verify/yv map run agents",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "agents/cards-show-the-users-agents",
+        "agents/cards-in-a-row-line-up",
+        "agents/agent-views-on-a-phone",
+        "agents/colours-line-up-under-the-faces",
+        "agents/at-mention-from-new-session-goes-to-the-agents-conversation",
+        "agents/at-mention-in-a-session-goes-to-the-agents-conversation",
+        "agents/one-conversation-and-the-agents-mark",
+        "agents/agents-message-each-other-with-badges",
+        "agents/an-agent-that-needs-you",
+        "agents/an-agents-own-memory-shows-in-the-form",
+        "agents/new-agent-sets-itself-up-in-its-conversation",
+        "agents/new-agent-on-a-phone",
+        "agents/a-working-agent-looks-busy",
+        "agents/edit-an-agent-in-the-form",
+        "agents/a-name-of-a-few-words-is-mentioned-by-its-handle",
+        "agents/face-name-and-what-it-is-for-change-in-place",
+        "agents/the-boxs-pickers-save-the-agent",
+        "agents/add-to-slack-walks-through-the-tokens",
+        "agents/switchys-address-lands-on-the-agents",
+        "agents/deleting-an-agent-deletes-its-conversation",
+        "agents/form-host-and-account-pickers",
+        "agents/a-mention-reaches-an-agent-on-a-remote-host",
+        "agents/a-remote-agents-conversation-on-a-phone",
+        "agents/a-hosts-agents-tools-act-on-its-host",
+        "agents/a-second-mac-lists-the-hosts-agents",
+        "agents/moving-an-agent-says-what-happens-to-its-conversation",
+        "agents/a-host-picked-in-the-box",
+        "agents/a-remote-agents-host-offline",
+        "agents/agents-in-the-sidebar"
+      ]
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "regression",
+      "at": "207cc59fbfb42b67720035bbc9b83b5b5825a893",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-map-slack.json",
+          "sha256": "7ce6be46bea3842f952d268baad865871347f9c2852a5ed3c27430367d9ee467"
+        }
+      ],
+      "addedAt": "2026-11-26T19:41:26.402Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/not-connected",
+        "slack/an-agents-own-slack-app",
+        "slack/allow-from-an-agents-app",
+        "slack/answer-in-the-slack-thread",
+        "slack/connect-your-slack",
+        "slack/tokens-stay-in-yardd",
+        "slack/your-direct-messages",
+        "slack/reply-react-and-read",
+        "slack/someone-new-writes",
+        "slack/import-a-channel",
+        "slack/call-an-agent-from-slack",
+        "slack/one-token-with-a-public-address",
+        "slack/a-watched-channel"
+      ]
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "regression",
+      "at": "207cc59fbfb42b67720035bbc9b83b5b5825a893",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-map-hosts.json",
+          "sha256": "4b6747f1591933361ca4a2be777612d69eeb8ad185970a6ce74447b2232043c4"
+        }
+      ],
+      "addedAt": "2026-11-26T19:44:19.668Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/processes-say-the-host-is-offline",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test agents -- a_refusal_is_told_by_its_code
+# exit 101 after 14406 ms at 243d4a8f1242018a63fb20b1fd5261a35ec4f14e
+
+
+running 1 test
+test a_refusal_is_told_by_its_code_never_by_the_agents_name ... FAILED
+
+failures:
+
+---- a_refusal_is_told_by_its_code_never_by_the_agents_name stdout ----
+
+thread 'a_refusal_is_told_by_its_code_never_by_the_agents_name' (1523315) panicked at crates/yardd/tests/agents.rs:935:5:
+the Mac dropped its record
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1523313-agents-named-hub-1 for inspection
+kept /tmp/yardd-test-1523313-agents-named-remote-0 for inspection
+
+
+failures:
+    a_refusal_is_told_by_its_code_never_by_the_agents_name
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 29 filtered out; finished in 1.40s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/agent-aee462b75b6d29224/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 12.95s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+error: test failed, to rerun pass `-p yardd --test agents`
