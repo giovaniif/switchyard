@@ -309,11 +309,38 @@ curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and 
 yv iso down --name map-slack-remote
 for i in $(seq 100); do yv state --full 2>/dev/null | jq -e '.snapshot.hosts | any(.name == "TEST-slack-box" and .status != "connected")' > /dev/null && break; sleep 0.2; done
 yv state --full | jq -e '.snapshot.hosts | any(.name == "TEST-slack-box" and .status != "connected")'
-# Mobile, as the last drive was: see Gotchas (an icon's key per viewport).
-yv drive 'slack:TEST-Stranger' --viewport mobile --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@test-f"},{"click":{"role":"option","name":"TEST-Far @test-far"}},{"type":"still there?"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Far"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"still there?"},{"shot":"called-offline"}]'
-curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and .text == "<@UAGENT2> still there?")] | length == 1'
+for vp in desktop mobile; do
+yv drive 'slack:TEST-Stranger' --viewport $vp --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@test-f"},{"click":{"role":"option","name":"TEST-Far @test-far"}},{"type":"still there '$vp'?"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Far"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"still there '$vp'?"},{"shot":"called-offline"}]'
+done
+curl -sf "$(v slack)/_fake/state" | jq -e '[.posts[] | select(.app == "you" and (.text | startswith("<@UAGENT2> still there")))] | length == 2'
 # The recipes after this one know no such host.
 yv api '{"op":"host.remove","hostId":"{{slack_box}}"}' --wait '{"op":"hosts"}'
+```
+
+### one-icon-per-picture
+Viewports: both
+An agent's app gets its face as its icon once: a window of either size works
+out the same picture key, so opening the page at desktop and then at mobile
+uploads one icon, not one per window size.
+
+```sh
+yv api '{"op":"agent.save","agent":{"name":"TEST-Painter","engine":"codex","model":"fake-fast","effort":"low","color":"amber","face":"glasses"},"ref":"painter"}' --wait '{"op":"agent.saved"}' --save painter=agent.id
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","agentId":"{{painter}}","origin":"http://127.0.0.1","ref":"grant"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.app.botToken","agentId":"{{painter}}","token":"xoxb-agent-TEST","ref":"bot"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.app.appToken","agentId":"{{painter}}","token":"xapp-1-agent-TEST","ref":"app"}' --wait '{"op":"slack"}'
+key() { yv state --full | jq -r --arg id "$(v painter)" '.snapshot.slack.agentApps[$id].iconKey // ""'; }
+icons() { curl -sf "$(v slack)/_fake/state" | jq '.icons | length'; }
+N=$(icons)
+yv drive agents --viewport desktop --steps '[{"expect":{"css":".agent-card[aria-label=\"TEST-Painter\"]"}},{"shot":"painter"}]'
+for i in $(seq 100); do [ -n "$(key)" ] && [ "$(icons)" -gt "$N" ] && break; sleep 0.2; done
+sleep 1
+K=$(key); N=$(icons)
+test -n "$K"
+yv drive agents --viewport mobile --steps '[{"expect":{"css":".agent-card[aria-label=\"TEST-Painter\"]"}},{"wait":2000},{"shot":"painter"}]'
+sleep 1
+test "$(key)" = "$K"
+test "$(icons)" = "$N"
+yv api '{"op":"slack.app.remove","agentId":"{{painter}}","ref":"rm"}' --wait '{"op":"slack"}'
 ```
 
 ### one-token-with-a-public-address

@@ -3,6 +3,7 @@ import type { AgentEvent, SlackAgentApp, SlackMe, SlackOrigin, SlackView } from 
 import { applyEvent } from "./protocol";
 import { allowedSummary, avatarIconSvg, hostSlack, iconKey, mySteps, setupSteps, slackStatus, tokensNeeded } from "./slack";
 import { originLabel } from "./agents";
+import { avatarSvg } from "./faces";
 import { initial, reduce } from "./store";
 
 const view = (extra: Partial<SlackView> = {}): SlackView => ({ me: null, allowed: [], ...extra });
@@ -98,6 +99,24 @@ describe("an agent's own Slack app", () => {
     expect(iconKey(a)).toBe(iconKey(a));
     expect(iconKey(a)).not.toBe(iconKey(b));
     expect(iconKey(a)).toMatch(/^v1-[0-9a-f]{16}$/);
+  });
+
+  test("has one key per picture, whichever window drew it", () => {
+    // A page names a face's gradients after where React mounted it (useId),
+    // and a phone-sized window mounts it elsewhere than a desktop one.
+    const paint = { background: "crimson", light: "white", clear: "transparent" };
+    const drawn = (uid: string, color: "rose" | "teal" = "rose") => avatarIconSvg(avatarSvg({ color, face: "glasses" }, 88, uid), paint) ?? "";
+    expect(avatarSvg({ color: "rose", face: "glasses" }, 88, "f_r_2_")).toContain('id="f_r_2_-skin"');
+    expect(iconKey(drawn("f_r_2_"))).toBe(iconKey(drawn("f_r_3_")));
+    // As the page inlines computed style: references quoted inside url().
+    const styled = (uid: string) => avatarIconSvg(`<svg><defs><radialGradient id="${uid}-skin"/><clipPath id="${uid}-skin-2"/></defs><circle fill="url(&quot;#${uid}-skin&quot;)" clip-path="url(&quot;#${uid}-skin-2&quot;)"/></svg>`, paint) ?? "";
+    expect(iconKey(styled("f_r_2_"))).toBe(iconKey(styled("f_r_7_")));
+    // Each reference still names its own gradient.
+    const ids = [...styled("f_r_2_").matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(3);
+    for (const id of ids) expect(styled("f_r_2_")).toContain(`#${id}`);
+    // Another colour is another picture.
+    expect(iconKey(drawn("f_r_2_", "teal"))).not.toBe(iconKey(drawn("f_r_2_")));
   });
 });
 
