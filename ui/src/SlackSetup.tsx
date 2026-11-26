@@ -202,6 +202,7 @@ export function SlackSetup({ state, actions, agent, onClose }: { state: State; a
           . {s.ownerName || "You"} {s.ownerName ? "is" : "are"} on that list. Anyone else who writes to {agent.name} shows there as a request.
         </p>
         <Mentions agent={agent.name} people={s.mentions ?? []} busy={busy} run={run} />
+        <Watched agent={agent.name} handle={handle} channels={s.watched ?? []} busy={busy} run={run} />
         <div className="row slack-alt">
           {confirmRemove ? (
             <>
@@ -300,6 +301,56 @@ function Mentions({ agent, people, busy, run }: { agent: string; people: { id: s
         <input className="field" aria-label="Name" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <button className="btn" type="submit" disabled={busy || user.trim() === ""}>
           Allow
+        </button>
+      </form>
+    </div>
+  );
+}
+
+/** Channels whose new top-level messages and alerts reach the agent without
+ *  a mention, as data it triages read-only. Only the owner sets them. */
+function Watched({ agent, handle, channels, busy, run }: { agent: string; handle: string; channels: { id: string; name: string }[]; busy: boolean; run(op: SlackAppOp, fields: Record<string, unknown>): Promise<unknown> }) {
+  const [channel, setChannel] = useState("");
+  const [name, setName] = useState("");
+  const add = async () => {
+    const r = (await run("slack.app.watch", { channel: channel.trim(), name: name.trim() })) as { error?: string };
+    if (!r?.error) {
+      setChannel("");
+      setName("");
+    }
+  };
+  return (
+    <div className="slack-mentions">
+      <p className="muted small">
+        {channels.length === 0
+          ? `${agent} answers only when someone mentions it. Watch a channel and its new messages and alerts reach ${agent} too, a batch at a time: it looks into them without changing anything, and asks you before it acts. Add @${handle} to the channel first.`
+          : `${agent} watches these channels: their new messages and alerts reach it, a batch at a time. It looks into them without changing anything, and asks you before it acts.`}
+      </p>
+      {channels.length > 0 && (
+        <ul className="slack-mention-list">
+          {channels.map((c) => (
+            <li key={c.id} className="row">
+              <span>{c.name}</span>
+              <span className="muted small">{c.id}</span>
+              <span className="spacer" />
+              <button className="btn-text danger" disabled={busy} onClick={() => void run("slack.app.unwatch", { channel: c.id })}>
+                Stop watching
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add();
+        }}
+      >
+        <input className="field" aria-label="Slack channel ID" placeholder="Channel ID, C0123ABCD" value={channel} onChange={(e) => setChannel(e.target.value)} />
+        <input className="field" aria-label="Channel name" placeholder="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="btn" type="submit" disabled={busy || channel.trim() === ""}>
+          Watch
         </button>
       </form>
     </div>

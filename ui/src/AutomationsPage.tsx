@@ -10,6 +10,8 @@ import { cardStatus, describeSchedule, runLabel, runOutcome, runsOf, runSummary,
 import { duration } from "./thread";
 import { ENGINE_NAME, pickerEngines } from "./engines";
 import { metersFor } from "./usage";
+import { ConnectorPicker } from "./ConnectorPicker";
+import { DEFAULT_ACCOUNT } from "./accounts";
 import {
   BranchPicker,
   Cloud,
@@ -268,6 +270,9 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
   const [skip, setSkip] = useState(existing?.skipWhileRunning ?? true);
   const [fiveHour, setFiveHour] = useState(existing?.maxFiveHour == null ? "" : String(existing.maxFiveHour));
   const [week, setWeek] = useState(existing?.maxWeek == null ? "" : String(existing.maxWeek));
+  // Null: a record from before the list, which keeps the default until a pick.
+  const [mcp, setMcp] = useState<string[] | null>(existing ? existing.mcp ?? null : []);
+  const [mcpTouched, setMcpTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -325,6 +330,7 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
       skipWhileRunning: skip,
       maxFiveHour: percent(fiveHour),
       maxWeek: percent(week),
+      ...(!existing || mcpTouched ? { mcp: mcp ?? [] } : {}),
     });
     setSaving(false);
     if (r.error) setError(r.error);
@@ -377,6 +383,10 @@ export function AutomationForm({ state, actions, host: host0, id }: { state: Sta
                 ? `Each run gets a new worktree cut from ${base || "the default branch"}, fetched first.`
                 : "Not a git repository: runs work in the folder itself, one at a time."}
             </span>
+          </div>
+          <div className="automation-field">
+            <span className="automation-label">Connectors</span>
+            <ConnectorPicker state={state} actions={actions} host={target} engine={choice.engine} account={DEFAULT_ACCOUNT} value={mcp} who="Each run" onChange={(list) => { setMcp(list); setMcpTouched(true); }} />
           </div>
           <div className="automation-field">
             <span className="automation-label">Schedule</span>

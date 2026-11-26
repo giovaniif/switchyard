@@ -4,8 +4,9 @@
 // stdin  (JSON lines): start | user | set_model | interrupt
 //                      | permission { requestId, decision, answers? }
 //                      | mcp_reconnect { server } | mcp_call { ref, server, tool, arguments }
-//                      `user` is { text, attachments? }: files yardd saved on
-//                      this host (see message.ts)
+//                      `user` is { text, attachments?, permission? }: files
+//                      yardd saved on this host (see message.ts); a new
+//                      turn's permission mode (see permission.ts)
 // stdout (JSON lines): { type: "event", event } | { type: "usage", usage }
 //                      | { type: "session", claudeSessionId }
 //                      | { type: "reply", ref, result } | { type: "reply", ref, error }
@@ -13,13 +14,17 @@
 // An MCP tool with a widget (MCP Apps) ends with `tool_completed` carrying
 // `app` (see apps.ts); yardd stores the widget and keeps an id in the log.
 //
+// `start` may carry `mcp`: the connectors an agent's or automation's
+// session may use (see scope.ts).
+//
 // `start` may carry `resume`: a Claude Code session id to continue after a
 // yardd restart. yardd learns that id from the `session` line.
 //
 // Events are already in yardd's normalized shape, so yardd only relays them.
 // Nothing else may write to stdout.
 import { readOnly, restrictedProfile } from "./restricted";
-import { agentToolsProfile, isOwnTool } from "./agentTools";
+import { agentToolsProfile, isOwnTool, SERVER } from "./agentTools";
+import { scopeProfile, type McpScope } from "./scope";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { createInterface } from "node:readline";
 import { userMessage } from "./message";
@@ -30,6 +35,7 @@ import { ASK_TOOL, answeredInput, questionRequest } from "./questions";
 import { createApps } from "./apps";
 import { connectors } from "./connectors";
 import { mergeUsage, type ClaudeUsage } from "./usage";
+import { modeFor, PERMISSION_MODE } from "./permission";
 
 type Decision = "allow" | "allow_always" | "deny";
 
@@ -83,16 +89,15 @@ let apps: ReturnType<typeof createApps> | null = null;
 let usage: ClaudeUsage | null = null;
 let cwd = process.cwd();
 
-/** yardd's permission modes, as the SDK names them. */
-const PERMISSION_MODE: Record<string, string> = {
-  ask: "default",
-  acceptEdits: "acceptEdits",
-  plan: "plan",
-  full: "bypassPermissions",
-};
+// The mode `start` set, and whether no turn has come yet (see modeFor).
+let startMode = "ask";
+let firstTurn = true;
+// `user` lines are handled one after another: one may wait for a mode switch.
+let userLines: Promise<void> = Promise.resolve();
 
-async function run(start: { restricted?: boolean; cwd: string; model: string; effort?: string; permission?: string; resume?: string | null; tools?: Record<string, unknown> | null }) {
+async function run(start: { restricted?: boolean; cwd: string; model: string; effort?: string; permission?: string; resume?: string | null; tools?: Record<string, unknown> | null; mcp?: McpScope }) {
   cwd = start.cwd;
+  startMode = start.permission ?? "ask";
   const subagents = createSubagents(cwd);
 
   // Keep the parent session's markers out of the child Claude Code process.
@@ -147,6 +152,10 @@ async function run(start: { restricted?: boolean; cwd: string; model: string; ef
     },
   };
   Object.assign(options, agentToolsProfile(start));
+  // An agent's or automation's session: only its connectors (see scope.ts).
+  const scoped: ReturnType<typeof scopeProfile> = start.restricted ? {} : scopeProfile(start.mcp, start.tools ? SERVER : null);
+  if (scoped.managedSettings) options.managedSettings = scoped.managedSettings;
+  if (scoped.env) Object.assign(env, scoped.env);
   Object.assign(options, restrictedProfile(start));
   if (start.effort && efforts.includes(start.effort)) options.effort = start.effort;
   if (start.resume) options.resume = start.resume;
@@ -276,8 +285,25 @@ createInterface({ input: process.stdin }).on("line", async (line) => {
         );
         break;
       case "user":
-        queue.push(userMessage(String(msg.text ?? ""), Array.isArray(msg.attachments) ? msg.attachments : []));
-        wake?.();
+        userLines = userLines.then(async () => {
+          // A new turn names its mode (a message joining a running turn does not).
+          const switchTo = modeFor(msg.permission, startMode, firstTurn);
+          if (typeof msg.permission === "string" && msg.permission) firstTurn = false;
+          if (switchTo) {
+            try {
+              await q?.setPermissionMode(switchTo as any);
+            } catch (error: any) {
+              // A read-only turn never runs in a mode that can act.
+              if (switchTo === "plan") {
+                emit({ type: "error", message: `Could not switch to Plan for this read-only turn: ${String(error?.message ?? error)}` });
+                emit({ type: "turn_completed", status: "failed" });
+                return;
+              }
+            }
+          }
+          queue.push(userMessage(String(msg.text ?? ""), Array.isArray(msg.attachments) ? msg.attachments : []));
+          wake?.();
+        });
         break;
       case "set_model":
         await q?.setModel(msg.model);

@@ -115,5 +115,19 @@ export function toolStarted(block: { id: string; name: string; input?: any }, cw
   // agent still ran in the background, with nothing saying it was working.
   if (d.title === "Agent") event.agent = typeof block.input?.subagent_type === "string" && block.input.subagent_type ? block.input.subagent_type : "general-purpose";
   if (parent) event.parent = parent;
+  const keeps = keepsAlive(block.name, block.input);
+  if (keeps) event.keepsAlive = keeps;
+  if (block.name === "CronDelete") event.endsCron = true;
   return event;
+}
+
+/** Work a call leaves inside the Claude Code process after its turn: yardd
+ *  keeps the sidecar running for it rather than releasing it when idle
+ *  (yardd's release.rs). Subagents' Agent calls are tracked apart. */
+export function keepsAlive(name: string, input: any): "background" | "monitor" | "wakeup" | "cron" | null {
+  if (name === "Bash" && input?.run_in_background === true) return "background";
+  if (name === "Monitor") return "monitor";
+  if (name === "ScheduleWakeup") return "wakeup";
+  if (name === "CronCreate") return "cron";
+  return null;
 }

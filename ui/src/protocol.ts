@@ -78,8 +78,10 @@ export interface PendingMessage {
  *  `user`: typed by the owner. */
 export type MessageOrigin =
   | { kind: "user" }
-  /** `handle`: the sender's `@handle` (none from a yardd before handles). */
-  | { kind: "agent" | "agentReply"; agentId: string; name: string; handle?: string; hops: number }
+  /** `handle`: the sender's `@handle` (none from a yardd before handles).
+   *  `readOnly`: sent on from a turn that worked on a watched Slack notice,
+   *  so the turn that reads it is read-only too. */
+  | { kind: "agent" | "agentReply"; agentId: string; name: string; handle?: string; hops: number; readOnly?: boolean }
   /** `slack` (and kinds this build does not know); `isSlack` narrows to SlackOrigin. */
   | { kind: string; [field: string]: unknown };
 
@@ -95,6 +97,10 @@ export interface SlackOrigin {
   ts: string;
   user: string;
   userName: string;
+  /** Messages from a channel the agent watches, batched into one notice
+   *  (`count` of them; the first is `ts`): data, and its turn is read-only. */
+  watched?: boolean;
+  count?: number;
 }
 
 /** The Slack connection and its settings (yardd's slack.rs). Tokens never
@@ -147,6 +153,8 @@ export interface SlackAgentApp {
   iconKey?: string;
   /** The only people its Slack answers may @mention, chosen by the owner. */
   mentions?: { id: string; name: string }[];
+  /** Channels whose new top-level messages and alerts reach the agent as data, chosen by the owner. */
+  watched?: { id: string; name: string }[];
   /** When ready: `connecting`, `connected` or `error` (Socket Mode); `events` until Slack's first event over HTTP. */
   state?: "connecting" | "connected" | "error" | "events";
   error?: string | null;
@@ -951,6 +959,9 @@ export interface Automation {
   /** Null while disabled, and always for a manual schedule. */
   nextRun: number | null;
   lastRun?: LastRun | null;
+  /** The connectors (MCP servers) its runs get. Missing: every one but
+   *  Metabase (a record saved before the list); new ones start empty. */
+  mcp?: string[] | null;
 }
 /** Hub setup discovery; `mobile.connected` records a successful iOS UI connection. */
 export type { MobileStatus } from "./mobile";
@@ -1003,6 +1014,9 @@ export interface Agent {
   setup?: boolean;
   /** What it asked for in its conversation and waits on the owner's click for. */
   request?: AgentRequest | null;
+  /** The connectors (MCP servers) its sessions get; the owner's to set.
+   *  Missing: every one but Metabase (a record saved before the list). */
+  mcp?: string[] | null;
   createdAt: number;
   updatedAt: number;
 }

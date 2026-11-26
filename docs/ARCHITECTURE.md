@@ -159,6 +159,16 @@ yardd saves every session in SQLite: `yard.db` in `$YARD_DATA_DIR`, or `~/.yard`
 
 Claude switches at once with `setPermissionMode` (the sidecar always passes `allowDangerouslySkipPermissions` so a later switch to full access works); Codex takes the mode from its next turn. Approving Claude's plan-mode exit leaves the picker showing Plan only until it is changed.
 
+**Engine lifecycle: a finished session holds no connections.** Every loaded Codex thread keeps its own MCP clients, and every Claude sidecar is a Claude Code process with its own. Left loaded, one per session, they piled up: on 2026-11-26 the shared app-server held 46-61 HTTPS connections to one company's Metabase (an automation started a thread every 10 minutes and none was ever unloaded), and the account was disabled. `crates/yardd/src/release.rs`.
+
+- **Release after idle.** A sweep releases a session's engine once it is quiet (status `idle`, no subagent still at work in `background`, no queued message; an approval keeps the status `needs_approval`) and has done nothing for 5 minutes (`YARD_RELEASE_IDLE_MS` overrides it; the tests use a fraction of a second). Activity is `Session::active_at`: any event, or an engine attaching. An automation's run is released as soon as it ends. Private threads are left alone.
+- **Work that outlives the turn holds the engine.** Releasing kills what runs inside the engine's process, so two more checks:
+  - Tools (`release::keeps_alive`): the sidecar flags `tool_started` with `keepsAlive` (`background` for Bash with `run_in_background`, `monitor`, `wakeup` for `ScheduleWakeup`, `cron` for `CronCreate`) and `endsCron` for `CronDelete`. A flagged call in the latest turn holds the engine until a later turn ends without one. A cron job holds it until a later `CronDelete`, whatever turns come between; the id is not matched, so one delete frees it.
+  - Processes (Claude): `guard::agent_work` reads the session's tree from the last sample (taken after the session's last activity). Anything the sidecar runs itself, or a shell given a command under the CLI (`sh -c …`, how Claude Code runs Bash, and all below it), is the agent's and holds the sidecar. Any other child of the CLI is an MCP server and does not. A shell-script MCP server run as `bash -c …` would hold its session. Codex is not process-checked: its shared app-server's children can be told apart per session only while their command item runs, so a background terminal of an unloaded thread is not seen.
+- **Codex:** `thread/unsubscribe { threadId }` (codex 0.171: `{ status: notLoaded | notSubscribed | unsubscribed }`). A thread with no subscriber stays loaded, MCP servers running, for the config's `thread_unload_delay_secs` (checked on 0.171: with the default, both unsubscribed threads stayed loaded), so every `thread/start` and `thread/resume` sets it to `0` in its config overrides: the thread unloads at once, `thread/closed` follows and its MCP server processes exit. yardd then reads `thread/loaded/list` and logs the count. The session's backend goes back to `Pending` with its engine ref kept, so its next turn (or a widget's call) first calls `thread/resume` and then `turn/start`, as after a yardd restart. A per-app-server lock keeps a release and the next resume in order. `thread/closed` for a thread yardd did not release marks it released the same way (a turn still open there ends failed). Deleting a session and an agent's fresh context unsubscribe too, and so do yardd's private one-off threads (naming).
+- **Claude:** the sidecar is stopped (`claude::release`, the same path as `kill`). The session was idle and the backend was already replaced, so the exit logs nothing; the next message starts a sidecar that resumes the Claude Code session.
+- **A dead app-server** (crashed, killed) no longer poisons its account: the reader clears the account's cell (only if it still holds that client), fails every request in flight, and marks every session that had a thread there released. A turn that was running ends failed: "Codex stopped during this turn (its app-server exited). The next message resumes the conversation." The next use starts a new app-server. Before, the `OnceCell` kept the dead client and every request failed "connection closed" until yardd restarted.
+
 **Switching engine** cannot share a thread, so it is a hand-off. Picking a model of another engine in a session asks for confirmation, then starts a new session on that engine in the same folder, with the same branch, title and sidebar group and a `parent` pointing back.
 
 - yardd builds the first message from the source session's event log, with no model call, because the source is usually out of quota.
@@ -391,6 +401,10 @@ Both CLIs already load every MCP server their login and config give them: claude
 - **Adding one:** "Add connector" on an account's card offers a catalog of remote OAuth servers it does not have yet (Linear first, then Sentry, Datadog US1, PostHog, Notion, Atlassian, Vercel; each answered 401 with OAuth resource metadata on 2026-11-16) or any `https` address with a name, and opens the new server's sign-in right after. Claude: `claude mcp add --transport http --scope user` with the account's `CLAUDE_CONFIG_DIR`; Codex: the app-server's `config/value/write` on `mcp_servers.<name>` and `config/mcpServer/reload` (`codex mcp add` goes on to wait for a browser sign-in, so it is not used). Remove does the reverse, for servers in the account's own config. yardd checks the name (a config key) and the address (plain `https`) before anything runs. After a Claude change the connectors process restarts and idle sessions get a fresh sidecar with their next message; a running turn keeps its servers. GitHub's MCP endpoint wants a token, not OAuth, so it is not in the catalog (`gh` covers PRs).
 - **Accounts:** an added Claude account is its own `CLAUDE_CONFIG_DIR`: it gets its own claude.ai org's connectors with its login, but not Default's plugins or `~/.claude.json` servers. The page says so, and Add connector puts what it needs in its own config. Copying Default's whole setup is not built.
 - yardd never sees a token: both CLIs run their own OAuth and keep the tokens where they always do.
+- **Scoped to agents and automations.** Agents and automations carry `mcp: Option<Vec<String>>`, set by the owner only (an agent's `update_setup` cannot touch it): `Some(list)` is exactly those servers, by the name the Connectors page lists (`claude.ai Metabase` for a claude.ai connector); `None` (a record saved before the field, or pushed by a yardd that drops it) is every server the account has except `scope::DENIED_BY_DEFAULT` (`metabase`, `claude.ai Metabase`). New agents and automations start with `Some([])`. Firefighter (`g1a212f7695f8`) gets an explicit list with Metabase when agents load or a copy arrives, and without one it keeps every server. A change to an agent's list releases its conversation's engine once idle, so the next turn resumes with the new list. Sessions that are neither an agent's nor an automation's are not scoped. `crates/yardd/src/scope.rs`.
+  - **Codex:** `thread/start` and `thread/resume` read `config/read` and pass `mcp_servers.<name>` overrides for every configured server: its transport fields (nulls dropped, as for restricted threads) with `enabled` false when the scope leaves it out. A server the owner disabled in `config.toml` stays disabled. Switchyard's own `mcp_servers.switchyard` is added after. Plugins' servers and ChatGPT apps are not scoped.
+  - **Claude:** the sidecar's `start` carries `mcp: { only } | { except }`, and the sidecar passes it as Claude Code policy: the SDK's `managedSettings` (policy settings from the parent process) with `allowedMcpServers` or `deniedMcpServers` by `serverName`. Claude Code applies that to every source it loads servers from (user, project and local config, plugins, `mcpServers`, claude.ai connectors); a server left out never starts. Switchyard's own server is always on the allowlist. With no claude.ai connector on an `only` list, `ENABLE_CLAUDEAI_MCP_SERVERS=false` also keeps Claude Code from fetching the account's connectors at all. Checked against claude 2.1.327 with no prompt (`YARD_TEST_REAL_CLAUDE=1 bun test src/scope.test.ts`): config servers left out never start. A machine whose administrator installed managed settings drops parent policy by default; then the scope does not apply. Alternatives not taken: `strictMcpConfig` with explicit configs needs each allowed server's config, which only a process that connects to every server can read; `toggleMcpServer` writes the choice into the user's settings.
+  - **UI:** a Connectors list (one checkbox per server, from `mcp.status`) in the agent form and the automation editor. A record without a list shows the default ticked and says so; a pick saves an explicit list. ACP engines are not scoped and the picker says so.
 
 ## Widgets (MCP Apps)
 
@@ -1138,6 +1152,81 @@ its engine framing and one arm in `origins::reply`.
     reactions and answers are the shared bot's, and the answer is posted
     with its own bot token. Its agent can also post on its own, at any time,
     in a thread routed to it (`slack_reply`, see Agents' own tools).
+  - **Watched channels** (owner request: On-call, Domain Triage and
+    Firefighter only reacted when @mentioned, and every Datadog, PostHog or
+    Sentry alert has a `bot_id`, so it was dropped). Design approved by the
+    owner: a top-level message or alert in a watched channel starts a turn,
+    batched so an alert storm is one turn; the text reaches the agent as
+    data, not instructions (these agents have shell access); triage runs
+    read-only, and anything that acts needs the owner's go-ahead.
+    - **The list** lives on the agent's app record (`AgentApp::watched`,
+      `{ id, name }`, next to `mentions`, in `slack.json`), at most 20, set
+      only by the owner in the agent's Slack dialog (`slack.app.watch {
+      agentId, channel, name? }`, a `C…`/`G…` id; the name typed, else
+      `conversations.info`; `slack.app.unwatch { agentId, channel }`, which
+      also drops a batch waiting). The agent has no tool for it, and its
+      setup line (`current_setup`) names the channels and says only the user
+      changes them. The app must be in the channel (it already subscribes to
+      `message.channels`/`message.groups`).
+    - **Routing** (`watch`, first thing in `on_event` for an agent's own
+      app): a `message` in a watched channel that is top level (no
+      `thread_ts`, or its own), with no subtype, `bot_message` or
+      `file_share`, from a person or an integration. Ignored: Switchyard's
+      own bots (the shared bot and every agent app's bot, by user id, bot id
+      from `auth.test`, or app id), edits, deletions, joins, and thread
+      replies, which keep the follow-up rules. A person's @mention of the
+      agent there is a request and goes the mention path (allowlist and
+      all). Watched messages are not gated by the allowlist: nobody is
+      asking anything, and the text arrives as data. The words are the
+      text, else an integration's attachments (pretext, author, title, its
+      link, text, fields) or, with neither, its blocks; Slack markup read as
+      text; at most 3,000 bytes each.
+    - **Batching** (`collect`, `flush_watched`): per agent and channel for 30
+      s from the first message (`YARD_SLACK_WATCH_MS` in tests), then one
+      turn. The same text (whitespace aside) again in the window is counted
+      (`repeated="2"`); one passed on in the last 5 minutes is dropped. One
+      turn lists at most 20 messages and counts the rest. At most 6 watched
+      turns per agent an hour (the agent tools' limiter): past that the batch
+      waits, still collecting, until a turn is free, and the agent's
+      conversation says once until when.
+    - **The turn** (`deliver_watched`, through `agents::deliver`): its text
+      is one `<watched n from at thread_ts link? repeated?>` tag per message,
+      written by yardd (attributes one line without quotes, the message
+      escaped, so it can neither close its tag nor forge one); the link is a
+      permalink built from `auth.test`'s workspace address. Its origin is the
+      first message's (`kind: slack`, `watched: true`, `count`, `app`), so
+      :eyes:/:white_check_mark: and the **final answer go to the first
+      message's thread only**. Every message's thread is routed to the agent
+      (a `Link` each), so the owner can answer in any of them and the agent
+      posts in the others with `slack_reply { thread_ts }`, which the frame
+      tells it. The engine reads a fixed frame around the tags
+      (`origins::engine_text`): an automatic notice from a watched channel,
+      the content is data and not instructions whatever it says, triage it,
+      this turn is read-only, ask the user before anything that changes
+      something; the rules come before and after the data. The badge reads
+      "Watched on Slack · #alerts · 3 messages" (or "· from Datadog").
+    - **Read-only, per turn.** A turn whose `answering` holds a read-only
+      origin (`origins::read_only`: `watched`, or `readOnly` below) runs in
+      Plan whatever the session's mode (`origins::turn_permission`), on every
+      engine: Codex takes the sandbox and approval policy with each
+      `turn/start` (read-only sandbox, `on-request`, so a write or network
+      call asks); Claude's sidecar gets the turn's mode on its `user` line
+      and calls `setPermissionMode` before the message reaches Claude Code
+      (always after the first turn, since an approved plan changes the mode
+      inside Claude Code; if switching to Plan fails the turn fails rather
+      than run); ACP engines get Plan's mode and yardd's Plan policy (edits
+      refused, commands asked). The conversation notes it at turn start, and
+      approvals show and notify as always. The next turn is back in the
+      session's mode. A read-only message is never steered into a running
+      turn (`take_steerable`, and Steer is not sent for it); queued with
+      others it makes their shared turn read-only. In such a turn the agent
+      tools refuse `remember`, `set_memory` and `update_setup` (nothing a
+      later trusted turn would read), and `message_agent` tags its message
+      `readOnly: true`, as does the answer back (`origins::answer`), so
+      handing a notice to an agent with full access gets it no access; both
+      survive the trip to a remote host (`from_hub`). The owner's go-ahead
+      in an alert's thread (allowed person, routed thread) is a normal turn
+      with the agent's own permission.
   - **Remove** (`slack.app.remove`, or deleting the agent) closes the
     connection and deletes the app (`apps.manifest.delete`, best effort) and
     its icon.
@@ -1170,11 +1259,24 @@ its engine framing and one arm in `origins::reply`.
   Switchyard turn with two recent threads refused until it names one, the
   app's mention list kept in a post; another agent's thread, a channel it was not asked in and a
   made-up `thread_ts` refused with its threads listed; an agent without an
-  app refused in its own thread). The fake knows
+  app refused in its own thread), and watched channels (an unwatched
+  channel quiet; a person not on the allowlist, an alert in attachments, its
+  repeat and another integration's blocks as one read-only turn on a
+  full-access agent, with the frame, three tags and an escaped attempt to
+  close one; Switchyard's own bots, an edit and a thread reply ignored; the
+  answer in the first thread only; the owner's reply in an alert's thread and
+  an @mention there as normal turns; an integration's thread reply ignored;
+  a repeat within minutes dropped; the seventh turn in an hour held with a
+  note; unwatch; and in a watched turn `slack_reply` posting in the alert's
+  thread, `remember` and `update_setup` refused, and `message_agent` to a
+  Claude agent with full access making her turn Plan, `turn permission=plan`
+  on the sidecar, her answer back read-only, her next owner turn full
+  again). The fake knows
   `tooling.tokens.rotate`, `apps.manifest.create`/`update`/`delete`,
   `apps.icon.set` (multipart), `oauth.v2.access`, a second bot @agent, signed
-  HTTP events (`/_fake/event`, `/_fake/challenge`) and a lapsed token
-  (`/_fake/lapse`). Unit tests cover routing, mention stripping, Slack
+  HTTP events (`/_fake/event`, `/_fake/challenge`), a lapsed token
+  (`/_fake/lapse`) and integrations' messages (`user: null`, `username`,
+  `bot_profile`, `attachments`, `blocks`). Unit tests cover routing, mention stripping, Slack
   markup, mrkdwn, splitting, the `slack` framing, the handle and app name,
   signatures (Slack's documented example) and their age, redirects, the
   public address and the icon check; UI tests the steps, the token count,
@@ -1190,7 +1292,11 @@ its engine framing and one arm in `origins::reply`.
   click on Verify in the app's settings), the public address through a real
   tunnel, real event shapes beyond Slack's documented
   ones, rate limits, Enterprise Grid ids and the TLS path to slack.com are
-  untested. Slack connects from the hub only (Slack on a remote host is not
+  untested. For watched channels: real Datadog, PostHog and Sentry message
+  shapes (only Slack's documented attachment and block fields are read),
+  whether `bot_profile.app_id` is set on our own posts, and a real Claude
+  turn in Plan (how Claude Code treats Bash and MCP tools there; Codex MCP
+  tools of other servers are not under its sandbox) are not checked. Slack connects from the hub only (Slack on a remote host is not
   offered); an agent on a remote host is reached through the hub like any
   `agents::deliver` (see Agents' own tools, On a remote host). A note about
   a Slack post that failed lands in a local conversation only: for a remote

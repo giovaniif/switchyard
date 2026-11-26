@@ -414,7 +414,7 @@ impl Client {
             self.reply(id, json!({ "outcome": answer(&options, "allow") }));
             return;
         }
-        let permission = app.meta(&sid).map(|m| m.permission).unwrap_or_default();
+        let permission = app.meta(&sid).map(|m| crate::origins::turn_permission(&m.permission, &m.answering)).unwrap_or_default();
         if let Some(decision) = policy(&permission, approval_kind) {
             self.reply(id, json!({ "outcome": answer(&options, decision) }));
             return;
@@ -791,13 +791,15 @@ fn prompt(c: &Client, text: &str, files: &[Value]) -> Vec<Value> {
 pub async fn send(app: &Arc<App>, sid: &str, text: &str, files: &[Value]) -> Result<()> {
     let (c, acp_sid) = attached(app, sid).await?;
     let meta = app.meta(sid).context("no such session")?;
-    let wanted = (meta.model.clone(), meta.effort.clone(), meta.permission.clone());
+    // A turn on a watched channel's notice runs in Plan.
+    let permission = crate::origins::turn_permission(&meta.permission, &meta.answering);
+    let wanted = (meta.model.clone(), meta.effort.clone(), permission.clone());
     let applied = match app.sessions.lock().unwrap().get(sid).map(|s| &s.backend) {
         Some(Backend::Acp { applied, .. }) => applied.clone(),
         _ => None,
     };
     if applied.as_ref() != Some(&wanted) {
-        c.apply(&acp_sid, &meta.model, &meta.effort, &meta.permission).await?;
+        c.apply(&acp_sid, &meta.model, &meta.effort, &permission).await?;
     }
     let token = EPOCH.fetch_add(1, Ordering::Relaxed);
     if let Some(s) = app.sessions.lock().unwrap().get_mut(sid) {

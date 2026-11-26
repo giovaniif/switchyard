@@ -166,6 +166,7 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
     let own = tx.clone();
     if let Some(s) = app.sessions.lock().unwrap().get_mut(sid) {
         s.backend = Backend::Claude { tx: tx.clone(), _stop: stop };
+        s.active_at = crate::state::now_ms();
     }
     let reader_app = app.clone();
     let reader_sid = sid.to_string();
@@ -234,6 +235,8 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
     let restricted = crate::private::restricted(app, sid);
     // An agent's conversation gets Switchyard's tools as an MCP server.
     let tools = crate::agent_tools::launch(app, sid).filter(|_| !restricted).map(|l| l.claude());
+    // An agent's or automation's session gets only its connectors (see `scope`).
+    let mcp = crate::scope::of_session(app, sid).filter(|_| !restricted).map(|s| s.to_json());
     let _ = tx.send(
         json!({
             "type": "start",
@@ -244,9 +247,10 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
             "cwd": meta.cwd,
             "model": meta.model,
             "effort": meta.effort,
-            "permission": meta.permission,
+            "permission": crate::origins::turn_permission(&meta.permission, &meta.answering),
             "resume": resume,
             "tools": tools,
+            "mcp": mcp,
         })
         .to_string(),
     );
@@ -279,7 +283,11 @@ pub fn send(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) -> Res
     if let Some(resume) = pending {
         spawn(app, sid, resume)?;
     }
-    line(app, sid, json!({ "type": "user", "text": text, "attachments": attachments }))
+    // Each turn names its mode, so a turn on a watched channel's notice runs
+    // in Plan and the next one goes back to the session's (the sidecar
+    // switches before the message reaches Claude Code).
+    let permission = app.meta(sid).map(|m| crate::origins::turn_permission(&m.permission, &m.answering)).unwrap_or_default();
+    line(app, sid, json!({ "type": "user", "text": text, "attachments": attachments, "permission": permission }))
 }
 
 /// A message for the running turn: Claude Code folds input that arrives
@@ -318,6 +326,25 @@ pub fn kill(app: &Arc<App>, sid: &str) {
     };
     // Dropping it fires `_stop`, and the reader kills the process.
     drop(old);
+}
+
+/// Stop an idle session's sidecar, so its Claude Code process and the MCP
+/// connections it holds go away (see `release`). Like `kill`, the next message
+/// starts one that resumes the conversation; the session was idle, so the
+/// sidecar's exit logs nothing. False if the session is not quiet.
+pub fn release(app: &Arc<App>, sid: &str) -> bool {
+    let old = {
+        let mut map = app.sessions.lock().unwrap();
+        match map.get_mut(sid) {
+            Some(s) if matches!(s.backend, Backend::Claude { .. }) && crate::release::quiet(&s.meta) => {
+                Some(std::mem::replace(&mut s.backend, Backend::Pending))
+            }
+            _ => None,
+        }
+    };
+    let released = old.is_some();
+    drop(old);
+    released
 }
 
 /// `answers`: a question's answers (AskUserQuestion), logged with the decision

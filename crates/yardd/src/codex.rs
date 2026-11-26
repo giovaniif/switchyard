@@ -6,7 +6,7 @@ use std::{
     collections::HashMap,
     process::Stdio,
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
     },
 };
@@ -39,6 +39,11 @@ pub struct Client {
     /// our request id -> the questions of a `requestUserInput`, which Codex
     /// answers by id while the card answers by question text
     questions: Mutex<HashMap<String, Vec<Asked>>>,
+    /// Held while a thread is unsubscribed or resumed, so a session's release
+    /// and its next turn's resume reach the server in that order.
+    lifecycle: tokio::sync::Mutex<()>,
+    /// The process exited: requests fail at once instead of waiting forever.
+    dead: AtomicBool,
 }
 
 /// One question of Codex's `item/tool/requestUserInput`.
@@ -95,6 +100,8 @@ impl Client {
             threads: Mutex::new(HashMap::new()),
             approvals: Mutex::new(HashMap::new()),
             questions: Mutex::new(HashMap::new()),
+            lifecycle: tokio::sync::Mutex::new(()),
+            dead: AtomicBool::new(false),
         });
 
         let reader = client.clone();
@@ -116,6 +123,7 @@ impl Client {
                 }
             }
             eprintln!("yardd: codex app-server exited");
+            reader.exited(&app);
         });
 
         client
@@ -130,6 +138,21 @@ impl Client {
             .await?;
         client.send(json!({ "method": "initialized" }));
         Ok(client)
+    }
+
+    /// The process is gone (it died, or the account was removed). The next use
+    /// of the account starts a new app-server; every session that had a thread
+    /// here resumes it with its next turn, and a turn that was running ends.
+    fn exited(self: &Arc<Self>, app: &Arc<App>) {
+        self.dead.store(true, Ordering::SeqCst);
+        app.codex_exited(&self.account, self);
+        // Dropping the senders fails every request still waiting.
+        self.pending.lock().unwrap().clear();
+        self.approvals.lock().unwrap().clear();
+        let threads: Vec<(String, String)> = self.threads.lock().unwrap().drain().collect();
+        for (thread_id, sid) in threads {
+            detach(app, &sid, &thread_id, "Codex stopped during this turn (its app-server exited). The next message resumes the conversation.");
+        }
     }
 
     /// Stop the app-server, for an account that was removed.
@@ -147,6 +170,10 @@ impl Client {
         let id = self.next.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = oneshot::channel();
         self.pending.lock().unwrap().insert(id, tx);
+        if self.dead.load(Ordering::SeqCst) {
+            self.pending.lock().unwrap().remove(&id);
+            bail!("codex {method}: the app-server exited");
+        }
         self.send(json!({ "id": id, "method": method, "params": params }));
         match rx.await {
             Ok(Ok(v)) => Ok(v),
@@ -343,6 +370,16 @@ impl Client {
             crate::mcp::codex_login_completed(app, &self.account, p);
             return;
         }
+        // The server unloaded a thread yardd did not release itself: its
+        // session resumes it with its next turn.
+        if method == "thread/closed" {
+            let Some(thread_id) = p["threadId"].as_str() else { return };
+            let sid = self.threads.lock().unwrap().remove(thread_id);
+            if let Some(sid) = sid {
+                detach(app, &sid, thread_id, "Codex closed this conversation's thread during the turn. The next message resumes it.");
+            }
+            return;
+        }
         let Some(sid) = self.session_for(p) else { return };
         match method {
             "turn/started" => set_turn(app, &sid, p["turn"]["id"].as_str()),
@@ -386,6 +423,25 @@ impl Client {
             }
             _ => {}
         }
+    }
+}
+
+/// The session no longer has `thread_id` loaded: its next turn resumes it.
+/// A turn still open there can never finish, so it ends failed with `why`.
+fn detach(app: &Arc<App>, sid: &str, thread_id: &str, why: &str) {
+    let was_running = {
+        let mut map = app.sessions.lock().unwrap();
+        let Some(s) = map.get_mut(sid) else { return };
+        if !matches!(&s.backend, Backend::Codex { thread_id: t, .. } if t == thread_id) {
+            return;
+        }
+        s.backend = Backend::Pending;
+        matches!(s.meta.status.as_str(), "running" | "needs_approval")
+    };
+    if was_running {
+        app.guard.turn_done(sid);
+        app.emit(sid, json!({ "type": "error", "message": why }));
+        app.emit(sid, json!({ "type": "turn_completed", "status": "failed" }));
     }
 }
 
@@ -749,6 +805,54 @@ fn restricted_config(config: &Value) -> Value {
     overrides
 }
 
+/// A thread with no subscriber stays loaded, MCP connections and all, for
+/// `thread_unload_delay_secs` (codex 0.171; checked: with the default, two
+/// unsubscribed threads were still loaded and their MCP servers running).
+/// yardd unsubscribes only once it has decided to let go (see `release`), so
+/// the thread unloads at once: `thread/closed` follows and its servers exit.
+fn unload_when_released(params: &mut Value) {
+    if !params["config"].is_object() {
+        params["config"] = json!({});
+    }
+    params["config"]["thread_unload_delay_secs"] = json!(0);
+}
+
+/// Thread-local overrides that switch off every configured MCP server the
+/// session's scope leaves out (see `scope`), and leave the rest as configured:
+/// a server the owner disabled stays disabled. Each entry keeps its transport
+/// fields, as `restricted_config` does. Switchyard's own server is not touched.
+fn scope_overrides(config: &Value, scope: &crate::scope::Scope) -> serde_json::Map<String, Value> {
+    let mut out = serde_json::Map::new();
+    let Some(servers) = config["mcp_servers"].as_object() else { return out };
+    for (name, value) in servers {
+        if name == crate::agent_tools::SERVER {
+            continue;
+        }
+        let mut entry = config_without_nulls(value);
+        if !entry.is_object() {
+            entry = json!({});
+        }
+        let configured = value["enabled"].as_bool().unwrap_or(true);
+        entry["enabled"] = json!(configured && scope.allows(name));
+        out.insert(format!("mcp_servers.{name}"), entry);
+    }
+    out
+}
+
+/// The thread's config overrides: Switchyard's tools for an agent, and the
+/// MCP servers its scope allows for an agent's or automation's session.
+async fn thread_config(app: &App, c: &Client, sid: &str, cwd: &str) -> Result<Option<Value>> {
+    let mut config = serde_json::Map::new();
+    if let Some(scope) = crate::scope::of_session(app, sid) {
+        let read = c.request("config/read", json!({"includeLayers": false, "cwd": cwd})).await?;
+        config.extend(scope_overrides(&read["config"], &scope));
+    }
+    if let Some(Value::Object(tools)) = tools_config(app, sid) {
+        config.extend(tools);
+    }
+    Ok((!config.is_empty()).then_some(Value::Object(config)))
+}
+
 /// An agent's conversation gets Switchyard's tools: a thread-local
 /// `mcp_servers.switchyard` override, never written to the user's config.
 fn tools_config(app: &App, sid: &str) -> Option<Value> {
@@ -774,9 +878,10 @@ pub async fn create(app: &Arc<App>, sid: &str) -> Result<()> {
         params["sandbox"] = json!(if meta.permission == "full" { "danger-full-access" } else { "workspace-write" });
         params["approvalPolicy"] = json!(if meta.permission == "full" { "never" } else { "on-request" });
         params["ephemeral"] = json!(true);
-    } else if let Some(config) = tools_config(app, sid) {
+    } else if let Some(config) = thread_config(app, &c, sid, &meta.cwd).await? {
         params["config"] = config;
     }
+    unload_when_released(&mut params);
     let res = c.request("thread/start", params).await?;
     let thread_id = res["thread"]["id"]
         .as_str()
@@ -791,13 +896,18 @@ fn attach(app: &Arc<App>, c: &Client, sid: &str, thread_id: String) {
     app.set_engine_ref(sid, &thread_id);
     if let Some(s) = app.sessions.lock().unwrap().get_mut(sid) {
         s.backend = Backend::Codex { thread_id, turn_id: None };
+        s.active_at = crate::state::now_ms();
     }
 }
 
-/// Reopen the saved thread of a session restored after a yardd restart.
-async fn resume(app: &Arc<App>, sid: &str, thread_id: String) -> Result<()> {
+/// Reopen the saved thread of a session that has none loaded: restored after
+/// a yardd restart, released while idle, or left by an app-server that exited.
+async fn resume(app: &Arc<App>, sid: &str) -> Result<()> {
     let meta = app.meta(sid).context("no such session")?;
     let c = client(app, &meta.account).await?;
+    let _held = c.lifecycle.lock().await;
+    // Another caller may have resumed it while this one waited.
+    let Some(thread_id) = app.resumable(sid) else { return Ok(()) };
     let mut params = json!({
         "threadId": thread_id,
         "cwd": meta.cwd,
@@ -808,9 +918,11 @@ async fn resume(app: &Arc<App>, sid: &str, thread_id: String) -> Result<()> {
         "excludeTurns": true,
     });
     // A restart made a new key: the resumed thread gets the server again.
-    if let Some(config) = tools_config(app, sid) {
+    // The scope is read again too, so a changed list applies from here.
+    if let Some(config) = thread_config(app, &c, sid, &meta.cwd).await? {
         params["config"] = config;
     }
+    unload_when_released(&mut params);
     c.request("thread/resume", params).await?;
     attach(app, &c, sid, thread_id);
     Ok(())
@@ -828,13 +940,51 @@ pub async fn forget(app: &Arc<App>, sid: &str) {
             .await;
     }
     c.threads.lock().unwrap().remove(&thread_id);
+    // Unloaded, or the thread keeps its MCP connections for the server's life.
+    let _ = tokio::time::timeout(UNSUBSCRIBE_WAIT, c.request("thread/unsubscribe", json!({ "threadId": thread_id }))).await;
+}
+
+const UNSUBSCRIBE_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Unload an idle session's thread (see `release`): its MCP clients close,
+/// and its next turn resumes it. False if the session is not quiet or has no
+/// thread loaded.
+pub async fn release(app: &Arc<App>, sid: &str) -> Result<bool> {
+    let Some(account) = app.meta(sid).map(|m| m.account) else { return Ok(false) };
+    let Some(c) = app.codex_running(&account) else { return Ok(false) };
+    let _held = c.lifecycle.lock().await;
+    let thread_id = {
+        let mut map = app.sessions.lock().unwrap();
+        let Some(s) = map.get_mut(sid) else { return Ok(false) };
+        if !crate::release::quiet(&s.meta) {
+            return Ok(false);
+        }
+        let Backend::Codex { thread_id, turn_id: None } = &s.backend else { return Ok(false) };
+        let thread_id = thread_id.clone();
+        // The engine id stays, so `resumable` hands the thread to the next turn.
+        s.backend = Backend::Pending;
+        thread_id
+    };
+    // Before the request: the `thread/closed` it causes is ours, not news.
+    c.threads.lock().unwrap().remove(&thread_id);
+    let res = tokio::time::timeout(UNSUBSCRIBE_WAIT, c.request("thread/unsubscribe", json!({ "threadId": thread_id })))
+        .await
+        .map_err(|_| anyhow!("codex thread/unsubscribe: no answer"))??;
+    let loaded = c.request("thread/loaded/list", json!({})).await.ok();
+    let loaded = loaded.as_ref().and_then(|l| l["data"].as_array()).map(Vec::len);
+    eprintln!(
+        "yardd: codex {account}: unsubscribed {thread_id} ({}); {} threads loaded",
+        res["status"].as_str().unwrap_or("?"),
+        loaded.map_or("?".to_string(), |n| n.to_string())
+    );
+    Ok(true)
 }
 
 /// The session's thread for a widget's call, resumed first when the session
 /// was restored and has not run a turn since.
 pub async fn thread_for_widget(app: &Arc<App>, sid: &str) -> Result<String> {
-    if let Some(thread_id) = app.resumable(sid) {
-        resume(app, sid, thread_id).await?;
+    if app.resumable(sid).is_some() {
+        resume(app, sid).await?;
     }
     Ok(thread_of(app, sid)?.0)
 }
@@ -876,16 +1026,17 @@ pub async fn steer(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value])
 }
 
 pub async fn send(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) -> Result<()> {
-    if let Some(thread_id) = app.resumable(sid) {
-        resume(app, sid, thread_id).await?;
+    if app.resumable(sid).is_some() {
+        resume(app, sid).await?;
     }
     let meta = app.meta(sid).context("no such session")?;
     let (thread_id, _) = thread_of(app, sid)?;
     let c = client(app, &meta.account).await?;
     let input = user_input(text, attachments);
     // Model, effort and permission mode ride on every turn, so switching
-    // needs no extra call.
-    let (approval, sandbox) = if crate::private::restricted(app, sid) { (json!("never"), json!({"type":"readOnly", "networkAccess":false})) } else { turn_policy(&meta.permission) };
+    // needs no extra call. A turn on a watched channel's notice is read-only.
+    let permission = crate::origins::turn_permission(&meta.permission, &meta.answering);
+    let (approval, sandbox) = if crate::private::restricted(app, sid) { (json!("never"), json!({"type":"readOnly", "networkAccess":false})) } else { turn_policy(&permission) };
     let mut params = json!({
         "threadId": thread_id,
         "input": input,
