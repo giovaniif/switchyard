@@ -110,7 +110,7 @@ yv drive hosts --steps '[{"click":"role:tab:Engine logins"},{"expect":{"css":".a
 ```
 
 ## Gotchas
-- None of these ACP engines reports plan usage, so the usage meters and the automations' usage limits ignore them.
+- OpenCode and Gemini report no plan usage, so the usage meters and the automations' usage limits ignore them. Grok reports its credit allowance (`_x.ai/billing`), shown in the usage popover and Subscriptions (see usage.md); the automations' usage limits still ignore it.
 - The fake's OpenCode lists one model until a provider (`fakeprov`) is logged in; the logins area adds one.
 
 - Gemini uses `gemini --acp`, its models come from session/new, and its scripted login is pre-seeded by iso up. Fresh Google login runs in a terminal on the selected host; the app checks it without a model turn.

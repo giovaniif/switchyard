@@ -461,6 +461,7 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             match str_field(msg, "engine")? {
                 "claude" => claude::refresh_usage(app, account).await?,
                 "codex" => crate::codex::refresh_usage(app, account).await?,
+                "grok" => crate::grok::refresh_usage(app, account).await?,
                 _ => bail!("this engine does not report subscription limits"),
             }
             let _ = direct.send(json!({ "op": "usage.refreshed", "ref": msg["ref"] }).to_string());
@@ -492,6 +493,9 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             let added = app.accounts.add(app.id("a"), engine, str_field(msg, "name")?)?;
             if engine == "claude" {
                 claude::refresh_usage_soon(app, &added.id);
+            }
+            if engine == "grok" {
+                crate::grok::refresh_usage_soon(app, &added.id);
             }
             app.broadcast_accounts();
             // The new account's login state, for the Hosts page.

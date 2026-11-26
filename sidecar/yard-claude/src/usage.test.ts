@@ -64,8 +64,29 @@ test("the usage report's limits become the same windows as rate_limit_event", ()
       five_hour: { utilization: 0.92, resetsAt: Date.parse("2026-11-17T17:00:01.002829+00:00") / 1000 },
       seven_day: { utilization: 0.64, resetsAt: Date.parse("2026-11-20T04:00:01+00:00") / 1000 },
       seven_day_opus: { utilization: 0.07, resetsAt: Date.parse("2026-11-20T04:00:00+00:00") / 1000 },
+      // The server's rows are shown as sent, so a new meter needs no release.
+      something_new: { utilization: 0.5, resetsAt: null, label: "Something new" },
     },
   });
   expect(fromUsageReport({ rate_limits: { limits: [] } })).toBeNull();
   expect(fromUsageReport({})).toBeNull();
+});
+
+test("report rows beyond session and the weeks are kept, labelled, so a new limit shows without a release", () => {
+  const report = {
+    rate_limits: {
+      limits: [
+        { kind: "session", group: "session", percent: 11, resets_at: "2026-11-26T20:19:59+00:00", scope: null },
+        { kind: "weekly_scoped", group: "weekly", percent: 30, resets_at: "2026-11-27T04:00:00+00:00", scope: { model: null, surface: { display_name: "Claude Design" } } },
+        { kind: "monthly_all", group: "monthly", percent: 5, resets_at: "2026-12-01T00:00:00+00:00", scope: null },
+      ],
+    },
+  };
+  expect(fromUsageReport(report)).toEqual({
+    windows: {
+      five_hour: { utilization: 0.11, resetsAt: Date.parse("2026-11-26T20:19:59+00:00") / 1000 },
+      seven_day_claude_design: { utilization: 0.3, resetsAt: Date.parse("2026-11-27T04:00:00+00:00") / 1000, label: "Week · Claude Design" },
+      monthly_all: { utilization: 0.05, resetsAt: Date.parse("2026-12-01T00:00:00+00:00") / 1000, label: "Monthly" },
+    },
+  });
 });

@@ -13,6 +13,8 @@ export interface UsageWindow {
   utilization: number;
   /** Epoch seconds. */
   resetsAt: number | null;
+  /** The meter's name, for a window the UI has no name of its own for. */
+  label?: string;
 }
 
 export interface ClaudeUsage {
@@ -54,28 +56,46 @@ export function mergeUsage(prev: ClaudeUsage | null, info: any): ClaudeUsage {
   return status === undefined ? { windows } : { status, windows };
 }
 
+const slug = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+const GROUPS: Record<string, string> = { session: "Session", weekly: "Week", daily: "Day", monthly: "Monthly" };
+
 /** The plan limits from the SDK's usage report (`rate_limits.limits`, what
  *  `/usage` shows), in the same shape as the rate_limit_event picture: the
  *  session window is `five_hour`, the overall week `seven_day`, a per-model
- *  week `seven_day_<model>`. The report needs no turn, so an account that has
- *  not run anything yet still has its limits. Null when it has none. */
+ *  week `seven_day_<model>`. Any other row the server sends (a surface's week,
+ *  a kind it adds later) is kept under its kind with a label built from the
+ *  server's group and scope names, so it shows without a release. The report
+ *  needs no turn, so an account that has not run anything yet still has its
+ *  limits. Null when it has none. */
 export function fromUsageReport(report: any): ClaudeUsage | null {
   const limits = report?.rate_limits?.limits;
   if (!Array.isArray(limits)) return null;
   const windows: Record<string, UsageWindow> = {};
   for (const l of limits) {
     if (typeof l?.percent !== "number" || !Number.isFinite(l.percent)) continue;
+    const model = l.scope?.model?.display_name ?? l.scope?.model?.id;
+    const surface = l.scope?.surface?.display_name;
     let key: string | null = null;
+    let label: string | undefined;
     if (l.kind === "session") key = "five_hour";
     else if (l.kind === "weekly_all") key = "seven_day";
-    else if (l.kind === "weekly_scoped") {
+    else if (l.kind === "weekly_scoped" && typeof model === "string") {
       // The family, as turn events name the window ("Opus 5.5" -> seven_day_opus),
       // so both sources write the same meter.
-      const name = l.scope?.model?.display_name ?? l.scope?.model?.id;
-      const family = typeof name === "string" ? name.trim().split(/[\s-]+/)[0].toLowerCase().replace(/[^a-z0-9]+/g, "") : "";
+      const family = model.trim().split(/[\s-]+/)[0].toLowerCase().replace(/[^a-z0-9]+/g, "");
       if (family) key = `seven_day_${family}`;
+    } else if (l.kind === "weekly_scoped" && typeof surface === "string" && slug(surface)) {
+      key = `seven_day_${slug(surface)}`;
+      label = `Week · ${surface.trim()}`;
+    } else if (typeof l.kind === "string" && slug(l.kind)) {
+      const scope = typeof model === "string" ? model : typeof surface === "string" ? surface : "";
+      key = scope ? `${slug(l.kind)}_${slug(scope)}` : slug(l.kind);
+      const words = (s: string) => s.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+      const group = typeof l.group === "string" && l.group ? GROUPS[l.group] ?? words(l.group) : words(l.kind);
+      label = scope ? `${group} · ${scope.trim()}` : group;
     }
-    if (key && !windows[key]) windows[key] = { utilization: l.percent / 100, resetsAt: seconds(l.resets_at) };
+    if (!key || windows[key]) continue;
+    windows[key] = { utilization: l.percent / 100, resetsAt: seconds(l.resets_at), ...(label ? { label } : {}) };
   }
   return Object.keys(windows).length ? { windows } : null;
 }

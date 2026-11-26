@@ -70,10 +70,10 @@ yv drive 'new' --viewport mobile --steps '[{"click":"role:button:Open sessions"}
 
 ### subscriptions-page
 Viewports: both
-Accounts appear once, with reset times and source host badges. Reload preserves the route.
+Accounts appear once, with reset times (a time and a countdown) and source host badges. Reload preserves the route.
 
 ```sh
-yv drive 'subscriptions' --steps '[{"expect":"role:heading:Subscriptions"},{"expect":"role:region:Claude · TEST-Work","text":"91% used"},{"expect":"role:region:Claude · Default","count":1},{"expect":"role:region:Codex · Default","text":"34% used"},{"expect":"css:.subscription-hosts","text":"iso-host"},{"expect":"css:.subscription-row","text":"resets in"},{"eval":"document.documentElement.scrollWidth === document.documentElement.clientWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"subscriptions"},{"reload":true},{"expect":"role:heading:Subscriptions"}]'
+yv drive 'subscriptions' --steps '[{"expect":"role:heading:Subscriptions"},{"expect":"role:region:Claude · TEST-Work","text":"91% used"},{"expect":"role:region:Claude · Default","count":1},{"expect":"role:region:Codex · Default","text":"34% used"},{"expect":"css:.subscription-hosts","text":"iso-host"},{"expect":"css:.subscription-row","text":"Resets "},{"expect":"css:.subscription-row","text":"· in "},{"eval":"document.documentElement.scrollWidth === document.documentElement.clientWidth && document.querySelector(\".main\").scrollWidth === document.querySelector(\".main\").clientWidth","equals":true},{"shot":"subscriptions"},{"reload":true},{"expect":"role:heading:Subscriptions"}]'
 ```
 
 ### account-picker-separate-from-model

@@ -804,13 +804,15 @@ impl App {
     /// Plan usage is per account: Default's is `usage[engine]`, an added
     /// account's is `usage.accounts[id]`.
     pub fn set_usage(&self, engine: &str, account: &str, value: Value) {
+        self.update_usage(engine, account, |_| value);
+    }
+
+    /// An account's limits from what was kept for it (Null when nothing was).
+    pub fn update_usage(&self, engine: &str, account: &str, update: impl FnOnce(&Value) -> Value) {
         let all = {
             let mut usage = self.usage.lock().unwrap();
-            if account == crate::accounts::DEFAULT {
-                usage[engine] = value;
-            } else {
-                usage["accounts"][account] = value;
-            }
+            let slot = if account == crate::accounts::DEFAULT { &mut usage[engine] } else { &mut usage["accounts"][account] };
+            *slot = update(slot);
             usage.clone()
         };
         save_usage(&crate::store::data_dir(), &all);

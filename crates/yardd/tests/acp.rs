@@ -620,3 +620,30 @@ async fn gemini_accepts_edits_and_hands_off_with_the_conversation() {
     assert_eq!(prompts(&sb)[2]["mode"], "auto_edit");
     assert!(!c.events(sid).iter().any(|e| e["type"] == "approval_request"));
 }
+
+#[tokio::test]
+async fn grok_reports_its_credit_allowance_and_when_it_resets() {
+    // Grok's agent answers `_x.ai/billing` (what its /usage shows) with no
+    // turn; yardd keeps it as Grok's usage, one window with its reset time.
+    let sb = Sandbox::new("grok-usage");
+    let d = sb.start();
+    let mut c = d.client().await;
+    let from = c.mark();
+    c.send(json!({ "op": "usage.refresh", "engine": "grok", "ref": "out" })).await;
+    let reply = c.wait_after(from, "refresh while logged out", |m| m["ref"] == "out").await;
+    assert_eq!(reply["op"], "error", "{reply}");
+    assert!(reply["message"].as_str().unwrap_or("").contains("sign in"), "{reply}");
+
+    grok_login(&mut c, None).await;
+    c.wait_for("grok logged in", |m| m["op"] == "engines" && m["engines"]["grok"]["loggedIn"] == true).await;
+    let from = c.mark();
+    c.send(json!({ "op": "usage.refresh", "engine": "grok", "ref": "in" })).await;
+    let reply = c.wait_after(from, "refresh", |m| m["ref"] == "in").await;
+    assert_eq!(reply["op"], "usage.refreshed", "{reply}");
+    let usage = c.wait_after(from, "grok usage", |m| m["op"] == "usage" && m["usage"]["grok"].is_object()).await;
+    let week = &usage["usage"]["grok"]["windows"]["week"];
+    assert_eq!(week["utilization"], 0.23, "{usage}");
+    assert_eq!(week["label"], "Week", "{usage}");
+    let left = week["resetsAt"].as_f64().unwrap() - std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+    assert!((5.0 * 86400.0..5.2 * 86400.0).contains(&left), "{usage}");
+}

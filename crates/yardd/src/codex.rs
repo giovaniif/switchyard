@@ -359,7 +359,8 @@ impl Client {
 
     fn on_notification(&self, app: &Arc<App>, method: &str, p: &Value) {
         if method == "account/rateLimits/updated" {
-            app.set_usage("codex", &self.account, p["rateLimits"].clone());
+            // One limit, without the reset credits or the other limits.
+            app.update_usage("codex", &self.account, |kept| crate::usage::merge_codex_update(kept, &p["rateLimits"]));
             return;
         }
         if method == "account/login/completed" {
@@ -655,12 +656,9 @@ async fn client_of(app: &Arc<App>, sid: &str) -> Result<Arc<Client>> {
 }
 
 pub async fn refresh_usage(app: &Arc<App>, account: &str) -> Result<()> {
-    let limits = client(app, account).await?.request("account/rateLimits/read", json!({})).await?;
-    let limits = limits
-        .get("rateLimits")
-        .filter(|limits| !limits.is_null())
-        .context("no subscription limits reported")?;
-    app.set_usage("codex", account, limits.clone());
+    let answer = client(app, account).await?.request("account/rateLimits/read", json!({})).await?;
+    let limits = crate::usage::codex_from_read(&answer).context("no subscription limits reported")?;
+    app.set_usage("codex", account, limits);
     Ok(())
 }
 
@@ -669,8 +667,8 @@ pub async fn refresh_usage(app: &Arc<App>, account: &str) -> Result<()> {
 pub async fn load_models(app: &Arc<App>, account: &str) -> Result<()> {
     let c = client(app, account).await?;
     if account != crate::accounts::DEFAULT {
-        if let Ok(limits) = c.request("account/rateLimits/read", json!({})).await {
-            app.set_usage("codex", account, limits["rateLimits"].clone());
+        if let Some(limits) = c.request("account/rateLimits/read", json!({})).await.ok().as_ref().and_then(crate::usage::codex_from_read) {
+            app.set_usage("codex", account, limits);
         }
         return Ok(());
     }
@@ -706,8 +704,8 @@ pub async fn load_models(app: &Arc<App>, account: &str) -> Result<()> {
     };
     app.broadcast(json!({ "op": "models", "models": all }));
 
-    if let Ok(limits) = c.request("account/rateLimits/read", json!({})).await {
-        app.set_usage("codex", account, limits["rateLimits"].clone());
+    if let Some(limits) = c.request("account/rateLimits/read", json!({})).await.ok().as_ref().and_then(crate::usage::codex_from_read) {
+        app.set_usage("codex", account, limits);
     }
     Ok(())
 }

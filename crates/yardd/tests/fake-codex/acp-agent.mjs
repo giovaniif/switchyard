@@ -225,6 +225,30 @@ export function runAgent({ engine, state, account, loggedIn }) {
               : {}),
           },
         });
+      // Grok's credit allowance, as its agent answers the TUI's /usage. The
+      // field names are the ones in grok 1.0.77's BillingConfig; the nesting
+      // and value types are a guess (no signed-in account to read one from).
+      case "_x.ai/billing": {
+        if (engine !== "grok") return write({ id: msg.id, error: { code: -32601, message: "Method not found" } });
+        if (!loggedIn()) return write({ id: msg.id, error: { code: -32000, message: "Authentication required", data: "Authentication required to fetch billing data" } });
+        const start = new Date(Date.now() - 2 * 86400_000);
+        const end = new Date(Date.now() + 5 * 86400_000 + 3 * 3600_000 + 30_000);
+        return write({
+          id: msg.id,
+          result: {
+            creditUsagePercent: 23,
+            currentPeriod: { start: start.toISOString(), end: end.toISOString() },
+            billingPeriodStart: start.toISOString(),
+            billingCycle: "WEEKLY",
+            monthlyLimit: null,
+            onDemandCap: 0,
+            onDemandUsed: 0,
+            prepaidBalance: 0,
+            isUnifiedBillingUser: true,
+            history: [],
+          },
+        });
+      }
       case "session/new": {
         if (!loggedIn()) return write({ id: msg.id, error: { code: -32000, message: "Authentication required", data: "no auth method id provided" } });
         const sid = `${engine}-ses-${process.pid}-${++n}`;

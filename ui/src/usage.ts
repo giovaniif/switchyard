@@ -1,11 +1,12 @@
 // Plan usage, as meters. Each engine reports its limits in its own shape
 // (see Usage in protocol.ts); this turns them into one list of meters so the
 // picker and the sidebar strip draw them the same way.
-import type { AccountEntry, Engine, Usage } from "./protocol";
+import type { AccountEntry, CodexLimit, Engine, LimitWindow, Usage } from "./protocol";
 import { ENGINES, ENGINE_NAME } from "./engines";
 
-/** Only Claude and Codex report plan limits; the ACP engines have none. */
-export const reportsLimits = (engine: Engine) => engine === "claude" || engine === "codex";
+/** Claude and Codex report their plan's windows, Grok its credit allowance;
+ *  OpenCode and Gemini report none. */
+export const reportsLimits = (engine: Engine) => engine === "claude" || engine === "codex" || engine === "grok";
 
 /** The Subscriptions page's note on the engines it cannot show, derived from
  *  the engine list so a newly added engine is not left out of it. */
@@ -22,6 +23,8 @@ export interface Meter {
   key: string;
   /** "5-hour", "Week", "Week · Sonnet". */
   label: string;
+  /** A longer name for the popover, when "Weekly · all models" would be wrong. */
+  title?: string;
   /** 0 to 100. */
   percent: number;
   /** Epoch milliseconds, when the engine said. */
@@ -59,13 +62,24 @@ export function formatReset(resetsAt: number | null, now: number): string {
   return `resets in ${mins} min`;
 }
 
+const timeOfDay = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+const dateAndTime = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+/** "Resets 2:50 PM · in 1 h 35 min" (a day name and date when not today). */
+export function resetText(resetsAt: number | null, now: number): string {
+  if (resetsAt === null) return "Reset time not reported";
+  const when = (new Date(resetsAt).toDateString() === new Date(now).toDateString() ? timeOfDay : dateAndTime).format(resetsAt);
+  return `Resets ${when} · ${formatReset(resetsAt, now).replace(/^resets /, "")}`;
+}
+
 /** The engines report usage only while they run, so a figure can outlive its
  *  window. Once the reset time has passed nothing has been used since (that
  *  would have come with a newer reset time), so the window is empty again. */
-const meter = (key: string, label: string, percent: number, resetsAt: number | null, now?: number): Meter => {
-  if (resetsAt != null && now != null && resetsAt <= now) return { key, label, percent: 0, resetsAt: null, level: "ok" };
+const meter = (key: string, label: string, percent: number, resetsAt: number | null, now?: number, title?: string): Meter => {
+  const named = title ? { title } : {};
+  if (resetsAt != null && now != null && resetsAt <= now) return { key, label, ...named, percent: 0, resetsAt: null, level: "ok" };
   const p = clamp(percent);
-  return { key, label, percent: p, resetsAt, level: levelOf(p) };
+  return { key, label, ...named, percent: p, resetsAt, level: levelOf(p) };
 };
 
 function windowLabel(mins: number | null | undefined, fallback: string): string {
@@ -80,37 +94,91 @@ const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 /** The SDK's window names that are not a plan limit of their own. */
 const NOT_A_LIMIT = new Set(["seven_day_oauth_apps", "seven_day_overage_included"]);
 
+/** One Codex limit's windows; another limit than the main one is named. */
+function codexMeters(c: CodexLimit, name: string | null, now?: number): Meter[] {
+  const out: Meter[] = [];
+  const prefix = name ? `${c.limitId ?? name}:` : "";
+  const add = (key: "primary" | "secondary", fallback: string) => {
+    const w = c[key];
+    if (!w) return;
+    const label = windowLabel(w.windowDurationMins, fallback);
+    out.push(meter(`${prefix}${key}`, name ? `${label} · ${name}` : label, w.usedPercent, toMs(w.resetsAt), now));
+  };
+  add("primary", "5-hour");
+  add("secondary", "Week");
+  return out;
+}
+
 /** An engine's meters, the 5-hour window first, then the week, then per-model
- *  weeks. With `now`, windows whose reset time has passed read as empty. */
+ *  weeks, then any other window the engine named. With `now`, windows whose
+ *  reset time has passed read as empty. */
 export function metersFor(engine: Engine, usage: Usage, now?: number): Meter[] {
   if (engine === "codex") {
     const c = usage.codex;
-    const out: Meter[] = [];
-    if (c?.primary) out.push(meter("primary", windowLabel(c.primary.windowDurationMins, "5-hour"), c.primary.usedPercent, toMs(c.primary.resetsAt), now));
-    if (c?.secondary) out.push(meter("secondary", windowLabel(c.secondary.windowDurationMins, "Week"), c.secondary.usedPercent, toMs(c.secondary.resetsAt), now));
+    if (!c) return [];
+    const out = codexMeters(c, null, now);
+    // Every limit by id, the main one among them: only the others are new.
+    for (const [id, other] of Object.entries(c.byLimitId ?? {}).sort(([a], [b]) => a.localeCompare(b))) {
+      if (!other || id === (c.limitId ?? "codex")) continue;
+      out.push(...codexMeters({ limitId: id, ...other }, other.limitName || other.normalModelSlug || id, now));
+    }
     return out;
   }
   if (!reportsLimits(engine)) return [];
-  const c = usage.claude;
+  const c = engine === "grok" ? usage.grok : usage.claude;
   if (!c) return [];
-  const windows = { ...(c.windows ?? {}) };
+  const windows: Record<string, LimitWindow> = { ...(c.windows ?? {}) };
   // An older yardd sent only the two fractions.
-  if (!c.windows) {
-    if (c.fiveHour != null) windows.five_hour = { utilization: c.fiveHour, resetsAt: null };
-    if (c.sevenDay != null) windows.seven_day = { utilization: c.sevenDay, resetsAt: null };
+  if (engine === "claude" && !c.windows) {
+    const old = c as NonNullable<Usage["claude"]>;
+    if (old.fiveHour != null) windows.five_hour = { utilization: old.fiveHour, resetsAt: null };
+    if (old.sevenDay != null) windows.seven_day = { utilization: old.sevenDay, resetsAt: null };
   }
   const out: Meter[] = [];
-  const add = (key: string, label: string) => {
+  const add = (key: string, label: string, title?: string) => {
     const w = windows[key];
-    if (w && w.utilization != null) out.push(meter(key, label, w.utilization * 100, toMs(w.resetsAt), now));
+    if (w && w.utilization != null && !out.some((m) => m.key === key)) out.push(meter(key, label, w.utilization * 100, toMs(w.resetsAt), now, title));
   };
+  if (engine === "grok") {
+    // Grok's allowance is credits for a billing period, not a model window.
+    for (const key of Object.keys(windows).sort()) {
+      const label = windows[key].label ?? capitalize(key);
+      add(key, label, `${label === "Week" ? "Weekly" : label === "Month" ? "Monthly" : label} credits`);
+    }
+    return out;
+  }
   add("five_hour", "5-hour");
   add("seven_day", "Week");
   for (const key of Object.keys(windows).sort()) {
     const m = key.match(/^seven_day_(.+)$/);
-    if (m && !NOT_A_LIMIT.has(key)) add(key, `Week · ${capitalize(m[1])}`);
+    if (m && !NOT_A_LIMIT.has(key)) add(key, windows[key].label ?? `Week · ${capitalize(m[1])}`);
+  }
+  // Rows the usage report named that the UI has no name of its own for. An
+  // unnamed one (a turn event's `overage`) is not a limit of its own.
+  for (const key of Object.keys(windows).sort()) {
+    const label = windows[key].label;
+    if (label && !NOT_A_LIMIT.has(key)) add(key, label);
   }
   return out;
+}
+
+/** The free resets an engine grants that are still to use (Codex's "Full
+ *  reset" credits): how many, and when the first of them expires. */
+export function fullResets(engine: Engine, usage: Usage, now: number): { count: number; title: string; expiresAt: number | null } | null {
+  if (engine !== "codex") return null;
+  const live = (usage.codex?.resetCredits?.credits ?? []).filter((c) => {
+    const expires = toMs(c?.expiresAt);
+    return c && (c.status ?? "available") === "available" && (expires == null || expires > now);
+  });
+  if (!live.length) return null;
+  const expiries = live.map((c) => toMs(c.expiresAt)).filter((x): x is number => x != null);
+  return { count: live.length, title: live[0].title || "Full reset", expiresAt: expiries.length ? Math.min(...expiries) : null };
+}
+
+/** "3 full resets available". */
+export function fullResetsText(r: { count: number; title: string }): string {
+  const name = r.title.toLowerCase();
+  return `${r.count} ${name}${r.count === 1 ? "" : "s"} available`;
 }
 
 /** One row group of the sidebar strip: an engine under one account, as one host reported it. */
@@ -140,7 +208,11 @@ function freshness(engine: Engine, usage: Usage): { resets: (number | null)[]; u
     const c = usage.codex;
     return { resets: [toMs(c?.primary?.resetsAt), toMs(c?.secondary?.resetsAt)], used: (c?.primary?.usedPercent ?? 0) + (c?.secondary?.usedPercent ?? 0) };
   }
-  const w = usage.claude?.windows ?? {};
+  const w = (engine === "grok" ? usage.grok?.windows : usage.claude?.windows) ?? {};
+  if (engine === "grok") {
+    const all = Object.values(w);
+    return { resets: [toMs(all[0]?.resetsAt)], used: all.reduce((n, x) => n + (x?.utilization ?? 0), 0) };
+  }
   return {
     resets: [toMs(w.five_hour?.resetsAt), toMs(w.seven_day?.resetsAt)],
     used: (w.five_hour?.utilization ?? 0) + (w.seven_day?.utilization ?? 0),
@@ -170,7 +242,7 @@ function newer(engine: Engine, a: Usage, b: Usage): boolean {
  *  is the same subscription on every machine, so one host's figures stand for
  *  all. Engines in the order given, Default first, then accounts as they appear. */
 export function stripGroups(sources: UsageSource[], engines: Engine[]): StripGroup[] {
-  // ACP engines have no plan-limit reports, even when they have added accounts.
+  // OpenCode and Gemini have no plan-limit reports, even with added accounts.
   engines = engines.filter(reportsLimits);
   const found = new Map<string, StripGroup>();
   const offer = (key: string, group: StripGroup) => {

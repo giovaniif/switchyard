@@ -248,16 +248,17 @@ describe("stripGroups", () => {
 });
 
 
-test("ACP accounts do not add empty plan-usage rows", () => {
+test("OpenCode and Gemini accounts add no plan-usage rows; a Grok account is listed like Claude's", () => {
+  // Grok reports its credit allowance (`_x.ai/billing`); the other two nothing.
   expect(stripGroups([{ host: "local", usage: {}, accounts: [
     { id: "g", engine: "gemini", name: "Work" },
     { id: "o", engine: "opencode", name: "Work" },
     { id: "x", engine: "grok", name: "Work" },
-  ] }], ["claude", "codex", "opencode", "grok", "gemini"])).toEqual([]);
+  ] }], ["claude", "codex", "opencode", "grok", "gemini"]).map((g) => `${g.engine}:${g.account ?? "Default"}:${g.reported}`)).toEqual(["grok:Default:false", "grok:Work:false"]);
 });
 
 test("the Subscriptions note names every engine without plan limits, Gemini included", () => {
-  expect(noLimitsNote()).toBe("OpenCode, Grok and Gemini don't report subscription limits.");
-  expect(noLimitsNote(["claude", "codex", "grok"])).toBe("Grok doesn't report subscription limits.");
+  expect(noLimitsNote()).toBe("OpenCode and Gemini don't report subscription limits.");
+  expect(noLimitsNote(["claude", "codex", "gemini"])).toBe("Gemini doesn't report subscription limits.");
   expect(noLimitsNote(["claude", "codex"])).toBe("");
 });
