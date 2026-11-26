@@ -1,0 +1,29 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack the_owner_imports_the_channels_he_picks
+# exit 101 after 2261 ms at e4c48ec92f6c0b3e0712cf6998da6d903ee7436f
+
+
+running 1 test
+test the_owner_imports_the_channels_he_picks_and_only_those ... FAILED
+
+failures:
+
+---- the_owner_imports_the_channels_he_picks_and_only_those stdout ----
+
+thread 'the_owner_imports_the_channels_he_picks_and_only_those' (3668622) panicked at crates/yardd/tests/slack.rs:1290:5:
+assertion `left == right` failed: {"for":"slack.inbox.channels","message":"unknown op `slack.inbox.channels`","op":"error","ref":"inbox-17"}
+  left: String("error")
+ right: "slack.inbox.channels"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-3668621-slack-channels-0 for inspection
+
+
+failures:
+    the_owner_imports_the_channels_he_picks_and_only_those
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.59s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 1.60s
+     Running tests/slack.rs (target/debug/build/yardd/7070339f5020f7ad/out/slack-7070339f5020f7ad)
+error: test failed, to rerun pass `-p yardd --test slack`

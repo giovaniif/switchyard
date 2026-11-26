@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "connectors",
+  "build": {
+    "sha": "e4c48ec92f6c0b3e0712cf6998da6d903ee7436f",
+    "short": "e4c48ec",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T15:29:35.703Z"
+  },
+  "dir": ".verify/evidence/slack-channels-base",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2379,
+      "steps": 3,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-channels-base/base-no-channels-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 1,
+          "eval": "!document.querySelector(\".slack-card\").innerText.includes(\"Choose channels\") && !document.querySelector(\".sidebar\").innerText.includes(\"#general\")",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

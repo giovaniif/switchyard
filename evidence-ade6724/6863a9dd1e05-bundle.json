@@ -1,0 +1,206 @@
+{
+  "v": 1,
+  "claim": "Your Slack's channels could not come into Switchyard: only DMs did, and there was no way to pick channels; now the card lists the channels you are in, each with an Import switch, and an imported channel is read and answered like a DM",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-there-is-another-feature-i-7c7a",
+  "base": "7e2a5cd48cc8fca18b2bb9ff7c57dd2ca9ae4423",
+  "head": "ade6724c40ac9294cdce952b2b87656611ac5408",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack/inbox.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/slack.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackCard.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/SlackPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/fakes/fake-slack"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T15:29:24.490Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "e4c48ec92f6c0b3e0712cf6998da6d903ee7436f",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "650a4ecd33e9d4669fd7d37b56461be80c53cf3068241550e456305adf85e2f8"
+        },
+        {
+          "path": "p1-base-no-channels-desktop.png",
+          "sha256": "198ce61c525ae69380c58bc5661e94b919d2e962ff901508ec3d2f7acf855f95"
+        }
+      ],
+      "addedAt": "2026-11-26T15:29:41.066Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "e4c48ec92f6c0b3e0712cf6998da6d903ee7436f",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "ff76060745c448409fd8a7a647dce0b484454f492a21aead134a14ce7c5b643a"
+        }
+      ],
+      "addedAt": "2026-11-26T15:29:41.112Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack the_owner_imports_the_channels_he_picks",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "ade6724c40ac9294cdce952b2b87656611ac5408",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "d57daa7cd8b9238e6c9f25a792b57c9c7aed62ec4cb46788e9fb6cc075999822"
+        },
+        {
+          "path": "p3-imported-desktop.png",
+          "sha256": "4b8aad9f349310f397ccd1c8f8b9c94e8740653cd249fa5342ee72ac3ee378b9"
+        },
+        {
+          "path": "p3-channel-desktop.png",
+          "sha256": "d415e5c5d5bf7b1c55e108afbcf27288ca4ffc2d4d5260a32486b5b758c4f659"
+        }
+      ],
+      "addedAt": "2026-11-26T15:30:03.154Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "ade6724c40ac9294cdce952b2b87656611ac5408",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "48f050e6b47e99b63ab699aaa9c88afc9de2cf3b6d5d8cad38718a546a15a9e7"
+        },
+        {
+          "path": "p4-channel-mobile.png",
+          "sha256": "3a4927f2a3e73c8f8139c5e69a080d65c732e68991f583d86149338341f38e11"
+        }
+      ],
+      "addedAt": "2026-11-26T15:30:06.159Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "ade6724c40ac9294cdce952b2b87656611ac5408",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "f1c6c1e95a5dd3fba1266ae05ec207e376d1df8395611c1cff53853b41a90f40"
+        }
+      ],
+      "addedAt": "2026-11-26T15:30:06.338Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test slack && CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd inbox && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "ade6724c40ac9294cdce952b2b87656611ac5408",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "7ba058b51061c50723518ec39d3df906fdd32e4b51c8219dd8d7a6bae62bd779"
+        }
+      ],
+      "addedAt": "2026-11-26T15:30:31.022Z",
+      "cmd": "verify/yv design-check --base 7e2a5cd48cc8",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "ade6724c40ac9294cdce952b2b87656611ac5408",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-slack.json",
+          "sha256": "19c9a568a98781761f128119c57200c3a75d1127338e3d640c9bd5bf36030344"
+        }
+      ],
+      "addedAt": "2026-11-26T15:30:31.121Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/not-connected",
+        "slack/an-agents-own-slack-app",
+        "slack/allow-from-an-agents-app",
+        "slack/answer-in-the-slack-thread",
+        "slack/connect-your-slack",
+        "slack/tokens-stay-in-yardd",
+        "slack/your-direct-messages",
+        "slack/reply-react-and-read",
+        "slack/someone-new-writes",
+        "slack/import-a-channel",
+        "slack/one-token-with-a-public-address",
+        "slack/a-watched-channel"
+      ]
+    }
+  ]
+}

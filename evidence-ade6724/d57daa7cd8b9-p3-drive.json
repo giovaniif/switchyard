@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "route": "connectors",
+  "build": {
+    "sha": "ade6724c40ac9294cdce952b2b87656611ac5408",
+    "short": "ade6724",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T15:29:54.795Z"
+  },
+  "dir": ".verify/evidence/slack-channels-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 5351,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-channels-head-desktop/imported-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-channels-head-desktop/channel-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 4,
+          "eval": "(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), true)",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
