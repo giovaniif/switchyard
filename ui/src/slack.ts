@@ -48,10 +48,10 @@ export function slackFrom(origin: SlackOrigin): string {
   return place ? `From ${who} on Slack · ${place}` : `From ${who} on Slack`;
 }
 
-/** Who may talk to agents, as a sentence for the card. */
+/** Who may request tool use, as a sentence for the card. */
 export function allowedSummary(view: SlackView): string {
   const n = view.allowed.length;
-  if (n === 0) return "Nobody yet. Whoever approves an agent's app in Slack can, and others who write to it ask here.";
+  if (n === 0) return "Whoever approves an agent's app can request tool use. Other people need approval in the place session.";
   if (n === 1) return `Only ${view.allowed[0].name}.`;
   return `${n} people.`;
 }

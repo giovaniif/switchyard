@@ -241,6 +241,7 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
         json!({
             "type": "start",
             "restricted": restricted,
+            "slackGuest": sid.starts_with("private-slack-"),
             // What a sidecar from before agents reads; it restricts only in Plan,
             // which a restricted session always is.
             "switchy": restricted,

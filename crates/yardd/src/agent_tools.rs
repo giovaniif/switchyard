@@ -459,6 +459,9 @@ async fn call(app: &Arc<App>, sid: &str, tool: &str, args: &Value) -> (String, b
 }
 
 async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Result<Done> {
+    if caller.answering.iter().any(origins::slack_guest) {
+        bail!("Slack guest turns have no tools.");
+    }
     let (me, sid) = (&caller.me, caller.sid.as_str());
     let arg = |k: &str| args[k].as_str().unwrap_or("").trim().to_string();
     // A turn on a watched channel's notice read text anyone could write: it
@@ -549,7 +552,7 @@ async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Resul
                 .into())
         }
         "remember" | "set_memory" => {
-            let memory = crate::agents::edit_memory(app, &me.id, &arg("text"), tool == "remember")?;
+            let memory = crate::agents::edit_memory(app, &me.id, sid, &arg("text"), tool == "remember")?;
             let text = if memory.is_empty() { "Your memory is now empty.".into() } else { format!("Saved. Your memory now:\n{memory}") };
             Ok(Done { text, needs_you: None, memory: Some(memory) })
         }
@@ -633,7 +636,7 @@ async fn to_hub(app: &Arc<App>, me: &crate::agents::Agent, sid: &str, req: &Valu
         app.update_meta(sid, |m| m.needs_you = Some(mark));
     }
     if let Some(memory) = answer["memory"].as_str() {
-        crate::agents::hosted_memory(app, &me.id, memory);
+        crate::agents::hosted_memory(app, &me.id, sid, memory);
     }
     answer["result"].clone()
 }

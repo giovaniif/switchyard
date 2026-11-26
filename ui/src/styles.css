@@ -1178,6 +1178,10 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 /* A remote agent's card line: the cloud, then host and how it runs, cut as one line. */
 .agent-runs-remote { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .agent-runs-remote > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.agent-places { margin-bottom: 12px; text-align: left; }
+.agent-places h2 { margin: 0 0 6px; }
+.agent-place { width: 100%; height: auto; padding: 8px 10px; margin: 0; gap: 6px; justify-content: space-between; flex-wrap: wrap; text-align: left; overflow-wrap: anywhere; }
+.agent-place time { white-space: nowrap; }
 .agent-earlier { margin: 0 auto 8px; }
 .agent-start .agent-earlier { margin-bottom: 12px; }
 .agent-suggestions { display: flex; flex-direction: column; margin-top: 18px; border-top: 1px solid var(--line); }

@@ -709,6 +709,10 @@ pub fn pipe(app: &Arc<App>, host_id: &str, direct: mpsc::UnboundedSender<String>
 
 /// Which host an op is for, when it is not for this yardd.
 pub fn route(msg: &Value) -> Option<String> {
+    // The app owner and Slack DM live on the hub, even for remote sessions.
+    if crate::slack::is_access_approval(msg) {
+        return None;
+    }
     // Ops that name no session say which host they are for. An upload names
     // either: a host from the new-session page, a session from a reply box.
     if ["session.create", "git.branches", "fs.dirs", "attach.put", "engines.status", "account.add", "account.remove", "login.start", "login.code", "login.choose", "login.cancel", "claude.sessions", "session.import", "automation.list", "automation.save", "automation.delete", "automation.run", "mcp.status", "mcp.auth", "mcp.callback", "mcp.reconnect", "mcp.add", "mcp.remove"]
