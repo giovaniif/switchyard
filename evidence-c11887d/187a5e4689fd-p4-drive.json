@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "c11887d8c507441f4072992f7c40f1274fed67dc",
+    "short": "c11887d",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T03:06:58.377Z"
+  },
+  "dir": ".verify/evidence/host-name-limit-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4635,
+      "steps": 21,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/host-name-limit-head-desktop/too-long-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/host-name-limit-head-desktop/typed-too-long-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/host-name-limit-head-desktop/fixed-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/host-name-limit-head-desktop/added-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

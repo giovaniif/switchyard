@@ -1,0 +1,116 @@
+{
+  "ok": false,
+  "route": "hosts",
+  "build": {
+    "sha": "bf9b7843aa87147406c8900923d11b44711ecf3e",
+    "short": "bf9b784",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T03:06:02.069Z"
+  },
+  "dir": ".verify/evidence/host-name-limit-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 14644,
+      "steps": 7,
+      "failed": {
+        "step": 6,
+        "action": {
+          "expect": "css:.banner-error",
+          "count": 0
+        },
+        "reason": "expected \"css:.banner-error\" to be absent or hidden",
+        "screenshot": ".verify/evidence/host-name-limit-base/fail-mobile-step6.png",
+        "aria": "- text: the host name must be at most 40 plain characters\n- button \"Dismiss\"\n- banner:\n  - button \"Open sessions\"\n  - heading \"Hosts\" [level=1]\n- region \"iPhone app\":\n  - heading \"Switchyard for iPhone\" [level=2]\n  - status: No phone connected yet\n  - list:\n    - listitem:\n      - link \"Install with TestFlight\":\n        - /url: https://testflight.apple.com/join/BygX29JY\n    - listitem: Turn on Tailscale (or your private network) on the iPhone.\n    - listitem: Enter the HTTPS address you open this host at on your phone.\n  - text: Address the phone can reach\n  - textbox \"Address the phone can reach\":\n    - /placeholder: https://your-host.ts.net\n  - paragraph:\n    - text: None of your hosts lists one yet. It is the address in the host's\n    - code: YARD_ALLOW_ORIGIN\n    - text: \", such as its Tailscale name.\"\n- region \"Add host\":\n  - heading \"Add a host\" [level=2]\n  - text: Run sessions on another machine you can\n  - code: ssh\n  - text: into without a password. If Switchyard isn't there yet, you can install it from here next.\n  - textbox \"SSH destination\":\n    - /placeholder: user@machine\n    - text: test@build-machine-with-a-really-long-hostname-for-testing.tail914724.ts.net\n  - button \"Add build-machine-with-a-really-long-hostname-for-testing\"\n  - button \"Cancel\"\n  - button \"Options\"\n- button \"Select iso-host\" [pressed]:\n  - strong: iso-host\n  - text: This machine Healthy CPU\n  - strong: 4%\n  - text: Memory\n  - strong: 10.1 GB\n  - text: Disk\n  - strong: 154 GB\n- button \"Select TEST-build-machine\":\n  - strong: TEST-build-machine\n  - text: test@build-machine-with-a-really-long-hostname-for-testing.tail914724.ts.net Offline CPU\n  - strong: —\n  - text: Memory\n  - strong: —\n  - text: Disk\n  - strong: —\n- region \"iso-host details\":\n  - heading \"iso-host\" [level=2]\n  - text: Healthy\n  - tablist \"Host details\":\n    - tab \"Sessions\" [selected]\n    - tab \"Engine logins\"\n    - tab \"System\"\n  - tabpanel \"Sessions\":\n    - strong: Nothing running on iso-host\n    - paragraph: Start a session whenever you're ready.\n    - button \"New session\"\n    - button \"View all sessions →\""
+      },
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/host-name-limit-base/typed-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/host-name-limit-base/refused-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "host.add",
+          "message": "the host name must be at most 40 plain characters"
+        }
+      ],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 14608,
+      "steps": 7,
+      "failed": {
+        "step": 6,
+        "action": {
+          "expect": "css:.banner-error",
+          "count": 0
+        },
+        "reason": "expected \"css:.banner-error\" to be absent or hidden",
+        "screenshot": ".verify/evidence/host-name-limit-base/fail-desktop-step6.png",
+        "aria": "- navigation \"Sessions\":\n  - button \"Go to session or page\": Switchyard Ctrl K\n  - button \"Collapse sessions sidebar\" [expanded]\n  - button \"New session\"\n  - button \"Agents\"\n  - button \"Automations\"\n  - button \"Connectors\"\n  - button \"Import\"\n  - button \"Settings\"\n  - button \"[cmd] TEST-run the migration · Fake Fast · Idle\"\n  - button \"Archive [cmd] TEST-run the migration\"\n  - button \"Actions for [cmd] TEST-run the migration\"\n  - button \"TEST-hello from Claude · Haiku 5.5 · Idle\"\n  - button \"Archive TEST-hello from Claude\"\n  - button \"Actions for TEST-hello from Claude\"\n  - button \"[edit] TEST-fix the greeting · Fake Fast · Idle\"\n  - button \"Archive [edit] TEST-fix the greeting\"\n  - button \"Actions for [edit] TEST-fix the greeting\"\n  - button \"TEST-say hello · Fake Fast · Idle\"\n  - button \"Archive TEST-say hello\"\n  - button \"Actions for TEST-say hello\"\n  - button \"[think] TEST-plan the refactor · Fake Fast · Idle\"\n  - button \"Archive [think] TEST-plan the refactor\"\n  - button \"Actions for [think] TEST-plan the refactor\"\n  - button \"[fail] TEST-failing turn · Fake Fast · Idle\"\n  - button \"Archive [fail] TEST-failing turn\"\n  - button \"Actions for [fail] TEST-failing turn\"\n  - button \"Subscription usage\": Usage 47% used\n  - button \"iso-host 7% · 45%\"\n  - button \"TEST-build-machine Offline\"\n- separator \"Resize the sessions sidebar\"\n- text: the host name must be at most 40 plain characters\n- button \"Dismiss\"\n- banner:\n  - heading \"Hosts\" [level=1]\n- region \"iPhone app\":\n  - heading \"Switchyard for iPhone\" [level=2]\n  - status: No phone connected yet\n  - list:\n    - listitem:\n      - link \"Install with TestFlight\":\n        - /url: https://testflight.apple.com/join/BygX29JY\n    - listitem: Turn on Tailscale (or your private network) on the iPhone.\n    - listitem: Enter the HTTPS address you open this host at on your phone.\n  - text: Address the phone can reach\n  - textbox \"Address the phone can reach\":\n    - /placeholder: https://your-host.ts.net\n  - paragraph:\n    - text: None of your hosts lists one yet. It is the address in the host's\n    - code: YARD_ALLOW_ORIGIN\n    - text: \", such as its Tailscale name.\"\n- region \"Add host\":\n  - heading \"Add a host\" [level=2]\n  - text: Run sessions on another machine you can\n  - code: ssh\n  - text: into without a password. If Switchyard isn't there yet, you can install it from here next.\n  - textbox \"SSH destination\":\n    - /placeholder: user@machine\n    - text: test@build-machine-with-a-really-long-hostname-for-testing.tail914724.ts.net\n  - button \"Add build-machine-with-a-really-long-hostname-for-testing\"\n  - button \"Cancel\"\n  - button \"Options\"\n- button \"Select iso-host\" [pressed]:\n  - strong: iso-host\n  - text: This machine Healthy CPU\n  - strong: 7%\n  - text: Memory\n  - strong: 10.4 GB\n  - text: Disk\n  - strong: 154 GB\n- button \"Select TEST-build-machine\":\n  - strong: TEST-build-machine\n  - text: test@build-machine-with-a-really-long-hostname-for-testing.tail914724.ts.net Offline CPU\n  - strong: —\n  - text: Memory\n  - strong: —\n  - text: Disk\n  - strong: —\n- region \"iso-host details\":\n  - heading \"iso-host\" [level=2]\n  - text: Healthy\n  - tablist \"Host details\":\n    - tab \"Sessions\" [selected]\n    - tab \"Engine logins\"\n    - tab \"System\"\n  - tabpanel \"Sessions\":\n    - strong: Nothing running on iso-host\n    - paragraph: Start a session whenever you're ready.\n    - button \"New session\"\n    - button \"View all sessions →\""
+      },
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/host-name-limit-base/typed-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/host-name-limit-base/refused-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "host.add",
+          "message": "the host name must be at most 40 plain characters"
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 6 {\"expect\":\"css:.banner-error\",\"count\":0}: expected \"css:.banner-error\" to be absent or hidden",
+      "hint": "see .verify/evidence/host-name-limit-base/fail-mobile-step6.png and the aria snapshot"
+    },
+    {
+      "code": "step-failed",
+      "msg": "desktop: step 6 {\"expect\":\"css:.banner-error\",\"count\":0}: expected \"css:.banner-error\" to be absent or hidden",
+      "hint": "see .verify/evidence/host-name-limit-base/fail-desktop-step6.png and the aria snapshot"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "c11887d8c507441f4072992f7c40f1274fed67dc",
+    "short": "c11887d",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T03:06:58.377Z"
+  },
+  "dir": ".verify/evidence/host-name-limit-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4851,
+      "steps": 21,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/host-name-limit-head-mobile/too-long-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/host-name-limit-head-mobile/typed-too-long-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/host-name-limit-head-mobile/fixed-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/host-name-limit-head-mobile/added-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,230 @@
+{
+  "v": 1,
+  "claim": "Add host: an SSH destination whose first DNS label is over 40 characters derives a host name yardd always refuses; Add sends it anyway and the error banner points at the Name field hidden under Options",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-a329",
+  "base": "60ef57bd498bf3c58cf018a471ecde6d5a9183a8",
+  "head": "c11887d8c507441f4072992f7c40f1274fed67dc",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/addHost.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/hosts.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-26T03:05:57.387Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "bf9b7843aa87147406c8900923d11b44711ecf3e",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "e877b5f4ef5c6e98d74ef51a87283bfe7b502cb0e2f85c7290e26f20b5458e9e"
+        },
+        {
+          "path": "p1-typed-mobile.png",
+          "sha256": "1fb22b7ad653405b420b64b708672a3631cf1f5ff8bfd763384f9f75c9283aec"
+        },
+        {
+          "path": "p1-refused-mobile.png",
+          "sha256": "1fdd31667f0e1a3d2052d2a3a82176a8adeec85ca271fa058fb7c4cb6d7c4eab"
+        },
+        {
+          "path": "p1-fail-mobile-step6.png",
+          "sha256": "1fdd31667f0e1a3d2052d2a3a82176a8adeec85ca271fa058fb7c4cb6d7c4eab"
+        },
+        {
+          "path": "p1-typed-desktop.png",
+          "sha256": "958e8ebb3d5fdf3c90be4ce096cccc112fbd6f6dabfb0433f112dcffad98bb2a"
+        },
+        {
+          "path": "p1-refused-desktop.png",
+          "sha256": "48da15823c5812e91966e9ef179c5abbc32209506133c60b736af90b42145695"
+        },
+        {
+          "path": "p1-fail-desktop-step6.png",
+          "sha256": "ab856e9013b05e53dd29a8bd99dee5461c11fb9cdbde16f325603d1d9c83d179"
+        }
+      ],
+      "addedAt": "2026-11-26T03:06:32.009Z",
+      "failedApi": [
+        "host.add: the host name must be at most 40 plain characters",
+        "host.add: the host name must be at most 40 plain characters"
+      ]
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "bf9b7843aa87147406c8900923d11b44711ecf3e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "7e479bbf91f523e72d07d15cdd2875e580b66def548bc1e3bd18f9c5e4295c36"
+        }
+      ],
+      "addedAt": "2026-11-26T03:06:32.062Z",
+      "cmd": "verify/yv map run hosts --recipe long-derived-name-asks-for-a-shorter-one",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "c11887d8c507441f4072992f7c40f1274fed67dc",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "cc8f5e75eeefd3ec387560d2a8dbfe092eb3d62b648c3e48f72b09f1f167c71f"
+        },
+        {
+          "path": "p3-too-long-mobile.png",
+          "sha256": "b8f9924b25f128b7feeddecca06f1effa283a10d0af82a919832b68f94a52850"
+        },
+        {
+          "path": "p3-typed-too-long-mobile.png",
+          "sha256": "9650ba5892922b131c3881ea8cc440355ab92de16f0f4d55becad9ba7d9eb1f9"
+        },
+        {
+          "path": "p3-fixed-mobile.png",
+          "sha256": "b71e1366e8e4529693f49992f00b2e8ea10d7e037d4591c42f31f8b12cf48521"
+        },
+        {
+          "path": "p3-added-mobile.png",
+          "sha256": "ec6f2312c647b521068e66d1ded122690ea725c9557b4e795d40270854ba9107"
+        }
+      ],
+      "addedAt": "2026-11-26T03:07:03.908Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "c11887d8c507441f4072992f7c40f1274fed67dc",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "187a5e4689fd1eae2a2ffe27e8348f9ed9b6ddf24a1024cd5411a5680ced666b"
+        },
+        {
+          "path": "p4-too-long-desktop.png",
+          "sha256": "9e0cc2aa9e19165b7b45fda4c1cb7e427bcfc64291b88ab1852800dbca9936c7"
+        },
+        {
+          "path": "p4-typed-too-long-desktop.png",
+          "sha256": "379bf0b1db15f7fb59ec72a2d320ff6a232750f7459fae9525b0e8f02e54c644"
+        },
+        {
+          "path": "p4-fixed-desktop.png",
+          "sha256": "73e93ac6e50c89d562c318e439c5d13ba8c6b3fd75f05f3b66c71895c66fad7e"
+        },
+        {
+          "path": "p4-added-desktop.png",
+          "sha256": "07c057e9f8363399fe096688fc3e42b1c7e170716d1e09dbf74a604df84e3b1f"
+        }
+      ],
+      "addedAt": "2026-11-26T03:07:09.121Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "c11887d8c507441f4072992f7c40f1274fed67dc",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "5e771c8b2d71772e746bd31f0ba97f82f669b0ace24f4ea8f77e13e6713a6b37"
+        }
+      ],
+      "addedAt": "2026-11-26T03:07:15.534Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "c11887d8c507441f4072992f7c40f1274fed67dc",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "720c59528635e00308dfb3571b8fd5583abc5cf43ed278c7cbe24a65d51fb96c"
+        }
+      ],
+      "addedAt": "2026-11-26T03:07:16.004Z",
+      "cmd": "verify/yv design-check --base 60ef57bd498b",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "c11887d8c507441f4072992f7c40f1274fed67dc",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-hosts.json",
+          "sha256": "76f7ea8976a7dcf7249ceb3612aea8c5e1421125f5b1c849753807dac43868e7"
+        }
+      ],
+      "addedAt": "2026-11-26T03:07:16.087Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/processes-say-the-host-is-offline",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    }
+  ]
+}

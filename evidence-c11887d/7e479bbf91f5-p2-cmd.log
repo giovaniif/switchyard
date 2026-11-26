@@ -1,0 +1,40 @@
+$ verify/yv map run hosts --recipe long-derived-name-asks-for-a-shorter-one
+# exit 1 after 14688 ms at bf9b7843aa87147406c8900923d11b44711ecf3e
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "hosts",
+      "at": "2026-11-26T03:06:46.746Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "long-derived-name-asks-for-a-shorter-one",
+          "status": "fail",
+          "ms": 13419,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 2 {\"expect\":\"css:#host-name\",\"visible\":true}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-a329/.verify/drives/2026-11-26T03-06-33-353Z/fail-mobile-step2.png and the aria snapshot"
+            }
+          ],
+          "tail": "Phone\\\" [level=2]\\n  - status: No phone connected yet\\n  - list:\\n    - listitem:\\n      - link \\\"Install with TestFlight\\\":\\n        - /url: https://testflight.apple.com/join/BygX29JY\\n    - listitem: Turn on Tailscale (or your private network) on the iPhone.\\n    - listitem: Enter the HTTPS address you open this host at on your phone.\\n  - text: Address the phone can reach\\n  - textbox \\\"Address the phone can reach\\\":\\n    - /placeholder: https://your-host.ts.net\\n  - paragraph:\\n    - text: None of your hosts lists one yet. It is the address in the host's\\n    - code: YARD_ALLOW_ORIGIN\\n    - text: \\\", such as its Tailscale name.\\\"\\n- region \\\"Add host\\\":\\n  - heading \\\"Add a host\\\" [level=2]\\n  - text: Run sessions on another machine you can\\n  - code: ssh\\n  - text: into without a password. If Switchyard isn't there yet, you can install it from here next.\\n  - textbox \\\"SSH destination\\\":\\n    - /placeholder: user@machine\\n    - text: test@build-machine-with-a-really-long-hostname-for-testing.tail914724.ts.net\\n  - button \\\"Add build-machine-with-a-really-long-hostname-for-testing\\\"\\n  - button \\\"Cancel\\\"\\n  - button \\\"Options\\\"\\n- button \\\"Select iso-host\\\" [pressed]:\\n  - strong: iso-host\\n  - text: This machine Healthy CPU\\n  - strong: 8%\\n  - text: Memory\\n  - strong: 10.5 GB\\n  - text: Disk\\n  - strong: 154 GB\\n- region \\\"iso-host details\\\":\\n  - heading \\\"iso-host\\\" [level=2]\\n  - text: Healthy\\n  - tablist \\\"Host details\\\":\\n    - tab \\\"Sessions · 2\\\" [selected]\\n    - tab \\\"Engine logins\\\"\\n    - tab \\\"System\\\"\\n  - tabpanel \\\"Sessions · 2\\\":\\n    - button \\\"[cmd] TEST-run the migration Codex · Default Needs approval —\\\":\\n      - strong: \\\"[cmd] TEST-run the migration\\\"\\n      - text: Codex · Default Needs approval —\\n    - button \\\"TEST-hello from Claude Claude · Default Idle 26 MB 0.0 cores\\\":\\n      - strong: TEST-hello from Claude\\n      - text: Claude · Default Idle 26 MB 0.0 cores\\n    - button \\\"View all sessions →\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 2 {\\\"expect\\\":\\\"css:#host-name\\\",\\\"visible\\\":true}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-a329/.verify/drives/2026-11-26T03-06-33-353Z/fail-mobile-step2.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "hosts/long-derived-name-asks-for-a-shorter-one",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+
