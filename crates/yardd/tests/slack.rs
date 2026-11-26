@@ -1326,3 +1326,30 @@ async fn the_owner_imports_the_channels_he_picks_and_only_those() {
     inbox(&mut c, json!({ "op": "slack.inbox.import", "channel": "C0GENERAL", "on": false })).await;
     inbox_list(&mut c, "#general forgotten", |l| !l.iter().any(|v| v["id"] == "C0GENERAL")).await;
 }
+
+#[tokio::test]
+async fn the_owner_calls_an_agent_from_his_reply_box_with_a_real_mention() {
+    let fake = FakeSlack::start();
+    let sb = Sandbox::new("slack-call-agent");
+    let daemon = sb.start_with(&[("YARD_SLACK_API", &fake.api()), ("YARD_ALLOW_ORIGIN", ORIGIN)]);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    let id = reviewer(&mut c).await;
+    agent_app(&mut c, daemon.port, &id).await;
+    connect_me(&mut c).await;
+    inbox_list(&mut c, "the DMs synced", |l| l.len() == 2).await;
+
+    // Called by its handle: a real mention of its bot. Typed alone, or for
+    // an id that is not an agent with an app, it stays text.
+    let sent = inbox(&mut c, json!({ "op": "slack.inbox.send", "team": "T0TEST", "channel": "G0TRIO", "text": "@reviewer can you check the deploy? <@UANA>", "mentions": [id, "g-nobody"] })).await;
+    let ts = sent["ts"].as_str().unwrap().to_string();
+    let posted = fake.state()["posts"].as_array().unwrap().iter().find(|p| p["ts"] == ts.as_str()).cloned().unwrap();
+    assert_eq!(posted["text"], "<@UAGENT> can you check the deploy? &lt;@UANA&gt;");
+    let sent = inbox(&mut c, json!({ "op": "slack.inbox.send", "team": "T0TEST", "channel": "G0TRIO", "text": "@reviewer stays text" })).await;
+    let ts = sent["ts"].as_str().unwrap().to_string();
+    let posted = fake.state()["posts"].as_array().unwrap().iter().find(|p| p["ts"] == ts.as_str()).cloned().unwrap();
+    assert_eq!(posted["text"], "@reviewer stays text");
+    // In his inbox the mention reads as the agent.
+    let page = inbox(&mut c, json!({ "op": "slack.inbox.messages", "team": "T0TEST", "channel": "G0TRIO" })).await;
+    assert_eq!(page["users"]["UAGENT"], "Reviewer");
+}
