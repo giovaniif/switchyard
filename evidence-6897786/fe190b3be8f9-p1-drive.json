@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "route": "session:s1a218284fbb1",
+  "build": {
+    "sha": "4e007fb288d29490d2fb31ee0d030893339d816b",
+    "short": "4e007fb",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-26T14:00:24.592Z"
+  },
+  "dir": ".verify/evidence/codex-question-base",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2416,
+      "steps": 2,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/codex-question-base/base-no-question-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "pr",
+          "message": "no branch is checked out"
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
