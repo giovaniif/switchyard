@@ -97,6 +97,10 @@ async fn client(socket: WebSocket, app: Arc<App>) {
         });
     }
 
+    // Set once this client says it is a phone's app: it shows as connected
+    // until the socket closes.
+    let mut phone: Option<String> = None;
+
     loop {
         tokio::select! {
             msg = rx.recv() => match msg {
@@ -130,6 +134,17 @@ async fn client(socket: WebSocket, app: Arc<App>) {
                         }
                         continue;
                     }
+                    if msg["op"] == "mobile.connected" {
+                        // A phone resyncing on the same socket is still the one phone.
+                        if phone.is_none() {
+                            match app.mobile.connected(msg["device"].as_str()) {
+                                Ok(name) => phone = Some(name),
+                                Err(e) => { let _ = direct.send(error_reply(&msg, &e)); }
+                            }
+                            app.broadcast(json!({ "op": "mobile.status", "mobile": app.mobile.status() }));
+                        }
+                        continue;
+                    }
                     if matches!(msg["op"].as_str(), Some("term.input" | "term.resize")) {
                         let _ = keys.send(msg);
                         continue;
@@ -149,6 +164,10 @@ async fn client(socket: WebSocket, app: Arc<App>) {
     }
     // A hub's connection: calls passed to it will not be answered.
     app.tools.conn_closed(&direct);
+    if let Some(name) = phone {
+        app.mobile.disconnected(&name);
+        app.broadcast(json!({ "op": "mobile.status", "mobile": app.mobile.status() }));
+    }
 }
 
 /// An op's failure. `ref` comes back when the op had one, so a client
@@ -217,6 +236,20 @@ fn list_dirs(path: &str) -> Result<Vec<Value>> {
     // A home folder with thousands of entries should not flood the socket.
     dirs.truncate(2000);
     Ok(dirs.into_iter().map(|(name, git)| json!({ "name": name, "git": git })).collect())
+}
+
+/// The shortest prefix of an absolute `path` that does not exist. A typo can
+/// sit anywhere up the path, and the picker names the folder that is not
+/// there rather than an io error for the one it asked about.
+fn first_missing(path: &str) -> Option<String> {
+    let path = Path::new(path);
+    if !path.is_absolute() {
+        return None;
+    }
+    let ancestors: Vec<&Path> = path.ancestors().collect();
+    // Only NotFound: a folder the daemon may not read still exists.
+    let gone = |p: &&Path| matches!(std::fs::metadata(p), Err(e) if e.kind() == std::io::ErrorKind::NotFound);
+    ancestors.into_iter().rev().find(gone).map(|p| p.to_string_lossy().into_owned())
 }
 
 /// Start a session from a `session.create` message. `direct` gets `created`
@@ -338,10 +371,6 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
         return crate::import::handle(app, direct, msg).await;
     }
     match msg["op"].as_str().unwrap_or("") {
-        "mobile.connected" => {
-            app.mobile.connected()?;
-            app.broadcast(json!({ "op": "mobile.status", "mobile": app.mobile.status() }));
-        }
         "session.create" => {
             create_session(app, Some(direct), msg, None, None, None, None).await?;
         }
@@ -435,7 +464,10 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             let path = str_field(msg, "path")?;
             let reply = match list_dirs(path) {
                 Ok(dirs) => json!({ "op": "fs.dirs", "path": path, "dirs": dirs }),
-                Err(e) => json!({ "op": "fs.dirs", "path": path, "error": format!("{e:#}") }),
+                Err(e) => match first_missing(path) {
+                    Some(missing) => json!({ "op": "fs.dirs", "path": path, "missing": missing }),
+                    None => json!({ "op": "fs.dirs", "path": path, "error": format!("{e:#}") }),
+                },
             };
             let _ = direct.send(reply.to_string());
         }

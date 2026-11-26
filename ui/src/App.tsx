@@ -10,7 +10,7 @@ import { shownHosts, useHiddenHosts } from "./sidebarHosts";
 import { nameFromDestination } from "./addHost";
 import { AgentAvatar, AgentBar, AgentForm, AgentRequests, AgentRunPickers, AgentsPage, AgentStart, EarlierConversations, NewAgentRedirect, agentSettings, useAgentMove, useAgentSave } from "./AgentsPage";
 import { SlackIcons } from "./SlackIcon";
-import { agentOf, agentsAttention, conversationOf, handleOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
+import { agentHost, agentOf, agentsAttention, agentStatus, conversationOf, handleOf, insertMention, isAgentConversation, isEarlierConversation, leadingMention, matchAgents, mentionAt, originLabel } from "./agents";
 import { size, stateText } from "./hosts";
 import { SettingsPage } from "./SettingsPage";
 import { accountChoices, accountLabel, accountName, accountOf, choiceOnEngine, DEFAULT_ACCOUNT } from "./accounts";
@@ -40,11 +40,13 @@ import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinne
 import { voiceCue, type Cue } from "./voice";
 import { useVoice } from "./useVoice";
 import { MobileSetup, MobileSetupButton } from "./MobileSetup";
+import { phoneTargets } from "./mobile";
 import { isAgentHome, loadChoice, loadFolder, loadHost, readRecent, rememberSession, validChoice, type Choice } from "./sessionDefaults";
 export { isAgentHome, loadChoice, readRecent } from "./sessionDefaults";
 export type { Choice } from "./sessionDefaults";
 import { NavigationPalette } from "./NavigationPalette";
 import { navigationShortcut, type NavigationEntry } from "./navigation";
+import { sendUpdateAction, useAppUpdate } from "./appUpdate";
 
 /** Permission modes, as Claude Code names them, and what each means per engine. */
 export const PERMISSIONS: ({ id: Permission; label: string } & Record<Engine, string>)[] = [
@@ -223,6 +225,7 @@ export function App() {
   }, [navigating]);
   // Older shells and browsers still need the sidebar's entry points.
   const nativeMenu = (window as any).__SWITCHYARD_APP_MENU__ === true;
+  const appUpdate = useAppUpdate();
   const [sidebarW, setSidebarW] = useWidth("yard.sidebarWidth", SIDEBAR_W);
   const [sidebarCollapsed, setSidebarCollapsed] = usePanelCollapsed("yard.sidebarCollapsed");
   const narrow = useMedia(NARROW);
@@ -383,6 +386,19 @@ export function App() {
               </button>
             </div>
           )}
+          {/* The Mac app's own update, found in the background: a quiet line, never a dialog. */}
+          {appUpdate.update && (
+            <div className="banner banner-notice app-update" role="status">
+              <span>Switchyard {appUpdate.update.version} is {appUpdate.update.ready ? "ready" : "available"}.</span>
+              <span className="app-update-actions">
+                <button className="btn-text" onClick={() => sendUpdateAction("notes")}>What's new</button>
+                <button className="btn-text" onClick={() => sendUpdateAction(appUpdate.update!.ready ? "restart" : "notes")}>
+                  {appUpdate.update.ready ? "Restart" : "Update"}
+                </button>
+                <button className="btn-text" onClick={appUpdate.dismiss}>Later</button>
+              </span>
+            </div>
+          )}
           {route.page === "new" && (
             <>
               {/* The page has no bar of its own; narrow windows need one for the menu button. */}
@@ -392,7 +408,7 @@ export function App() {
                 <span className="spacer" />
                 <UsageStrip {...usage} compact />
                 <button className="btn-icon new-connectors-shortcut" aria-label="Connectors" onClick={() => actions.go({ page: "connectors" })}><Icon d={PLUG} size={17} /></button>
-                <MobileSetupButton mobile={state.mobile} open={() => actions.go({ page: "hosts" })} />
+                <MobileSetupButton mobile={state.mobile} hostMobile={state.hostMobile} open={() => actions.go({ page: "hosts" })} />
               </header>
               <NewSession state={state} actions={actions} onUsageAccount={setDraftUsageAccount} />
             </>
@@ -572,6 +588,41 @@ interface RowDrag {
   dragging: boolean;
   start(id: string): void;
   end(): void;
+}
+
+/** An agent in the sidebar, like a direct message: its face where a
+ *  session shows its harness, the same status badge, and its name. Opens
+ *  its one conversation. */
+function AgentRow({ state, actions, agent, active, seenAt }: { state: State; actions: Actions; agent: Agent; active: boolean; seenAt(id: string): number }) {
+  const host = agentHost(agent);
+  const online = host === "local" || hostOnline(state, host);
+  const chat = conversationOf(agent, state.sessions);
+  const status = agentStatus(agent, state.sessions, Date.now(), chat ? seenAt(chat.id) : Infinity, online ? undefined : hostName(state, host));
+  // What it waits on from the owner reads as an approval does on a session row.
+  const asks = !!(agent.request?.cwd || agent.request?.permission || agent.request?.slack) || !!chat?.needsYou;
+  const mark: RowState = !chat ? (online ? "idle" : "offline") : asks && online ? "approval" : rowState(chat, seenAt(chat.id), online);
+  const detail = [agent.about, asks ? "Asks you for something" : status.text].filter(Boolean).join(" · ");
+  return (
+    <div className="session-item agent-item">
+      <button
+        className={`session-row agent-row ${active ? "active" : ""} ${online ? "" : "offline"} ${mark === "answered" || mark === "unread" ? "unread" : ""}`}
+        title={detail}
+        onClick={() => actions.go({ page: "agent", id: agent.id })}
+      >
+        <span className="row-engine row-agent-face">
+          <AgentAvatar agent={agent} size="sm" busy={mark === "working"} />
+          <RowMark state={mark} />
+        </span>
+        <span className="session-text">
+          <span className="session-title">{agent.name}</span>
+          <span className="sr-only">
+            {" · "}
+            <span className={`row-status row-status-${mark}`}>{asks ? "Asks you for something" : ROW_LABEL[mark]}</span>
+          </span>
+        </span>
+      </button>
+    </div>
+  );
 }
 
 function SessionRow({ state, actions, session: s, active, groups, seenAt, unread, onUnread, onRead, drag }: { state: State; actions: Actions; session: SessionMeta; active: boolean; groups: string[]; seenAt: number; unread: boolean; onUnread(): void; onRead(): void; drag?: RowDrag }) {
@@ -1034,6 +1085,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   // Runs of automations live on the Automations page, not in this list.
   const runs = everything.filter(hiddenFromSidebar);
   const runsMark = runsAttention(runs);
+  const archivedMark = runsAttention(archived);
   const inRun = route.page === "session" && !!state.sessions[route.id]?.automation;
   const agentOpen = route.page === "agent" ? state.agents.find((a) => a.id === route.id)?.chat ?? null : null;
   const seen = useSeen(state.sessions, route.page === "session" ? route.id : agentOpen, state.restore);
@@ -1171,12 +1223,32 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
             </div>
           );
         })}
+        {/* Agents, like direct messages: the list's last section. */}
+        {state.agents.length > 0 && (
+          <div className="agent-dms" role="group" aria-label="Agents">
+            <div className="list-head">Agents</div>
+            {state.agents.map((a) => (
+              <AgentRow
+                key={a.id}
+                state={state}
+                actions={actions}
+                agent={a}
+                active={(route.page === "agent" && route.id === a.id) || (route.page === "session" && (route.id === a.chat || !!a.previous?.includes(route.id)))}
+                seenAt={seen.seenAt}
+              />
+            ))}
+          </div>
+        )}
       </div>
       {archived.length > 0 && (
         <div className="archived-dock">
           <button className="list-head list-toggle" aria-expanded={showArchived} onClick={() => setShowArchived(!showArchived)}>
             <span>Archived</span>
             <span className="muted">{archived.length}</span>
+            {/* Archived sessions still run: collapsed, this dot is the only sign one waits for the user. */}
+            {!showArchived && archivedMark && (
+              <span className={`dot ${archivedMark === "approval" ? "dot-needs_approval" : "dot-running"}`} role="img" aria-label={GROUP_MARK[archivedMark]} title={GROUP_MARK[archivedMark]} />
+            )}
             <span className={`tool-chevron ${showArchived ? "open" : ""}`}>
               <Icon d={CHEVRON_RIGHT} size={11} />
             </span>
@@ -2748,8 +2820,8 @@ export function FolderPicker(props: {
         .filter((d) => d.name.toLowerCase().startsWith(lower) && (lower.startsWith(".") || !d.name.startsWith(".")))
         .slice(0, 200)
         .map((d) => ({ path: joinPath(dir, d.name), name: d.name, detail: "", git: d.git, browse: true }));
-      // The folder typed so far is itself a choice.
-      const self = !stem && dir ? [{ path: dir, name: `Use ${tilde(dir, home)}`, detail: "" }] : [];
+      // The folder typed so far is itself a choice, unless yardd says it is not there.
+      const self = !stem && dir && !listing?.missing && !listing?.error ? [{ path: dir, name: `Use ${tilde(dir, home)}`, detail: "" }] : [];
       return [...self, ...children];
     }
     const lower = query.toLowerCase();
@@ -2853,9 +2925,10 @@ export function FolderPicker(props: {
             )}
           </div>,
         ])}
+        {browsing && listing?.missing && <div className="picker-empty">{tilde(listing.missing, home)} doesn’t exist.</div>}
         {browsing && listing?.error && <div className="picker-empty">{listing.error}</div>}
         {/* Only a typed last segment can leave this list empty ("Use <dir>" is offered otherwise); say why Enter does nothing. */}
-        {browsing && listing && !listing.error && rows.length === 0 && (
+        {browsing && listing && !listing.error && !listing.missing && rows.length === 0 && (
           <div className="picker-empty">
             No folder in {tilde(dir, home)} starts with “{stem}”.
           </div>
@@ -3150,7 +3223,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
             </span>
           )}
           <span className="spacer" />
-          <MobileSetupButton mobile={state.mobile} open={() => actions.go({ page: "hosts" })} />
+          <MobileSetupButton mobile={state.mobile} hostMobile={state.hostMobile} open={() => actions.go({ page: "hosts" })} />
           {wide ? (
             <button className="btn-icon workspace-toggle-desktop" aria-label={workspaceLabel} title={workspaceLabel} aria-controls="session-workspace" aria-expanded={workspaceShown} onClick={() => setWorkspaceCollapsed(!workspaceCollapsed)}>
               <Icon d={RIGHT_PANEL} size={18} />
@@ -5147,7 +5220,13 @@ function Hosts({ state, actions }: { state: State; actions: Actions }) {
       <div className="scroll">
         <div className="focused-page" ref={page}>
           {/* The session headers' phone shortcut leads here: keep setup first. */}
-          <MobileSetup mobile={state.mobile} />
+          <MobileSetup
+            mobile={state.mobile}
+            targets={phoneTargets(
+              [{ id: "local", name: hostName(state, "local"), mobile: state.mobile }, ...state.hosts.map((h) => ({ id: h.id, name: h.name, mobile: state.hostMobile[h.id] }))],
+              location.origin,
+            )}
+          />
           {adding && (
             <AddHost actions={actions} hosts={state.hosts} errorCount={state.errorCount} connected={state.connected} onDone={() => setAdding(false)} />
           )}
@@ -5270,7 +5349,8 @@ function SessionRows({
             </span>
             <span className={`focused-session-state ${s.status === "needs_approval" ? "warn" : "muted"}`}>
               <span className={`dot dot-${s.status}`} />
-              {!hostOnline(state, host) ? "Offline" : s.archived ? "Archived" : STATUS_LABEL[s.status]}
+              {/* Archived sessions still run: past idle, the status is what the row is for. */}
+              {!hostOnline(state, host) ? "Offline" : !s.archived ? STATUS_LABEL[s.status] : s.status === "idle" ? "Archived" : `Archived · ${STATUS_LABEL[s.status]}`}
             </span>
             <span className="focused-session-resources muted small">
               {usage ? (

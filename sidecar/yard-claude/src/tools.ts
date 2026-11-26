@@ -105,7 +105,10 @@ export function resultText(content: unknown): string {
 export function toolStarted(block: { id: string; name: string; input?: any }, cwd: string, parent?: string) {
   const d = describe(block.name, block.input, cwd);
   const event: Record<string, unknown> = { type: "tool_started", itemId: block.id, kind: d.kind, title: d.title, detail: d.detail };
-  if (d.title === "Agent" && typeof block.input?.subagent_type === "string") event.agent = block.input.subagent_type;
+  // Without a type, Claude Code runs its general-purpose agent. Untyped, the
+  // call read as an ordinary step: folded away when the turn ended while the
+  // agent still ran in the background, with nothing saying it was working.
+  if (d.title === "Agent") event.agent = typeof block.input?.subagent_type === "string" && block.input.subagent_type ? block.input.subagent_type : "general-purpose";
   if (parent) event.parent = parent;
   return event;
 }

@@ -780,6 +780,15 @@ async fn folders_are_listed_for_the_picker() {
     c.send(json!({ "op": "fs.dirs", "path": "relative/path" })).await;
     let refused = c.wait_for("fs.dirs refusal", |m| m["op"] == "fs.dirs" && m["path"] == "relative/path").await;
     assert!(refused["error"].as_str().unwrap().contains("absolute"), "{refused}");
+
+    // A typo higher up the path names the first folder that is not there,
+    // not the io error of the folder the picker asked for.
+    let gone = Path::new(&parent).join("TEST-gone");
+    let deep = gone.join("deeper").to_str().unwrap().to_string();
+    c.send(json!({ "op": "fs.dirs", "path": deep })).await;
+    let missing = c.wait_for("fs.dirs missing", |m| m["op"] == "fs.dirs" && m["path"] == deep.as_str()).await;
+    assert_eq!(missing["missing"], gone.to_str().unwrap(), "{missing}");
+    assert!(missing["error"].is_null(), "{missing}");
 }
 
 #[tokio::test]
@@ -2682,6 +2691,25 @@ async fn procs_with(c: &mut Client, sid: &str, needle: &str) -> Vec<Value> {
         tokio::time::sleep(Duration::from_millis(1000)).await;
     }
     panic!("no process with `{needle}` in the list of {sid}");
+}
+
+/// A subagent Claude runs in the background outlives its turn: the session
+/// says it is still at work (`background`) until the subagent reports.
+#[tokio::test]
+async fn a_background_subagent_keeps_its_session_marked_working() {
+    let sb = Sandbox::new("background-agent");
+    let sidecar = claude_sidecar();
+    let d = sb.start_with(&[("YARD_SIDECAR", &sidecar)]);
+    let mut c = d.client().await;
+    let extra = json!({ "engine": "claude", "model": "claude-haiku-5-5" });
+    let sid = c.create(&sb.folder("proj"), "[background-agent] TEST-go", extra).await;
+    assert_eq!(c.wait_turn_done(&sid, 0).await["status"], "completed");
+    let meta = c.wait_for("idle with a subagent at work", |m| m["op"] == "session" && m["session"]["id"] == sid.as_str() && m["session"]["status"] == "idle" && m["session"]["background"].as_array().is_some_and(|b| b.len() == 1)).await;
+    let item = meta["session"]["background"][0].as_str().unwrap().to_string();
+    // It reports after the turn: the mark goes.
+    let from = c.mark();
+    c.wait_after(from, "the subagent done", |m| m["op"] == "session" && m["session"]["id"] == sid.as_str() && m["session"].get("background").is_none()).await;
+    assert!(c.history(&sid).await.iter().any(|e| e["type"] == "tool_completed" && e["itemId"] == item.as_str()));
 }
 
 #[tokio::test]

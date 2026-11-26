@@ -103,6 +103,11 @@ pub struct Meta {
     pub turn_ended_at: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_turn: Option<String>,
+    /// Subagents (Agent calls) still at work, by item id: they can outlive
+    /// the turn that started them (Claude runs them in the background), and
+    /// the row says the session is working until they report.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub background: Vec<String>,
     /// Messages sent while a turn ran and not yet given to the agent, oldest
     /// first: `{ id, text, attachments, at }`. Like Claude Code's queue, they
     /// go to the agent at its next step (see `Delivery`); Stop hands them back.
@@ -445,6 +450,7 @@ impl App {
             finished_at: None,
             turn_ended_at: None,
             last_turn: None,
+            background: Vec::new(),
             pending: Vec::new(),
             created_at: now,
             updated_at: now,
@@ -553,6 +559,18 @@ impl App {
                     s.meta.fresh_context = Some("the engine's context was full".into());
                 }
             }
+            // A subagent's own steps carry `parent`; only its Agent call counts.
+            let before = s.meta.background.len();
+            let item = event["itemId"].as_str().unwrap_or("").to_string();
+            if event["type"] == "tool_started" && event["agent"].is_string() && event["parent"].is_null() && !item.is_empty() && !s.meta.background.contains(&item) {
+                s.meta.background.push(item);
+            } else if event["type"] == "tool_completed" {
+                s.meta.background.retain(|i| *i != item);
+            } else if turn_completed && event["status"] != "completed" {
+                // Stop and a failure end the turn's subagents too.
+                s.meta.background.clear();
+            }
+            let background_moved = s.meta.background.len() != before;
             s.events.push(event);
             s.meta.updated_at = now_ms();
             if turn_completed {
@@ -578,7 +596,7 @@ impl App {
             if let Some(st) = status {
                 s.meta.status = st.to_string();
             }
-            if moved || turn_completed {
+            if moved || turn_completed || background_moved {
                 self.store.meta(&s.meta);
                 self.broadcast(json!({ "op": "session", "session": s.meta }));
             }
@@ -653,7 +671,9 @@ impl App {
         let mut queued = Vec::new();
         {
             let mut map = self.sessions.lock().unwrap();
-            for l in loaded {
+            for mut l in loaded {
+                // Their processes went with the yardd that ran them.
+                l.meta.background.clear();
                 if l.meta.status == "queued" {
                     queued.push((l.meta.created_at, l.meta.id.clone(), queued_reason(&l.events)));
                 } else if l.meta.status != "idle" {

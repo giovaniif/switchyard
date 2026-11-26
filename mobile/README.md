@@ -4,118 +4,139 @@ Build operations, the server's existing Apple/EAS credentials, and TestFlight
 setup: [docs/IOS_BUILDS.md](../docs/IOS_BUILDS.md). Read that before creating
 new certificates or assuming the repository's secrets are the only source.
 
-An iOS shell around the **same live UI served by your yardd**. The editor,
-attachments, model/engine switching, approvals, queued messages, terminals,
-changes, pull requests, processes, hosts, accounts, connectors and automations
-use their existing implementation. Agents (Scout included) use that same host UI, including
-its shared editor and voice controls. On narrow screens, **Workspace** opens the workspace tabs and its
-close button returns to the conversation.
+A native SwiftUI app (iOS 26, Liquid Glass) that talks to your yardd over its
+WebSocket, the same protocol as the web page. It runs no engines on the phone
+and stores no engine credentials.
 
-The native shell adds saved hosts, HTTPS connection checks, setup deep links,
-Apple speech recognition/synthesis, local notifications and foreground
-reconnection. It runs no engines on the phone and stores no engine credentials.
-Dictation and hands-free voice use the existing composer and voice rules.
+- **Sessions**: one list with live status (working, needs you, failed),
+  search, pin and archive by swiping, and the host's CPU and memory.
+- **A session**: the thread as it streams (Markdown, thinking, tool steps with
+  subagents nested, edited files), approvals as cards (Allow once, Always,
+  Deny), queued messages, Stop, model, effort and permission.
+- **New session**: the prompt first, then engine, model and effort, folder
+  (recent folders and a browser of the host's), its own worktree, permission,
+  and the host when remotes are connected.
+- **Voice**: dictation (the mic in the reply box) and voice mode (the waveform
+  button): it listens, sends after a pause, reads the answer aloud and listens
+  again; talk over it or say "stop". Approvals are announced and answered on
+  screen. Voice mode started on New session goes on in the session it opens.
+- **Workspace**: terminals, changes, pull requests and processes stay in the
+  host's web page, opened in a sheet from a session's menu.
+- **Demo**: "Look around with demo sessions" on the connect screen shows the
+  app with bundled sessions and no host.
+
+## Code
+
+| Folder | What |
+| --- | --- |
+| `Switchyard/Core` | `JSON` (lenient decoding), `Models`, `Thread` (`applyEvent` ported from `ui/src/protocol.ts`), `Transport` (the WebSocket), `Yard` (the store, like `ui/src/store.ts`), `Markdown` |
+| `Switchyard/Voice` | `VoiceRules` (ported from `ui/src/voice.ts`), `SpeechIO` (microphone, recognizer, voice), `VoiceController` (the state machine's effects) |
+| `Switchyard/UI` | The screens |
+| `Switchyard/Demo` | `demo.json` and a pretend yardd for the demo and screenshots |
+| `SwitchyardTests` | Unit tests; `Fixtures/yardd-capture.json` is a snapshot and histories recorded from a yardd with scripted engines |
+
+Message shapes live in `ui/src/protocol.ts` and yardd. When they change, change
+`Core/Models.swift` and `Core/Thread.swift` too; the fixture test reads real
+messages, so recapture it (a script that opens `/ws` on a `verify/yv iso`
+daemon, sends `session.open` for each session and saves the replies).
+
+## Voice on the phone
+
+`SpeechIO` runs one `AVAudioEngine` for both directions. The microphone feeds
+`SFSpeechRecognizer` (on-device when the phone supports it: private, no
+one-minute limit). Answers are written by `AVSpeechSynthesizer` into buffers
+and played through the same engine with **voice processing** on, so Apple's
+echo cancellation keeps the phone from hearing itself and you can talk over
+an answer. The transcript is also checked against what is being read (the
+web's echo rule), and voice that writes no audio falls back to plain playback.
+
+A recognition run gives one transcript that grows while it listens.
+Words already used (an echo, text typed over) are counted, not indexed by
+result; that is what kept voice mode from ever sending in WebKit browsers.
+
+Speech and the microphone stop when the app goes to the background. Sessions
+keep running on the host.
 
 ## Connect
 
 1. Install the beta using the host page's TestFlight invitation.
 2. Join the same private network as the host (for example, Tailscale).
-3. Enter the **HTTPS origin** of the existing web host, such as
-   `https://yard.example.ts.net`. A `switchyard://connect?host=<encoded-origin>`
-   link fills the address; you still choose Connect on the phone.
+3. On the desktop, open **Hosts**: the iPhone card shows a QR code. Point the
+   iPhone Camera at it and open the link. It is the host's own page with
+   `?phone` (`https://<host>/?phone`, plus `&testflight=<invitation>` when the
+   hub has one): Safari shows a small page whose **Open in Switchyard** button
+   hands `switchyard://connect?host=<encoded-origin>` to the app, and you tap
+   Connect. When the app is not installed yet, the same page explains how to
+   get it from TestFlight. Or type the host's **HTTPS origin**, such as
+   `https://yard.example.ts.net`, in the app.
 
-The app validates `/health`, then waits for the UI's WebSocket snapshot before
-saving the host. The native bridge observes a valid snapshot from the selected
-host's own `/ws` socket, so older host UIs can also finish connecting. Updated
-host UIs additionally report `mobile.connected` over that same socket;
-yardd persists `mobile.json` in its data directory and broadcasts `mobile.status`.
-The phone icon in new-session and session headers disappears across all clients
-of that hub only after a successful phone connection. Hosts always retains the
-setup card for additional phones. Older hosts remain usable but cannot record
-setup status until updated.
+   The code is an https link on purpose: the Camera offers nothing at all for a
+   `switchyard://` code while the app is not installed, so the first scan used
+   to look broken.
 
-`localhost` on the phone is the phone, and a desktop SSH forward is not reachable
-from it. Use the existing privately reachable HTTPS deployment. This change does
-not expose a daemon or change loopback binding or WebSocket Origin checks.
-`YARD_ALLOW_ORIGIN` must include the web host's exact HTTPS origin. Do not put an
-unauthenticated yardd on the public internet.
+The card's address is each host's `YARD_ALLOW_ORIGIN` entries a phone can open
+(HTTPS, not loopback), reported in the host's `mobile` state; the desktop
+app's own page is on loopback, so remote hosts relay theirs to the hub. With
+none, the card asks for the address. It also says which phone is connected
+now, or when one was last seen: the app sends `mobile.connected` with its
+device name on every connection, and yardd counts it live until the socket
+closes (`mobile.json` keeps the last five phones).
 
-Set `YARD_TESTFLIGHT_URL=https://testflight.apple.com/join/<8-character-code>` on
-the hub when Apple has issued the real public invitation. Until then, Hosts
-shows the beta's pending state instead of a fake download link. Only invitation
-URLs on `testflight.apple.com/join/` are linked.
+The app checks `/health`, then opens `wss://<host>/ws` with the host's own
+origin as `Origin`, which `YARD_ALLOW_ORIGIN` already lists for its web page.
+The host is saved once the first snapshot arrives. A host that tracks phones
+gets `mobile.connected`, and the desktop's phone shortcut goes away.
+
+`localhost` on the phone is the phone, and a desktop SSH forward is not
+reachable from it. Use the existing privately reachable HTTPS deployment. Do
+not put an unauthenticated yardd on the public internet.
+
+Set `YARD_TESTFLIGHT_URL=https://testflight.apple.com/join/<8-character-code>`
+on the hub when Apple has issued the real public invitation. Until then, Hosts
+shows the beta's pending state instead of a fake download link.
 
 ## Build and test on a Mac
 
-Requires Xcode 26+ with the iOS SDK and XcodeGen (`brew install xcodegen`). No new
-JavaScript dependencies or Rust cross-compilation is needed.
+Requires Xcode 27+ (the iOS 27 SDK, which App Store Connect requires) with the iOS SDK and XcodeGen (`brew install xcodegen`).
 
 ```sh
 bash mobile/scripts/prepare.sh
 open mobile/Switchyard.xcodeproj
-# Choose an installed iPhone simulator, then Product > Test.
+# Choose an iPhone simulator, then Product > Test.
 ```
 
 The generated project and plist are ignored; `project.yml` is the source of
-truth. The icon reuses the desktop source and is flattened to opaque RGB.
-The default bundle ID is `sh.giovani.switchyard.mobile`, separate from desktop.
-Register that ID with Apple, or change it consistently in `project.yml`, the
-URL type, and `scripts/testflight.sh` before creating a provisioning profile.
+truth. Launch arguments `-demo -screen <name>` open the demo on a screen
+(`sessions`, `session:<id>`, `voice:<id>`, `new`, `settings`, `connect`);
+`scripts/screenshots.sh` uses them.
 
-The **iOS app** Actions workflow builds and runs unit tests on a simulator for
-mobile pull requests and pushes to main. UI and native bridge JavaScript tests
-run in the existing UI job. `verify/yv map run mobile` checks discovery and
-workspace navigation against scripted engines at both screen sizes.
-The workflow uses macOS 26 and the iOS 26+ SDK to meet
-[Apple's upload requirements](https://developer.apple.com/news/upcoming-requirements/?id=04282026a).
+The **iOS app** workflow builds, runs the unit tests on a simulator, then
+takes light and dark screenshots of the demo (artifact
+`Switchyard-iOS-screenshots`). This server has no Xcode, so that artifact is
+how changes are seen from here:
+`gh run download <run> --repo giovaniif/switchyard -n Switchyard-iOS-screenshots`.
 
-## TestFlight first
-
-Create the iOS app record in App Store Connect once. Switchyard's bundle ID and
-App Store provisioning profile have been registered; the server's EAS account
-already holds a valid **iPhone Distribution** certificate and Admin API key.
-Reuse those following [the build guide](../docs/IOS_BUILDS.md); the desktop
-Developer ID certificate cannot sign iOS distribution. The workflow uses these
-GitHub Actions secrets, either on the repository or the `testflight` environment:
-
-| Secret | Value |
-| --- | --- |
-| `IOS_CERTIFICATE` | Base64 of the distribution `.p12` with private key |
-| `IOS_CERTIFICATE_PASSWORD` | The `.p12` password |
-| `IOS_PROVISION_PROFILE` | Base64 of the App Store `.mobileprovision` |
-| `MACOS_TEAM_ID` | The existing Apple Developer team ID |
-| `APP_STORE_CONNECT_KEY_ID` | App Store Connect API key ID |
-| `APP_STORE_CONNECT_ISSUER_ID` | API issuer ID |
-| `APP_STORE_CONNECT_API_KEY` | Base64 of the API `.p8` private key |
+## TestFlight
 
 Run **iOS app → Run workflow → Upload a signed beta to TestFlight** from the
-reviewed branch. The simulator tests must pass before the archive/upload job.
-The script imports credentials into a temporary keychain, archives for iOS,
-uploads to App Store Connect with `xcodebuild -exportArchive`, then deletes
-the temporary signing material. Build numbers use the run number and attempt.
-No App Store release is submitted. Apple must process the build before it is
-available to internal testers; external testers need Apple's beta review and a
-TestFlight group/invitation. See [Apple's upload guide](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/)
-and [TestFlight](https://developer.apple.com/testflight/).
+reviewed branch (see [the build guide](../docs/IOS_BUILDS.md)). The simulator
+job must pass first. Build numbers use the run number and attempt.
 
 ## Device verification before distributing
 
 CI cannot prove hardware microphone behavior. On a physical iPhone, check:
 
-- First-run microphone and Speech Recognition permission prompts, refusal,
-  dictation with interim results, editing while dictating and sending.
-- Voice mode: pause to send, answer readback, talking over it, Stop, approvals
-  announced without answering them, permission denial and audio interruptions.
-- Background/foreground recovery with an active host turn and drafts retained;
-  host switching, airplane mode, expired/untrusted TLS and a blocked WebSocket.
-- Camera/photo/file attachments via the system file picker, selection/quoting,
-  keyboard layout in portrait/landscape and workspace tabs including a PTY.
-- Opt-in notifications and notification taps while connected.
+- First-run Speech Recognition and microphone prompts, refusal (the error
+  offers Settings), dictation with words appearing as you speak, typing while
+  dictating, and sending.
+- Voice mode: the greeting, pause to send, the answer read aloud on the
+  speaker, talking over it, "stop", the Stop and X buttons, an approval
+  announced and answered on screen, a failed turn, a phone call interrupting.
+- Background/foreground with a running turn; switching hosts; airplane mode.
+- Photo and file attachments; approvals; queued messages and Edit.
+- Notifications (Settings) for a session that finishes while another is open.
 
-Speech recognition can send audio to Apple depending on device/language; only
-transcribed text sent by the composer reaches yardd. Recording and speech stop
-when backgrounded. Local notifications use the live socket: **there is no APNs
-push service**, so suspended/terminated apps do not receive new session alerts.
-Sessions themselves continue on the host. Native bridge calls are accepted only
-from the main frame at the selected HTTPS origin; external links open outside
-the app, and connector iframes receive no native bridge.
+Speech recognition runs on the phone when it can; otherwise Apple's servers
+see the audio. Only the text you send reaches yardd. Local notifications come
+from the live socket: **there is no APNs push service**, so a suspended app
+is not told.

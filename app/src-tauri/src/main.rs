@@ -16,18 +16,21 @@ use std::{
     net::{SocketAddr, TcpStream},
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex,
+    },
     thread,
     time::{Duration, Instant},
 };
 
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
-    webview::{DownloadEvent, NewWindowResponse, PermissionKind, PermissionResponse},
-    AppHandle, Manager, Url, WebviewUrl, WebviewWindowBuilder,
+    webview::{DownloadEvent, NewWindowResponse, PageLoadEvent, PermissionKind, PermissionResponse},
+    AppHandle, Listener, Manager, Url, WebviewUrl, WebviewWindowBuilder, Wry,
 };
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-use tauri_plugin_updater::UpdaterExt;
+use tauri_plugin_updater::{Update, UpdaterExt};
 
 /// Keep in step with `DEFAULT_PORT` in crates/yardd/src/main.rs.
 const DEFAULT_PORT: u16 = 47717;
@@ -49,6 +52,27 @@ const OPEN_NAVIGATION: &str = "open-navigation";
 /// One update check at a time: the timer's and the menu's would otherwise
 /// download the same release twice.
 static CHECKING: AtomicBool = AtomicBool::new(false);
+
+/// The release found by the last check, until the restart into it.
+static FOUND: Mutex<Option<Found>> = Mutex::new(None);
+
+/// The page's "What's new" and "Restart" (or "Update") on its update notice.
+const UPDATE_ACTION: &str = "switchyard:update-action";
+
+/// Notes longer than this end with a pointer to the release page: the
+/// dialog grows with its text.
+const NOTES_MAX: usize = 1800;
+
+#[derive(Clone)]
+struct Found {
+    version: String,
+    notes: String,
+    /// None once it is installed over this copy: a restart runs it.
+    update: Option<Update>,
+}
+
+/// "Check for Updates…", which says what a check found.
+struct UpdateMenuItem(MenuItem<Wry>);
 
 /// `SWITCHYARD_PORT` lets a second copy run next to the real one.
 fn port() -> u16 {
@@ -196,7 +220,15 @@ fn stop_yardd(port: u16) -> Result<(), String> {
 }
 
 /// Restarts the app, and the background yardd with it, so both run the
-/// installed version. Asked first: a running turn stops.
+/// installed version: sessions come back, a running turn stops.
+fn restart_now(app: &AppHandle, port: u16) {
+    if let Err(e) = stop_yardd(port) {
+        eprintln!("switchyard: {e}");
+    }
+    app.restart();
+}
+
+/// Asked first: a running turn stops.
 fn ask_restart(app: &AppHandle, port: u16, message: String) {
     let handle = app.clone();
     app.dialog()
@@ -204,13 +236,9 @@ fn ask_restart(app: &AppHandle, port: u16, message: String) {
         .title("Switchyard")
         .buttons(MessageDialogButtons::OkCancelCustom("Restart now".into(), "Later".into()))
         .show(move |restart| {
-            if !restart {
-                return;
+            if restart {
+                restart_now(&handle, port);
             }
-            if let Err(e) = stop_yardd(port) {
-                eprintln!("switchyard: {e}");
-            }
-            handle.restart();
         });
 }
 
@@ -218,52 +246,241 @@ fn tell(app: &AppHandle, kind: MessageDialogKind, message: String) {
     app.dialog().message(message).title("Switchyard").kind(kind).show(|_| {});
 }
 
-/// Installs a newer release in place, then offers to restart into it. Only
-/// for the packaged app: a build run from the repo has nothing to replace.
-/// `asked`: from the menu, so every outcome gets an answer; the timer's
-/// checks stay silent unless there is something to install.
-async fn check_for_update(app: &AppHandle, port: u16, asked: bool) -> Result<(), String> {
-    if CHECKING.swap(true, Ordering::SeqCst) {
-        if asked {
-            tell(app, MessageDialogKind::Info, "Already checking for updates.".into());
-        }
-        return Ok(());
+fn found() -> Option<Found> {
+    FOUND.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+fn set_found(app: &AppHandle, found: Option<Found>) {
+    *FOUND.lock().unwrap_or_else(|e| e.into_inner()) = found;
+    show_update(app);
+}
+
+/// Says what a check found where the user looks, without a dialog or
+/// taking focus: the app menu's item, and a notice on the page.
+fn show_update(app: &AppHandle) {
+    let found = found();
+    if let Some(item) = app.try_state::<UpdateMenuItem>() {
+        let text = match &found {
+            None => "Check for Updates…".to_string(),
+            Some(f) if f.update.is_none() => format!("Restart to Update to {}…", f.version),
+            Some(f) => format!("Update to {}…", f.version),
+        };
+        let _ = item.0.set_text(text);
+        let _ = item.0.set_enabled(true);
     }
-    let result = download_update(app, port, asked).await;
+    if let Some(window) = app.get_webview_window("main") {
+        tell_page(&window, found.as_ref());
+    }
+}
+
+/// The page reads `window.__SWITCHYARD_UPDATE__` when it starts and hears
+/// `switchyard:update` after. Only this window sets them, so a browser on
+/// the same yardd never shows the notice.
+fn tell_page(window: &tauri::WebviewWindow, found: Option<&Found>) {
+    let state = match found {
+        // The version comes from latest.json: JSON-encoded, never spliced in raw.
+        Some(f) => serde_json::json!({ "version": f.version, "ready": f.update.is_none() }),
+        None => serde_json::Value::Null,
+    };
+    let script = format!(
+        "window.__SWITCHYARD_UPDATE__ = {state}; \
+         window.dispatchEvent(new CustomEvent('switchyard:update', {{ detail: window.__SWITCHYARD_UPDATE__ }}))"
+    );
+    if let Err(e) = window.eval(&script) {
+        eprintln!("switchyard: could not tell the page about the update: {e}");
+    }
+}
+
+/// A CHANGELOG section as plain text for a native dialog.
+fn plain_notes(markdown: &str) -> String {
+    let mut out = String::new();
+    for line in markdown.lines() {
+        let indent = line.len() - line.trim_start().len();
+        let mut text = line.trim().to_string();
+        if let Some(rest) = text.strip_prefix("- ").or_else(|| text.strip_prefix("* ")) {
+            text = format!("{}• {rest}", " ".repeat(indent));
+        } else if text.starts_with('#') {
+            text = text.trim_start_matches('#').trim().to_string();
+        }
+        text = text.replace("**", "").replace('`', "");
+        // [label](url) -> label
+        let mut from = 0;
+        while let Some(open) = text[from..].find('[').map(|i| from + i) {
+            let Some(end) = text[open..].find(']').map(|i| open + i) else { break };
+            if !text[end..].starts_with("](") {
+                from = open + 1;
+                continue;
+            }
+            let Some(close) = text[end..].find(')').map(|i| end + i) else { break };
+            text = format!("{}{}{}", &text[..open], &text[open + 1..end], &text[close + 1..]);
+            from = end - 1;
+        }
+        // One blank line between paragraphs at most, none at the start.
+        if text.is_empty() && (out.is_empty() || out.ends_with("\n\n")) {
+            continue;
+        }
+        out.push_str(&text);
+        out.push('\n');
+    }
+    let out = out.trim().to_string();
+    if out.chars().count() <= NOTES_MAX {
+        return out;
+    }
+    let cut: String = out.chars().take(NOTES_MAX).collect();
+    let cut = cut.rsplit_once('\n').map_or(cut.as_str(), |(head, _)| head);
+    format!("{cut}\n…and more in the release notes on GitHub.")
+}
+
+/// The one window an update shows: its notes, then Install and Restart or
+/// Later. A release that is not downloaded yet is installed first.
+fn show_notes(app: &AppHandle, port: u16, found: Found) {
+    let current = app.package_info().version.to_string();
+    let notes = match plain_notes(&found.notes) {
+        n if n.is_empty() => "No release notes.".to_string(),
+        n => n,
+    };
+    let message = format!(
+        "You have {current}.\n\n{notes}\n\n\
+         Installing restarts Switchyard. Sessions and their history are kept; a turn that is running now stops."
+    );
+    let handle = app.clone();
+    app.dialog()
+        .message(message)
+        .title(format!("Switchyard {} is available", found.version))
+        .buttons(MessageDialogButtons::OkCancelCustom("Install and Restart".into(), "Later".into()))
+        .show(move |install| {
+            if !install {
+                return;
+            }
+            tauri::async_runtime::spawn(async move {
+                match install_found(&handle, found).await {
+                    Ok(()) => restart_now(&handle, port),
+                    Err(e) => tell(&handle, MessageDialogKind::Error, format!("Could not install the update.\n\n{e}")),
+                }
+            });
+        });
+}
+
+/// Waits for a running check: a background download of the same release
+/// must finish, not race a second one.
+async fn take_check() {
+    while CHECKING.swap(true, Ordering::SeqCst) {
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+}
+
+/// Downloads and installs `found`, unless that already happened.
+async fn install_found(app: &AppHandle, found: Found) -> Result<(), String> {
+    let Some(update) = found.update.clone() else { return Ok(()) };
+    take_check().await;
+    // The background check may have installed it while this one waited.
+    let result = if found_is_installed(&found.version) {
+        Ok(())
+    } else {
+        if let Some(item) = app.try_state::<UpdateMenuItem>() {
+            let _ = item.0.set_text(format!("Installing {}…", found.version));
+            let _ = item.0.set_enabled(false);
+        }
+        eprintln!("switchyard: installing {}", found.version);
+        update.download_and_install(|_, _| {}, || {}).await.map_err(|e| e.to_string())
+    };
     CHECKING.store(false, Ordering::SeqCst);
-    if let (Err(e), true) = (&result, asked) {
-        tell(app, MessageDialogKind::Error, format!("Could not check for updates.\n\n{e}"));
+    match &result {
+        Ok(()) if !found_is_installed(&found.version) => set_found(app, Some(Found { update: None, ..found })),
+        _ => show_update(app),
     }
     result
 }
 
-async fn download_update(app: &AppHandle, port: u16, asked: bool) -> Result<(), String> {
-    let Some(update) = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())? else {
-        if asked {
+fn found_is_installed(version: &str) -> bool {
+    found().is_some_and(|f| f.update.is_none() && f.version == version)
+}
+
+fn found_from(update: Update) -> Found {
+    Found { version: update.version.clone(), notes: update.body.clone().unwrap_or_default(), update: Some(update) }
+}
+
+/// The timer's check: a newer release is downloaded and installed in place
+/// with no dialog; the menu item and the page's notice then offer the
+/// restart. Only for the packaged app: a build run from the repo has
+/// nothing to replace.
+async fn check_in_background(app: &AppHandle) -> Result<(), String> {
+    if CHECKING.swap(true, Ordering::SeqCst) {
+        return Ok(());
+    }
+    let result = async {
+        let Some(update) = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())? else {
+            return Ok(());
+        };
+        if found_is_installed(&update.version) {
+            return Ok(());
+        }
+        let found = found_from(update.clone());
+        // If the download fails, the menu and the notice still offer it.
+        set_found(app, Some(found.clone()));
+        eprintln!("switchyard: installing {}", found.version);
+        update.download_and_install(|_, _| {}, || {}).await.map_err(|e| e.to_string())?;
+        set_found(app, Some(Found { update: None, ..found }));
+        Ok(())
+    }
+    .await;
+    CHECKING.store(false, Ordering::SeqCst);
+    result
+}
+
+/// The menu item: exactly one answer. A release already found gets its
+/// notes window; otherwise a check, after any running one, answers "latest
+/// version" or with the notes window.
+async fn check_when_asked(app: &AppHandle, port: u16) {
+    take_check().await;
+    let result = match found() {
+        Some(found) => Ok(Some(found)),
+        None => async {
+            let update = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())?;
+            Ok::<_, String>(update.map(found_from))
+        }
+        .await,
+    };
+    CHECKING.store(false, Ordering::SeqCst);
+    match result {
+        Ok(Some(found)) => {
+            set_found(app, Some(found.clone()));
+            show_notes(app, port, found);
+        }
+        Ok(None) => {
             let current = app.package_info().version.to_string();
             tell(app, MessageDialogKind::Info, format!("Switchyard {current} is the latest version."));
         }
-        return Ok(());
-    };
-    let version = update.version.clone();
-    eprintln!("switchyard: installing {version}");
-    if asked {
-        tell(
-            app,
-            MessageDialogKind::Info,
-            format!("Downloading Switchyard {version}. You will be asked to restart once it is installed."),
+        Err(e) => tell(app, MessageDialogKind::Error, format!("Could not check for updates.\n\n{e}")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn notes_read_as_plain_text() {
+        let md = "\n- **Comment on parts.** Select `text` and see [docs](https://x.test/a).\n- **Fixed:**\n  - A [b](u) and [c](v) link.\n\n\n### Install\n";
+        assert_eq!(
+            plain_notes(md),
+            "• Comment on parts. Select text and see docs.\n• Fixed:\n  • A b and c link.\n\nInstall"
         );
     }
-    update.download_and_install(|_, _| {}, || {}).await.map_err(|e| e.to_string())?;
-    ask_restart(
-        app,
-        port,
-        format!(
-            "Switchyard {version} is installed. Restart to use it?\n\n\
-             Sessions and their history are kept. A turn that is running now stops."
-        ),
-    );
-    Ok(())
+
+    #[test]
+    fn long_notes_are_cut_at_a_line() {
+        let md = (0..200).map(|i| format!("- Line {i} of the notes")).collect::<Vec<_>>().join("\n");
+        let plain = plain_notes(&md);
+        assert!(plain.chars().count() < NOTES_MAX + 60);
+        assert!(plain.ends_with("\n…and more in the release notes on GitHub."));
+        assert!(plain.lines().rev().nth(1).unwrap().ends_with("of the notes"));
+    }
+
+    #[test]
+    fn a_bracket_without_a_link_stays() {
+        assert_eq!(plain_notes("- Keys [Cmd] and [x](y)"), "• Keys [Cmd] and x");
+    }
 }
 
 /// Make sure our yardd is serving `port`. Returns a problem for the title.
@@ -305,6 +522,7 @@ fn open_outside(url: &Url) {
 fn app_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let menu = Menu::default(app)?;
     let check = MenuItem::with_id(app, CHECK_UPDATES, "Check for Updates…", true, None::<&str>)?;
+    app.manage(UpdateMenuItem(check.clone()));
     if let Some(first) = menu.items()?.first().and_then(|item| item.as_submenu()) {
         first.insert(&check, 1)?;
         if cfg!(target_os = "macos") {
@@ -354,11 +572,7 @@ fn main() {
                 return;
             }
             let handle = app.clone();
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) = check_for_update(&handle, port(), true).await {
-                    eprintln!("switchyard: update check failed: {e}");
-                }
-            });
+            tauri::async_runtime::spawn(async move { check_when_asked(&handle, port()).await });
         })
         .setup(|app| {
             let port = port();
@@ -381,6 +595,13 @@ fn main() {
                     ""
                 })
                 .title(title)
+                // A reload, or yardd restarting, loads a page that has not
+                // heard about an update found earlier.
+                .on_page_load(|window, payload| {
+                    if payload.event() == PageLoadEvent::Finished {
+                        tell_page(&window, found().as_ref());
+                    }
+                })
                 .inner_size(1440.0, 900.0)
                 .min_inner_size(900.0, 600.0)
                 // Tauri's own file-drop handler would swallow drops, and the
@@ -428,9 +649,27 @@ fn main() {
                     );
                 }
                 let handle = app.handle().clone();
+                app.listen_any(UPDATE_ACTION, move |event| {
+                    let action: String = serde_json::from_str(event.payload()).unwrap_or_default();
+                    let Some(found) = found() else { return };
+                    match action.as_str() {
+                        "notes" => show_notes(&handle, port, found),
+                        "restart" if found.update.is_none() => ask_restart(
+                            &handle,
+                            port,
+                            format!(
+                                "Restart to update to Switchyard {}?\n\n\
+                                 Sessions and their history are kept. A turn that is running now stops.",
+                                found.version
+                            ),
+                        ),
+                        _ => {}
+                    }
+                });
+                let handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     loop {
-                        if let Err(e) = check_for_update(&handle, port, false).await {
+                        if let Err(e) = check_in_background(&handle).await {
                             eprintln!("switchyard: update check failed: {e}");
                         }
                         tokio::time::sleep(UPDATE_EVERY).await;

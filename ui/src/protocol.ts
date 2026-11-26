@@ -48,6 +48,8 @@ export interface SessionMeta {
   freshContext?: string | null;
   /** The agent asked for the owner (`notify_owner`): kept until a window opens its conversation (`agent.seen`). */
   needsYou?: { message: string; at: number } | null;
+  /** Subagents still at work after their turn ended (Agent call ids). */
+  background?: string[];
   /** Where the messages the running turn answers came from (yardd owes them its answer). */
   answering?: MessageOrigin[];
   /** When a run's first turn ended; `updatedAt` moves on any later change. */
@@ -366,6 +368,8 @@ export interface DirList {
   hostId?: string;
   /** Sorted by name, hidden ones included, at most 2000. `git` marks a repository root. */
   dirs?: { name: string; git: boolean }[];
+  /** The first folder on `path` that does not exist, when that is why there is no list. */
+  missing?: string;
   error?: string;
 }
 

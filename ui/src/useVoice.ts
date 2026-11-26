@@ -9,13 +9,16 @@ import {
   isEcho,
   isStopWord,
   joinDictation,
+  markEnd,
   recognitionProblem,
   SILENCE_MS,
+  START,
   speechChunks,
   VOICE_OFF,
   voiceStep,
   type Cue,
   type Heard,
+  type Mark,
   type VoiceEffect,
   type VoiceInput,
   type VoiceMode,
@@ -71,7 +74,7 @@ export function useVoice(opts: VoiceOptions) {
   const stopping = useRef<any>(null);
   // The box held `base` when this recognition started; results before `from` are used up.
   const base = useRef("");
-  const from = useRef(0);
+  const from = useRef<Mark>(START);
   const results = useRef<Heard[]>([]);
   const restarts = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -128,13 +131,13 @@ export function useVoice(opts: VoiceOptions) {
     const phase = modeRef.current.phase;
     if (want.current === "voice" && phase === "speaking") {
       if (isEcho(spoken, speaking.current)) {
-        from.current = list.length;
+        from.current = markEnd(list);
         return;
       }
       if (isStopWord(spoken)) {
         // Wait for the final words: "stop" may go on to be a real request.
-        if (list.slice(from.current).every((r) => r.final)) {
-          from.current = list.length;
+        if (list.slice(from.current.i).every((r) => r.final)) {
+          from.current = markEnd(list);
           dispatch({ type: "stop" });
         }
         return;
@@ -171,7 +174,7 @@ export function useVoice(opts: VoiceOptions) {
     rec.current = r;
     const startedAt = Date.now();
     base.current = o.current.text();
-    from.current = 0;
+    from.current = START;
     results.current = [];
     r.onresult = (e: any) => {
       if (r !== rec.current && r !== stopping.current) return;
@@ -373,7 +376,7 @@ export function useVoice(opts: VoiceOptions) {
     /** The user typed: dictation carries on after their text. */
     typed: (text: string) => {
       base.current = text;
-      from.current = results.current.length;
+      from.current = markEnd(results.current);
     },
   };
 }
