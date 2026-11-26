@@ -42,7 +42,7 @@ Prompt markers for the fake Codex: `[cmd]` approval, `[edit]` file change,
 `[slow]` runs until Stop, `[stuck]` ignores Stop, `[fail]` error, `[think]`
 reasoning; anything else echoes `Echo: <prompt>`. The fake Claude sidecar
 knows `[die]`, `[stuck]`, `[steps]` and `[subagent]` (a Task call with a nested
-subagent, and a `sleep 30` left running under the sidecar), `[background-agents]` (two Agent calls that keep working 20 s after the turn ends). `iso up --logged-out` starts both engines logged
+subagent, and a `sleep 30` left running under the sidecar), `[background-agents]` (two Agent calls that keep working 20 s after the turn ends), `[question]` (AskUserQuestion: two questions, one choice and several, answered on its card; see `verify/features/approvals.md`). `iso up --logged-out` starts both engines logged
 out; `--pressure` makes the queue hold new sessions. `[chart]` on either engine calls the `chart` MCP server (`verify/fakes/mcp-chart`) and shows its widget; the Connectors page (route `connectors`) lists the fakes' MCP servers (see `verify/features/connectors.md`).
 
 A dev server that does not watch files serves stale code: after changing

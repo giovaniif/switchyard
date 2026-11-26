@@ -65,6 +65,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 import { CHART_URI, chartCall, rpc } from "./chart.mjs";
 import { afterCalls, callTools, toolMarkers } from "./agent-tools.mjs";
 import { describe as describeTool } from "../../../../sidecar/yard-claude/src/tools.ts";
+import { answeredInput, questionRequest } from "../../../../sidecar/yard-claude/src/questions.ts";
 
 // An agent's session hands the engine a preamble, then the user's message.
 // Only what the user typed controls the scripted behaviour.
@@ -275,8 +276,9 @@ function askQuestion() {
   const itemId = `tool-${process.pid}-${++n}`;
   const requestId = `claude-${process.pid}-${++n}`;
   const input = { questions: QUESTIONS };
-  emit({ type: "tool_started", itemId, kind: "other", title: "AskUserQuestion", detail: JSON.stringify(input).slice(0, 120) });
-  emit({ type: "approval_request", requestId, kind: "question", itemId, title: QUESTIONS[0].question, detail: "", questions: QUESTIONS });
+  const d = describeTool("AskUserQuestion", input, "/");
+  emit({ type: "tool_started", itemId, kind: d.kind, title: d.title, detail: d.detail });
+  emit(questionRequest(requestId, input, itemId));
   question = { requestId, itemId, input };
 }
 function answerQuestion(msg) {
@@ -286,7 +288,7 @@ function answerQuestion(msg) {
     emit({ type: "tool_completed", itemId, ok: false, output: "The user chose not to answer these questions." });
     emit({ type: "assistant_message", itemId: `text-${process.pid}-${++n}`, text: "Skipped the questions." });
   } else {
-    const answers = msg.answers && typeof msg.answers === "object" ? msg.answers : {};
+    const { answers } = answeredInput(input, msg.answers);
     const got = input.questions.filter((q) => typeof answers[q.question] === "string");
     const text = got.length ? `Answered: ${got.map((q) => `${q.question} → ${answers[q.question]}`).join(" | ")}` : "The user did not answer the questions.";
     emit({ type: "tool_completed", itemId, ok: true, output: text });

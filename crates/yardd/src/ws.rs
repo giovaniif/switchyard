@@ -183,6 +183,19 @@ fn error_reply(msg: &Value, e: &anyhow::Error) -> String {
     reply.to_string()
 }
 
+/// A question's answers (`session.approve`): question text to answer, text
+/// only, at most four. They go to the engine as they are.
+fn answers_of(msg: &Value) -> Result<Option<Value>> {
+    let Some(answers) = msg.get("answers").filter(|a| !a.is_null()) else { return Ok(None) };
+    let map = answers.as_object().context("answers must map each question to its answer")?;
+    anyhow::ensure!(map.len() <= 4, "answers: at most four questions");
+    for (q, a) in map {
+        let a = a.as_str().with_context(|| format!("answers: the answer to \"{}\" must be text", q.chars().take(80).collect::<String>()))?;
+        anyhow::ensure!(q.len() <= 4_000 && a.len() <= 10_000, "answers: too long");
+    }
+    Ok(Some(answers.clone()))
+}
+
 fn str_field<'a>(msg: &'a Value, key: &str) -> Result<&'a str> {
     msg[key].as_str().with_context(|| format!("missing `{key}`"))
 }
@@ -669,12 +682,13 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             let sid = str_field(msg, "sessionId")?;
             let request_id = str_field(msg, "requestId")?;
             let decision = str_field(msg, "decision")?;
+            let answers = answers_of(msg)?;
             let meta = app.meta(sid).context("no such session")?;
             // Each engine logs `approval_resolved` itself, before it passes the answer on.
             match meta.engine.as_str() {
                 "codex" => codex::approve(app, sid, request_id, decision).await?,
                 "opencode" | "grok" | "gemini" => crate::acp::approve(app, sid, request_id, decision).await?,
-                _ => claude::approve(app, sid, request_id, decision)?,
+                _ => claude::approve(app, sid, request_id, decision, answers.as_ref())?,
             }
         }
         "session.startNow" => {

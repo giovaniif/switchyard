@@ -680,7 +680,8 @@ export interface Actions {
   /** Child session in the same folder, seeded with a brief. */
   handoff(sessionId: string, engine: Engine, model: string, effort: string, account?: string): void;
   interrupt(sessionId: string): void;
-  approve(sessionId: string, requestId: string, decision: Decision): void;
+  /** `answers`: a question's answers, question text to answer. */
+  approve(sessionId: string, requestId: string, decision: Decision, answers?: Record<string, string>): void;
   loadChanges(sessionId: string): void;
   /** Start a queued session even though the host is under pressure. */
   startNow(sessionId: string): void;
@@ -1024,10 +1025,10 @@ export function useYard(): { state: State; actions: Actions } {
       setPermission: (sessionId, permission) => post({ op: "session.setPermission", sessionId, permission }),
       handoff: (sessionId, engine, model, effort, account) => post({ op: "session.handoff", sessionId, engine, model, effort, account }),
       interrupt: (sessionId) => post({ op: "session.interrupt", sessionId }),
-      approve: (sessionId, requestId, decision) => {
+      approve: (sessionId, requestId, decision, answers) => {
         // Until yardd resolves it, a second click (a double click) would send a second decision.
         dispatch({ t: "deciding", sessionId, requestId });
-        post({ op: "session.approve", sessionId, requestId, decision });
+        post(answers ? { op: "session.approve", sessionId, requestId, decision, answers } : { op: "session.approve", sessionId, requestId, decision });
       },
       loadChanges: (sessionId) => post({ op: "changes.get", sessionId }),
       startNow: (sessionId) => post({ op: "session.startNow", sessionId }),

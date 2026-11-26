@@ -37,6 +37,11 @@ export function describe(name: string, toolInput: any, cwd: string): { kind: str
     case "Task":
     case "Agent":
       return { kind: "other", title: "Agent", detail: String(toolInput?.description ?? "") };
+    case "AskUserQuestion": {
+      const qs = Array.isArray(toolInput?.questions) ? toolInput.questions : [];
+      const first = typeof qs[0]?.question === "string" ? qs[0].question : "";
+      return { kind: "other", title: "Asked", detail: qs.length > 1 ? `${first} (and ${qs.length - 1} more)` : first };
+    }
     case "TodoWrite":
       return { kind: "other", title: "Updated tasks", detail: "" };
     default: {

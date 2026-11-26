@@ -320,7 +320,9 @@ pub fn kill(app: &Arc<App>, sid: &str) {
     drop(old);
 }
 
-pub fn approve(app: &Arc<App>, sid: &str, request_id: &str, decision: &str) -> Result<()> {
+/// `answers`: a question's answers (AskUserQuestion), logged with the decision
+/// so the card shows them after a reload.
+pub fn approve(app: &Arc<App>, sid: &str, request_id: &str, decision: &str, answers: Option<&Value>) -> Result<()> {
     // Logged before the sidecar hears the answer: a tool that runs and a turn
     // that ends right after it must come later in the log, not before it.
     let tx = {
@@ -331,8 +333,14 @@ pub fn approve(app: &Arc<App>, sid: &str, request_id: &str, decision: &str) -> R
             _ => bail!("session has no Claude sidecar"),
         }
     };
-    crate::sessions::approval_resolved(app, sid, request_id, decision);
-    tx.send(json!({ "type": "permission", "requestId": request_id, "decision": decision }).to_string())
+    let mut resolved = json!({ "type": "approval_resolved", "requestId": request_id, "decision": decision });
+    let mut line = json!({ "type": "permission", "requestId": request_id, "decision": decision });
+    if let Some(answers) = answers {
+        resolved["answers"] = answers.clone();
+        line["answers"] = answers.clone();
+    }
+    app.emit(sid, resolved);
+    tx.send(line.to_string())
         .map_err(|_| anyhow::anyhow!("the Claude sidecar is not running"))
 }
 
@@ -355,7 +363,7 @@ mod tests {
         app.sessions.lock().unwrap().get_mut(&sid).unwrap().backend = Backend::Claude { tx, _stop: stop };
         app.emit(&sid, json!({ "type": "approval_request", "requestId": "r1" }));
 
-        approve(&app, &sid, "r1", "allow").unwrap();
+        approve(&app, &sid, "r1", "allow", None).unwrap();
         // What the sidecar reads, and what the log holds at that moment.
         let line: Value = serde_json::from_str(&rx.try_recv().unwrap()).unwrap();
         assert_eq!(line["type"], "permission");

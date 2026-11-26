@@ -1,7 +1,8 @@
 import { loadDefaults } from "./launchDefaults";
 import { createContext, Fragment, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import type { LoginProvider, LoginState } from "./protocol";
+import type { LoginProvider, LoginState, Question } from "./protocol";
+import { answersFrom, noPick, toggle, typeOther, type Pick } from "./questions";
 import type { AccountEntry, Agent, Attachment, PendingMessage, ChangedFile, Engine, EngineState, EngineStates, Host, HostEntry, Item, ModelInfo, Models, SessionMeta, Status, ToolItem, Usage } from "./protocol";
 import { ROW_LABEL, type RowState, rowState, useSeen } from "./rowState";
 import { Subscriptions, UsageStrip, type UsageAccount } from "./UsageMeters";
@@ -3187,7 +3188,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
         setStarting(true);
         actions.startNow(meta.id);
       }}
-      onDecide={(id, d) => actions.approve(meta.id, id, d)}
+      onDecide={(id, d, answers) => actions.approve(meta.id, id, d, answers)}
       agents={state.agents}
     />
     </Fragment>
@@ -3791,10 +3792,13 @@ function AgentEntry({ entry, card = false }: { entry: ToolItem; card?: boolean }
   );
 }
 
+type OnDecide = (requestId: string, decision: "allow" | "allow_always" | "deny", answers?: Record<string, string>) => void;
+
 export function ApprovalCard({ item, onDecide }: {
   item: Extract<Item, {kind: "approval"}>;
-  onDecide(requestId: string, decision: "allow" | "allow_always" | "deny"): void;
+  onDecide: OnDecide;
 }) {
+  if (item.questions?.length) return <QuestionCard item={item} questions={item.questions} onDecide={onDecide} />;
   return (
         <div className="approval">
           <div className="approval-title">{item.approvalKind === "command" ? "Allow this command?" : "Allow this?"}</div>
@@ -3827,6 +3831,94 @@ export function ApprovalCard({ item, onDecide }: {
 );
 }
 
+/** Claude's AskUserQuestion: choose, or type your own, then Send. Skip tells
+ *  Claude the user chose not to answer. Claude's text: React text only. */
+function QuestionCard({ item, questions, onDecide }: {
+  item: Extract<Item, {kind: "approval"}>;
+  questions: Question[];
+  onDecide: OnDecide;
+}) {
+  const [picks, setPicks] = useState<Record<string, Pick>>({});
+  const open = item.decision === null && !item.unanswered;
+  const answers = answersFrom(questions, picks);
+  const set = (q: Question, pick: Pick) => setPicks((p) => ({ ...p, [q.question]: pick }));
+  return (
+    <div className="approval question-card">
+      <div className="approval-title">{questions.length > 1 ? `Claude has ${questions.length} questions` : "Claude has a question"}</div>
+      {questions.map((q, qi) => {
+        const pick = picks[q.question] ?? noPick;
+        const given = item.answers?.[q.question];
+        return (
+          <div key={qi} className="question" role="group" aria-label={q.question}>
+            <div className="question-head">
+              {q.header && <span className="question-chip">{q.header}</span>}
+              <span className="question-text">{q.question}</span>
+            </div>
+            {open ? (
+              <>
+                <div className="question-options" role={q.multiSelect ? "group" : "radiogroup"} aria-label={q.question}>
+                  {q.options.map((o) => (
+                    <button
+                      key={o.label}
+                      type="button"
+                      role={q.multiSelect ? "checkbox" : "radio"}
+                      aria-checked={pick.labels.includes(o.label)}
+                      className="question-option"
+                      disabled={item.sending}
+                      onClick={() => set(q, toggle(q, pick, o.label))}
+                    >
+                      <span className={`question-mark ${q.multiSelect ? "question-mark-box" : ""}`} aria-hidden="true" />
+                      <span className="question-option-words">
+                        <span className="question-option-label">{o.label}</span>
+                        {o.description && <span className="muted small">{o.description}</span>}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <input
+                  className="field question-other"
+                  type="text"
+                  placeholder={q.multiSelect ? "Something else (optional)" : "Something else"}
+                  aria-label={`Something else: ${q.question}`}
+                  value={pick.other}
+                  disabled={item.sending}
+                  onChange={(e) => set(q, typeOther(q, pick, e.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && answers && !item.sending) onDecide(item.requestId, "allow", answers);
+                  }}
+                />
+                {q.multiSelect && <div className="muted small">Choose any that apply.</div>}
+              </>
+            ) : (
+              given && <div className="question-answer">{given}</div>
+            )}
+          </div>
+        );
+      })}
+      {open ? (
+        <div className="row">
+          <button className="btn-primary" disabled={!answers || item.sending} onClick={() => answers && onDecide(item.requestId, "allow", answers)}>
+            {questions.length > 1 ? "Send answers" : "Send answer"}
+          </button>
+          <button className="btn-text" disabled={item.sending} onClick={() => onDecide(item.requestId, "deny")}>
+            Skip
+          </button>
+        </div>
+      ) : (
+        <div className="muted small">
+          {item.decision === null
+            ? "Not answered before the turn ended"
+            : item.decision === "deny"
+              ? "Skipped"
+              : item.answers && Object.keys(item.answers).length
+                ? "Answered"
+                : "Sent without answers"}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function QueueNotice({ reason, starting, onStart }: {reason: string; starting: boolean; onStart(): void}) {
   return (
     <div className="queued-line">
@@ -3847,7 +3939,7 @@ function ItemView(props: {
   starting: boolean;
   loadAttachment(a: Attachment): Promise<string>;
   onStart(): void;
-  onDecide(requestId: string, decision: "allow" | "allow_always" | "deny"): void;
+  onDecide: OnDecide;
   /** Whose face goes on a message from another agent. */
   agents: Agent[];
 }) {
