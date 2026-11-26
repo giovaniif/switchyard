@@ -3003,3 +3003,44 @@ async fn a_claude_question_takes_the_owners_answers() {
     let refused = c.wait_after(mark, "the refusal", |m| m["op"] == "error" && m["for"] == "session.approve").await;
     assert!(refused["message"].as_str().unwrap_or("").contains("answers"), "{refused}");
 }
+
+/// Codex's request_user_input got "not supported", and yardd started Codex
+/// without the feature that offers it outside Plan mode, so Codex never asked.
+/// It is the same question card as Claude's: answers by question text go to
+/// Codex by question id, a secret answer never reaches the log, Skip sends none.
+#[tokio::test]
+async fn a_codex_question_takes_the_owners_answers() {
+    let sb = Sandbox::new("codex-question");
+    let d = sb.start();
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "[question] TEST-pick", json!({})).await;
+    let req = c.wait_event(&sid, "approval_request", 0).await;
+    assert_eq!(req["kind"], "question");
+    assert_eq!(req["title"], "Asked Which color should TEST-app use?");
+    assert_eq!(req["questions"][0]["options"][1]["label"], "Blue");
+    assert_eq!(req["questions"][1]["secret"], true);
+    assert_eq!(req["questions"][1]["options"], json!([]));
+    c.wait_status(&sid, "needs_approval").await;
+    assert!(sb.codex_log().contains("features.default_mode_request_user_input=true"), "{}", sb.codex_log());
+
+    let answers = json!({
+        "Which color should TEST-app use?": "Blue",
+        "Paste the TEST-app deploy token.": "s3cret-TEST",
+    });
+    c.send(json!({ "op": "session.approve", "sessionId": sid, "requestId": req["requestId"], "decision": "allow", "answers": answers })).await;
+    assert_eq!(c.wait_turn_done(&sid, 0).await["status"], "completed");
+    let answer = c.events(&sid).into_iter().rev().find(|e| e["type"] == "assistant_message").unwrap();
+    assert_eq!(answer["text"], "Answered: color=Blue | token=s3cret-TEST");
+    let resolved = c.events(&sid).into_iter().find(|e| e["type"] == "approval_resolved").unwrap();
+    assert_eq!(resolved["answers"]["Which color should TEST-app use?"], "Blue");
+    assert!(!resolved.to_string().contains("s3cret"), "a secret answer is not logged: {resolved}");
+
+    // Skip: Codex hears no answers.
+    let next = c.next_seq(&sid);
+    c.send(json!({ "op": "session.send", "sessionId": sid, "text": "[question] TEST-again" })).await;
+    let req = c.wait_event(&sid, "approval_request", next).await;
+    c.send(json!({ "op": "session.approve", "sessionId": sid, "requestId": req["requestId"], "decision": "deny" })).await;
+    c.wait_turn_done(&sid, next).await;
+    let answer = c.events(&sid).into_iter().rev().find(|e| e["type"] == "assistant_message").unwrap();
+    assert_eq!(answer["text"], "No answers.");
+}
