@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { applyEvent, type AgentEvent, type Item } from "./protocol";
 import type { SessionMeta } from "./protocol";
-import { duration, handoffLinks, layout, stillPinned, summarize, thoughtLine, type ToolItem, type WorkItem } from "./thread";
+import { duration, handoffLinks, layout, stepCommand, stillPinned, summarize, thoughtLine, type ToolItem, type WorkItem } from "./thread";
 import * as thread from "./thread";
 
 const fold = (events: AgentEvent[]): Item[] => events.reduce((acc, ev, i) => applyEvent(acc, ev, i), [] as Item[]);
@@ -400,4 +400,11 @@ describe("stillPinned", () => {
   test("a move up that stays near the bottom keeps it pinned", () => {
     expect(stillPinned(true, 286, 183, 0)).toBe(true);
   });
+});
+
+test("Copy on a step offers the command it ran, and only for commands", () => {
+  const step = (toolKind: string, detail: string): ToolItem => ({ kind: "tool", key: "k", itemId: "i", toolKind, title: "Ran", detail, state: "ok" });
+  expect(stepCommand(step("command", "cargo test -p yardd && echo 'ok'"))).toBe("cargo test -p yardd && echo 'ok'");
+  expect(stepCommand(step("command", "  "))).toBeNull();
+  expect(stepCommand(step("read", "src/main.rs"))).toBeNull();
 });
