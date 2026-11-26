@@ -1,0 +1,81 @@
+{
+  "v": 1,
+  "claim": "Map-only: the navigation area had no Gotchas; writing selection-survives-a-re-sort hit three recipe traps (.session-title is also a sidebar row, hidden drawer targets cannot be waited on, a per-viewport re-sort needs a fresh target)",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-895d",
+  "base": "158ae6da2c63b27d465431df6208795906a48b66",
+  "head": "25b0e65a6de0e774048971515ee6c3b1d525f2e8",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/features/navigation.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-26T09:21:07.745Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "25b0e65a6de0e774048971515ee6c3b1d525f2e8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T09:21:07.785Z",
+      "text": "no-repro: map-only change, Gotchas text in verify/features/navigation.md; no product behaviour changes"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "25b0e65a6de0e774048971515ee6c3b1d525f2e8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-26T09:21:07.823Z",
+      "text": "no-failing-test: the recipe is the test; the Gotchas only document how selection-survives-a-re-sort was written"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "25b0e65a6de0e774048971515ee6c3b1d525f2e8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-nav-map-head.json",
+          "sha256": "f857feff577ebe27b04cc5c137385d8a82c0b67f979345e2f1dafd6e3be53dfa"
+        }
+      ],
+      "addedAt": "2026-11-26T09:22:24.682Z",
+      "failedApi": [],
+      "failingRecipes": [],
+      "passingRecipes": [
+        "navigation/command-k-navigation",
+        "navigation/command-k-finds-agents",
+        "navigation/command-k-rows-name-repo-and-branch",
+        "navigation/recent-list-skips-automation-runs",
+        "navigation/selection-survives-a-re-sort",
+        "navigation/native-app-menu"
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "25b0e65a6de0e774048971515ee6c3b1d525f2e8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "4ccd73b52bc17c7bce7c596eda6746508307da477537320516d4ed5dbe7f381b"
+        }
+      ],
+      "addedAt": "2026-11-26T09:22:24.724Z",
+      "cmd": "verify/yv map run navigation --recipe selection-survives-a-re-sort",
+      "exit": 0
+    }
+  ]
+}

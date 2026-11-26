@@ -1,0 +1,26 @@
+$ verify/yv map run navigation --recipe selection-survives-a-re-sort
+# exit 0 after 33290 ms at 25b0e65a6de0e774048971515ee6c3b1d525f2e8
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "navigation",
+      "at": "2026-11-26T09:22:58.010Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "selection-survives-a-re-sort",
+          "status": "pass",
+          "ms": 32398
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
