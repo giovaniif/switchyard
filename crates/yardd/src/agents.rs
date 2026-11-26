@@ -953,13 +953,18 @@ fn launch(app: &App, a: &Agent) -> Result<(String, String, String)> {
 }
 
 pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value) -> Result<()> {
+    let op = msg["op"].as_str().unwrap_or("");
+    // For tests only: do the op, but lose its answer (`YARD_TEST_DROP_REPLY`).
+    let drop_reply = std::env::var("YARD_TEST_DROP_REPLY").is_ok_and(|v| v.split(',').any(|o| o == op));
     let reply = |mut v: Value| {
+        if drop_reply {
+            return;
+        }
         if !msg["ref"].is_null() {
             v["ref"] = msg["ref"].clone();
         }
         let _ = direct.send(v.to_string());
     };
-    let op = msg["op"].as_str().unwrap_or("");
     if hosted_only() && HAND_OVER_OPS.contains(&op) {
         bail!("unknown op `{op}`");
     }

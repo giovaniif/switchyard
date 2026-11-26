@@ -1200,6 +1200,12 @@ mod tests {
     }
 }
 
+/// How long a daemon-owned request waits for its answer
+/// (`YARD_REQUEST_TIMEOUT_MS` for tests of a lost answer).
+fn request_timeout() -> Duration {
+    Duration::from_millis(std::env::var("YARD_REQUEST_TIMEOUT_MS").ok().and_then(|v| v.parse().ok()).unwrap_or(20_000))
+}
+
 /// A daemon-owned request, independent of any browser connection: the host
 /// agent keeps collecting if the user closes its tab, and a remote agent's
 /// message reaches its host whoever sent it. Answered by the first reply with
@@ -1211,7 +1217,7 @@ pub async fn request(app: &Arc<App>, host: &str, mut msg: Value) -> Result<Value
     let url = connection.url.context("host has no connection")?;
     let reference = app.id("context-read-");
     msg["ref"] = json!(reference);
-    tokio::time::timeout(Duration::from_secs(20), async {
+    tokio::time::timeout(request_timeout(), async {
         let (mut socket, _) = tokio_tungstenite::connect_async(url).await?;
         socket.send(Message::Text(msg.to_string())).await?;
         while let Some(frame) = socket.next().await {

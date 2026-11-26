@@ -892,16 +892,23 @@ async fn a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_
     // Mid-turn nothing moves: its answer goes back to the Mac that asked.
     assert!(saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-oncall"));
     assert!(saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-oncall" && a["hosted"] == true));
-    // Refused tries change nothing, so they leave no backup on either side.
-    for (sb, name) in [(&hub_sb, "agents.json"), (&hub_sb, "slack.json"), (&remote_sb, "agents.json"), (&remote_sb, "slack.json")] {
-        assert_eq!(backups(sb, name), 0, "{name}");
+    // Refused tries change nothing on the host, and the Mac backed up once,
+    // when the hand-over began, not once per try.
+    for (sb, name, n) in [(&hub_sb, "agents.json", 1), (&hub_sb, "slack.json", 1), (&remote_sb, "agents.json", 0), (&remote_sb, "slack.json", 0)] {
+        assert_eq!(backups(sb, name), n, "{name}");
     }
+    c.drain_for(std::time::Duration::from_millis(1000)).await;
+    assert_eq!(backups(&hub_sb, "agents.json"), 1, "no new backup per try");
+    // The host said no, so the record is the Mac's meanwhile: a change to it
+    // (the turn's own memory, say) is kept and goes with the hand-over.
+    save(&mut c, json!({ "id": "g-oncall", "memory": "TEST-mid-wait" })).await.unwrap();
     // Once the turn ends, it moves.
     let seq = r.next_seq(&chat);
     r.send(json!({ "op": "session.interrupt", "sessionId": chat })).await;
     r.wait_turn_done(&chat, seq.saturating_sub(1)).await;
     eventually("the host owns it", || saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-oncall" && a["hosted"].is_null())).await;
     eventually("the Mac let go", || saved_agents(&hub_sb).is_empty()).await;
+    assert!(saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-oncall" && a["memory"] == "TEST-mid-wait"));
 }
 
 #[tokio::test]
@@ -926,9 +933,12 @@ async fn a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why() {
     // Nothing changed or was copied on either side, and it is not tried again and again.
     assert!(saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-oncall" && a["hosted"] == true));
     assert!(saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-oncall"));
-    for (sb, name) in [(&hub_sb, "agents.json"), (&hub_sb, "slack.json"), (&remote_sb, "agents.json")] {
-        assert_eq!(backups(sb, name), 0, "{name}");
+    // One backup on the Mac when the hand-over began; none on the host.
+    for (sb, name, n) in [(&hub_sb, "agents.json", 1), (&hub_sb, "slack.json", 1), (&remote_sb, "agents.json", 0)] {
+        assert_eq!(backups(sb, name), n, "{name}");
     }
+    // Refused for good, the record is the Mac's again, not leaving.
+    assert!(saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-oncall" && a["leaving"].is_null()));
     let tries = remote.log_text().matches("client connected").count();
     c.drain_for(std::time::Duration::from_millis(1000)).await;
     assert_eq!(remote.log_text().matches("client connected").count(), tries, "tried again while refused for good");
@@ -1049,8 +1059,13 @@ async fn an_agent_moved_back_before_its_old_host_let_go_is_never_lost() {
     let mut c = hub.client().await;
     ready(&mut c).await;
     c.wait_for("the box connected", |m| (m["op"] == "hosts" || m["op"] == "snapshot") && m["hosts"][0]["ownAgents"] == true).await;
-    // Straight back to the box, before the owed release ran.
+    // Straight back to the box, before the owed release ran: refused for
+    // now, and the agent stays listed meanwhile, once.
     let _ = save(&mut c, json!({ "id": id, "host": host })).await;
+    let from = c.mark();
+    c.send(json!({ "op": "agent.list", "ref": "l" })).await;
+    let listed = c.wait_after(from, "the list", |m| m["ref"] == "l").await;
+    assert_eq!(listed["agents"].as_array().unwrap().iter().filter(|a| a["id"].as_str().unwrap().ends_with(id.as_str())).count(), 1, "{listed}");
     drop(c);
     hub.stop();
     // The owed release and the move both finish, in whatever order: one copy, on the box.
@@ -1168,4 +1183,215 @@ async fn fields_this_build_does_not_know_survive_saves_and_hand_overs() {
     save(&mut c, json!({ "id": far_id, "host": "local" })).await.unwrap();
     let back = kept(&hub_sb);
     assert_eq!((back["skills"].clone(), back["future"].clone(), back["about"].clone()), (json!(["TEST-github"]), json!({ "x": 1 }), json!("TEST-there")), "{back}");
+}
+
+/// An agent of the hub's own with its own Slack app, the app's record
+/// written as the hub keeps it.
+fn seed_app_agent(hub_sb: &Sandbox, id: &str) {
+    std::fs::write(hub_sb.data().join("hub-id"), "0123456789abcdef0123456789abcdef").unwrap();
+    std::fs::write(hub_sb.data().join("agents.json"), json!([{ "id": id, "name": "Pager", "handle": "Pager", "engine": "codex", "model": MODEL, "effort": EFFORT, "createdAt": 1, "updatedAt": 1 }]).to_string()).unwrap();
+    std::fs::write(
+        hub_sb.data().join("slack.json"),
+        json!({ "apps": [{ "agent": id, "teamId": "T1", "appId": "A-TEST-pager", "botToken": "xoxb-TEST-pager", "manifest": "{}" }] }).to_string(),
+    )
+    .unwrap();
+}
+
+#[tokio::test]
+async fn a_hand_over_tried_again_and_again_backs_up_once_and_is_listed_once() {
+    let remote_sb = Sandbox::new("agents-retried-remote");
+    let remote = remote_sb.start_with(NO_SLACK);
+    let hub_sb = Sandbox::new("agents-retried-hub");
+    seed_app_agent(&hub_sb, "g-pager");
+    let hub = hub_sb.start_with(&[("YARD_SLACK_API", "http://127.0.0.1:9/api/"), ("YARD_SETTLE_MS", "300")]);
+    let mut c = hub.client().await;
+    ready(&mut c).await;
+    let host = add_remote(&mut c, &remote, "TEST-box").await;
+    // The hub cannot let go yet: its slack.json cannot be written.
+    std::fs::create_dir_all(hub_sb.data().join("slack.json.tmp")).unwrap();
+    let _ = save(&mut c, json!({ "id": "g-pager", "host": host })).await;
+    eventually("the box owns it", || saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-pager")).await;
+    assert!(saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-pager" && a["leaving"].is_string()));
+    // Tried again and again, the hand-over takes one backup, not one per try,
+    // so the backups from before the move are never pruned away.
+    let before = backups(&hub_sb, "agents.json");
+    c.drain_for(std::time::Duration::from_millis(1500)).await;
+    assert_eq!(backups(&hub_sb, "agents.json"), before, "a backup per try");
+    // Exactly one copy is listed meanwhile.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.list", "ref": "l1" })).await;
+    let listed = c.wait_after(from, "the list", |m| m["ref"] == "l1").await;
+    assert_eq!(listed["agents"].as_array().unwrap().iter().filter(|a| a["id"].as_str().unwrap().ends_with("g-pager")).count(), 1, "{listed}");
+    // The hub's record, which the box owns already, takes no edit that would
+    // be lost or stop it letting go.
+    let err = save(&mut c, json!({ "id": "g-pager", "memory": "TEST-lost" })).await.unwrap_err();
+    assert!(err.contains("is moving"), "{err}");
+    // Once it can, the hub lets go: one copy, on the box.
+    std::fs::remove_dir_all(hub_sb.data().join("slack.json.tmp")).unwrap();
+    eventually("the hub let go", || !saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-pager")).await;
+    assert!(saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-pager"));
+}
+
+#[tokio::test]
+async fn an_agent_deleted_on_its_host_mid_hand_over_stays_deleted() {
+    let remote_sb = Sandbox::new("agents-deleted-remote");
+    let remote = remote_sb.start_with(NO_SLACK);
+    let hub_sb = Sandbox::new("agents-deleted-hub");
+    seed_app_agent(&hub_sb, "g-pager");
+    let hub = hub_sb.start_with(&[("YARD_SLACK_API", "http://127.0.0.1:9/api/"), ("YARD_SETTLE_MS", "300")]);
+    let mut c = hub.client().await;
+    ready(&mut c).await;
+    let host = add_remote(&mut c, &remote, "TEST-box").await;
+    // The hub cannot let go yet: its slack.json cannot be written.
+    std::fs::create_dir_all(hub_sb.data().join("slack.json.tmp")).unwrap();
+    let _ = save(&mut c, json!({ "id": "g-pager", "host": host })).await;
+    eventually("the box owns it", || saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-pager")).await;
+    // Deleted on the box (from the hub, by its prefixed id): it stays deleted.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.delete", "id": format!("{host}~g-pager"), "ref": "d" })).await;
+    assert_eq!(c.wait_after(from, "deleted", |m| m["ref"] == "d").await["op"], "agent.deleted");
+    c.drain_for(std::time::Duration::from_millis(1500)).await;
+    assert!(!saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-pager"), "the deleted agent came back");
+    // The hub's record of the hand-over goes too, with what it still owed.
+    eventually("the hub let go of its copy", || !saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-pager")).await;
+    std::fs::remove_dir_all(hub_sb.data().join("slack.json.tmp")).unwrap();
+    c.drain_for(std::time::Duration::from_millis(1500)).await;
+    assert!(!saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-pager"), "the deleted agent came back");
+    assert!(!saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-pager"));
+    assert!(std::fs::read_to_string(hub_sb.data().join("agents-pending.json")).is_ok_and(|t| !t.contains("g-pager")));
+}
+
+#[tokio::test]
+async fn a_move_whose_export_answer_is_lost_leaves_nothing_leaving() {
+    let remote_sb = Sandbox::new("agents-lost-export-remote");
+    let remote = remote_sb.start_with(&[("YARD_TEST_DROP_REPLY", "agent.export")]);
+    let hub_sb = Sandbox::new("agents-lost-export-hub");
+    let hub = hub_sb.start_with(&[("YARD_REQUEST_TIMEOUT_MS", "1500"), ("YARD_SETTLE_MS", "300")]);
+    let mut c = hub.client().await;
+    ready(&mut c).await;
+    let host = add_remote(&mut c, &remote, "TEST-box").await;
+    let far = save(&mut c, json!({ "name": "Far", "engine": "codex", "model": MODEL, "host": host })).await.unwrap();
+    let own = far["id"].as_str().unwrap().split_once('~').unwrap().1.to_string();
+    let fid = far["id"].clone();
+    c.wait_for("the hub lists it", |m| (m["op"] == "agents" || m["op"] == "snapshot") && m["agents"].as_array().unwrap().iter().any(|a| a["id"] == fid)).await;
+    // Moving it here: the box marks it leaving, but its answer is lost.
+    assert!(save(&mut c, json!({ "id": far["id"], "host": "local" })).await.is_err());
+    // The move is given up on the box too: it is the box's, not leaving.
+    eventually("not leaving", || saved_agents(&remote_sb).iter().any(|a| a["id"] == own.as_str() && a["leaving"].is_null())).await;
+    assert!(!saved_agents(&hub_sb).iter().any(|a| a["id"] == own.as_str()));
+}
+
+#[tokio::test]
+async fn a_move_here_that_cannot_note_the_shared_bot_still_lets_the_old_host_go() {
+    let remote_sb = Sandbox::new("agents-moved-unsaved-remote");
+    let remote = remote_sb.start();
+    let hub_sb = Sandbox::new("agents-moved-unsaved-hub");
+    let hub = hub_sb.start_with(&[("YARD_SETTLE_MS", "300")]);
+    let mut c = hub.client().await;
+    ready(&mut c).await;
+    let host = add_remote(&mut c, &remote, "TEST-box").await;
+    let far = save(&mut c, json!({ "name": "Far", "engine": "codex", "model": MODEL, "host": host })).await.unwrap();
+    let own = far["id"].as_str().unwrap().split_once('~').unwrap().1.to_string();
+    // The shared bot's default agent is it; then slack.json cannot be written.
+    let fid = far["id"].clone();
+    c.wait_for("the hub lists it", |m| (m["op"] == "agents" || m["op"] == "snapshot") && m["agents"].as_array().unwrap().iter().any(|a| a["id"] == fid)).await;
+    let from = c.mark();
+    c.send(json!({ "op": "slack.route", "agent": far["id"], "ref": "r" })).await;
+    let routed = c.wait_after(from, "routed", |m| m["ref"] == "r").await;
+    assert_eq!(routed["op"], "slack", "{routed}");
+    std::fs::create_dir_all(hub_sb.data().join("slack.json.tmp")).unwrap();
+    let _ = save(&mut c, json!({ "id": far["id"], "host": "local" })).await;
+    // One owner: here. The box lets go even though the shared bot's note failed.
+    eventually("the box let go", || !saved_agents(&remote_sb).iter().any(|a| a["id"] == own.as_str())).await;
+    assert!(saved_agents(&hub_sb).iter().any(|a| a["id"] == own.as_str()));
+}
+
+#[tokio::test]
+async fn a_move_between_hosts_whose_adopt_answer_is_lost_still_has_one_owner() {
+    let one_sb = Sandbox::new("agents-r2r-one");
+    let one = one_sb.start();
+    let two_sb = Sandbox::new("agents-r2r-two");
+    let two = two_sb.start_with(&[("YARD_TEST_DROP_REPLY", "agent.adopt")]);
+    let hub_sb = Sandbox::new("agents-r2r-hub");
+    let hub = hub_sb.start_with(&[("YARD_REQUEST_TIMEOUT_MS", "1500"), ("YARD_SETTLE_MS", "300")]);
+    let mut c = hub.client().await;
+    ready(&mut c).await;
+    let h1 = add_remote(&mut c, &one, "TEST-one").await;
+    let h2 = add_remote(&mut c, &two, "TEST-two").await;
+    let far = save(&mut c, json!({ "name": "Hopper", "engine": "codex", "model": MODEL, "host": h1 })).await.unwrap();
+    let own = far["id"].as_str().unwrap().split_once('~').unwrap().1.to_string();
+    let fid = far["id"].clone();
+    c.wait_for("the hub lists it", |m| (m["op"] == "agents" || m["op"] == "snapshot") && m["agents"].as_array().unwrap().iter().any(|a| a["id"] == fid)).await;
+    // Two takes it, but its answer is lost: the hub asks, finds it there, and one lets go.
+    let moved = save(&mut c, json!({ "id": far["id"], "host": h2 })).await;
+    assert_eq!(moved.map(|m| m["id"].clone()), Ok(json!(format!("{h2}~{own}"))));
+    eventually("one let go", || !saved_agents(&one_sb).iter().any(|a| a["id"] == own.as_str())).await;
+    assert!(saved_agents(&two_sb).iter().any(|a| a["id"] == own.as_str()));
+}
+
+#[tokio::test]
+async fn an_agent_deleted_on_its_host_after_a_lost_adopt_answer_stays_deleted() {
+    let remote_sb = Sandbox::new("agents-deleted-lost-remote");
+    let remote = remote_sb.start_with(&[("YARD_TEST_DROP_REPLY", "agent.adopt")]);
+    let hub_sb = Sandbox::new("agents-deleted-lost-hub");
+    seed_app_agent(&hub_sb, "g-lost");
+    let hub = hub_sb.start_with(&[("YARD_SLACK_API", "http://127.0.0.1:9/api/"), ("YARD_SETTLE_MS", "300"), ("YARD_REQUEST_TIMEOUT_MS", "1000")]);
+    let mut c = hub.client().await;
+    ready(&mut c).await;
+    let host = add_remote(&mut c, &remote, "TEST-box").await;
+    // The box takes it, but the hub never hears so.
+    assert!(save(&mut c, json!({ "id": "g-lost", "host": host })).await.is_err());
+    assert!(saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-lost"));
+    // Deleted on the box, by its prefixed id: it stays deleted, and the hub's
+    // record goes too.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.delete", "id": format!("{host}~g-lost"), "ref": "d" })).await;
+    assert_eq!(c.wait_after(from, "deleted", |m| m["ref"] == "d").await["op"], "agent.deleted");
+    c.drain_for(std::time::Duration::from_millis(1500)).await;
+    assert!(!saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-lost"), "the deleted agent came back");
+    eventually("the hub let go of its copy", || !saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-lost")).await;
+}
+
+#[tokio::test]
+async fn a_host_takes_an_agent_with_its_slack_app_or_not_at_all() {
+    let sb = Sandbox::new("agents-adopt-whole");
+    let d = sb.start_with(NO_SLACK);
+    let mut c = d.client().await;
+    ready(&mut c).await;
+    // Its app cannot be kept here: slack.json cannot be written.
+    std::fs::create_dir_all(sb.data().join("slack.json.tmp")).unwrap();
+    let from = c.mark();
+    let slack = json!({ "app": { "agent": "g-whole", "teamId": "T1", "appId": "A-TEST-whole", "botToken": "xoxb-TEST-whole", "manifest": "{}" } });
+    c.send(json!({ "op": "agent.adopt", "agent": { "id": "g-whole", "name": "Whole", "engine": "codex", "model": MODEL, "effort": EFFORT, "createdAt": 1, "updatedAt": 1 }, "slack": slack, "hub": "0123456789abcdef0123456789abcdef", "transfer": "t1", "ref": "a" })).await;
+    assert_eq!(c.wait_after(from, "refused", |m| m["ref"] == "a").await["op"], "error");
+    // So a hub that looks for it does not find it half taken.
+    assert!(!saved_agents(&sb).iter().any(|a| a["id"] == "g-whole"));
+}
+
+#[tokio::test]
+async fn an_agent_leaving_by_one_hand_over_is_not_exported_by_another() {
+    let sb = Sandbox::new("agents-export-twice");
+    let d = sb.start();
+    let mut c = d.client().await;
+    ready(&mut c).await;
+    let from = c.mark();
+    c.send(json!({ "op": "agent.adopt", "agent": { "id": "g-twice", "name": "Twice", "engine": "codex", "model": MODEL, "effort": EFFORT, "createdAt": 1, "updatedAt": 1 }, "hub": "0123456789abcdef0123456789abcdef", "transfer": "t1", "ref": "a" })).await;
+    assert_eq!(c.wait_after(from, "adopted", |m| m["ref"] == "a").await["op"], "agent.adopted");
+    let from = c.mark();
+    c.send(json!({ "op": "agent.export", "id": "g-twice", "transfer": "t2", "ref": "e1" })).await;
+    assert_eq!(c.wait_after(from, "exported", |m| m["ref"] == "e1").await["op"], "agent.exported");
+    // The same hand-over again is fine; another one waits for it.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.export", "id": "g-twice", "transfer": "t2", "ref": "e2" })).await;
+    assert_eq!(c.wait_after(from, "exported", |m| m["ref"] == "e2").await["op"], "agent.exported");
+    let from = c.mark();
+    c.send(json!({ "op": "agent.export", "id": "g-twice", "transfer": "t3", "ref": "e3" })).await;
+    let refused = c.wait_after(from, "refused", |m| m["ref"] == "e3").await;
+    assert_eq!(refused["op"], "error", "{refused}");
+    assert!(saved_agents(&sb).iter().any(|a| a["id"] == "g-twice" && a["leaving"] == "t2"));
+    // Abandoned, it is the host's again: editable, and exportable by another.
+    let from = c.mark();
+    c.send(json!({ "op": "agent.abandon", "id": "g-twice", "transfer": "t2", "ref": "b" })).await;
+    assert_eq!(c.wait_after(from, "abandoned", |m| m["ref"] == "b").await["op"], "agent.abandoned");
+    save(&mut c, json!({ "id": "g-twice", "memory": "TEST-after" })).await.unwrap();
 }
