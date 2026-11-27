@@ -1,0 +1,50 @@
+{
+  "command": "drive",
+  "ok": false,
+  "route": "session:s1a21b619fc2c",
+  "build": {
+    "sha": "e60c2857e1760d3499ae340326088551a50271fa",
+    "short": "e60c285",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T05:30:35.553Z"
+  },
+  "dir": ".verify/evidence/pstop3-base-m",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 17471,
+      "steps": 14,
+      "failed": {
+        "step": 7,
+        "action": {
+          "expect": "role:button:Confirm stop process",
+          "text": "Stop?"
+        },
+        "reason": "for: Timeout 10000ms exceeded.",
+        "screenshot": ".verify/evidence/pstop3-base-m/fail-mobile-step7.png",
+        "aria": "- region \"Workspace\":\n  - button \"Back to conversation\"\n  - button \"Terminal\"\n  - button \"Subagents\"\n  - button \"Processes\" [pressed]\n  - button \"Refresh processes\"\n  - text: 1 process · 0% CPU · 5 MB\n  - table:\n    - rowgroup:\n      - row \"PID Command CPU Memory Running Stop\":\n        - cell \"PID\"\n        - cell \"Command\"\n        - cell \"CPU\"\n        - cell \"Memory\"\n        - cell \"Running\"\n        - cell \"Stop\"\n    - rowgroup:\n      - row \"3046863 terminal/bin/bash -l 0% 5 MB 14s Stop process 3046863 /bin/bash -l\":\n        - cell \"3046863\"\n        - cell \"terminal/bin/bash -l\":\n          - button \"terminal/bin/bash -l\":\n            - text: terminal\n            - code: /bin/bash -l\n        - cell \"0%\"\n        - cell \"5 MB\"\n        - cell \"14s\"\n        - cell \"Stop process 3046863 /bin/bash -l\":\n          - button \"Stop process 3046863 /bin/bash -l\""
+      },
+      "captures": [],
+      "notes": [
+        {
+          "step": 6,
+          "eval": "(async () => { const row = [...document.querySelectorAll(\".proc-row\")].find((r) => r.textContent.includes(\"sleep 371\")); const b = row.querySelector(\".proc-kill\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Stop?"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 7 {\"expect\":\"role:button:Confirm stop process\",\"text\":\"Stop?\"}: for: Timeout 10000ms exceeded.",
+      "hint": "see .verify/evidence/pstop3-base-m/fail-mobile-step7.png and the aria snapshot"
+    }
+  ]
+}

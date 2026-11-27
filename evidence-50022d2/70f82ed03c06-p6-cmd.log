@@ -1,0 +1,32 @@
+$ (cd ui && bun test) && verify/yv map run processes --recipe double-click-on-stop-only-asks
+# exit 0 after 26778 ms at 50022d285ddddb3cb0a082bdc954a5159f9cf6f7
+
+bun test v1.4.4 (38afee6c8)
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "processes",
+      "at": "2026-11-27T05:32:27.967Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "double-click-on-stop-only-asks",
+          "status": "pass",
+          "ms": 25507
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
+
+ 536 pass
+ 0 fail
+ 5134 expect() calls
+Ran 536 tests across 39 files. [393.00ms]
