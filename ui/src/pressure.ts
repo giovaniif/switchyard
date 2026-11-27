@@ -29,8 +29,11 @@ export function useText(u: { cpuCores: number; memBytes: number }): string {
 /** What is wrong right now, in the episode's own terms. */
 export function pressureMetric(host: Host, ep: PressureEpisode): string {
   if (ep.reasons.includes("load")) return `load ${Math.round(host.load)}`;
-  if (ep.reasons.includes("memory")) return `${size(Math.max(0, host.memTotal - host.memUsed))} free`;
-  if (ep.reasons.includes("swap") && host.swapTotal) return `swap ${Math.round(((host.swapUsed ?? 0) / host.swapTotal) * 100)}% full`;
+  // yardd lists swap only beside memory: full swap alone is no overload.
+  if (ep.reasons.includes("memory")) {
+    const free = `${size(Math.max(0, host.memTotal - host.memUsed))} free`;
+    return ep.reasons.includes("swap") && host.swapTotal ? `${free}, swap ${Math.round(((host.swapUsed ?? 0) / host.swapTotal) * 100)}% full` : free;
+  }
   return "pressure forced on";
 }
 

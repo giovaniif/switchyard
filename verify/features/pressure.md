@@ -1,9 +1,10 @@
 # Pressure
 
-When the host is overloaded (1-minute load above its cores, free memory
-under `YARD_MIN_FREE_GB`, or swap at least 90% full) yardd records an
-episode: its peaks and the top sessions and stray processes at its worst
-sample. While it lasts the sidebar (a line over the page on phones and with
+When the host is overloaded (1-minute load above its cores, or free memory
+under `YARD_MIN_FREE_GB`: the same rule that holds the queue) yardd records
+an episode. Swap at least 90% full is noted beside low memory and is never
+an overload by itself. The episode keeps its peaks and the top sessions and
+stray processes at its worst sample. While it lasts the sidebar (a line over the page on phones and with
 the sidebar collapsed) says so and names the worst contributor, with Open and,
 while its turn runs, the session's own Stop. A running turn quiet for 5
 minutes meanwhile gets a note in its thread. Closed episodes are listed on

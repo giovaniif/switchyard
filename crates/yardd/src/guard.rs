@@ -306,7 +306,8 @@ pub fn sample(app: &Arc<App>, sys: &System, readings: &crate::pressure::Readings
     guard.inner.lock().unwrap().pressure = (!reasons.is_empty()).then(|| reasons.join("; "));
 
     let (listed, usage, _) = attribute(app, sys);
-    // Swap counts for episodes, not for the queue, which stays as it was.
+    // The same load and memory rules as the queue's above, so an episode is
+    // open exactly while the host reads "under pressure"; swap is only noted.
     let kinds = crate::pressure::reasons(readings, limits.forced, limits.ignore_load, limits.min_free);
     let listed_pids: HashSet<u32> = listed.values().flatten().map(|r| r.pid).collect();
     let used: HashMap<String, (f32, u64)> = usage.iter().map(|(sid, u)| (sid.clone(), (u.cpu, u.mem))).collect();

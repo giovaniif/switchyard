@@ -1,7 +1,8 @@
 //! Pressure episodes: each stretch of time the host was overloaded, kept so
 //! that afterwards someone can say what happened. An episode opens on the
-//! first sample under pressure (1-minute load above the cores, free memory
-//! under the guard's floor, or swap nearly full), keeps its peaks and who
+//! first sample under pressure (1-minute load above the cores, or free memory
+//! under the guard's floor: what holds the queue, so the Hosts page and the
+//! episode never disagree), keeps its peaks and who
 //! used the most at its worst sample (sessions, and processes that belong to
 //! no session, which are often the culprit), and closes once the host has
 //! been calm for a minute. Episodes are saved in `pressure.json` in the data
@@ -30,7 +31,13 @@ const KEEP: usize = 100;
 const RECENT: usize = 5;
 /// Contributors kept per ranking: the top by CPU and the top by memory.
 const TOP: usize = 3;
-/// Swap at least this full is pressure: the host is paging hard.
+/// Swap at least this full, with free memory under the floor too, is noted
+/// as a reason beside `memory`: the host has nowhere left to go. Never by
+/// itself: Linux leaves stale pages in swap long after the pressure is over,
+/// so a calm host with memory to spare can sit at 100% for days. Occupancy
+/// plus the free memory the sampler already reads needs nothing new; PSI
+/// (`/proc/pressure/memory`) or paging rates would say more, but only on
+/// Linux and with a second source to keep.
 const SWAP_FULL: f64 = 0.9;
 /// Below both, a session or process is no contributor at all: a calm
 /// helper would only crowd the list.
@@ -67,6 +74,8 @@ pub struct Use {
 /// For tests only: `YARD_TEST_READINGS` names a JSON file read every sample.
 /// Each field it sets replaces what the host read; `sessions` and `procs`
 /// (by session id and pid) replace what those used. No file reads nothing.
+/// The queue decides on the same readings as the episodes (`memFree` always,
+/// `load` unless `YARD_TEST_IGNORE_LOAD`), on purpose: one sample, one answer.
 #[derive(Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Injected {
@@ -327,14 +336,29 @@ fn notice(name: &str, ep: &Episode) -> Value {
         (Some(_), None) => true,
         _ => false,
     };
-    let mut body = format!("Load {:.0} on {} cores", ep.peak.load, ep.peak.cores);
+    // What the trouble is, not always the load: a host out of memory at a
+    // load of 1 would read as nothing wrong.
+    let has = |kind: &str| ep.reasons.iter().any(|r| r == kind);
+    let mut what = Vec::new();
+    if by_cpu {
+        what.push(format!("Load {:.0} on {} cores", ep.peak.load, ep.peak.cores));
+    }
+    if has("memory") {
+        let free = size(ep.peak.mem_total.saturating_sub(ep.peak.mem_used));
+        what.push(format!("{free} of memory free{}", if has("swap") { ", swap full" } else { "" }));
+    }
+    if what.is_empty() {
+        what.push("Pressure is forced on".to_string());
+    }
+    let mut body = what.join(" · ");
+    let used = |cpu: f64, mem: u64| format!("{cpu:.1} cores, {}", size(mem));
     let mut note = json!({ "op": "notify", "title": format!("{name} is overloaded") });
     if session_wins {
         let s = session.unwrap();
-        body.push_str(&format!(" · mostly {} ({})", s.title, size(s.mem_bytes)));
+        body.push_str(&format!(" · mostly {} ({})", s.title, used(s.cpu_cores, s.mem_bytes)));
         note["sessionId"] = json!(s.id);
     } else if let Some(p) = proc_ {
-        body.push_str(&format!(" · mostly {} (pid {}, {})", p.name, p.pid, size(p.mem_bytes)));
+        body.push_str(&format!(" · mostly {} (pid {}, {})", p.name, p.pid, used(p.cpu_cores, p.mem_bytes)));
     }
     note["body"] = json!(body);
     note
@@ -441,8 +465,10 @@ pub fn observe(app: &Arc<App>, sys: &System, r: &Readings, reasons: Vec<&'static
     })
 }
 
-/// Which kinds of pressure this sample shows. The test machine's own load
-/// and swap count for nothing under `YARD_TEST_IGNORE_LOAD`; test readings do.
+/// Which kinds of pressure this sample shows: the queue's own (load, memory,
+/// forced), plus `swap` beside `memory` when swap is nearly full as well
+/// (`SWAP_FULL`). The test machine's own load and swap count for nothing
+/// under `YARD_TEST_IGNORE_LOAD`; test readings do.
 pub fn reasons(r: &Readings, forced: bool, ignore_real: bool, min_free: u64) -> Vec<&'static str> {
     let mut out = Vec::new();
     if forced {
@@ -453,9 +479,9 @@ pub fn reasons(r: &Readings, forced: bool, ignore_real: bool, min_free: u64) -> 
     }
     if r.mem_free < min_free {
         out.push("memory");
-    }
-    if r.swap_total > 0 && r.swap_used as f64 >= SWAP_FULL * r.swap_total as f64 && (!ignore_real || r.swap_injected) {
-        out.push("swap");
+        if r.swap_total > 0 && r.swap_used as f64 >= SWAP_FULL * r.swap_total as f64 && (!ignore_real || r.swap_injected) {
+            out.push("swap");
+        }
     }
     out
 }
