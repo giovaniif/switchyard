@@ -90,6 +90,19 @@ yv drive new --viewport desktop --steps '[{"expect":"role:button:Go to session o
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":"role:button:Go to session or page"},{"expect":"css:.sidebar-heading .brand kbd","visible":false},{"shot":"no-hint-mobile"},{"click":"role:button:Go to session or page"},{"expect":"role:dialog:Go to session or page"}]'
 ```
 
+### palette-keyboard-hints-only-with-a-keyboard
+Viewports: both
+The Go to palette's footer ("↑ ↓ to navigate", "Enter to open") and its
+close button's "Esc" name keys. Where there is a keyboard they stay. On a touch
+phone there is no key to press, so the footer is gone, the close button reads
+Cancel, and tapping it closes the palette. (Patrol finding #538, a verifier
+note on #537.)
+
+```sh
+yv drive new --viewport desktop --steps '[{"click":"role:button:Go to session or page"},{"expect":"role:dialog:Go to session or page"},{"expect":"css:.navigation-footer","text":"Enter to open"},{"eval":"document.querySelector(\".navigation-palette button[aria-label=Close]\").innerText.trim()","equals":"Esc"},{"shot":"hints-desktop"},{"click":{"css":".navigation-palette button","hasText":"Esc"}},{"expect":"role:dialog:Go to session or page","visible":false}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Go to session or page"},{"expect":"role:dialog:Go to session or page"},{"expect":"css:.navigation-footer","visible":false},{"eval":"document.querySelector(\".navigation-palette button[aria-label=Close]\").innerText.trim()","equals":"Cancel"},{"shot":"no-hints-mobile"},{"click":{"css":".navigation-palette button","hasText":"Cancel"}},{"expect":"role:dialog:Go to session or page","visible":false}]'
+```
+
 ### native-app-menu
 Viewports: both
 Model the Mac shell capability and its DOM events. The Settings and Import
