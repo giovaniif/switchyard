@@ -22,6 +22,33 @@ yv iso down
 
 ## Recipes
 
+### opencode-v2-models-in-new-session
+Viewports: both
+When the OpenCode CLI returns model IDs and rejects `--verbose`, New session
+offers the OpenCode account and the Go model from the host's catalog.
+
+```sh
+yv iso up --name map-opencode-v2 --env YARD_TEST_OPENCODE_V2=1
+trap 'yv iso down --name map-opencode-v2 >/dev/null' EXIT
+STEPS='[
+  {"click":"css:.account-trigger"},
+  {"expect":"role:menuitemradio:OpenCode · Default","enabled":true},
+  {"shot":"opencode-account"},
+  {"press":"Escape"},
+  {"click":"css:.model-trigger"},
+  {"click":"role:button:OpenCode · 2 models"},
+  {"click":{"role":"button","name":"opencode-go/fake-go","exact":true}},
+  {"expect":"role:button:Model opencode-go/fake-go"},
+  {"shot":"opencode-go-selected"},
+  {"fill":"label:Message","value":"TEST-OpenCode Go"},
+  {"click":"role:button:Send"},
+  {"expect":"css:.thread","text":"Echo: TEST-OpenCode Go"}
+]'
+yv drive new --iso map-opencode-v2 --viewport desktop --steps "$STEPS"
+yv drive new --iso map-opencode-v2 --viewport mobile --steps "$(jq -nc --argjson steps "$STEPS" '[{"click":"role:button:Session setup"}] + [$steps[] | if has("fill") then {"press":"Escape"}, . else . end]')"
+yv state --iso map-opencode-v2 --expect '{"sessions":[{"engine":"opencode","model":"opencode-go/fake-go","status":"idle"}]}'
+```
+
 ### model-list-scrolls-under-the-header
 Viewports: both
 A ten-model Codex catalog scrolls inside the picker. The speed control stays in
