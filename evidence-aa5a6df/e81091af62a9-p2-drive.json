@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "546e88fdf3654b12c94817d3ecd364b0700cf633",
+    "short": "546e88f",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T11:08:38.919Z"
+  },
+  "dir": ".verify/evidence/run-now-stays-put-base-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4737,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/run-now-stays-put-base-mobile/before-first-run-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/run-now-stays-put-base-mobile/after-first-run-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "(() => { const b = document.querySelector(\"[aria-label=\\\"Run now: TEST-Base2 mobile\\\"]\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); window.__runNow = [r.x + r.width / 2, r.y + r.height / 2]; return true })()",
+          "value": true
+        },
+        {
+          "step": 9,
+          "eval": "document.elementFromPoint(...window.__runNow).closest(\"button\").getAttribute(\"aria-label\")",
+          "value": "Runs: TEST-Base2 mobile"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

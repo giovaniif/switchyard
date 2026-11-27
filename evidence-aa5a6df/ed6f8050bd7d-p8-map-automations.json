@@ -1,0 +1,132 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "automations",
+      "at": "2026-11-27T11:12:39.974Z",
+      "counts": {
+        "pass": 23
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "list-shows-schedule-next-and-last",
+          "status": "pass",
+          "ms": 4937
+        },
+        {
+          "label": "create-from-the-form",
+          "status": "pass",
+          "ms": 11696
+        },
+        {
+          "label": "run-now-archives-and-lists-the-run",
+          "status": "pass",
+          "ms": 12156
+        },
+        {
+          "label": "pinning-a-run-brings-it-back",
+          "status": "pass",
+          "ms": 3427
+        },
+        {
+          "label": "run-time-is-how-long-it-ran",
+          "status": "pass",
+          "ms": 11063
+        },
+        {
+          "label": "grid-of-cards-and-the-run-strip",
+          "status": "pass",
+          "ms": 7573
+        },
+        {
+          "label": "edit-changes-the-schedule",
+          "status": "pass",
+          "ms": 8261
+        },
+        {
+          "label": "edit-keeps-an-unlisted-model",
+          "status": "pass",
+          "ms": 11151
+        },
+        {
+          "label": "disable-stops-the-schedule",
+          "status": "pass",
+          "ms": 5859
+        },
+        {
+          "label": "reload-and-back-keep-the-page",
+          "status": "pass",
+          "ms": 13345
+        },
+        {
+          "label": "delete-removes-the-automation-and-frees-its-runs",
+          "status": "pass",
+          "ms": 3833
+        },
+        {
+          "label": "claude-usage-limit-skips",
+          "status": "pass",
+          "ms": 228
+        },
+        {
+          "label": "usage-limits-read-the-engines-own-figures",
+          "status": "pass",
+          "ms": 562
+        },
+        {
+          "label": "usage-limits-say-when-they-cannot-apply",
+          "status": "pass",
+          "ms": 9532
+        },
+        {
+          "label": "run-now-failure-says-why-once",
+          "status": "pass",
+          "ms": 9171
+        },
+        {
+          "label": "interval-and-weekly-schedules-from-the-form",
+          "status": "pass",
+          "ms": 13770
+        },
+        {
+          "label": "a-working-run-dots-the-automations-button",
+          "status": "pass",
+          "ms": 10514
+        },
+        {
+          "label": "manual-run-with-its-own-prompt",
+          "status": "pass",
+          "ms": 9159
+        },
+        {
+          "label": "time-fields-fit-hh-mm",
+          "status": "pass",
+          "ms": 10046
+        },
+        {
+          "label": "interval-active-window",
+          "status": "pass",
+          "ms": 12643
+        },
+        {
+          "label": "a-run-waiting-for-approval-marks-the-button-amber",
+          "status": "pass",
+          "ms": 10944
+        },
+        {
+          "label": "next-run-stays-in-view-with-a-window",
+          "status": "pass",
+          "ms": 6225
+        },
+        {
+          "label": "run-now-stays-put-after-the-first-run",
+          "status": "pass",
+          "ms": 7718
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

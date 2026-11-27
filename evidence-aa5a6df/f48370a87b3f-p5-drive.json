@@ -1,0 +1,64 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "aa5a6df6cd2cf25fc9ce3b9f560904d27e9babbf",
+    "short": "aa5a6df",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T11:09:01.815Z"
+  },
+  "dir": ".verify/evidence/run-now-stays-put-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4467,
+      "steps": 13,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/run-now-stays-put-head-mobile/before-first-run-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/run-now-stays-put-head-mobile/after-first-run-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/run-now-stays-put-head-mobile/runs-open-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "(() => { const b = document.querySelector(\"[aria-label=\\\"Run now: TEST-Head2 mobile\\\"]\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); window.__runNow = [r.x + r.width / 2, r.y + r.height / 2]; return true })()",
+          "value": true
+        },
+        {
+          "step": 9,
+          "eval": "document.elementFromPoint(...window.__runNow).closest(\"button\").getAttribute(\"aria-label\")",
+          "value": "Run now: TEST-Head2 mobile"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

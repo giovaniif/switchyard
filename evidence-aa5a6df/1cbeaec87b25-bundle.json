@@ -1,0 +1,227 @@
+{
+  "v": 1,
+  "claim": "Automations: an automation's first Run now adds the Runs button in Run now's place and pushes Run now one button left, so a second click or tap in the same spot opens the runs list instead of starting a run",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-16a4",
+  "base": "53781b0ebb2413896b7a4e92495dae16cf5f29ac",
+  "head": "aa5a6df6cd2cf25fc9ce3b9f560904d27e9babbf",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/AutomationsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/automations.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T11:08:32.479Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "546e88fdf3654b12c94817d3ecd364b0700cf633",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "57e40bb10ca8591130ff243e027b9d363367c1a2cb82e48c11bb5da799a0ef28"
+        },
+        {
+          "path": "p1-before-first-run-desktop.png",
+          "sha256": "88faf4cacc80ee70649e71080eb2176b9445b46acd8646a099dca51d4f4d8a8e"
+        },
+        {
+          "path": "p1-after-first-run-desktop.png",
+          "sha256": "60dc29d9bee78a5173baa64d92922f6c3a0bfe61d4d99d510a7524ac32d6d6ff"
+        }
+      ],
+      "addedAt": "2026-11-27T11:08:43.809Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "546e88fdf3654b12c94817d3ecd364b0700cf633",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "e81091af62a9a2b8c81c8659d29d48be5909695cc3580e6aad19efd5aa0331e8"
+        },
+        {
+          "path": "p2-before-first-run-mobile.png",
+          "sha256": "a09a9b181482436b4da89113bd875fb7ba06ee1714dab624a084886c6e845d46"
+        },
+        {
+          "path": "p2-after-first-run-mobile.png",
+          "sha256": "ad14f2c8dcf9168fef9fd91b0a9b246a8c945f440658df9b52738dcd56216dc9"
+        }
+      ],
+      "addedAt": "2026-11-27T11:08:49.217Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "546e88fdf3654b12c94817d3ecd364b0700cf633",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "268bb7fdc023f0b896ead4933b37a53b34e75f195ae78f96b3f27ee136ca9013"
+        }
+      ],
+      "addedAt": "2026-11-27T11:08:49.262Z",
+      "cmd": "verify/yv map run automations --recipe run-now-stays-put-after-the-first-run",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "aa5a6df6cd2cf25fc9ce3b9f560904d27e9babbf",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "666d15939bd8a2c89e486ad70d2f897e1afb58cb00c6d79ffd046f40ac55508e"
+        },
+        {
+          "path": "p4-before-first-run-desktop.png",
+          "sha256": "acee6db7ed1aad0424f14d0fdb070c55ac1d71d59794f915488ae11c9518dbc9"
+        },
+        {
+          "path": "p4-after-first-run-desktop.png",
+          "sha256": "8d446a15ea9e60ccac33861bdc1a0ce1eaaf3dcf646dd137d292f378948d860c"
+        },
+        {
+          "path": "p4-runs-open-desktop.png",
+          "sha256": "5f32efb3f2b66397757824d0670b42fadf30d6dbbe04d91699a5a4b4a4f56d0f"
+        }
+      ],
+      "addedAt": "2026-11-27T11:09:07.058Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "aa5a6df6cd2cf25fc9ce3b9f560904d27e9babbf",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "f48370a87b3fa7d31b34a74f12f264c5ed1d59f16633efccdd7095451693a3ab"
+        },
+        {
+          "path": "p5-before-first-run-mobile.png",
+          "sha256": "4e2890436972a5e5d84a73fb1dcd36f2327fe51e5287782891f27b0049b03703"
+        },
+        {
+          "path": "p5-after-first-run-mobile.png",
+          "sha256": "880405b55c22ab7b1499198854b78311658c4d094de60f87eebe54734ae4aafb"
+        },
+        {
+          "path": "p5-runs-open-mobile.png",
+          "sha256": "e32bcb7c0537a6601bd5bda51c57d48a930c0ab5dee59fb02c81c62ba4cfe3f8"
+        }
+      ],
+      "addedAt": "2026-11-27T11:09:12.207Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "aa5a6df6cd2cf25fc9ce3b9f560904d27e9babbf",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "3b3733bc909d2a8575f942e7740b8c2d2cb008a1599435ad756bb39703cf0bc0"
+        }
+      ],
+      "addedAt": "2026-11-27T11:09:12.251Z",
+      "cmd": "verify/yv map run automations --recipe run-now-stays-put-after-the-first-run && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "aa5a6df6cd2cf25fc9ce3b9f560904d27e9babbf",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "e8f24d44d22969ba5c6f839c05c63acb65cfc905f55bd66f1c684b7334d901a4"
+        }
+      ],
+      "addedAt": "2026-11-27T11:09:21.316Z",
+      "cmd": "verify/yv design-check --base 53781b0ebb24",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "aa5a6df6cd2cf25fc9ce3b9f560904d27e9babbf",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-automations.json",
+          "sha256": "ed6f8050bd7da2d56dc07b7688ae0254462dfce890b9f3a49c86d81018b9c4e9"
+        }
+      ],
+      "addedAt": "2026-11-27T11:09:25.217Z",
+      "cmd": "verify/yv map run automations",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "automations/list-shows-schedule-next-and-last",
+        "automations/create-from-the-form",
+        "automations/run-now-archives-and-lists-the-run",
+        "automations/pinning-a-run-brings-it-back",
+        "automations/run-time-is-how-long-it-ran",
+        "automations/grid-of-cards-and-the-run-strip",
+        "automations/edit-changes-the-schedule",
+        "automations/edit-keeps-an-unlisted-model",
+        "automations/disable-stops-the-schedule",
+        "automations/reload-and-back-keep-the-page",
+        "automations/delete-removes-the-automation-and-frees-its-runs",
+        "automations/claude-usage-limit-skips",
+        "automations/usage-limits-read-the-engines-own-figures",
+        "automations/usage-limits-say-when-they-cannot-apply",
+        "automations/run-now-failure-says-why-once",
+        "automations/interval-and-weekly-schedules-from-the-form",
+        "automations/a-working-run-dots-the-automations-button",
+        "automations/manual-run-with-its-own-prompt",
+        "automations/time-fields-fit-hh-mm",
+        "automations/interval-active-window",
+        "automations/a-run-waiting-for-approval-marks-the-button-amber",
+        "automations/next-run-stays-in-view-with-a-window",
+        "automations/run-now-stays-put-after-the-first-run"
+      ]
+    }
+  ]
+}

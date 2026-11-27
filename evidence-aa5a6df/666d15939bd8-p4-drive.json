@@ -1,0 +1,64 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "aa5a6df6cd2cf25fc9ce3b9f560904d27e9babbf",
+    "short": "aa5a6df",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T11:09:01.815Z"
+  },
+  "dir": ".verify/evidence/run-now-stays-put-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4458,
+      "steps": 12,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/run-now-stays-put-head-desktop/before-first-run-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/run-now-stays-put-head-desktop/after-first-run-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/run-now-stays-put-head-desktop/runs-open-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "(() => { const b = document.querySelector(\"[aria-label=\\\"Run now: TEST-Head2 desktop\\\"]\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); window.__runNow = [r.x + r.width / 2, r.y + r.height / 2]; return true })()",
+          "value": true
+        },
+        {
+          "step": 8,
+          "eval": "document.elementFromPoint(...window.__runNow).closest(\"button\").getAttribute(\"aria-label\")",
+          "value": "Run now: TEST-Head2 desktop"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
