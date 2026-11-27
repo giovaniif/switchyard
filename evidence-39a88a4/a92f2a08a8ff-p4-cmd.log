@@ -1,0 +1,26 @@
+$ verify/yv map run worktrees --recipe delete-removes-clean-worktree
+# exit 0 after 6249 ms at 39a88a4bed940125baa4b92ec08a307222702f92
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "worktrees",
+      "at": "2026-11-27T04:04:34.307Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "delete-removes-clean-worktree",
+          "status": "pass",
+          "ms": 5391
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+

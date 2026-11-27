@@ -1,0 +1,97 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "layout",
+      "at": "2026-11-27T04:06:27.450Z",
+      "counts": {
+        "pass": 16
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "desktop-three-columns",
+          "status": "pass",
+          "ms": 3770
+        },
+        {
+          "label": "narrow-hides-pane",
+          "status": "pass",
+          "ms": 2835
+        },
+        {
+          "label": "desktop-sidebars-collapse-independently",
+          "status": "pass",
+          "ms": 9296
+        },
+        {
+          "label": "mobile-panels-have-close-controls",
+          "status": "pass",
+          "ms": 5667
+        },
+        {
+          "label": "mobile-main-column-usable",
+          "status": "pass",
+          "ms": 3059
+        },
+        {
+          "label": "mobile-hosts-page",
+          "status": "pass",
+          "ms": 3079
+        },
+        {
+          "label": "mobile-drawer-opens-and-closes",
+          "status": "pass",
+          "ms": 6199
+        },
+        {
+          "label": "mobile-menu-on-every-page",
+          "status": "pass",
+          "ms": 3885
+        },
+        {
+          "label": "mobile-delete-confirm-fits-the-bar",
+          "status": "pass",
+          "ms": 3652
+        },
+        {
+          "label": "mobile-delete-confirm-fits-the-bar-without-worktree",
+          "status": "pass",
+          "ms": 3482
+        },
+        {
+          "label": "mobile-delete-ask-keeps-the-title",
+          "status": "pass",
+          "ms": 6813
+        },
+        {
+          "label": "double-click-on-delete-only-asks",
+          "status": "pass",
+          "ms": 16069
+        },
+        {
+          "label": "send-stays-at-the-right",
+          "status": "pass",
+          "ms": 10301
+        },
+        {
+          "label": "new-session-send-shares-controls-row",
+          "status": "pass",
+          "ms": 4491
+        },
+        {
+          "label": "desktop-sidebar-is-a-column",
+          "status": "pass",
+          "ms": 2770
+        },
+        {
+          "label": "workspace-tabs-fit-minimum-width",
+          "status": "pass",
+          "ms": 5247
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,47 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "worktrees",
+      "at": "2026-11-27T04:06:47.954Z",
+      "counts": {
+        "pass": 6
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "session-gets-worktree",
+          "status": "pass",
+          "ms": 371
+        },
+        {
+          "label": "plain-folder-in-place",
+          "status": "pass",
+          "ms": 3224
+        },
+        {
+          "label": "one-writer-per-folder",
+          "status": "pass",
+          "ms": 661
+        },
+        {
+          "label": "delete-removes-clean-worktree",
+          "status": "pass",
+          "ms": 5113
+        },
+        {
+          "label": "sidebar-delete-refusal-names-the-session",
+          "status": "pass",
+          "ms": 9751
+        },
+        {
+          "label": "dirty-worktree-is-kept",
+          "status": "pass",
+          "ms": 457
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,70 @@
+{
+  "ok": false,
+  "route": "session:s1a21b2b7278e",
+  "build": {
+    "sha": "42053adc45e9457b53047d8b5efd709e6ed3a6b6",
+    "short": "42053ad",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T04:02:33.850Z"
+  },
+  "dir": ".verify/evidence/double-click-delete-v2-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 13265,
+      "steps": 4,
+      "failed": {
+        "step": 2,
+        "action": {
+          "expect": {
+            "css": ".main header.bar .bar-armed"
+          }
+        },
+        "reason": "for: Timeout 10000ms exceeded.",
+        "screenshot": ".verify/evidence/double-click-delete-v2-base/fail-mobile-step2.png",
+        "aria": "- text: Worktree removed and branch yard/test-base-double-click-worktree-25ed deleted.\n- button \"Dismiss\"\n- banner:\n  - button \"Open sessions\"\n  - heading \"New session\" [level=2]\n  - button \"Subscription usage\": 47%\n  - button \"Connectors\"\n  - button \"Set up iPhone app\"\n- heading \"What should we work on?\" [level=1]\n- textbox \"Message\":\n  - /placeholder: Describe the task\n- button \"Attach files\"\n- button \"Dictate\"\n- button \"Voice mode\"\n- 'button \"Session setup: Opus 5.5, Default, High, Ask first\"': Opus 5.5 · High\n- button \"Send\" [disabled]\n- button \"iso-host\"\n- button \"work\"\n- text: Works in the folder itself"
+      },
+      "captures": [],
+      "notes": [
+        {
+          "step": 1,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\".main header.bar button\")].find((x) => x.textContent.trim() === \"Delete\"); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Delete and remove worktreeDelete + worktree"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 4116,
+      "steps": 4,
+      "failed": {
+        "step": -1,
+        "reason": "no session s1a21b2b7278e in the isolated yardd"
+      },
+      "captures": [],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 2 {\"expect\":{\"css\":\".main header.bar .bar-armed\"}}: for: Timeout 10000ms exceeded.",
+      "hint": "see .verify/evidence/double-click-delete-v2-base/fail-mobile-step2.png and the aria snapshot"
+    },
+    {
+      "code": "drive-failed",
+      "msg": "desktop: no session s1a21b2b7278e in the isolated yardd"
+    }
+  ]
+}

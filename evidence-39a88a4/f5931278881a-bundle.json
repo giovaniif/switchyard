@@ -1,0 +1,248 @@
+{
+  "v": 1,
+  "claim": "A double click on a session's Delete deleted it without the ask (and in a worktree session, its worktree too): the second click landed on the ask the first opened. Now the second click of a double click (detail 2) is ignored, while a separate quick click still answers.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-9674",
+  "base": "966697a94c03368e4ba6c878669c2fb8549fe70c",
+  "head": "39a88a4bed940125baa4b92ec08a307222702f92",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/layout.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T04:02:41.820Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "42053adc45e9457b53047d8b5efd709e6ed3a6b6",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "f9bf80ebbeb570b33272c08af40187ac17ac22b0624ba2996ae4846b095b0d81"
+        },
+        {
+          "path": "p1-fail-mobile-step2.png",
+          "sha256": "34dffb54072aad9e56cf25a22466a18f8f47ca75461efda3b29e20ac1e24c271"
+        }
+      ],
+      "addedAt": "2026-11-27T04:03:35.252Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "42053adc45e9457b53047d8b5efd709e6ed3a6b6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "4e7f7be1c862086f73a4967a8f8259c592f883cd6edd22d60d12a9a38ad9dce0"
+        }
+      ],
+      "addedAt": "2026-11-27T04:03:35.304Z",
+      "cmd": "verify/yv map run layout --recipe double-click-on-delete-only-asks",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "39a88a4bed940125baa4b92ec08a307222702f92",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "cecfc516cd99efefbed34de130e90bd52de88eae65f33d87e036b852dedf9a23"
+        },
+        {
+          "path": "p3-double-click-delete-mobile.png",
+          "sha256": "bc19dbe2f4125c174b041979e56151739d13635de2d5a6a4fba7026612b66256"
+        },
+        {
+          "path": "p3-double-click-delete-desktop.png",
+          "sha256": "d463ec699344278318af1697765c17cea3a7010468ed16e56f527b7d0700af74"
+        }
+      ],
+      "addedAt": "2026-11-27T04:04:28.014Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "39a88a4bed940125baa4b92ec08a307222702f92",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "a92f2a08a8ffbb8b9e26c745c55345b2be0f99320a98b8630677d3dfe67b2cd2"
+        }
+      ],
+      "addedAt": "2026-11-27T04:04:28.062Z",
+      "cmd": "verify/yv map run worktrees --recipe delete-removes-clean-worktree",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "39a88a4bed940125baa4b92ec08a307222702f92",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "764a49379cf8fd3ee9eea976bed48a8ddef619c5b31ae2f350ba744fcd5d18c6"
+        }
+      ],
+      "addedAt": "2026-11-27T04:04:34.356Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run layout --recipe double-click-on-delete-only-asks",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "39a88a4bed940125baa4b92ec08a307222702f92",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "5c45ee937ad6943a89a122f7cbec10580015c48a0b27b7f0bdf8b47c7ff4a92a"
+        }
+      ],
+      "addedAt": "2026-11-27T04:04:51.865Z",
+      "cmd": "verify/yv design-check --base 966697a94c03",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "39a88a4bed940125baa4b92ec08a307222702f92",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-layout.json",
+          "sha256": "1402b64b1ccf76a660713fdcc5668f23fad2d7785633ede5d200a858171b4a6b"
+        }
+      ],
+      "addedAt": "2026-11-27T04:04:55.976Z",
+      "cmd": "verify/yv map run layout",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "layout/desktop-three-columns",
+        "layout/narrow-hides-pane",
+        "layout/desktop-sidebars-collapse-independently",
+        "layout/mobile-panels-have-close-controls",
+        "layout/mobile-main-column-usable",
+        "layout/mobile-hosts-page",
+        "layout/mobile-drawer-opens-and-closes",
+        "layout/mobile-menu-on-every-page",
+        "layout/mobile-delete-confirm-fits-the-bar",
+        "layout/mobile-delete-confirm-fits-the-bar-without-worktree",
+        "layout/mobile-delete-ask-keeps-the-title",
+        "layout/double-click-on-delete-only-asks",
+        "layout/send-stays-at-the-right",
+        "layout/new-session-send-shares-controls-row",
+        "layout/desktop-sidebar-is-a-column",
+        "layout/workspace-tabs-fit-minimum-width"
+      ]
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "39a88a4bed940125baa4b92ec08a307222702f92",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-worktrees.json",
+          "sha256": "a5e291765189dd5c6041d295e20c42996b1bed4251528aeaaec3550df35af1d3"
+        }
+      ],
+      "addedAt": "2026-11-27T04:06:27.500Z",
+      "cmd": "verify/yv map run worktrees",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "worktrees/session-gets-worktree",
+        "worktrees/plain-folder-in-place",
+        "worktrees/one-writer-per-folder",
+        "worktrees/delete-removes-clean-worktree",
+        "worktrees/sidebar-delete-refusal-names-the-session",
+        "worktrees/dirty-worktree-is-kept"
+      ]
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "regression",
+      "at": "39a88a4bed940125baa4b92ec08a307222702f92",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-map-sidebar.json",
+          "sha256": "489dc7bc3ba9886d188a634c4fb305bc40dbd4071ff1700f58d2d8206a3c9a38"
+        }
+      ],
+      "addedAt": "2026-11-27T04:06:48.008Z",
+      "cmd": "verify/yv map run sidebar",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "sidebar/rows-show-status",
+        "sidebar/compact-rows-with-engine-marks",
+        "sidebar/hover-shows-archive",
+        "sidebar/rows-mark-what-needs-you",
+        "sidebar/mark-chat-unread",
+        "sidebar/rename-session",
+        "sidebar/pin-and-unpin",
+        "sidebar/archive-and-restore",
+        "sidebar/archiving-the-open-session-keeps-the-list-closed",
+        "sidebar/delete-keeps-worktree",
+        "sidebar/group-new",
+        "sidebar/group-move-to-existing",
+        "sidebar/group-drag-out-to-ungrouped",
+        "sidebar/group-drag-into-group",
+        "sidebar/group-drag-noop",
+        "sidebar/group-collapse-persists",
+        "sidebar/group-rename",
+        "sidebar/group-remove-from-group",
+        "sidebar/group-ungroup",
+        "sidebar/group-count-clear-of-the-menu-button",
+        "sidebar/collapsed-group-shows-a-waiting-approval",
+        "sidebar/collapsed-archived-dock-shows-a-waiting-approval",
+        "sidebar/archived-header-stays-at-bottom",
+        "sidebar/hand-off-keeps-the-group",
+        "sidebar/hand-off-from-a-pinned-session-stays-in-its-group",
+        "sidebar/menu-on-a-row-below-the-fold",
+        "sidebar/session-named-from-the-conversation"
+      ]
+    }
+  ]
+}
