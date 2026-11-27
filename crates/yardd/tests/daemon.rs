@@ -533,6 +533,28 @@ async fn messages_sent_in_a_row_reach_the_agent_in_the_order_sent() {
     assert_eq!(pending_texts(&c, &sid), queued);
 }
 
+// A session's settings too: a group set and then cleared stays cleared
+// (seen as sessions_are_grouped_across_restarts failing under load).
+#[tokio::test]
+async fn session_settings_sent_in_a_row_apply_in_the_order_sent() {
+    let sb = Sandbox::new("update-order");
+    let d = sb.start_with(&[("TOKIO_WORKER_THREADS", "1")]);
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "TEST-hi", json!({})).await;
+    c.wait_turn_done(&sid, 0).await;
+    let update = |change: Value| {
+        let mut op = json!({ "op": "session.update", "sessionId": sid });
+        op.as_object_mut().unwrap().extend(change.as_object().unwrap().clone());
+        op
+    };
+    c.send_burst(&[update(json!({ "group": "TEST-release" })), update(json!({ "group": null }))]).await;
+    c.wait_for("the group cleared", |m| m["op"] == "session" && m["session"]["id"] == sid && m["session"]["group"].is_null()).await;
+    // Sent after, so its answer shows where both left the session.
+    c.send(update(json!({ "pinned": true }))).await;
+    let pinned = c.wait_for("pinned", |m| m["op"] == "session" && m["session"]["id"] == sid && m["session"]["pinned"] == true).await;
+    assert!(pinned["session"]["group"].is_null(), "{pinned}");
+}
+
 #[tokio::test]
 async fn a_session_says_when_and_how_its_last_turn_ended() {
     let sb = Sandbox::new("turn-end");
