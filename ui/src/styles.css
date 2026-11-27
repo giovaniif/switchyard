@@ -744,6 +744,12 @@ button.quote-card-number:hover { background: var(--info); color: var(--bg); }
 .navigation-title, .navigation-detail { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .navigation-empty { padding: 16px 8px; }
 .navigation-footer { display: flex; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.navigation-cancel { display: none; }
+/* Arrows, Enter and Esc mean nothing without a keyboard; same input gate as .brand kbd. */
+@media (hover: none) and (pointer: coarse) {
+  .navigation-footer, .navigation-esc { display: none; }
+  .navigation-cancel { display: inline; }
+}
 .login-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 .login-steps a:not(.btn-primary) { color: inherit; overflow-wrap: anywhere; }
 .login-open { display: inline-flex; align-items: center; text-decoration: none; }
