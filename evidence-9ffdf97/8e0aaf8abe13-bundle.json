@@ -1,0 +1,187 @@
+{
+  "v": 1,
+  "claim": "On a phone, a step's state (\"· not answered\", \"· waiting\") wrapped to two lines beside a long question or command; it should stay on the row's one line while the text ellipsizes",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-d160",
+  "base": "e550a93811df3fd7bf9dc65a18bca709a6e93db6",
+  "head": "9ffdf971e8459f21b090e42f51a09fa38477b334",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/approvals.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T01:10:48.301Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "da2edde42d43f8d7cd1e152ee61a58f948e08927",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "9f30a4231643e27cbe9109ec87f3d640301b19c96fd6c0c82dc70bbcb78067e8"
+        },
+        {
+          "path": "p1-base2-waiting-mobile.png",
+          "sha256": "e31950d3927c6ba0f5e43bd39c6e177619d7663e2a91f55d29866e122f2f1c53"
+        },
+        {
+          "path": "p1-base2-not-answered-mobile.png",
+          "sha256": "7543a59580d3145bd5bb3b76a9985fcb095488075254f9170780dac2e5f4db7d"
+        }
+      ],
+      "addedAt": "2026-11-27T01:11:34.044Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "da2edde42d43f8d7cd1e152ee61a58f948e08927",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "ae892e4ad0d1ca44b38d331fb566d0bb46c25d6c5bed1621784576c86c5810e3"
+        }
+      ],
+      "addedAt": "2026-11-27T01:11:34.089Z",
+      "cmd": "verify/yv map run approvals --recipe tool-row-status-stays-on-one-line",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "9ffdf971e8459f21b090e42f51a09fa38477b334",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "5c087b6f461c92d04296c3dcf354902bc0e7901cd8b0245b444d859b9e45de4e"
+        },
+        {
+          "path": "p3-head-waiting-mobile.png",
+          "sha256": "5a783216957b8258144e43d6ca4bd987647aab15d1ddd22d83a0e52ed8e918f4"
+        },
+        {
+          "path": "p3-head-not-answered-mobile.png",
+          "sha256": "b8f216ac3ab5d017bf85e3c26d18c1f4dd080506989968e884eb1f50867afee4"
+        }
+      ],
+      "addedAt": "2026-11-27T01:12:07.015Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "9ffdf971e8459f21b090e42f51a09fa38477b334",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "741143e366113b92f982897f2695c0f02ad9f0d276272ae75560325d66b0fef5"
+        },
+        {
+          "path": "p4-head-waiting-desktop.png",
+          "sha256": "b63fd6d29e754e55c2391cd6de3bf4ada4f07822c50f5c024354d3afb21b20a0"
+        },
+        {
+          "path": "p4-head-not-answered-desktop.png",
+          "sha256": "20bfce3b101122c79f6ade84deb2aa095f8c8b21c6517ad89ff34c39e83ae02c"
+        }
+      ],
+      "addedAt": "2026-11-27T01:12:07.058Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "9ffdf971e8459f21b090e42f51a09fa38477b334",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "f3d0f9913448227abbd12e0f2480ecb16a5482c1f5dfe4d3ff7d538beabfbce1"
+        }
+      ],
+      "addedAt": "2026-11-27T01:12:07.103Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run approvals --recipe tool-row-status-stays-on-one-line",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "9ffdf971e8459f21b090e42f51a09fa38477b334",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "087a673d7e371d0f298731a6caba0c439272d4295dae3ad56a69a2d67ff7897b"
+        }
+      ],
+      "addedAt": "2026-11-27T01:12:17.167Z",
+      "cmd": "verify/yv design-check --base e550a93811df",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "9ffdf971e8459f21b090e42f51a09fa38477b334",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-approvals.json",
+          "sha256": "c1945c7591ee346c552e1ff433eea63fd990f77ad75a35b43fcf0d651a951ee9"
+        }
+      ],
+      "addedAt": "2026-11-27T01:12:19.909Z",
+      "cmd": "verify/yv map run approvals",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "approvals/pending-shows-card",
+        "approvals/allow-once",
+        "approvals/allow-then-follow-up",
+        "approvals/deny",
+        "approvals/waiting-then-denied-command-did-not-run",
+        "approvals/waiting-then-denied-edit-was-not-made",
+        "approvals/always-allow",
+        "approvals/double-click-allow-once",
+        "approvals/approval-wait-is-not-work",
+        "approvals/claude-question-answered",
+        "approvals/claude-question-something-else-and-skip",
+        "approvals/tool-row-status-stays-on-one-line",
+        "approvals/codex-question-answered"
+      ]
+    }
+  ]
+}

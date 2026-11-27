@@ -1,0 +1,40 @@
+$ verify/yv map run approvals --recipe tool-row-status-stays-on-one-line
+# exit 1 after 8684 ms at da2edde42d43f8d7cd1e152ee61a58f948e08927
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "approvals",
+      "at": "2026-11-27T01:11:42.770Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "tool-row-status-stays-on-one-line",
+          "status": "fail",
+          "ms": 7824,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 1 {\"eval\":\"[...document.querySelectorAll(\\\".thread .tool-row\\\")].every(r => { const h = r.children[1].getBoundingClientRect().height; return [...r.children].every(c => c.getBoundingClientRect().height < h * 1.5); })\",\"equals\":true}: eval returned false, expected true",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-d160/.verify/drives/2026-11-27T01-11-39-951Z/fail-mobile-step1.png and the aria snapshot"
+            }
+          ],
+          "tail": "le\\\"\\n  - button \\\"Asked Which database should TEST-app use? (and 1 more) · waiting\\\" [disabled]:\\n    - text: Asked\\n    - code: Which database should TEST-app use? (and 1 more)\\n    - text: · waiting\\n  - text: Claude has 2 questions\\n  - group \\\"Which database should TEST-app use?\\\":\\n    - text: Database Which database should TEST-app use?\\n    - radiogroup \\\"Which database should TEST-app use?\\\":\\n      - radio \\\"Postgres Relational, what the app has now.\\\"\\n      - radio \\\"SQLite One file, no server to run.\\\"\\n    - 'textbox \\\"Something else: Which database should TEST-app use?\\\"':\\n      - /placeholder: Something else\\n  - group \\\"Which checks should run before merging?\\\":\\n    - text: Checks Which checks should run before merging?\\n    - group \\\"Which checks should run before merging?\\\":\\n      - checkbox \\\"Unit tests Fast, on every push.\\\"\\n      - checkbox \\\"Lint Style and obvious mistakes.\\\"\\n      - checkbox \\\"End-to-end Slow, drives the real app.\\\"\\n    - 'textbox \\\"Something else: Which checks should run before merging?\\\"':\\n      - /placeholder: Something else (optional)\\n    - text: Choose any that apply.\\n  - button \\\"Send answers\\\" [disabled]\\n  - button \\\"Skip\\\"\\n  - textbox \\\"Message\\\":\\n    - /placeholder: Queue a message for the agent\\n  - button \\\"Attach files\\\"\\n  - button \\\"Dictate\\\"\\n  - button \\\"Voice mode\\\"\\n  - 'button \\\"Session setup: Haiku 5.5, Default, Low, Full access\\\"': Haiku 5.5\\n  - button \\\"Add to queue\\\" [disabled]\"\n      },\n      \"captures\": [],\n      \"notes\": [\n        {\n          \"step\": 1,\n          \"eval\": \"[...document.querySelectorAll(\\\".thread .tool-row\\\")].every(r => { const h = r.children[1].getBoundingClientRect().height; return [...r.children].every(c => c.getBoundingClientRect().height < h * 1.5); })\",\n          \"value\": false\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 1 {\\\"eval\\\":\\\"[...document.querySelectorAll(\\\\\\\".thread .tool-row\\\\\\\")].every(r => { const h = r.children[1].getBoundingClientRect().height; return [...r.children].every(c => c.getBoundingClientRect().height < h * 1.5); })\\\",\\\"equals\\\":true}: eval returned false, expected true\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-d160/.verify/drives/2026-11-27T01-11-39-951Z/fail-mobile-step1.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "approvals/tool-row-status-stays-on-one-line",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

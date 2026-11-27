@@ -1,0 +1,58 @@
+{
+  "ok": true,
+  "route": "session:s1a21a8f18952",
+  "build": {
+    "sha": "9ffdf971e8459f21b090e42f51a09fa38477b334",
+    "short": "9ffdf97",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T01:11:50.929Z"
+  },
+  "dir": ".verify/evidence/tool-row-status-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 3941,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/tool-row-status-head-desktop/head-waiting-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/tool-row-status-head-desktop/head-not-answered-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 7,
+          "eval": "[...document.querySelectorAll(\".thread .tool-row\")].map(r => [...r.children].map(c => Math.round(c.getBoundingClientRect().height)))",
+          "value": [
+            [
+              12,
+              19,
+              17,
+              19
+            ]
+          ]
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

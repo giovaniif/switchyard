@@ -1,0 +1,58 @@
+{
+  "ok": true,
+  "route": "session:s1a21a8e95cd3",
+  "build": {
+    "sha": "da2edde42d43f8d7cd1e152ee61a58f948e08927",
+    "short": "da2edde",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T01:10:54.179Z"
+  },
+  "dir": ".verify/evidence/tool-row-status-base-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3442,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/tool-row-status-base-mobile/base2-waiting-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/tool-row-status-base-mobile/base2-not-answered-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 7,
+          "eval": "[...document.querySelectorAll(\".thread .tool-row\")].map(r => [...r.children].map(c => Math.round(c.getBoundingClientRect().height)))",
+          "value": [
+            [
+              12,
+              19,
+              17,
+              38
+            ]
+          ]
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
