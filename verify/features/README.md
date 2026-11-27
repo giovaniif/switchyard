@@ -58,6 +58,7 @@ when you touch it.
 | [focused-pages](focused-pages.md) | Approved host, session (search, Active/All/Archived tabs) and subscription pages, account identity and compact usage popover |
 | [hosts](hosts.md) | The Hosts page (compact host rows and a tabbed inspector), adding a direct host, an unreachable SSH host, removing a host |
 | [queue](queue.md) | The resource guard: sessions queue under pressure, Start anyway |
+| [pressure](pressure.md) | Overload episodes: the banner naming the worst session or stray process (Open, Stop), the stalled-turn note, the System tab's history |
 | [logins](logins.md) | Engine login state and the Codex, Claude, Grok and OpenCode login flows |
 | [acp-engines](acp-engines.md) | OpenCode and Grok: listed where installed, sessions, approvals, hand-off rows |
 | [attachments](attachments.md) | Files with a prompt: upload, chips, thumbnails, size cap |
