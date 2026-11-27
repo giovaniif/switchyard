@@ -20,6 +20,7 @@ yv iso seed --profile empty
 ## Cleanup
 
 ```sh
+yv iso down --name map-logins-timeout || true
 yv iso down
 ```
 
@@ -70,6 +71,29 @@ yardd_pid=$(ss -Htlnp "sport = :$(v port)" | grep -o 'pid=[0-9]*' | head -1 | cu
 test -n "$yardd_pid"
 sleep 1
 ! pgrep -P "$yardd_pid" -f 'auth login'
+```
+
+### an-abandoned-login-stops-on-time
+Viewports: both
+A Claude Code login nobody finishes ends on its own (15 minutes; 4 s here
+through `YARD_CLAUDE_LOGIN_TIMEOUT_MS`). A dialog left open says "The sign-in
+waited too long for its code. Start again." and offers Try again. A page
+closed mid-login (the drive ends with the dialog open, so no `login.cancel`
+is sent) leaves no `claude auth login` running under yardd. The failed
+`login` reply is reported as a failed API call, hence `--allow-errors`.
+
+```sh
+yv iso down --name map-logins-timeout >/dev/null 2>&1 || true
+port=$(yv iso up --name map-logins-timeout --logged-out --env YARD_CLAUDE_LOGIN_TIMEOUT_MS=4000 | jq -r .iso.port)
+for vp in mobile desktop; do
+  yv drive hosts --iso map-logins-timeout --viewport "$vp" --allow-errors --steps '[{"click":"role:tab:Engine logins"},{"click":{"role":"button","name":"Log in","nth":0}},{"expect":"role:dialog:Log in to Claude Code","text":"Open the sign-in page","timeout":15000},{"expect":"role:dialog","text":"The sign-in waited too long for its code. Start again.","timeout":15000},{"expect":"role:button:Try again"},{"shot":"login-timed-out"}]'
+done
+yv drive hosts --iso map-logins-timeout --viewport desktop --steps '[{"click":"role:tab:Engine logins"},{"click":{"role":"button","name":"Log in","nth":0}},{"expect":"role:dialog:Log in to Claude Code","text":"Open the sign-in page","timeout":15000}]'
+yardd_pid=$(ss -Htlnp "sport = :$port" | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2)
+test -n "$yardd_pid"
+sleep 6
+! pgrep -P "$yardd_pid" -f 'auth login'
+yv iso down --name map-logins-timeout
 ```
 
 ### codex-device-login

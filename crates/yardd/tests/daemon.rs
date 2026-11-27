@@ -1708,6 +1708,34 @@ async fn engines_log_in_from_the_app() {
     assert_eq!(after["engines"]["claude"]["account"], "me@example.com");
 }
 
+// A closed tab never sends `login.cancel`, so a Claude login nobody finishes
+// would keep `claude auth login` running under yardd until it stops.
+#[tokio::test]
+async fn an_abandoned_claude_login_is_stopped() {
+    let sb = Sandbox::new("login-abandoned");
+    let d = sb.start_with(&[("YARD_CLAUDE_LOGIN_TIMEOUT_MS", "1500")]);
+    let mut c = d.client().await;
+
+    let mark = c.log.len();
+    c.send(json!({ "op": "login.start", "engine": "claude" })).await;
+    c.wait_after(mark, "claude link", |m| m["op"] == "login" && m["engine"] == "claude" && m["state"] == "url").await;
+    let pid = claude_log(&sb)
+        .lines()
+        .find(|l| l.contains("args=auth login"))
+        .and_then(|l| l.split_whitespace().find_map(|w| w.strip_prefix("pid=")).map(str::to_string))
+        .expect("the login was logged");
+
+    // No code comes: the login gives up on its own and says why.
+    let failed = c.wait_after(mark, "the login timing out", |m| m["op"] == "login" && m["engine"] == "claude" && m["state"] == "failed").await;
+    assert!(failed["error"].as_str().unwrap().contains("Start again"), "{failed}");
+    assert!(!std::path::Path::new(&format!("/proc/{pid}")).exists(), "`claude auth login` (pid {pid}) is still running");
+
+    // A code after that finds no login, rather than a stale prompt.
+    c.send(json!({ "op": "login.code", "engine": "claude", "code": "good-code" })).await;
+    let refused = c.wait_after(mark, "the late code refused", |m| m["op"] == "error").await;
+    assert!(refused["message"].as_str().unwrap().contains("no Claude login is running"), "{refused}");
+}
+
 #[tokio::test]
 async fn codex_reasoning_streams_as_thinking() {
     let sb = Sandbox::new("think");
