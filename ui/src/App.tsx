@@ -5246,7 +5246,9 @@ function RemoveHost({ onConfirm, onUpdate }: { onConfirm(): void; onUpdate?(): v
   }, [armed]);
   return (
     <div className="host-foot">
-      <button className="btn-text" onClick={() => (armed ? onConfirm() : setArmed(true))}>
+      {/* The ask takes this button's place, so a double click's second click
+          (detail 2) lands on it: that is not the second click asked for. */}
+      <button className="btn-text" onClick={(e) => (!armed ? setArmed(true) : e.detail < 2 && onConfirm())}>
         {armed ? "Click again to remove" : "Remove host"}
       </button>
       {armed && <span className="muted small">Its sessions keep running there.</span>}
