@@ -2,6 +2,10 @@
 
 Each version is a [GitHub release](https://github.com/giovaniif/better-than-claude-code/releases) with the signed Mac app and the Linux packages. The section for a version becomes its release notes.
 
+## 0.24.1 (2026-11-27)
+
+- **OpenCode 2 models appear in New session.** Switchyard now lists your host's OpenCode models, including OpenCode Go, and applies the selected permission mode to OpenCode 2 sessions.
+
 ## 0.24.0 (2026-11-27)
 
 - **Your Slack in Switchyard.** Connect your own Slack account from Connectors. Your direct messages show up in a Slack section of the sidebar, along with the channels you choose to import. Read them, react and reply as yourself, and type `@` in the reply box to call one of your agents. This replaces the old shared Switchyard bot.
