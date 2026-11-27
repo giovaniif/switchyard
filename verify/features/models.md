@@ -29,7 +29,7 @@ offers the OpenCode account and the Go model from the host's catalog.
 
 ```sh
 yv iso up --name map-opencode-v2 --env YARD_TEST_OPENCODE_V2=1
-trap 'yv iso down --name map-opencode-v2' EXIT
+trap 'yv iso down --name map-opencode-v2 >/dev/null' EXIT
 STEPS='[
   {"click":"css:.account-trigger"},
   {"expect":"role:menuitemradio:OpenCode · Default","enabled":true},
@@ -45,7 +45,7 @@ STEPS='[
   {"expect":"css:.thread","text":"Echo: TEST-OpenCode Go"}
 ]'
 yv drive new --iso map-opencode-v2 --viewport desktop --steps "$STEPS"
-yv drive new --iso map-opencode-v2 --viewport mobile --steps "$(jq -nc --argjson steps "$STEPS" '[{"click":"role:button:Session setup"}] + $steps')"
+yv drive new --iso map-opencode-v2 --viewport mobile --steps "$(jq -nc --argjson steps "$STEPS" '[{"click":"role:button:Session setup"}] + [$steps[] | if has("fill") then {"press":"Escape"}, . else . end]')"
 yv state --iso map-opencode-v2 --expect '{"sessions":[{"engine":"opencode","model":"opencode-go/fake-go","status":"idle"}]}'
 ```
 
