@@ -239,6 +239,8 @@ h1, h2, h3, p { margin: 0; }
 .tool { display: flex; flex-direction: column; gap: 6px; margin: -8px 0; }
 .tool-row { display: flex; align-items: center; gap: 8px; max-width: 100%; padding: 3px 0; border: 0; background: transparent; color: var(--muted); text-align: left; }
 .tool-row code { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The ellipsized text gives way, never the step's label or its state ("· not answered"). */
+.tool-row .tool-label, .tool-row > .muted, .tool-row > .bad { flex: none; white-space: nowrap; }
 .tool-chevron { display: flex; transition: transform 0.1s; }
 .tool-chevron.open { transform: rotate(90deg); }
 .tool-chevron.hidden { visibility: hidden; }
@@ -1299,11 +1301,11 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .host-system dd { margin: 0; overflow-wrap: anywhere; }
 .host-inspector .engine-block { border-bottom: 1px solid var(--line); padding: 12px 0; }
 .host-inspector .engine-block:first-child { padding-top: 0; }
-.host-inspector .engine-row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 4px 12px; }
-.host-inspector .engine-row > .muted { grid-column: 2; overflow-wrap: anywhere; }
-.host-inspector .engine-row > .engine-actions, .host-inspector .engine-row > .engine-cmd { grid-column: 3; grid-row: 1 / 3; }
+.host-inspector :is(.engine-row, .account-row) { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 4px 12px; }
+.host-inspector :is(.engine-row, .account-row) > .muted { grid-column: 2; overflow-wrap: anywhere; }
+.host-inspector .engine-row > .engine-actions, .host-inspector .engine-row > .engine-cmd, .host-inspector .account-row > .account-actions { grid-column: 3; grid-row: 1 / 3; }
 .host-inspector .engine-row > .engine-cmd { white-space: normal; overflow-wrap: anywhere; max-width: 220px; }
-.host-inspector .engine-actions { flex-wrap: wrap; justify-content: flex-end; }
+.host-inspector :is(.engine-actions, .account-actions) { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .host-inspector .account-row { margin: 12px 0 0; padding: 10px 0 0; border-left: 0; border-top: 1px solid var(--line); }
 .host-inspector .account-add { margin: 12px 0 0; border: 0; padding: 0; }
 .focused-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 36px 16px; text-align: center; }
@@ -1404,8 +1406,8 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
   .focused-session-resources { grid-column: 2; }
   .focused-session-state { grid-row: 2; grid-column: 1; }
   .focused-tabs { gap: 16px; }
-  .host-inspector .engine-row { grid-template-columns: 8px minmax(0, 1fr); }
-  .host-inspector .engine-row > .engine-actions, .host-inspector .engine-row > .engine-cmd { grid-column: 2; grid-row: auto; margin-left: 0; justify-content: flex-start; }
+  .host-inspector :is(.engine-row, .account-row) { grid-template-columns: 8px minmax(0, 1fr); }
+  .host-inspector .engine-row > :is(.engine-actions, .engine-cmd), .host-inspector .account-row > .account-actions { grid-column: 2; grid-row: auto; margin-left: 0; justify-content: flex-start; }
   .host-system > div { grid-template-columns: minmax(0, .7fr) minmax(0, 1fr); gap: 12px; }
   .subscription-columns { display: none; }
   .subscription-row { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 20px 0; }
