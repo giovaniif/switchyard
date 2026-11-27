@@ -1,0 +1,72 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "processes",
+      "at": "2026-11-27T00:19:24.909Z",
+      "counts": {
+        "pass": 11
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "lists-the-process-tree",
+          "status": "pass",
+          "ms": 4634
+        },
+        {
+          "label": "nothing-running",
+          "status": "pass",
+          "ms": 3545
+        },
+        {
+          "label": "terminal-shell-is-listed",
+          "status": "pass",
+          "ms": 6695
+        },
+        {
+          "label": "stop-a-terminal-command",
+          "status": "pass",
+          "ms": 9256
+        },
+        {
+          "label": "force-kill-what-ignores-sigterm",
+          "status": "pass",
+          "ms": 15032
+        },
+        {
+          "label": "stop-with-children",
+          "status": "pass",
+          "ms": 7912
+        },
+        {
+          "label": "stop-with-children-fits-the-pane",
+          "status": "pass",
+          "ms": 9431
+        },
+        {
+          "label": "agent-offers-no-stop",
+          "status": "pass",
+          "ms": 5229
+        },
+        {
+          "label": "refused-outside-the-session",
+          "status": "pass",
+          "ms": 244
+        },
+        {
+          "label": "listed-from-the-workspace-sheet",
+          "status": "pass",
+          "ms": 9617
+        },
+        {
+          "label": "full-command-on-tap",
+          "status": "pass",
+          "ms": 9498
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
