@@ -220,16 +220,8 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
         drop(own);
         // The sidecar is gone: close out whatever turn was open. One already
         // replaced (the host agent starts a fresh one per question) had none.
-        let running = reader_app
-            .meta(&reader_sid)
-            .map(|m| m.status != "idle")
-            .unwrap_or(false);
-        if running && current {
-            reader_app.emit(
-                &reader_sid,
-                json!({ "type": "error", "message": "The Claude sidecar exited. The next message starts it again." }),
-            );
-            reader_app.emit(&reader_sid, json!({ "type": "turn_completed", "status": "failed" }));
+        if current {
+            reader_app.fail_open_turn(&reader_sid, "The Claude sidecar exited. The next message starts it again.");
         }
     });
 

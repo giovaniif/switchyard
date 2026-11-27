@@ -72,11 +72,10 @@ pub fn take_message(app: &Arc<App>, sid: &str, text: &str, files: &[Value], orig
         app.queue_message(sid, text, files, origin.filter(|o| crate::origins::is_tagged(Some(o))));
         return Ok(Taken::Deliver);
     }
-    if meta.status == "running" || meta.status == "needs_approval" {
-        app.queue_message(sid, text, files, origin.filter(|o| crate::origins::is_tagged(Some(o))));
+    if app.queue_while(sid, &["running", "needs_approval"], text, files, origin.filter(|o| crate::origins::is_tagged(Some(o)))) {
         return Ok(Taken::Done);
     }
-    if meta.status == "queued" {
+    if app.meta(sid).is_some_and(|m| m.status == "queued") {
         anyhow::bail!("this session is queued; start it first");
     }
     let mut items = app.take_all_queued(sid, |_| true);
@@ -361,8 +360,10 @@ async fn run_engine_turn(app: &Arc<App>, sid: &str, text: &str, attachments: &[V
             };
         }
     }
+    // Not `fail_turn`: a Claude sidecar that died as this was sent ends the
+    // turn from its own task too, and only one of them may.
     if let Err(e) = sent {
-        fail_turn(app, sid, &e);
+        app.fail_open_turn(sid, &format!("{e:#}"));
     }
 }
 

@@ -204,6 +204,11 @@ pub struct Agents {
     pending_file: PathBuf,
     pending: Mutex<Vec<Step>>,
     retry: Mutex<std::collections::HashMap<String, Retry>>,
+    /// Records a try of `migrate` is sending right now, and records being
+    /// edited: each waits for the other (`Agents::edit`, `Agents::try_now`).
+    claims: Mutex<std::collections::HashMap<String, Claim>>,
+    /// Bumped whenever a try lets go of its record.
+    tried: tokio::sync::watch::Sender<u64>,
     /// Hand-overs that ended here with the agent deleted: never taken again.
     ended_file: PathBuf,
     ended: Mutex<Vec<String>>,
@@ -239,7 +244,83 @@ struct Retry {
     backed: String,
 }
 
+/// Who holds a record right now (`Agents::claims`).
+enum Claim {
+    /// A try of `migrate`: the record is marked leaving until the host answers.
+    Trying,
+    /// Edits under way (a save awaits its host), so no try starts meanwhile.
+    Editing(usize),
+}
+
+/// A try's hold on its record, let go when dropped.
+struct Trying<'a> {
+    agents: &'a Agents,
+    id: String,
+}
+
+impl Drop for Trying<'_> {
+    fn drop(&mut self) {
+        self.agents.claims.lock().unwrap().remove(&self.id);
+        self.agents.tried.send_modify(|n| *n += 1);
+    }
+}
+
+/// An edit's hold on its record, let go when dropped.
+struct Editing<'a> {
+    agents: &'a Agents,
+    id: String,
+}
+
+impl Drop for Editing<'_> {
+    fn drop(&mut self) {
+        let mut claims = self.agents.claims.lock().unwrap();
+        if let Some(Claim::Editing(n)) = claims.get_mut(&self.id) {
+            *n -= 1;
+            if *n == 0 {
+                claims.remove(&self.id);
+            }
+        }
+    }
+}
+
 impl Agents {
+    /// Hold a record for an edit. A try of `migrate` marks the record
+    /// leaving only while it waits for the host's answer, and the owner
+    /// never sees those tries: an edit waits for that answer (a refusal
+    /// leaves the record this yardd's) instead of being refused as moving.
+    async fn edit(&self, id: &str) -> Editing<'_> {
+        loop {
+            // Before looking, so a try that ends meanwhile is not missed.
+            let mut tried = self.tried.subscribe();
+            {
+                let mut claims = self.claims.lock().unwrap();
+                match claims.get_mut(id) {
+                    Some(Claim::Trying) => {}
+                    Some(Claim::Editing(n)) => {
+                        *n += 1;
+                        return Editing { agents: self, id: id.to_string() };
+                    }
+                    None => {
+                        claims.insert(id.to_string(), Claim::Editing(1));
+                        return Editing { agents: self, id: id.to_string() };
+                    }
+                }
+            }
+            let _ = tried.changed().await;
+        }
+    }
+
+    /// Hold a record for a try of `migrate`, unless an edit is under way:
+    /// then the try waits for the next round.
+    fn try_now(&self, id: &str) -> Option<Trying<'_>> {
+        let mut claims = self.claims.lock().unwrap();
+        if claims.contains_key(id) {
+            return None;
+        }
+        claims.insert(id.to_string(), Claim::Trying);
+        Some(Trying { agents: self, id: id.to_string() })
+    }
+
     pub fn load(dir: PathBuf) -> Self {
         let file = dir.join("agents.json");
         let mut list: Vec<Agent> = match std::fs::read_to_string(&file) {
@@ -271,6 +352,8 @@ impl Agents {
             pending_file,
             pending: Mutex::new(pending),
             retry: Mutex::default(),
+            claims: Mutex::default(),
+            tried: tokio::sync::watch::channel(0).0,
             ended: Mutex::new(std::fs::read_to_string(dir.join("agents-ended.json")).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()),
             ended_file: dir.join("agents-ended.json"),
         };
@@ -665,6 +748,10 @@ fn one_line(text: &str, max: usize) -> String {
 /// fields not sent keep their value.
 async fn save(app: &Arc<App>, input: &Value) -> Result<Agent> {
     let obj = input.as_object().context("missing `agent`")?;
+    let _edit = match input["id"].as_str() {
+        Some(id) => Some(app.agents.edit(id).await),
+        None => None,
+    };
     let existing = match input["id"].as_str() {
         Some(id) => Some(app.agents.get(id).filter(|a| !a.hosted).context("no such agent")?),
         None => None,
@@ -1041,6 +1128,7 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
         }
         "agent.delete" => {
             let id = msg["id"].as_str().context("missing `id`")?;
+            let _edit = app.agents.edit(id).await;
             let a = app.agents.get(id).filter(|a| !a.hosted).context("no such agent")?;
             if moving_now(app, &a) {
                 bail!("{} is moving to another host. Delete it once it gets there.", a.name);
@@ -1352,9 +1440,7 @@ pub async fn deliver(app: &Arc<App>, id: &str, text: &str, origin: &Value) -> Re
         return send_remote(app, &a, text, &Value::Null, Some(origin)).await;
     }
     if let Some(sid) = a.chat.clone().filter(|sid| app.meta(sid).is_some()) {
-        if app.meta(&sid).is_some_and(|m| m.status == "queued") {
-            app.queue_message(&sid, text, &[], Some(origin));
-        } else {
+        if !app.queue_while(&sid, &["queued"], text, &[], Some(origin)) {
             crate::sessions::send_message(app, &sid, text, &[], Some(origin)).await?;
         }
         return Ok(sid);
@@ -1777,8 +1863,9 @@ fn setup_rules(a: &Agent, tools: bool) -> String {
 /// The agent changes its own memory (`remember`, `set_memory`): `append`
 /// adds a line, else the text replaces it. Same cap as the form; every
 /// window hears of it. Its engine already knows, so this is no notes change.
-pub fn edit_memory(app: &App, id: &str, sid: &str, text: &str, append: bool) -> Result<String> {
+pub async fn edit_memory(app: &App, id: &str, sid: &str, text: &str, append: bool) -> Result<String> {
     let text = text.trim();
+    let _edit = app.agents.edit(id).await;
     if app.agents.get(id).is_some_and(|a| moving_now(app, &a)) {
         bail!("Not saved: you are moving to another host right now. Try again in a moment.");
     }
@@ -2379,6 +2466,9 @@ pub async fn migrate(app: &Arc<App>, host: &str, now: bool) {
         if !now && (due.refused.is_some() || due.next > now_ms()) {
             continue;
         }
+        // An edit under way goes first; this record is tried next round.
+        let Some(_trying) = app.agents.try_now(&a.id) else { continue };
+        let Some(a) = app.agents.get(&a.id).filter(|x| !x.hosted && x.host == host) else { continue };
         // The record is marked as leaving by this transfer while it is sent,
         // so no edit can change which hand-over it is or land on a record
         // the host may own already. Backed up once per hand-over, not per try.
