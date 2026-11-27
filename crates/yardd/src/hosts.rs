@@ -50,10 +50,17 @@ pub async fn run(app: Arc<App>) {
 
         let cpu = sys.global_cpu_info().cpu_usage();
         let cores = sys.cpus().len();
-        let load = System::load_average().one;
+        // Tests replace what the host reads (`pressure::Injected`).
+        let injected = app.pressure.injected();
+        let load = injected.load.unwrap_or_else(|| System::load_average().one);
         let mem_total = sys.total_memory();
         // `available_memory()` reads 0 on macOS, which would show 100% used.
-        let mem_used = sys.used_memory().min(mem_total);
+        let mem_used = match injected.mem_free {
+            Some(free) => mem_total.saturating_sub(free),
+            None => sys.used_memory().min(mem_total),
+        };
+        let swap_total = injected.swap_total.unwrap_or_else(|| sys.total_swap());
+        let swap_used = injected.swap_used.unwrap_or_else(|| sys.used_swap()).min(swap_total);
 
         // The data volume on macOS, the root volume elsewhere.
         let disks = Disks::new_with_refreshed_list();
@@ -86,7 +93,18 @@ pub async fn run(app: Arc<App>) {
             "diskTotal": disk_total,
             "cpuHistory": history,
         });
-        let guarded = crate::guard::sample(&app, &sys, load, cores, mem_total - mem_used);
+        let readings = crate::pressure::Readings {
+            load,
+            cores,
+            mem_used,
+            mem_total,
+            mem_free: mem_total - mem_used,
+            swap_used,
+            swap_total,
+            load_injected: injected.load.is_some(),
+            swap_injected: injected.swap_used.is_some() || injected.swap_total.is_some(),
+        };
+        let guarded = crate::guard::sample(&app, &sys, &readings, &injected);
         if let (Some(host), Some(extra)) = (host.as_object_mut(), guarded.as_object()) {
             host.extend(extra.clone());
         }

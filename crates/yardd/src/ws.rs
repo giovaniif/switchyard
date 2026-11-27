@@ -759,6 +759,16 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
         "term.resize" => pty::resize(app, str_field(msg, "termId")?, dim(msg, "cols", 80), dim(msg, "rows", 24))?,
         "term.close" => pty::close(app, str_field(msg, "termId")?)?,
         op if op.starts_with("automation.") => crate::automations::handle(app, direct, msg).await?,
+        // Older pressure episodes than the `host` message carries, newest first.
+        "host.pressure" => {
+            let limit = msg["limit"].as_u64().unwrap_or(20).clamp(1, 100) as usize;
+            let (episodes, more) = app.pressure.page(msg["before"].as_u64(), limit);
+            let mut reply = json!({ "op": "host.pressure", "episodes": episodes, "more": more });
+            if !msg["ref"].is_null() {
+                reply["ref"] = msg["ref"].clone();
+            }
+            let _ = direct.send(reply.to_string());
+        }
         "host.add" => remote::add(app, msg)?,
         "host.remove" => remote::remove(app, str_field(msg, "hostId")?)?,
         "host.install" => remote::install(app, str_field(msg, "hostId")?)?,

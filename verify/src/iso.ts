@@ -39,6 +39,8 @@ const STAMP = join(STATE, "build.json");
 const YARDD = join(ROOT, "target/debug/yardd");
 const TEST_FAKES = join(ROOT, "crates/yardd/tests/fake-codex");
 const OUR_FAKES = join(VERIFY, "fakes");
+/** An isolated daemon's host readings until a recipe writes others: no load, no swap. */
+export const CALM_READINGS = { load: 0, swapUsed: 0, swapTotal: 0 };
 
 export const isoFile = (name: string) => join(ISO_DIR, name, "iso.json");
 export const varsFile = (name: string) => join(ISO_DIR, name, "vars.json");
@@ -196,6 +198,13 @@ export async function isoUp(a: Args): Promise<Result> {
     env.YARD_WORKSPACE = dirs.work;
   }
   if (a.flags.pressure) env.YARD_FORCE_PRESSURE = "1";
+  // The host's own load and swap would open overload episodes (and their
+  // banner) whenever this machine is busy. The daemon reads them from this
+  // file instead; a recipe writes it to make the host overloaded
+  // (crates/yardd/src/pressure.rs `Injected`, var `readings`).
+  const readings = join(root, "readings.json");
+  writeFileSync(readings, JSON.stringify(CALM_READINGS));
+  env.YARD_TEST_READINGS = readings;
   for (const kv of String(str(a, "env", "")).split(",").filter(Boolean)) {
     const [k, ...v] = kv.split("=");
     if (!k.startsWith("YARD_")) throw new Usage("--env only takes YARD_* settings");
@@ -207,7 +216,7 @@ export async function isoUp(a: Args): Promise<Result> {
   ensureDir(join(ISO_DIR, name));
   writeJson(isoFile(name), iso);
   writeJson(join(ISO_DIR, name, "env.json"), env);
-  writeJson(varsFile(name), { port: String(port), url: iso.url, work: dirs.work, home: dirs.home, fake: dirs.fake, data: dirs.data });
+  writeJson(varsFile(name), { port: String(port), url: iso.url, work: dirs.work, home: dirs.home, fake: dirs.fake, data: dirs.data, readings });
   return { ok: true, iso, health: body, build: buildResult, hint: `seed it with: verify/yv iso seed${name === "default" ? "" : ` --name ${name}`}` };
 }
 

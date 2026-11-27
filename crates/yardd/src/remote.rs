@@ -936,7 +936,7 @@ pub fn route(msg: &Value) -> Option<String> {
     }
     // Ops that name no session say which host they are for. An upload names
     // either: a host from the new-session page, a session from a reply box.
-    if ["session.create", "git.branches", "fs.dirs", "attach.put", "engines.status", "account.add", "account.remove", "login.start", "login.code", "login.choose", "login.cancel", "claude.sessions", "session.import", "automation.list", "automation.save", "automation.delete", "automation.run", "mcp.status", "mcp.auth", "mcp.callback", "mcp.reconnect", "mcp.add", "mcp.remove"]
+    if ["session.create", "git.branches", "fs.dirs", "attach.put", "engines.status", "account.add", "account.remove", "login.start", "login.code", "login.choose", "login.cancel", "claude.sessions", "session.import", "automation.list", "automation.save", "automation.delete", "automation.run", "mcp.status", "mcp.auth", "mcp.callback", "mcp.reconnect", "mcp.add", "mcp.remove", "host.pressure"]
         .iter()
         .any(|op| msg["op"] == *op)
     {
@@ -1058,11 +1058,28 @@ fn rewrite_stats(host: &str, name: &str, stats: &mut Value) {
     let Some(obj) = stats.as_object_mut() else { return };
     obj.insert("id".into(), json!(host));
     obj.insert("name".into(), json!(name));
-    for list in ["sessions", "queued"] {
+    for list in ["sessions", "queued", "stalled"] {
         if let Some(items) = obj.get_mut(list).and_then(Value::as_array_mut) {
             for item in items {
                 prefix(host, item, "id");
             }
+        }
+    }
+    if let Some(ep) = obj.get_mut("episode") {
+        rewrite_episode(host, ep);
+    }
+    if let Some(list) = obj.get_mut("episodes").and_then(Value::as_array_mut) {
+        for ep in list {
+            rewrite_episode(host, ep);
+        }
+    }
+}
+
+/// A pressure episode's sessions are on that host.
+fn rewrite_episode(host: &str, ep: &mut Value) {
+    if let Some(list) = ep["top"]["sessions"].as_array_mut() {
+        for s in list {
+            prefix(host, s, "id");
         }
     }
 }
@@ -1144,6 +1161,14 @@ fn rewrite(host: &str, name: &str, text: &str) -> Option<Value> {
         "host" => {
             rewrite_stats(host, name, &mut msg["host"]);
             msg["hostId"] = json!(host);
+        }
+        "host.pressure" => {
+            msg["hostId"] = json!(host);
+            if let Some(list) = msg["episodes"].as_array_mut() {
+                for ep in list {
+                    rewrite_episode(host, ep);
+                }
+            }
         }
         "models" | "usage" | "accounts" | "mobile.status" | "error" | "git.branches" | "fs.dirs" | "attach.stored" | "engines" | "login" | "claude.sessions" | "automations" | "mcp" | "mcp.auth" | "mcp.change" => {
             msg["hostId"] = json!(host);
@@ -1247,6 +1272,22 @@ mod tests {
         assert_eq!(route(&json!({ "op": "term.new", "sessionId": "h1~s1" })).as_deref(), Some("h1"));
         assert_eq!(route(&json!({ "op": "term.attach", "termId": "h1~t1" })).as_deref(), Some("h1"));
         assert_eq!(outgoing(json!({ "op": "term.list", "sessionId": "h1~s1" }))["sessionId"], "s1");
+    }
+
+    #[test]
+    fn a_hosts_pressure_episodes_name_its_sessions_with_the_prefix() {
+        let ep = r#"{"id":"1","top":{"sessions":[{"id":"s1","title":"t"}],"procs":[{"pid":7}]}}"#;
+        let text = format!(r#"{{"op":"host","host":{{"id":"local","episode":{ep},"episodes":[{ep}],"stalled":[{{"id":"s2","quietSecs":300}}]}}}}"#);
+        let v: Value = serde_json::from_str(&rewrite_incoming("h1", "box", &text).unwrap()).unwrap();
+        assert_eq!(v["host"]["episode"]["top"]["sessions"][0]["id"], "h1~s1");
+        assert_eq!(v["host"]["episodes"][0]["top"]["sessions"][0]["id"], "h1~s1");
+        assert_eq!(v["host"]["episodes"][0]["top"]["procs"][0]["pid"], 7);
+        assert_eq!(v["host"]["stalled"][0]["id"], "h1~s2");
+        let page: Value = serde_json::from_str(&rewrite_incoming("h1", "box", &format!(r#"{{"op":"host.pressure","episodes":[{ep}],"more":false}}"#)).unwrap()).unwrap();
+        assert_eq!(page["hostId"], "h1");
+        assert_eq!(page["episodes"][0]["top"]["sessions"][0]["id"], "h1~s1");
+        assert_eq!(route(&json!({ "op": "host.pressure", "host": "h1" })).as_deref(), Some("h1"));
+        assert_eq!(route(&json!({ "op": "host.pressure" })), None);
     }
 
     #[test]
