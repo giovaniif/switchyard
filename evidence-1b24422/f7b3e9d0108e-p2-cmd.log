@@ -1,0 +1,40 @@
+$ verify/yv map run layout --recipe mobile-delete-ask-keeps-the-title
+# exit 1 after 14529 ms at a92ae34e05cb929d0d54be7885c1bd920fbc9edc
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "layout",
+      "at": "2026-11-27T02:13:15.452Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "mobile-delete-ask-keeps-the-title",
+          "status": "fail",
+          "ms": 13676,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 2 {\"expect\":\"role:button:Workspace\",\"visible\":false}: expected \"role:button:Workspace\" to be absent or hidden",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-6b68/.verify/drives/2026-11-27T02-13-02-139Z/fail-mobile-step2.png and the aria snapshot"
+            }
+          ],
+          "tail": "{\n  \"command\": \"api\",\n  \"ok\": true,\n  \"sent\": {\n    \"op\": \"session.create\",\n    \"engine\": \"codex\",\n    \"model\": \"fake-fast\",\n    \"effort\": \"low\",\n    \"cwd\": \"/tmp/yv-map-layout-742298-mwycjy6f/work/TEST-demo-app\",\n    \"text\": \"TEST-remove the old one\"\n  },\n  \"reply\": {\n    \"event\": {\n      \"at\": 1795745581703,\n      \"status\": \"completed\",\n      \"type\": \"turn_completed\"\n    },\n    \"op\": \"event\",\n    \"seq\": 6,\n    \"sessionId\": \"s1a21ac70a84d\"\n  },\n  \"saved\": {\n    \"delete_ask\": \"s1a21ac70a84d\"\n  },\n  \"received\": 11,\n  \"problems\": []\n}\n{\n  \"command\": \"drive\",\n  \"ok\": false,\n  \"route\": \"session:s1a21ac70a84d\",\n  \"build\": {\n    \"sha\": \"a92ae34e05cb929d0d54be7885c1bd920fbc9edc\",\n    \"short\": \"a92ae34\",\n    \"dirty\": false,\n    \"diffHash\": null,\n    \"at\": \"2026-11-27T02:12:57.893Z\"\n  },\n  \"dir\": \"/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-6b68/.verify/drives/2026-11-27T02-13-02-139Z\",\n  \"runs\": [\n    {\n      \"viewport\": \"mobile\",\n      \"ms\": 13009,\n      \"steps\": 8,\n      \"failed\": {\n        \"step\": 2,\n        \"action\": {\n          \"expect\": \"role:button:Workspace\",\n          \"visible\": false\n        },\n        \"reason\": \"expected \\\"role:button:Workspace\\\" to be absent or hidden\",\n        \"screenshot\": \"/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-6b68/.verify/drives/2026-11-27T02-13-02-139Z/fail-mobile-step2.png\",\n        \"aria\": \"- main:\\n  - button \\\"Open sessions\\\"\\n  - heading \\\"TEST-remove the old one\\\" [level=1]\\n  - code: main\\n  - button \\\"Set up iPhone app\\\"\\n  - button \\\"Workspace\\\"\\n  - button \\\"Delete\\\"\\n  - text: TEST-remove the old one\\n  - paragraph: \\\"Echo: TEST-remove the old one\\\"\\n  - textbox \\\"Message\\\":\\n    - /placeholder: Reply\\n  - button \\\"Attach files\\\"\\n  - button \\\"Dictate\\\"\\n  - button \\\"Voice mode\\\"\\n  - 'button \\\"Session setup: Fake Fast, Default, Low, Ask first\\\"': Fake Fast · Low\\n  - button \\\"Send\\\" [disabled]\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 2 {\\\"expect\\\":\\\"role:button:Workspace\\\",\\\"visible\\\":false}: expected \\\"role:button:Workspace\\\" to be absent or hidden\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-6b68/.verify/drives/2026-11-27T02-13-02-139Z/fail-mobile-step2.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "layout/mobile-delete-ask-keeps-the-title",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

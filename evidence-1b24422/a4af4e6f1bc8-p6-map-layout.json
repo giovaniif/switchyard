@@ -1,0 +1,92 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "layout",
+      "at": "2026-11-27T02:14:59.224Z",
+      "counts": {
+        "pass": 15
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "desktop-three-columns",
+          "status": "pass",
+          "ms": 3756
+        },
+        {
+          "label": "narrow-hides-pane",
+          "status": "pass",
+          "ms": 2744
+        },
+        {
+          "label": "desktop-sidebars-collapse-independently",
+          "status": "pass",
+          "ms": 9157
+        },
+        {
+          "label": "mobile-panels-have-close-controls",
+          "status": "pass",
+          "ms": 5857
+        },
+        {
+          "label": "mobile-main-column-usable",
+          "status": "pass",
+          "ms": 2991
+        },
+        {
+          "label": "mobile-hosts-page",
+          "status": "pass",
+          "ms": 2365
+        },
+        {
+          "label": "mobile-drawer-opens-and-closes",
+          "status": "pass",
+          "ms": 5967
+        },
+        {
+          "label": "mobile-menu-on-every-page",
+          "status": "pass",
+          "ms": 3877
+        },
+        {
+          "label": "mobile-delete-confirm-fits-the-bar",
+          "status": "pass",
+          "ms": 3487
+        },
+        {
+          "label": "mobile-delete-confirm-fits-the-bar-without-worktree",
+          "status": "pass",
+          "ms": 4138
+        },
+        {
+          "label": "mobile-delete-ask-keeps-the-title",
+          "status": "pass",
+          "ms": 6769
+        },
+        {
+          "label": "send-stays-at-the-right",
+          "status": "pass",
+          "ms": 9973
+        },
+        {
+          "label": "new-session-send-shares-controls-row",
+          "status": "pass",
+          "ms": 4341
+        },
+        {
+          "label": "desktop-sidebar-is-a-column",
+          "status": "pass",
+          "ms": 2635
+        },
+        {
+          "label": "workspace-tabs-fit-minimum-width",
+          "status": "pass",
+          "ms": 5339
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

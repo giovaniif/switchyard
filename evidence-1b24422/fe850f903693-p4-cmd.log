@@ -1,0 +1,76 @@
+$ verify/yv map run layout --recipe mobile-delete-ask-keeps-the-title && verify/yv map run layout --recipe mobile-delete-confirm-fits-the-bar && verify/yv map run layout --recipe mobile-delete-confirm-fits-the-bar-without-worktree && (cd ui && bun test)
+# exit 0 after 18170 ms at 1b244224451710d648b7ec7c9873f3022ff7b91c
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "layout",
+      "at": "2026-11-27T02:13:34.865Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "mobile-delete-ask-keeps-the-title",
+          "status": "pass",
+          "ms": 7327
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "layout",
+      "at": "2026-11-27T02:13:39.654Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "mobile-delete-confirm-fits-the-bar",
+          "status": "pass",
+          "ms": 3934
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "layout",
+      "at": "2026-11-27T02:13:44.393Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "mobile-delete-confirm-fits-the-bar-without-worktree",
+          "status": "pass",
+          "ms": 3892
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+bun test v1.4.4 (38afee6c8)
+
+
+ 536 pass
+ 0 fail
+ 5134 expect() calls
+Ran 536 tests across 39 files. [457.00ms]
