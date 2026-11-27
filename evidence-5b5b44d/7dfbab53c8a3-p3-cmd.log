@@ -1,0 +1,40 @@
+$ verify/yv map run processes --recipe double-click-on-stop-only-asks
+# exit 1 after 18701 ms at 362c762c6a6463d81a2487975fb4ac54a73e1741
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "processes",
+      "at": "2026-11-27T05:24:07.727Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "double-click-on-stop-only-asks",
+          "status": "fail",
+          "ms": 17844,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 6 {\"expect\":\"role:button:Confirm stop process\",\"text\":\"Stop?\"}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-1e80/.verify/drives/2026-11-27T05-23-50-196Z/fail-desktop-step6.png and the aria snapshot"
+            }
+          ],
+          "tail": " \\\"Ask first\\\"\\n  - button \\\"Send\\\" [disabled]\\n- region \\\"Workspace\\\":\\n  - separator \\\"Resize the workspace pane\\\"\\n  - button \\\"Terminal\\\"\\n  - button \\\"Subagents\\\"\\n  - button \\\"Processes\\\" [pressed]\\n  - button \\\"Refresh processes\\\"\\n  - text: 1 process · 0% CPU · 6 MB\\n  - table:\\n    - rowgroup:\\n      - row \\\"PID Command CPU Memory Running Stop\\\":\\n        - cell \\\"PID\\\"\\n        - cell \\\"Command\\\"\\n        - cell \\\"CPU\\\"\\n        - cell \\\"Memory\\\"\\n        - cell \\\"Running\\\"\\n        - cell \\\"Stop\\\"\\n    - rowgroup:\\n      - row \\\"2914495 terminal/bin/bash -l 0% 6 MB 15s Stop process 2914495 /bin/bash -l\\\":\\n        - cell \\\"2914495\\\"\\n        - cell \\\"terminal/bin/bash -l\\\":\\n          - button \\\"terminal/bin/bash -l\\\":\\n            - text: terminal\\n            - code: /bin/bash -l\\n        - cell \\\"0%\\\"\\n        - cell \\\"6 MB\\\"\\n        - cell \\\"15s\\\"\\n        - cell \\\"Stop process 2914495 /bin/bash -l\\\":\\n          - button \\\"Stop process 2914495 /bin/bash -l\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [\n        {\n          \"step\": 5,\n          \"eval\": \"(async () => { const row = [...document.querySelectorAll(\\\".proc-row\\\")].find((r) => r.textContent.includes(\\\"sleep 310\\\")); const b = row.querySelector(\\\".proc-kill\\\"); b.scrollIntoView({ block: \\\"center\\\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\\\"mousedown\\\", \\\"mouseup\\\", \\\"click\\\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\\\"button\\\"); const label = second ? second.textContent.trim() : \\\"none\\\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 800)); return \\\"second click hit: \\\" + label; })()\",\n          \"value\": \"second click hit: Stop?\"\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 6 {\\\"expect\\\":\\\"role:button:Confirm stop process\\\",\\\"text\\\":\\\"Stop?\\\"}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-1e80/.verify/drives/2026-11-27T05-23-50-196Z/fail-desktop-step6.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "processes/double-click-on-stop-only-asks",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

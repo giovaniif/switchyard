@@ -1,0 +1,44 @@
+{
+  "command": "drive",
+  "ok": true,
+  "route": "session:s1a21b619fc2c",
+  "build": {
+    "sha": "5b5b44d0c0271ec1480f841ed5193789e91afdab",
+    "short": "5b5b44d",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T05:24:19.058Z"
+  },
+  "dir": ".verify/evidence/pstop2-head-m",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 12667,
+      "steps": 14,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/pstop2-head-m/double-click-stop-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 6,
+          "eval": "(async () => { const row = [...document.querySelectorAll(\".proc-row\")].find((r) => r.textContent.includes(\"sleep 361\")); const b = row.querySelector(\".proc-kill\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Stop?"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

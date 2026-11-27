@@ -1,0 +1,192 @@
+{
+  "v": 1,
+  "claim": "Processes: a double click on a process's Stop (x) sent SIGTERM without the ask, and a double click on Force kill sent SIGKILL. The ask ('Stop?', 'Force kill?') takes the button's own place, so the second click of the double click answered it. Now that second click (detail 2) is ignored; a separate second click still stops.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-1e80",
+  "base": "b3ede35501b35bfdff68e5bd63f5a6a28a5f4257",
+  "head": "5b5b44d0c0271ec1480f841ed5193789e91afdab",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/ProcPane.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/processes.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T05:23:13.662Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "362c762c6a6463d81a2487975fb4ac54a73e1741",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-p2-bd.json",
+          "sha256": "7514c0aa73c5cf57d179a3917ab2daaaee5c03691e4358b776d06e3578b9a024"
+        },
+        {
+          "path": "p1-fail-desktop-step6.png",
+          "sha256": "69a8846fa8e90058f51053abbdb803fd2d94982d1e56010164017f1b9612413a"
+        }
+      ],
+      "addedAt": "2026-11-27T05:23:48.941Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "362c762c6a6463d81a2487975fb4ac54a73e1741",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-p2-bm.json",
+          "sha256": "a98bff95092f2bd509c55610e196a0b3c027862cee9ffa3800a26b2f3f9b285f"
+        },
+        {
+          "path": "p2-fail-mobile-step7.png",
+          "sha256": "3e82c2212d5870d2d354235419b4b16869f121271a96290cfdf37c128398ecb5"
+        }
+      ],
+      "addedAt": "2026-11-27T05:23:48.988Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "362c762c6a6463d81a2487975fb4ac54a73e1741",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "7dfbab53c8a360f99e2f01feb16d6a44eb424eed64adc529a36deae0e8ce58d2"
+        }
+      ],
+      "addedAt": "2026-11-27T05:23:49.031Z",
+      "cmd": "verify/yv map run processes --recipe double-click-on-stop-only-asks",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "5b5b44d0c0271ec1480f841ed5193789e91afdab",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-p2-hd.json",
+          "sha256": "4d05e6e911c3cdd608e41bf3787a167740acd301be63d681d3f79889d823a276"
+        },
+        {
+          "path": "p4-double-click-stop-desktop.png",
+          "sha256": "4b38c31ff0f4c815cd15ee865eac1ce8e8b23af1c39ab80fd08f3a78410383ed"
+        }
+      ],
+      "addedAt": "2026-11-27T05:24:44.277Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "5b5b44d0c0271ec1480f841ed5193789e91afdab",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-p2-hm.json",
+          "sha256": "75962f6890f14e3949d277bfa5c976b2fca5b15dd1f0d66897cd960fa51a0d7b"
+        },
+        {
+          "path": "p5-double-click-stop-mobile.png",
+          "sha256": "fe5cf99b791540418f94842f9787cf1805bec8f4104678a77aa0f5417d83d18a"
+        }
+      ],
+      "addedAt": "2026-11-27T05:24:44.320Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "5b5b44d0c0271ec1480f841ed5193789e91afdab",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "1abb7b3a094d568577db1207e40814e16c2b544bbf438b1e5285b06046eafa3e"
+        }
+      ],
+      "addedAt": "2026-11-27T05:24:44.361Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run processes --recipe double-click-on-stop-only-asks",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "5b5b44d0c0271ec1480f841ed5193789e91afdab",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "0d5602aee14a517235df80e50e8ef5f7f4abafa398162a838c29516233395c3f"
+        }
+      ],
+      "addedAt": "2026-11-27T05:25:11.377Z",
+      "cmd": "verify/yv design-check --base b3ede35501b3",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "5b5b44d0c0271ec1480f841ed5193789e91afdab",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-processes.json",
+          "sha256": "ebb6242d40bbe24cda30038e9771c8b0e06facb714fe134a23f3754d07de9d0b"
+        }
+      ],
+      "addedAt": "2026-11-27T05:25:11.455Z",
+      "cmd": "verify/yv map run processes",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "processes/lists-the-process-tree",
+        "processes/nothing-running",
+        "processes/terminal-shell-is-listed",
+        "processes/stop-a-terminal-command",
+        "processes/force-kill-what-ignores-sigterm",
+        "processes/double-click-on-stop-only-asks",
+        "processes/stop-with-children",
+        "processes/stop-with-children-fits-the-pane",
+        "processes/agent-offers-no-stop",
+        "processes/refused-outside-the-session",
+        "processes/listed-from-the-workspace-sheet",
+        "processes/full-command-on-tap"
+      ]
+    }
+  ]
+}
