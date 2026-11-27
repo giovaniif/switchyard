@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "route": "connectors",
+  "build": {
+    "sha": "05f864b4697e28107004b7a1f863933b6f3574df",
+    "short": "05f864b",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T07:25:20.865Z"
+  },
+  "dir": ".verify/evidence/slack-dblclick2-base-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 8130,
+      "steps": 11,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-dblclick2-base-desktop/before-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-dblclick2-base-desktop/after-double-click-remove-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/slack-dblclick2-base-desktop/after-double-click-disconnect-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\"button\")].find((x) => x.getAttribute(\"aria-label\") === \"Remove TEST-Doubler\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.getAttribute(\"aria-label\") : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Confirm removing TEST-Doubler"
+        },
+        {
+          "step": 6,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\"button\")].find((x) => x.getAttribute(\"aria-label\") === \"Disconnect your Slack\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.getAttribute(\"aria-label\") : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Confirm disconnecting your Slack"
+        },
+        {
+          "step": 9,
+          "eval": "document.querySelector(\".slack-card\").innerText.includes(\"TEST-Doubler\")",
+          "value": false
+        },
+        {
+          "step": 10,
+          "eval": "document.querySelector(\".slack-card .connector-account-state\").innerText",
+          "value": "Not connected"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

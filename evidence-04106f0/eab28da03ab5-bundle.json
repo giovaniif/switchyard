@@ -1,0 +1,262 @@
+{
+  "v": 1,
+  "claim": "Connectors > Slack: a double click on Disconnect (the owner's own Slack) or on a trusted person's Remove answered its own ask: the second click landed on the Confirm the first click made, so his Slack app was deleted, or the person lost tool use, with no real confirmation",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-3590",
+  "base": "4ed4f2680641589a58278bfb436797e9778d4c59",
+  "head": "04106f08cba01be3061eb177e72629d379631f7e",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/SlackCard.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T07:34:09.973Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "05f864b4697e28107004b7a1f863933b6f3574df",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "5f9bd18ad76e95c4a682300d1cbc201b2669f283785b65020f525c15b4095cdf"
+        },
+        {
+          "path": "p1-before-desktop.png",
+          "sha256": "562ff025acdd7c5dca9cb942a0c1ff2502849e86bda089578496f0c0c2c482d4"
+        },
+        {
+          "path": "p1-after-double-click-remove-desktop.png",
+          "sha256": "f99662b5ec9b644efdc61399d39e676eb0589a7c0306f4b732d3c943e2ac6712"
+        },
+        {
+          "path": "p1-after-double-click-disconnect-desktop.png",
+          "sha256": "b0d5d16a614ba356d9e477a639e5fbe7af4debede3e424a130847c29aaf27668"
+        }
+      ],
+      "addedAt": "2026-11-27T07:34:16.032Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "05f864b4697e28107004b7a1f863933b6f3574df",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "c64c7e76d245088920cbaf92cdfd864bc1427d1e0cb2fc99f274842ac81abd69"
+        },
+        {
+          "path": "p2-before-mobile.png",
+          "sha256": "e9ced33230483f2ba5eb88c2f5109c17482305846402c1f1b46e0f1e97db61a5"
+        },
+        {
+          "path": "p2-after-double-click-remove-mobile.png",
+          "sha256": "1ac5a977c2517370896737dc8117b5ce16e083b5eb4379c2ee5009fe13d4f78b"
+        },
+        {
+          "path": "p2-after-double-click-disconnect-mobile.png",
+          "sha256": "14d00b2bc7fe76d3b8f0a403f59c1b35487f70814a8498f71951fff09dc23b4f"
+        }
+      ],
+      "addedAt": "2026-11-27T07:34:16.083Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "note",
+      "at": "05f864b4697e28107004b7a1f863933b6f3574df",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T07:34:16.126Z",
+      "text": "Base repro, both viewports: the second click of the double click hit Confirm removing TEST-Doubler (the person lost tool use) and then Confirm disconnecting your Slack (the card went to Not connected and his app was deleted)."
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "test",
+      "at": "05f864b4697e28107004b7a1f863933b6f3574df",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "29e4b0f71aabd5ba2328a22f17ab6973b9fdab88b7590f54bad6bb6eed5ef983"
+        }
+      ],
+      "addedAt": "2026-11-27T07:34:16.161Z",
+      "cmd": "verify/yv map run slack --recipe double-click-on-disconnect-only-asks",
+      "exit": 1
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "04106f08cba01be3061eb177e72629d379631f7e",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "69aa6c03e8d751311098cf2759de3947eda67108050f3042fee30fb91227ed0f"
+        },
+        {
+          "path": "p5-double-click-asks-desktop.png",
+          "sha256": "530d97905caae3fb0a032c3ee65749e65d6cb86938610ac58fc1c2642e9be1d7"
+        }
+      ],
+      "addedAt": "2026-11-27T07:34:47.493Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "04106f08cba01be3061eb177e72629d379631f7e",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p6-drive.json",
+          "sha256": "f1ffcf81d30f5091f06c4a0aef6acb866e5fb570ef8a6bcf5d21f4137a4c105a"
+        },
+        {
+          "path": "p6-double-click-asks-mobile.png",
+          "sha256": "aa642150cd118a7083c053ac0ba6ecba5d103d9d6d00452f58fd7f78d819820f"
+        }
+      ],
+      "addedAt": "2026-11-27T07:34:47.567Z",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "note",
+      "at": "04106f08cba01be3061eb177e72629d379631f7e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T07:34:47.694Z",
+      "text": "Mobile: the Disconnect double click's second click lands on Confirm only when the grown label 'Confirm: forget it and delete its app' still covers the first click's point. In the head drive it did not (hit: none), so Disconnect's head proof is the desktop drive; at mobile the drive proves the person's Remove (second click hit Confirm removing TEST-Doubler; the person stays)."
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "note",
+      "at": "04106f08cba01be3061eb177e72629d379631f7e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T07:34:47.780Z",
+      "text": "A first head regression run of the slack area (in bundle slack-dblclick2) lost its fake Slack midway under load (load average 9, the PR's verifier running at the same time): every recipe from call-an-agent-on-another-host on failed its setup grant with 'Could not reach Slack'. The re-run below passed 17/17, as did the area at the pre-rebase head 30733c0."
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "test",
+      "at": "04106f08cba01be3061eb177e72629d379631f7e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-cmd.log",
+          "sha256": "f1495e2c515432e39aa3de1a9ba734fcf9ef9656d000f280daabf53e2adfaced"
+        }
+      ],
+      "addedAt": "2026-11-27T07:34:47.834Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "test",
+      "at": "04106f08cba01be3061eb177e72629d379631f7e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-cmd.log",
+          "sha256": "feecbd8075ccc5591c385e47e0124265f269bc2aca6c1a375a6ec18cad3488e5"
+        }
+      ],
+      "addedAt": "2026-11-27T07:34:48.992Z",
+      "cmd": "verify/yv map run slack --recipe double-click-on-disconnect-only-asks",
+      "exit": 0
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "design",
+      "at": "04106f08cba01be3061eb177e72629d379631f7e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-design.json",
+          "sha256": "61dd279d8fc1a6b52992a1f91fae68ae7c3dd7b8e09c28473008be5e10cc292b"
+        }
+      ],
+      "addedAt": "2026-11-27T07:35:15.506Z",
+      "cmd": "verify/yv design-check --base 4ed4f2680641",
+      "exit": 0
+    },
+    {
+      "id": 12,
+      "ref": "head",
+      "kind": "regression",
+      "at": "04106f08cba01be3061eb177e72629d379631f7e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p12-p12-map-slack.json",
+          "sha256": "593b3b4c34e0e4ec58fbe8c606ead05e8e19550fe0392ef13b85e0d7de5655c7"
+        }
+      ],
+      "addedAt": "2026-11-27T07:35:15.592Z",
+      "failedApi": [],
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/not-connected",
+        "slack/an-agents-own-slack-app",
+        "slack/allow-from-an-agents-app",
+        "slack/answer-in-the-slack-thread",
+        "slack/connect-your-slack",
+        "slack/tokens-stay-in-yardd",
+        "slack/your-direct-messages",
+        "slack/reply-react-and-read",
+        "slack/someone-new-writes",
+        "slack/import-a-channel",
+        "slack/call-an-agent-from-slack",
+        "slack/call-an-agent-on-another-host",
+        "slack/pick-an-agent-with-the-keys",
+        "slack/one-icon-per-picture",
+        "slack/one-token-with-a-public-address",
+        "slack/a-watched-channel",
+        "slack/double-click-on-disconnect-only-asks"
+      ]
+    }
+  ]
+}

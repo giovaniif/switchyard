@@ -1,0 +1,26 @@
+$ verify/yv map run slack --recipe double-click-on-disconnect-only-asks
+# exit 0 after 26465 ms at 04106f08cba01be3061eb177e72629d379631f7e
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "slack",
+      "at": "2026-11-27T07:35:15.455Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "double-click-on-disconnect-only-asks",
+          "status": "pass",
+          "ms": 17921
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
