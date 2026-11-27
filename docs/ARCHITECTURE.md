@@ -191,7 +191,7 @@ Claude switches at once with `setPermissionMode` (the sidecar always passes `all
 
 The local yardd is a hub. The UI keeps its one WebSocket to it.
 
-- Each UI client gets its own connection from the hub to every remote yardd, piped both ways, so replies go back to the client that asked.
+- Each UI client gets its own connection from the hub to every remote yardd, piped both ways, so replies go back to the client that asked. It opens when the client connects and reopens with backoff, separately from the hub's own connection, which sets the host's status. An op sent while the host shows connected but the client's connection is not open yet (a page asking right after a reload, a phone coming back, a host just back) waits for it, in order, and makes a connection waiting to try again try at once; if it cannot open, the op fails with "this host is not connected", as one sent while the host shows offline does at once (`remote::Pipe`).
 - Session and terminal ids that cross the hub are written `<hostId>~<remoteId>`. An op with such an id, or a `session.create` with `host`, goes to that host with the prefix removed.
 - A remote `snapshot` arrives as `host.snapshot`; its `host`, `models` and `usage` messages carry a `hostId`. Models, usage, accounts and the home folder are kept per host. `account.add` and `account.remove` carry `host` like `engines.status`, and the remote's `accounts` list comes back with its `hostId`.
 - Hosts are saved in `hosts.json` in the data dir and changed with `host.add` and `host.remove`. Status (`connecting`, `connected`, `error` with a message) is broadcast as `hosts`.
@@ -717,7 +717,17 @@ the composer and session view in `App.tsx`.
     answer, and the owner never sees those tries: an edit, delete or memory
     write that comes meanwhile waits for that answer instead of being
     refused (a refusal leaves the record the hub's), and no try starts while
-    an edit is under way (`Agents::edit`, `Agents::try_now`). An
+    an edit is under way (`Agents::edit`, `Agents::try_now`). The try
+    holds the record only until the host's answer is in and the record
+    says it (`offer` lets go here at once when the host took it, unless a
+    turn holds the let-go); the steps owed after it (`agent.settled`, a
+    forgotten app's deletion in Slack) run after, so an edit waits at most
+    one request. An edit that waited for a try the host accepted, or comes
+    from a page that still lists the agent here, says where it went and
+    that nothing changed ("On-call moved to box while you were editing it,
+    so your change was not saved. Edit it there."; `Agents::moved`, kept
+    in memory): the save carries this hub's view of the agent's folder,
+    account and host, so it is not sent on to the new host. An
     `agent.export` by another transfer waits until the first is released or
     abandoned.
   - **A deleted agent stays deleted.** A yardd that deletes an agent

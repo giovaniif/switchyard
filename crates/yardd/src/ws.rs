@@ -244,7 +244,7 @@ fn send(app: &Arc<App>, msg: &Value) -> Result<()> {
 
 /// An op's failure. `ref` comes back when the op had one, so a client
 /// waiting on that one request (an upload) can tell it failed.
-fn error_reply(msg: &Value, e: &anyhow::Error) -> String {
+pub(crate) fn error_reply(msg: &Value, e: &anyhow::Error) -> String {
     let mut reply = json!({ "op": "error", "message": format!("{e:#}"), "for": msg["op"] });
     // A hand-over refusal says which it is, so a hub never reads it from
     // the wording (`agents::Refusal`).
