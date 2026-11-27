@@ -799,7 +799,7 @@ export interface WidgetRef {
 export interface McpServer {
   name: string;
   status: "connected" | "needs-auth" | "failed" | "pending" | "disabled" | string;
-  /** claudeai, plugin, user, project, local, dynamic, managed, config, chatgpt, ... */
+  /** claudeai, plugin, user, project, local, dynamic, managed, config, chatgpt, switchyard, ... */
   source: string;
   tools: number;
   /** Tools that come with a widget the thread can show. */
@@ -812,9 +812,13 @@ export interface McpServer {
   installUrl?: string;
 }
 
+/** Whose connectors: an engine account's, or `switchyard`: the set yardd
+ *  holds itself (sign-in and tokens) for OpenCode, Grok and Gemini, one per host. */
+export type ConnectorEngine = Engine | "switchyard";
+
 /** `mcp` broadcast: the servers of an engine account on a host. */
 export interface McpStatus {
-  engine: Engine;
+  engine: ConnectorEngine;
   account: string;
   servers?: McpServer[];
   error?: string;
