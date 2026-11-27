@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "10928b317a1f7ee3d46466f1b32d5bfbf4b31f05",
+    "short": "10928b3",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T09:08:49.289Z"
+  },
+  "dir": ".verify/evidence/no-shortcut-hint-on-touch-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 1944,
+      "steps": 3,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/no-shortcut-hint-on-touch-base/drawer-base-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

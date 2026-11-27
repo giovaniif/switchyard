@@ -1,0 +1,172 @@
+{
+  "v": 1,
+  "claim": "On a phone, the sessions drawer's Switchyard row shows a ⌘K / Ctrl K shortcut hint that a touch screen cannot press",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-8c9c",
+  "base": "23afb1676260ff271ef1d5c0977169c3e04bab71",
+  "head": "f7e022e3ce9f04eac621f906d58f2cd87a096846",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/navigation.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T09:08:42.089Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "10928b317a1f7ee3d46466f1b32d5bfbf4b31f05",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "bbe5ffbd9cb9246dc42f6252d132a69745bbac5ad2d823ab9a0b02a35f8e09de"
+        },
+        {
+          "path": "p1-drawer-base-mobile.png",
+          "sha256": "dac0cd6935ca1df1015ea9108723f95caa88d876e7777ff3c25c49a1ac5ab10c"
+        }
+      ],
+      "addedAt": "2026-11-27T09:08:55.421Z",
+      "text": "Phone drawer at base: the Switchyard row reads 'Switchyard Ctrl K'",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "10928b317a1f7ee3d46466f1b32d5bfbf4b31f05",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "92bfdb7c1132e60ef9a637b290843c21906ec28b8c9416a399c6e31a56f6ab38"
+        }
+      ],
+      "addedAt": "2026-11-27T09:08:55.482Z",
+      "cmd": "verify/yv map run navigation --recipe shortcut-hint-only-with-a-keyboard",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "f7e022e3ce9f04eac621f906d58f2cd87a096846",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "8a5d23fbe367ea464c9471ec34b6bd6bdd20333c6d1c0b12277ee64c0732184c"
+        },
+        {
+          "path": "p3-drawer-head-mobile.png",
+          "sha256": "d54275695c7c6d6a439b6c49f7f2067f10e88939c8970956ee7e6242f595fa20"
+        },
+        {
+          "path": "p3-palette-head-mobile.png",
+          "sha256": "61895d9d9fbd06100c817dfaa5ea6e347cb3a3865be3558571cab124064aef6c"
+        }
+      ],
+      "addedAt": "2026-11-27T09:09:46.114Z",
+      "text": "Phone drawer: no shortcut hint; tapping the row still opens Go to session or page",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "f7e022e3ce9f04eac621f906d58f2cd87a096846",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "48b6f7ccc188a72da22de9a28446b5db8d7aee73f01c1627ceeb2193eb830857"
+        },
+        {
+          "path": "p4-sidebar-head-desktop.png",
+          "sha256": "32a7e80bcea88ce59bd6c431d92a990a1838bff075ab7df5afc1eec36ae1688f"
+        }
+      ],
+      "addedAt": "2026-11-27T09:09:46.161Z",
+      "text": "Desktop sidebar keeps the Ctrl K hint and Ctrl+K opens the palette",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "f7e022e3ce9f04eac621f906d58f2cd87a096846",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "5057b82fb268af11b6cc957ee8da45a3a5b2b32e803fc2f3f3d9372e6fdbf04b"
+        }
+      ],
+      "addedAt": "2026-11-27T09:09:46.208Z",
+      "cmd": "verify/yv map run navigation --recipe shortcut-hint-only-with-a-keyboard && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "f7e022e3ce9f04eac621f906d58f2cd87a096846",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "832e489bdbaac595e72766c268bceb49c24fedf06d3c8cf557c27e9b72a92783"
+        }
+      ],
+      "addedAt": "2026-11-27T09:09:51.978Z",
+      "cmd": "verify/yv design-check --base 23afb1676260",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "f7e022e3ce9f04eac621f906d58f2cd87a096846",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-navigation.json",
+          "sha256": "2b4200244e114ec0d2ebc58a1b88dc3393bb2d4633b655a0576589591d4260cc"
+        }
+      ],
+      "addedAt": "2026-11-27T09:09:57.589Z",
+      "cmd": "verify/yv map run navigation",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "navigation/command-k-navigation",
+        "navigation/command-k-finds-agents",
+        "navigation/command-k-rows-name-repo-and-branch",
+        "navigation/recent-list-skips-automation-runs",
+        "navigation/selection-survives-a-re-sort",
+        "navigation/shortcut-hint-only-with-a-keyboard",
+        "navigation/native-app-menu"
+      ]
+    }
+  ]
+}

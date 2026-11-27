@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "f7e022e3ce9f04eac621f906d58f2cd87a096846",
+    "short": "f7e022e",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T09:09:29.531Z"
+  },
+  "dir": ".verify/evidence/no-shortcut-hint-on-touch-head-d",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2055,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/no-shortcut-hint-on-touch-head-d/sidebar-head-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

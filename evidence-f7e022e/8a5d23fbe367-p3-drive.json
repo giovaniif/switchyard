@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "f7e022e3ce9f04eac621f906d58f2cd87a096846",
+    "short": "f7e022e",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T09:09:29.531Z"
+  },
+  "dir": ".verify/evidence/no-shortcut-hint-on-touch-head-m",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2648,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/no-shortcut-hint-on-touch-head-m/drawer-head-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/no-shortcut-hint-on-touch-head-m/palette-head-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

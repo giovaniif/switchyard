@@ -1,0 +1,32 @@
+$ verify/yv map run navigation --recipe shortcut-hint-only-with-a-keyboard && (cd ui && bun test)
+# exit 0 after 5720 ms at f7e022e3ce9f04eac621f906d58f2cd87a096846
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "navigation",
+      "at": "2026-11-27T09:09:51.459Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "shortcut-hint-only-with-a-keyboard",
+          "status": "pass",
+          "ms": 4404
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+bun test v1.4.4 (38afee6c8)
+
+
+ 536 pass
+ 0 fail
+ 5134 expect() calls
+Ran 536 tests across 39 files. [452.00ms]
