@@ -171,14 +171,16 @@ function AutomationCard({ state, actions, host, a, now }: { state: State; action
           })}
         </div>
         <span className="spacer" />
-        <button className="btn-icon" aria-label={`Run now: ${a.name}`} title={starting ? "Starting" : "Run now"} disabled={!online || starting} onClick={run}>
-          <Icon d={PLAY} size={14} />
-        </button>
+        {/* Runs shows up with the first run: left of Run now, so the button
+            just clicked stays under the pointer. */}
         {runs.length > 0 && (
           <button className="btn-icon" aria-label={`Runs: ${a.name}`} aria-expanded={open} title={open ? "Hide the runs" : `All ${runs.length} runs, to open or pin one`} onClick={() => setOpen(!open)}>
             <Icon d={LIST} size={14} />
           </button>
         )}
+        <button className="btn-icon" aria-label={`Run now: ${a.name}`} title={starting ? "Starting" : "Run now"} disabled={!online || starting} onClick={run}>
+          <Icon d={PLAY} size={14} />
+        </button>
         <button className="btn-icon" aria-label={`Edit: ${a.name}`} title="Edit" disabled={!online} onClick={() => actions.go({ page: "automation", host, id: a.id })}>
           <Icon d={PENCIL} size={14} />
         </button>

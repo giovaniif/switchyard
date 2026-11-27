@@ -8,7 +8,7 @@ itself; the Automations page is a grid of small cards (side by side on a wide
 window, stacked below 700 px), each with the schedule in words and the next
 run, an enabled switch, one status line (a working run, else how the last one
 went), a strip of marks for the recent runs (each opens its session), and
-Run now, Runs (every run, with a pin) and Edit. Pinning a run brings it back
+Runs (every run, with a pin; it shows once there are runs, left of Run now so Run now never moves), Run now and Edit. Pinning a run brings it back
 to the sidebar. Scheduled
 runs skip while the previous one is still going and, when set, while the
 engine's usage is above a limit.
