@@ -3742,7 +3742,7 @@ function WorkEntry({ entry }: { entry: WorkItem }) {
           </span>
           {/* Engines title a command "Ran" and an edit "Edited" from the start;
               while its approval is open or after a denial it never happened. */}
-          <span>{toolLabel(entry)}</span>
+          <span className="tool-label">{toolLabel(entry)}</span>
           {entry.detail && <code>{entry.detail}</code>}
           {entry.state === "running" && entry.asked !== "waiting" && <span className="pulse" aria-label="running" />}
           {entry.asked === "waiting" && toolLabel(entry) === entry.title && <span className="muted">· waiting</span>}
