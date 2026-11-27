@@ -107,6 +107,9 @@ h1, h2, h3, p { margin: 0; }
 .brand.btn-text { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: auto; padding: 18px 18px 10px; border-radius: 0; color: var(--ink); text-align: left; }
 .sidebar-heading .brand { flex: 1 1 auto; min-width: 0; padding-right: 4px; }
 .brand kbd { color: var(--muted); font: 11px/1.5 var(--mono); font-weight: 400; }
+/* A touch phone has no key to press. Gated on input, not platform: an iPad with
+   a keyboard still has Cmd-K (and usually a pointer that can hover). */
+@media (hover: none) and (pointer: coarse) { .brand kbd { display: none; } }
 .sidebar-top { padding: 0 8px 8px; }
 .sidebar-bottom { padding: 8px; border-top: 1px solid var(--line); }
 .session-list { flex: 1 1 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 2px; padding: 4px 8px; }
