@@ -1005,6 +1005,11 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
     let op = msg["op"].as_str().unwrap_or("");
     // For tests only: do the op, but lose its answer (`YARD_TEST_DROP_REPLY`).
     let drop_reply = std::env::var("YARD_TEST_DROP_REPLY").is_ok_and(|v| v.split(',').any(|o| o == op));
+    // For tests only: do the op late (`YARD_TEST_SLOW_OP=<op>:<ms>`), so a
+    // hub's try is still waiting for its answer when an edit comes in.
+    if let Some(ms) = std::env::var("YARD_TEST_SLOW_OP").ok().and_then(|v| v.strip_prefix(&format!("{op}:")).and_then(|ms| ms.parse().ok())) {
+        tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
+    }
     let reply = |mut v: Value| {
         if drop_reply {
             return;
