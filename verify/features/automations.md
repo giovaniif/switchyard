@@ -269,6 +269,23 @@ yv drive new --viewport desktop --steps '[{"click":"role:button:Automations"},{"
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Night shift\"] .automation-when","hasText":"Every 5 minutes · 21:00–09:00, Mon, Wed, Fri · next "}},{"eval":"(() => { const el = document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\"); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { const i = n.data.indexOf(\"next \"); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, n.data.length); return r.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 ? \"next run in view\" : \"next run cut off\"; } } return \"no next run\"; })()","equals":"next run in view"},{"shot":"night-shift-card"}]'
 ```
 
+### run-now-stays-put-after-the-first-run
+Viewports: both
+Run now does not move when its click adds the card's first run. The Runs
+button only shows once there are runs; it used to appear in Run now's place
+(between Run now and Edit) and push Run now one button left, so a second
+click or a double tap in the same spot opened the runs list instead of
+starting another run. Now Runs appears to the left of Run now.
+
+```sh
+for vp in desktop mobile; do
+  yv api '{"op":"automation.save","automation":{"name":"TEST-Steady '$vp'","prompt":"TEST-steady","cwd":"{{repo}}","engine":"codex","model":"fake-fast","effort":"low","permission":"ask","schedule":{"kind":"manual"}}}' --wait '{"op":"automation.saved"}'
+  open='[{"click":"role:button:Automations"},'
+  [ $vp = mobile ] && open='[{"click":"role:button:Open sessions"},{"click":"role:button:Automations"},'
+  yv drive new --viewport $vp --steps "$open"'{"expect":{"css":".automation","hasText":"TEST-Steady '$vp'"}},{"expect":"role:button:Runs: TEST-Steady '$vp'","count":0},{"eval":"(() => { const b = document.querySelector(\"[aria-label=\\\"Run now: TEST-Steady '$vp'\\\"]\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); window.__runNow = [r.x + r.width / 2, r.y + r.height / 2]; return true })()","equals":true},{"click":"role:button:Run now: TEST-Steady '$vp'"},{"expect":"role:button:Runs: TEST-Steady '$vp'"},{"shot":"after-first-run"},{"eval":"document.elementFromPoint(...window.__runNow).closest(\"button\").getAttribute(\"aria-label\")","equals":"Run now: TEST-Steady '$vp'"}]'
+done
+```
+
 ## Gotchas
 - Recipes share one isolated yardd and run in order: later recipes use the automation and run the earlier ones made.
 - A drive at both viewports runs on the same data, so the create recipe uses one drive per viewport.
