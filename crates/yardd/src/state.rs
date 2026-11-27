@@ -910,6 +910,7 @@ impl App {
             "mobile": self.mobile.status(),
             "slack": crate::slack::view(self),
             "slackInbox": crate::slack::inbox::snapshot(self),
+            "slackSync": crate::slack::inbox::sync_view(self),
         })
     }
 }

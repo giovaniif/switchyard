@@ -178,6 +178,46 @@ export interface SlackConversation {
   unread: number;
   preview?: string;
   previewFrom?: string;
+  /** His star on it, kept in Switchyard (not Slack's own). */
+  favorite?: boolean;
+  /** A DM: the other person's picture, when they have one. */
+  face?: string;
+}
+
+/** How his inbox loads from Slack (`slack.inbox.sync`, `slackSync` in the snapshot). */
+export interface SlackSync {
+  running: boolean;
+  /** Most conversations load for the first time: the import, not a catch-up. */
+  first: boolean;
+  /** A window closed the first import's dialog. */
+  seen: boolean;
+  done: number;
+  total: number;
+  /** The conversation loading now. */
+  current: string;
+  error: string | null;
+  /** Channels whose first 60 days load now. */
+  channels: string[];
+}
+
+/** Someone in his workspace he can mention (`slack.inbox.people`). */
+export interface SlackPerson {
+  id: string;
+  name: string;
+  face: string;
+}
+
+/** A message's attachment (an alert's card, a link's preview): words only. */
+export interface SlackAttachment {
+  /** A hex colour, or Slack's `good`, `warning`, `danger`. */
+  color?: string;
+  pretext?: string;
+  author?: string;
+  title?: string;
+  titleLink?: string;
+  text?: string;
+  fields?: { title: string; value: string; short: boolean }[];
+  footer?: string;
 }
 
 /** A channel the owner is in (`slack.inbox.channels`). */
@@ -202,8 +242,12 @@ export interface SlackMessage {
   deleted: boolean;
   replyCount: number;
   reactions: { name: string; users: string[] }[];
-  files: { name: string }[];
+  /** `url`: the file's page in Slack; `kind`: its MIME type. */
+  files: { name: string; url?: string; kind?: string }[];
   subtype?: string;
+  /** An app's own picture. */
+  icon?: string;
+  attachments?: SlackAttachment[];
 }
 
 /** A conversation's (or a thread's) loaded messages, oldest first. */
@@ -211,6 +255,8 @@ export interface SlackPage {
   messages: SlackMessage[];
   /** Names by user id. */
   users: Record<string, string>;
+  /** Pictures by user id, for those who have one. */
+  faces: Record<string, string>;
   /** Older messages may exist (Load older). */
   more: boolean;
   loading: boolean;

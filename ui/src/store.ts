@@ -35,6 +35,8 @@ import {
   type McpStatus,
   type SlackView,
   type SlackConversation,
+  type SlackPerson,
+  type SlackSync,
   type SlackMessage,
   type SlackPage,
   type SlackChannel,
@@ -162,6 +164,8 @@ export interface State {
   slack: SlackView | null;
   /** The owner's own Slack conversations, newest first. */
   slackInbox: SlackConversation[];
+  /** How his inbox loads from Slack; null from a yardd that does not say. */
+  slackSync: SlackSync | null;
   /** Loaded messages, by `pageKey` (a conversation, or a thread). */
   slackPages: Record<string, SlackPage>;
   /** Every agent this yardd lists: its own, then each host's (ids
@@ -248,6 +252,7 @@ export const initial: State = {
   hostMobile: {},
   slack: null,
   slackInbox: [],
+  slackSync: null,
   slackPages: {},
   agents: [],
   connected: false,
@@ -446,20 +451,22 @@ function reduceServer(state: State, msg: any): State {
       // Disconnected: what was loaded goes too.
       return { ...state, slackInbox: list, slackPages: list.length ? state.slackPages : {} };
     }
+    case "slack.inbox.sync":
+      return msg.hostId ? state : { ...state, slackSync: (msg.sync as SlackSync | undefined) ?? null };
     case "slack.inbox.loading": {
       const key = pageKey(msg.team, msg.channel, msg.thread);
       const old = state.slackPages[key];
-      return { ...state, slackPages: { ...state.slackPages, [key]: { messages: old?.messages ?? [], users: old?.users ?? {}, more: old?.more ?? false, loading: true } } };
+      return { ...state, slackPages: { ...state.slackPages, [key]: { messages: old?.messages ?? [], users: old?.users ?? {}, faces: old?.faces ?? {}, more: old?.more ?? false, loading: true } } };
     }
     case "slack.inbox.messages": {
       if (msg.hostId) return state;
       const key = pageKey(msg.team, msg.channel, msg.thread);
-      const page = mergePage(state.slackPages[key], (msg.messages as SlackMessage[]) ?? [], msg.users ?? {}, !!msg.more, !!msg.before);
+      const page = mergePage(state.slackPages[key], (msg.messages as SlackMessage[]) ?? [], msg.users ?? {}, !!msg.more, !!msg.before, msg.faces ?? {});
       return { ...state, slackPages: { ...state.slackPages, [key]: page } };
     }
     case "slack.inbox.message":
       if (msg.hostId) return state;
-      return { ...state, slackPages: applyMessage(state.slackPages, msg.team, msg.channel, msg.message as SlackMessage, msg.users ?? {}) };
+      return { ...state, slackPages: applyMessage(state.slackPages, msg.team, msg.channel, msg.message as SlackMessage, msg.users ?? {}, msg.faces ?? {}) };
     case "snapshot": {
       const hosts = (msg.hosts ?? []) as HostEntry[];
       const known = new Set(hosts.map((h) => h.id));
@@ -477,6 +484,7 @@ function reduceServer(state: State, msg: any): State {
         mobile: msg.mobile ?? { configured: false },
         slack: (msg.slack as SlackView | undefined) ?? null,
         slackInbox: (msg.slackInbox as SlackConversation[] | undefined) ?? [],
+        slackSync: (msg.slackSync as SlackSync | undefined) ?? null,
         agents: (msg.agents as Agent[] | undefined) ?? [],
         sessions,
         route,
@@ -843,7 +851,15 @@ export interface Actions {
   slackRead(team: string, channel: string, ts: string): void;
   /** A message as him (in a thread with `thread`); the error, if Slack refused it.
    *  `mentions`: agents he called by `@handle`, made real mentions of their apps. */
-  slackSend(team: string, channel: string, text: string, thread?: string, mentions?: string[]): Promise<{ error?: string }>;
+  slackSend(team: string, channel: string, text: string, thread?: string, mentions?: string[], people?: string[]): Promise<{ error?: string }>;
+  /** His star on a conversation, on or off. */
+  slackFavorite(team: string, channel: string, on: boolean): void;
+  /** The people of his workspace, to mention. */
+  slackPeople(): Promise<SlackPerson[]>;
+  /** The first import's dialog was closed (in every window). */
+  slackSyncSeen(): void;
+  /** Load his inbox from Slack again, now. */
+  slackSyncRetry(): void;
   /** His reaction on a message, on or off. */
   slackReact(team: string, channel: string, ts: string, name: string, add: boolean): Promise<{ error?: string }>;
   /** The channels he is in, and which are imported. */
@@ -1207,10 +1223,17 @@ export function useYard(): { state: State; actions: Actions } {
         post({ op: "slack.inbox.messages", team, channel, ...(opts.before ? { before: opts.before } : {}), ...(opts.thread ? { thread: opts.thread } : {}) });
       },
       slackRead: (team, channel, ts) => post({ op: "slack.inbox.read", team, channel, ts }),
-      slackSend: async (team, channel, text, thread, mentions) => {
-        const reply = await ask({ op: "slack.inbox.send", team, channel, text, ...(thread ? { thread } : {}), ...(mentions?.length ? { mentions } : {}) }, 30_000);
+      slackSend: async (team, channel, text, thread, mentions, people) => {
+        const reply = await ask({ op: "slack.inbox.send", team, channel, text, ...(thread ? { thread } : {}), ...(mentions?.length ? { mentions } : {}), ...(people?.length ? { people } : {}) }, 30_000);
         return reply.error ? { error: reply.error as string } : {};
       },
+      slackFavorite: (team, channel, on) => post({ op: "slack.inbox.favorite", team, channel, on }),
+      slackPeople: async () => {
+        const reply = await ask({ op: "slack.inbox.people" }, 30_000);
+        return reply.error ? [] : ((reply.people as SlackPerson[] | undefined) ?? []);
+      },
+      slackSyncSeen: () => post({ op: "slack.inbox.sync.seen" }),
+      slackSyncRetry: () => post({ op: "slack.inbox.sync.retry" }),
       slackChannels: async () => {
         const reply = await ask({ op: "slack.inbox.channels" }, 60_000);
         return reply.error ? { error: reply.error as string } : { channels: reply.channels as SlackChannel[] };

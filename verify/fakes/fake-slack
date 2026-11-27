@@ -13,7 +13,11 @@
 //
 // Web API (form or JSON bodies, bearer token): auth.test,
 // apps.connections.open, chat.postMessage, chat.postEphemeral, reactions.add,
-// reactions.remove, users.info, conversations.info. Every call is recorded
+// reactions.remove, users.info, users.list (every user, plus UGONE who left
+// and the app UDATADOG; only Ana has a picture, served at /_fake/face/UANA),
+// conversations.info. #general also holds an alert from "TEST-Datadog": no
+// text, one attachment (a green bar, a linked title, a field, a footer).
+// Every call is recorded
 // with its token's kind (bot, app), never the token.
 // Each post also records which bot made it (`app`: agent or shared).
 //
@@ -87,6 +91,13 @@ const AGENT_BOT_2 = "UAGENT2";
 const USERS = { UOWNER: "TEST-Owner", USTRANGER: "TEST-Stranger", UANA: "TEST-Ana", UOLD: "TEST-Old" };
 const CHANNELS = { C0GENERAL: "general", C0OPS: "ops", C0DEV: "dev", C0INCIDENT: "incidents" };
 
+// A user as Slack describes one. Only Ana has a picture (GET /_fake/face/UANA).
+let origin = "";
+const member = (id) => {
+  const name = USERS[id] ?? `TEST-${id}`;
+  return { id, name: name.toLowerCase(), real_name: name, profile: { display_name: name, real_name: name, ...(id === "UANA" && origin ? { image_72: `${origin}/_fake/face/UANA` } : {}) } };
+};
+
 let clock = 1_700_000_000;
 const nextTs = () => `${++clock}.000100`;
 let envelopeN = 0;
@@ -133,6 +144,11 @@ const inbox = {
   inbox.G0TRIO.last_read = "1000000000.000000";
   inbox.D0QUIET.messages.push({ type: "message", user: "UOLD", text: "TEST-ancient", ts: realTs(100 * DAY) });
   inbox.C0GENERAL.messages.push({ type: "message", user: "USTRANGER", text: "TEST-standup in 5", ts: realTs(2 * DAY) });
+  // An alert as an app posts one: no text, one attachment.
+  inbox.C0GENERAL.messages.push({
+    type: "message", subtype: "bot_message", bot_id: "B0DATADOG", username: "TEST-Datadog", text: "", ts: realTs(2 * DAY - 600),
+    attachments: [{ color: "36a64f", title: "TEST-Recovered: load balancer", title_link: "https://example.com/monitors/1", text: "TEST-0.002 of requests failed, see <https://example.com/explorer|the breakdown>", fields: [{ title: "TEST-Metric value", value: "0.002", short: true }], footer: "TEST-Datadog" }],
+  });
   inbox.C0GENERAL.messages.push({ type: "message", user: "UANA", text: "TEST-shipping today", ts: realTs(DAY) });
   inbox.G0PRIV.messages.push({ type: "message", user: "UANA", text: "TEST-the secret plan", ts: realTs(3 * DAY) });
 }
@@ -277,8 +293,11 @@ function api(method, p, auth, port) {
     }
     case "users.info": {
       if (kind !== "bot" && kind !== "user") return refused;
-      const name = USERS[p.user] ?? `TEST-${p.user}`;
-      return { ok: true, user: { id: p.user, name: name.toLowerCase(), real_name: name, profile: { display_name: name, real_name: name } } };
+      return { ok: true, user: member(p.user) };
+    }
+    case "users.list": {
+      if (kind !== "user") return refused;
+      return { ok: true, members: [...Object.keys(USERS).map(member), { ...member("UGONE"), deleted: true }, { ...member("UDATADOG"), is_bot: true }], response_metadata: { next_cursor: "" } };
     }
     case "users.conversations": {
       if (kind !== "user") return refused;
@@ -405,6 +424,7 @@ const server = Bun.serve({
   port: Number(arg("port") ?? 0),
   async fetch(req, srv) {
     const url = new URL(req.url);
+    origin ||= url.origin;
     if (url.pathname === "/socket") {
       if (srv.upgrade(req, { data: { app: url.searchParams.get("app") ?? "shared" } })) return;
       return new Response("upgrade required", { status: 426 });
@@ -415,6 +435,10 @@ const server = Bun.serve({
       const auth = req.headers.get("authorization");
       state.calls.push({ method, token: tokenKind(auth), params: p, at: Date.now() });
       return json(api(method, p, auth, server.port));
+    }
+    // A person's picture: a plain green square.
+    if (url.pathname.startsWith("/_fake/face/")) {
+      return new Response('<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><rect width="72" height="72" fill="#2eb67d"/></svg>', { headers: { "content-type": "image/svg+xml" } });
     }
     if (url.pathname === "/_fake/message" && req.method === "POST") return json(events(await req.json()));
     if (url.pathname === "/_fake/raw" && req.method === "POST") {

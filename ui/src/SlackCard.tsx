@@ -3,10 +3,11 @@
 // Slack, one connection token), sees its connection, and shows who may
 // request tool use from agents through their own apps. yardd keeps the tokens; this page
 // only ever sees their kind and last four characters.
-import { useState } from "react";
-import type { SlackChannel, SlackView } from "./protocol";
+import { useEffect, useState } from "react";
+import type { SlackChannel, SlackSync, SlackView } from "./protocol";
 import type { Actions, SlackAppOp, State } from "./store";
-import { Icon } from "./App";
+import { Icon, useEscape } from "./App";
+import { SyncBar } from "./SlackPage";
 import { SLACK_MARK, TokenField } from "./SlackSetup";
 import { allowedSummary, mySteps, slackStatus } from "./slack";
 
@@ -15,7 +16,10 @@ const APPS = "https://api.slack.com/apps";
 export function SlackCard({ state, actions }: { state: State; actions: Actions }) {
   const view = state.slack;
   const [confirm, setConfirm] = useState(false);
+  // The channel picker, opened from the import's dialog too.
+  const [choosing, setChoosing] = useState(false);
   if (!view) return null;
+  const sync = state.slackSync;
   const status = slackStatus(view);
   const me = view.me;
   const attention = me?.state === "error";
@@ -35,7 +39,20 @@ export function SlackCard({ state, actions }: { state: State; actions: Actions }
         )}
       </header>
       {me?.step !== "ready" && <ConnectMe view={view} actions={actions} />}
-      {me?.step === "ready" && <Channels actions={actions} />}
+      {me?.step === "ready" && <Channels actions={actions} sync={sync} open={choosing} setOpen={setChoosing} />}
+      {me?.step === "ready" && sync?.first && !sync.seen && (
+        <ImportDialog
+          sync={sync}
+          kept={state.slackInbox.length}
+          workspace={me.teamName}
+          onClose={actions.slackSyncSeen}
+          onRetry={actions.slackSyncRetry}
+          onChannels={() => {
+            actions.slackSyncSeen();
+            setChoosing(true);
+          }}
+        />
+      )}
       <ul className="connector-list">
         {view.allowed.map((p) => (
           <AllowedRow key={p.id} person={p} onRemove={() => actions.slack("slack.disallow", { user: p.id })} />
@@ -79,8 +96,7 @@ export function SlackCard({ state, actions }: { state: State; actions: Actions }
 
 /** The channels he is in, each with an Import switch: an imported one comes
  *  into his Slack inbox (60 days, then live). Direct messages always do. */
-function Channels({ actions }: { actions: Actions }) {
-  const [open, setOpen] = useState(false);
+function Channels({ actions, sync, open, setOpen }: { actions: Actions; sync: SlackSync | null; open: boolean; setOpen(open: boolean): void }) {
   const [list, setList] = useState<SlackChannel[] | null>(null);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +117,12 @@ function Channels({ actions }: { actions: Actions }) {
   const words = query.toLowerCase().trim();
   const shown = (list ?? []).filter((c) => !words || c.name.toLowerCase().includes(words));
   const imported = (list ?? []).filter((c) => c.imported).length;
+  // Opened by its button or from the import's dialog: the list loads once.
+  useEffect(() => {
+    if (open && !list) void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  const loading = !!sync?.running;
   return (
     <ul className="connector-list slack-channels">
       <li className="connector">
@@ -110,7 +132,21 @@ function Channels({ actions }: { actions: Actions }) {
           <span className="connector-name">Direct messages</span>
           <span className="muted small connector-via">all of them, new ones too</span>
         </span>
+        <span className="connector-side">
+          {loading && sync && (
+            <span className="connector-status slack-sync-status" role="status">
+              {sync.first ? (sync.total ? `Importing ${sync.done} of ${sync.total}` : "Finding your conversations") : "Catching up"}
+              {sync.first && <SyncBar done={sync.done} total={sync.total} />}
+            </span>
+          )}
+          {!loading && sync?.error && (
+            <button className="btn btn-small" onClick={actions.slackSyncRetry}>
+              Try again
+            </button>
+          )}
+        </span>
       </div>
+      {!loading && sync?.error && <p className="small automation-reason" role="alert">The import stopped: {sync.error}</p>}
       </li>
       <li className="connector">
       <div className="connector-row">
@@ -123,10 +159,7 @@ function Channels({ actions }: { actions: Actions }) {
           <button
             className="btn btn-small"
             aria-expanded={open}
-            onClick={() => {
-              if (!open && !list) void load();
-              setOpen(!open);
-            }}
+            onClick={() => setOpen(!open)}
           >
             {open ? "Done" : "Choose channels"}
           </button>
@@ -143,6 +176,7 @@ function Channels({ actions }: { actions: Actions }) {
                 <span className="slack-channel-name">
                   {c.name}
                   {c.private && <span className="muted small"> · private</span>}
+                  {c.imported && sync?.channels.includes(c.id) && <span className="muted small"> · importing its last 60 days…</span>}
                 </span>
                 <button className="switch" role="switch" aria-checked={c.imported} aria-label={`Import ${c.name}`} disabled={busy === c.id} onClick={() => void flip(c)}>
                   <span className="switch-knob" />
@@ -155,6 +189,76 @@ function Channels({ actions }: { actions: Actions }) {
       )}
       </li>
     </ul>
+  );
+}
+
+/** The first import, said plainly: what comes, how far it is, and what to do
+ *  next. Closing it leaves the import running; the card and the sidebar go
+ *  on showing it. One window closing it closes it in all (`seen`). */
+function ImportDialog({ sync, kept, workspace, onClose, onRetry, onChannels }: { sync: SlackSync; kept: number; workspace: string; onClose(): void; onRetry(): void; onChannels(): void }) {
+  useEscape(true, onClose);
+  const done = !sync.running && !sync.error;
+  const title = sync.running ? "Importing your Slack" : sync.error ? "The import stopped" : "Your Slack is here";
+  return (
+    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal slack-modal slack-import" role="dialog" aria-modal="true" aria-label={title}>
+        <header className="modal-head">
+          <Icon d={SLACK_MARK} size={16} />
+          <h2>{title}</h2>
+          <span className="spacer" />
+          <button className="btn-icon" aria-label="Close" onClick={onClose}>
+            <Icon d="M6 6l12 12M18 6L6 18" size={14} />
+          </button>
+        </header>
+        {sync.running && (
+          <div className="slack-import-progress" role="status">
+            <SyncBar done={sync.done} total={sync.total} />
+            <p className="small">
+              {sync.total ? (
+                <>
+                  <strong>{sync.done} of {sync.total}</strong> conversations{sync.current ? ` · ${sync.current}` : ""}
+                </>
+              ) : (
+                `Finding your conversations${workspace ? ` in ${workspace}` : ""}…`
+              )}
+            </p>
+          </div>
+        )}
+        {done && (
+          <p>
+            <strong>{kept === 1 ? "1 conversation" : `${kept} conversations`}</strong> with messages in the last 60 days {kept === 1 ? "is" : "are"} in the sidebar, under Slack.
+          </p>
+        )}
+        {sync.error && (
+          <p className="small automation-reason" role="alert">
+            {sync.done} of {sync.total} conversations came before it stopped: {sync.error}
+          </p>
+        )}
+        <ul className="slack-import-facts">
+          <li><strong>Direct messages and group DMs</strong> all come, with their last 60 days. Older messages load when you scroll back.</li>
+          <li><strong>Channels</strong> come only when you choose them, one by one.</li>
+          <li><strong>Read here, read in Slack.</strong> What you send goes out as you.</li>
+          <li>Everything is kept on the machine that runs Switchyard, and stays current while your Slack is connected.</li>
+        </ul>
+        <div className="confirm-actions">
+          {sync.running && <span className="muted small">You can keep working: it goes on in the background.</span>}
+          <span className="spacer" />
+          {sync.error && (
+            <button className="btn" onClick={onRetry}>
+              Try again
+            </button>
+          )}
+          {!sync.running && (
+            <button className="btn" onClick={onChannels}>
+              Choose channels
+            </button>
+          )}
+          <button className="btn-primary" onClick={onClose}>
+            {sync.running ? "Keep working" : "Done"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

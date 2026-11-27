@@ -1331,7 +1331,7 @@ fn rewrite(host: &str, name: &str, mut msg: Value) -> Option<Value> {
         // (`agents::shown`, `slack::view`), from the hub's own connection.
         "hosts" | "host.snapshot" | "host.down" | "switchy.state" | "agents" => return None,
         // The owner's own Slack is the hub's: a remote's is not shown.
-        "slack.inbox" | "slack.inbox.message" | "slack.inbox.messages" => return None,
+        "slack.inbox" | "slack.inbox.message" | "slack.inbox.messages" | "slack.inbox.sync" => return None,
         // The answer to a Slack op this window sent for one of its agents.
         "slack" if !msg["ref"].is_null() => {
             msg["hostId"] = json!(host);

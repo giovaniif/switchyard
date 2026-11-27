@@ -247,11 +247,109 @@ yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait
 yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app"}' --wait '{"op":"slack"}'
 for i in $(seq 100); do yv state --full 2>/dev/null | grep -q D0ANA && break; sleep 0.2; done
 yv api '{"op":"slack.inbox.import","channel":"C0GENERAL","on":false,"ref":"off"}' --wait '{"op":"slack.inbox.imported"}'
+yv api '{"op":"slack.inbox.sync.seen"}'
 yv drive connectors --viewport desktop --steps '[{"expect":{"css":".slack-channels"},"text":"all of them, new ones too"},{"click":"role:button:Choose channels"},{"expect":{"role":"switch","name":"Import #general"}},{"expect":{"css":".slack-channel","hasText":"#secret-plans"},"text":"private"},{"eval":"(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), true)","equals":true},{"shot":"channels"},{"click":{"role":"switch","name":"Import #general"}},{"eval":"document.querySelector(\"[aria-label=\\\"Import #general\\\"]\").getAttribute(\"aria-checked\")","equals":"true"},{"expect":{"css":".slack-dms .slack-row","hasText":"#general"}}]'
 yv drive 'slack:#general' --viewport desktop --steps '[{"expect":"role:heading:#general"},{"expect":{"css":".slack-messages"},"text":"TEST-shipping today"},{"expect":{"css":".slack-row.active .slack-face"},"text":"#"},{"shot":"channel"}]'
 yv drive 'slack:#general' --viewport mobile --steps '[{"expect":{"css":".slack-messages"},"text":"TEST-standup in 5"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"channel"}]'
 yv drive connectors --viewport mobile --steps '[{"click":"role:button:Choose channels"},{"click":{"role":"switch","name":"Import #general"}},{"eval":"document.querySelector(\"[aria-label=\\\"Import #general\\\"]\").getAttribute(\"aria-checked\")","equals":"false"},{"eval":"(document.querySelector(\".connector-apps\").scrollIntoView({block:\"start\"}), document.documentElement.scrollWidth <= document.documentElement.clientWidth)","equals":true},{"shot":"channels"}]'
 for i in $(seq 50); do yv state --full 2>/dev/null | grep -q C0GENERAL || break; sleep 0.2; done
+```
+
+### the-first-import
+Viewports: both
+Connecting his Slack says what happens next, on the Connectors page: a
+dialog names what comes (every direct message and group DM with its last 60
+days, channels only when chosen, kept on the machine that runs Switchyard),
+shows how far the import is while it runs, and once it is done says how many
+conversations are in the sidebar. Done closes it in every window, and it
+does not come back on a reload; Choose channels closes it and opens the
+card's channel list. The daemon says how the load went (`slackSync`: all
+of the conversations, nothing running, no error).
+
+```sh
+yv api '{"op":"slack.me.remove","ref":"gone"}' --wait '{"op":"slack"}' || true
+for i in $(seq 50); do yv state --full 2>/dev/null | grep -q D0ANA || break; sleep 0.2; done
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app"}' --wait '{"op":"slack"}'
+for i in $(seq 100); do yv state --full 2>/dev/null | grep -q D0ANA && break; sleep 0.2; done
+for i in $(seq 100); do yv state --full 2>/dev/null | jq -e '.. | objects | select(has("slackSync")) | .slackSync | (.running == false and .first == true and .seen == false and .done == .total and .total >= 3 and .error == null)' > /dev/null && break; sleep 0.2; done
+yv state --full | jq -e '[.. | objects | select(has("slackSync")) | .slackSync][0] | (.running == false and .first == true and .seen == false and .done == .total and .total >= 3 and .error == null)'
+yv drive connectors --viewport mobile --steps '[{"expect":"role:dialog:Your Slack is here","inViewport":true},{"expect":{"css":".slack-import"},"text":"conversations with messages in the last 60 days are in the sidebar"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"imported"}]'
+yv drive connectors --viewport desktop --steps '[{"expect":"role:dialog:Your Slack is here"},{"expect":{"css":".slack-import-facts"},"text":"Channels come only when you choose them"},{"shot":"imported"},{"click":{"css":".slack-import button","hasText":"Choose channels"}},{"expect":"role:dialog:Your Slack is here","count":0},{"expect":{"role":"switch","name":"Import #general"}},{"reload":true},{"expect":{"css":".slack-channels"},"text":"all of them, new ones too"},{"expect":"role:dialog:Your Slack is here","count":0}]'
+```
+
+### fold-filter-and-favorites
+Viewports: both
+The Slack section folds from its heading (folded, the heading carries the
+unread count) and stays folded after a reload. Its options button filters
+the list to unread conversations or favorites and sorts it A to Z; the
+heading says which filter is on, and the choice is kept. The star in a
+conversation's header makes it a favorite: it tops the list with a star, the
+daemon keeps it (`favorite`), and Favorites only lists just it. An unread
+count does not move when the pointer is on its row.
+
+```sh
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app"}' --wait '{"op":"slack"}'
+for i in $(seq 100); do yv state --full 2>/dev/null | grep -q D0ANA && break; sleep 0.2; done
+yv api '{"op":"slack.inbox.sync.seen"}'
+# Something unread, whatever earlier recipes read: the group DM.
+curl -sf -XPOST "$(v slack)/_fake/message" -d '{"app":"you","user":"USTRANGER","channel":"G0TRIO","text":"TEST-ping for the filter"}' > /dev/null
+for i in $(seq 50); do yv state --full 2>/dev/null | jq -e '[.. | objects | select(.id? == "G0TRIO")][0].unread > 0' > /dev/null && break; sleep 0.2; done
+yv drive 'slack:TEST-Ana' --viewport desktop --steps '[{"click":"role:button:Slack list options"},{"click":"role:menuitemradio:A to Z"},{"press":"Escape"},{"eval":"(t => t.length > 1 && t.join() === [...t].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: \"base\" })).join())([...document.querySelectorAll(\".slack-dms .slack-row .session-title\")].map((e) => e.textContent.replace(/^#/, \"\")))","equals":true},{"click":"role:button:Slack list options"},{"click":"role:menuitemradio:Most recent"},{"click":"role:menuitemradio:Unread only"},{"shot":"options"},{"press":"Escape"},{"expect":{"css":".slack-dms .section-toggle"},"text":"Unread"},{"expect":{"css":".slack-dms .slack-row","hasText":"TEST-Ana, TEST-Stranger"}},{"reload":true},{"expect":{"css":".slack-dms .section-toggle"},"text":"Unread"},{"click":"role:button:Slack list options"},{"click":"role:menuitemradio:All conversations"},{"press":"Escape"},{"click":"role:button:Add TEST-Ana to favorites"},{"eval":"document.querySelector(\".slack-dms .slack-row .session-title\").textContent","equals":"TEST-Ana"},{"expect":"css:.slack-row .slack-star"},{"click":"role:button:Slack list options"},{"click":"role:menuitemradio:Favorites only"},{"press":"Escape"},{"expect":"css:.slack-dms .slack-row","count":1},{"shot":"favorites"},{"click":"role:button:Slack list options"},{"click":"role:menuitemradio:All conversations"},{"press":"Escape"},{"click":"css:.slack-dms .section-toggle"},{"expect":"css:.slack-dms .slack-row","count":0},{"expect":"css:.slack-dms .section-toggle .slack-unread"},{"shot":"folded"},{"reload":true},{"expect":"css:.slack-dms .slack-row","count":0},{"click":"css:.slack-dms .section-toggle"},{"expect":{"css":".slack-dms .slack-row","hasText":"TEST-Ana"}}]'
+yv state --full | jq -e '[.. | objects | select(.id? == "D0ANA")][0].favorite == true'
+# The unread count stays where it is under the pointer (a row has no hover buttons to make room for).
+yv drive 'slack:TEST-Ana' --viewport desktop --steps '[{"eval":"(window.at = Math.round(document.querySelector(\".slack-row .slack-unread\").getBoundingClientRect().right), true)","equals":true},{"hover":{"css":".slack-row.unread"}},{"eval":"Math.round(document.querySelector(\".slack-row:hover .slack-unread\").getBoundingClientRect().right) === window.at","equals":true}]'
+yv drive 'slack:TEST-Ana' --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":"css:.slack-row .slack-star"},{"click":"role:button:Slack list options"},{"click":"role:menuitemradio:Favorites only"},{"press":"Escape"},{"expect":"css:.slack-dms .slack-row","count":1},{"shot":"favorites"},{"click":"css:.slack-dms .section-toggle"},{"expect":"css:.slack-dms .slack-row","count":0}]'
+yv drive 'slack:TEST-Ana' --viewport desktop --steps '[{"click":"role:button:Remove TEST-Ana from favorites"},{"expect":"css:.slack-row .slack-star","count":0}]'
+```
+
+### messages-as-slack-draws-them
+Viewports: both
+A conversation reads like Slack: each day under one line with its date in a
+pill, an author's picture (their initials when they have none; the daemon
+keeps Ana's picture address), name and time, the message's own links in
+Slack's blue. An app's alert with no text of its own shows its attachment
+as a card: a green bar, a title that links, text with a link, a field, a
+footer. The thread opens beside the conversation under a bar level with the
+conversation's own, and its edge drags to resize it (kept after a reload).
+
+```sh
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app"}' --wait '{"op":"slack"}'
+for i in $(seq 100); do yv state --full 2>/dev/null | grep -q D0ANA && break; sleep 0.2; done
+yv api '{"op":"slack.inbox.sync.seen"}'
+yv api '{"op":"slack.inbox.import","channel":"C0GENERAL","on":true,"ref":"on"}' --wait '{"op":"slack.inbox.imported"}'
+for i in $(seq 50); do yv state --full 2>/dev/null | grep -q C0GENERAL && break; sleep 0.2; done
+yv state --full | jq -e '[.. | objects | select(.id? == "D0ANA")][0].face | endswith("/_fake/face/UANA")'
+yv drive 'slack:#general' --viewport desktop --steps '[{"expect":{"css":".slack-attachment-title a"},"text":"TEST-Recovered: load balancer"},{"eval":"document.querySelector(\".slack-attachment-title a\").getAttribute(\"href\")","equals":"https://example.com/monitors/1"},{"eval":"getComputedStyle(document.querySelector(\".slack-attachment\"), \"::before\").backgroundColor","equals":"rgb(54, 166, 79)"},{"expect":{"css":".slack-attachment .slack-text a","hasText":"the breakdown"}},{"expect":{"css":".slack-fields"},"text":"TEST-Metric value"},{"expect":{"css":".slack-attachment-footer"},"text":"TEST-Datadog"},{"expect":{"css":".slack-author","hasText":"TEST-Datadog"}},{"expect":{"css":".slack-day span","nth":0}},{"shot":"alert"}]'
+yv drive 'slack:#general' --viewport mobile --steps '[{"expect":{"css":".slack-attachment-title"},"text":"TEST-Recovered"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"alert"}]'
+yv drive 'slack:TEST-Ana' --viewport desktop --steps '[{"click":"css:.slack-replies"},{"expect":{"css":".slack-thread"},"text":"TEST-sure, noon"},{"eval":"Math.abs(document.querySelector(\".slack-thread .bar\").getBoundingClientRect().bottom - document.querySelector(\".slack-main .bar\").getBoundingClientRect().bottom) < 1","equals":true},{"expect":{"css":".slack-reply-count"},"text":"repl"},{"eval":"(document.querySelector(\".slack-thread .resizer\").focus(), true)","equals":true},{"press":"ArrowLeft"},{"press":"ArrowLeft"},{"eval":"Math.round(document.querySelector(\".slack-thread\").getBoundingClientRect().width)","equals":432},{"shot":"thread"},{"reload":true},{"click":"css:.slack-replies"},{"eval":"Math.round(document.querySelector(\".slack-thread\").getBoundingClientRect().width)","equals":432}]'
+yv api '{"op":"slack.inbox.import","channel":"C0GENERAL","on":false,"ref":"off"}' --wait '{"op":"slack.inbox.imported"}'
+for i in $(seq 50); do yv state --full 2>/dev/null | grep -q C0GENERAL || break; sleep 0.2; done
+```
+
+### format-link-and-mention-people
+Viewports: both
+The reply box has Slack's formatting above the text: Bold wraps the
+selection in Slack's marks, Link asks for an address and writes the link,
+and `@` offers the workspace's people (not apps, not people who left) under
+the agents. A picked person is named under the box ("Mentions
+TEST-Stranger") and reaches Slack as a real mention; the link reaches it as
+Slack's own markup, and what he typed besides stays plain text.
+
+```sh
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app"}' --wait '{"op":"slack"}'
+for i in $(seq 100); do yv state --full 2>/dev/null | grep -q D0ANA && break; sleep 0.2; done
+yv api '{"op":"slack.inbox.sync.seen"}'
+yv drive 'slack:TEST-Ana' --viewport desktop --steps '[{"expect":"role:toolbar:Formatting"},{"fill":"label:Message TEST-Ana","value":"TEST-fmt <b> @TEST-Str"},{"expect":"role:listbox:People and agents"},{"expect":{"css":".slack-mention-list [role=option]","hasText":"TEST-Stranger"}},{"eval":"!document.querySelector(\".slack-mention-list\").innerText.includes(\"UGONE\") && !document.querySelector(\".slack-mention-list\").innerText.includes(\"DATADOG\")","equals":true},{"shot":"people"},{"press":"Enter"},{"expect":{"css":".slack-main .composer-row"},"text":"Mentions TEST-Stranger"},{"click":"role:button:Bold"},{"expect":"label:Message TEST-Ana","value":"TEST-fmt <b> @TEST-Stranger *bold*"},{"click":"role:button:Link"},{"expect":"role:dialog:Add a link"},{"fill":"placeholder:What it says","value":"TEST-docs"},{"fill":"placeholder:https://","value":"example.com/docs"},{"shot":"link"},{"click":"role:button:Add link"},{"click":"role:button:Send"},{"expect":{"css":".slack-main .slack-mention","hasText":"@TEST-Stranger"}},{"expect":{"css":".slack-main .slack-text a","hasText":"TEST-docs"}},{"shot":"sent"}]'
+curl -sf "$(v slack)/_fake/state" | jq -e '.posts | any(.app == "you" and (.text | (contains("TEST-fmt &lt;b&gt; <@USTRANGER> ") and contains("<https://example.com/docs|TEST-docs>"))))'
+yv drive 'slack:TEST-Ana' --viewport mobile --steps '[{"expect":"role:toolbar:Formatting","inViewport":true},{"fill":"label:Message TEST-Ana","value":"TEST-phone"},{"click":"role:button:Italic"},{"expect":"label:Message TEST-Ana","value":"TEST-phone_italic_"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"toolbar"}]'
 ```
 
 ### call-an-agent-from-slack
@@ -326,7 +424,8 @@ UAGENT; TEST-Reviewer Two, @test-reviewer-two, bot UAGENT2), the reply box's
 textarea's `aria-activedescendant`, the row's `aria-selected`), Down and Up
 move it round the ends, Enter writes the highlighted handle (a bare `@` is
 never sent), Escape closes the list without sending and typing opens it
-again. A handle typed in full is a complete mention: Enter sends it. The
+again; the agents come first, the workspace's people after them. A handle
+typed in full is a complete mention: Enter sends it. The
 thread pane's reply box does the same. The rows' text is centred in them. On
 a phone the list fits the screen and a tap picks.
 
@@ -346,7 +445,7 @@ for i in $(seq 100); do yv state --full 2>/dev/null | grep -q G0TRIO && break; s
 HL='{"eval":"document.getElementById(document.activeElement.getAttribute(\"aria-activedescendant\")).textContent"'
 ONE='{"eval":"document.querySelectorAll(\"[role=option][aria-selected=true]\").length","equals":1}'
 CENTRED='{"eval":"[...document.querySelectorAll(\"[role=option]\")].every((o) => { const r = o.getBoundingClientRect(), t = o.querySelector(\"strong\").getBoundingClientRect(); return Math.abs((t.top + t.bottom) / 2 - (r.top + r.bottom) / 2) <= 2; })","equals":true}'
-yv drive 'slack:TEST-Stranger' --viewport desktop --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@test-rev"},{"expect":"role:option","count":2},'"$HL"',"equals":"TEST-Reviewer@test-reviewer"},'"$ONE"','"$CENTRED"',{"press":"ArrowDown"},'"$HL"',"equals":"TEST-Reviewer Two@test-reviewer-two"},'"$ONE"',{"shot":"highlighted"},{"press":"ArrowDown"},'"$HL"',"equals":"TEST-Reviewer@test-reviewer"},{"press":"ArrowUp"},'"$HL"',"equals":"TEST-Reviewer Two@test-reviewer-two"},{"press":"Enter"},{"expect":"role:option","count":0},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":"@test-reviewer-two "},{"type":"keys desktop"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Reviewer Two"},{"press":"Enter"},{"expect":{"css":".slack-messages"},"text":"keys desktop"},{"type":"@"},{"expect":"role:option","count":2},{"press":"Enter"},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":"@test-reviewer "},{"fill":"label:Message TEST-Ana, TEST-Stranger","value":""},{"type":"@"},{"press":"Escape"},{"expect":"role:option","count":0},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":"@"},{"type":"t"},{"expect":"role:option","count":2},{"fill":"label:Message TEST-Ana, TEST-Stranger","value":""},{"type":"ping exact desktop @test-reviewer"},{"expect":"role:option","count":2},'"$HL"',"equals":"TEST-Reviewer@test-reviewer"},{"press":"Enter"},{"expect":{"css":".slack-messages"},"text":"ping exact desktop"},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":""},{"shot":"sent"},{"click":{"css":".slack-message","hasText":"keys desktop"}},{"click":"role:button:Reply in thread"},{"click":"label:Reply in the thread"},{"type":"@test-rev"},{"expect":{"css":".slack-thread [role=option]"},"count":2},{"press":"ArrowDown"},'"$HL"',"equals":"TEST-Reviewer Two@test-reviewer-two"},{"shot":"thread-highlighted"},{"press":"Escape"},{"expect":"role:option","count":0},{"expect":"css:.slack-thread"},{"type":"-"},{"press":"Backspace"},{"press":"ArrowDown"},{"press":"Enter"},{"expect":"label:Reply in the thread","value":"@test-reviewer-two "},{"type":"thread keys"},{"press":"Enter"},{"expect":{"css":".slack-thread"},"text":"thread keys"}]'
+yv drive 'slack:TEST-Stranger' --viewport desktop --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@test-rev"},{"expect":"role:option","count":2},'"$HL"',"equals":"TEST-Reviewer@test-reviewer"},'"$ONE"','"$CENTRED"',{"press":"ArrowDown"},'"$HL"',"equals":"TEST-Reviewer Two@test-reviewer-two"},'"$ONE"',{"shot":"highlighted"},{"press":"ArrowDown"},'"$HL"',"equals":"TEST-Reviewer@test-reviewer"},{"press":"ArrowUp"},'"$HL"',"equals":"TEST-Reviewer Two@test-reviewer-two"},{"press":"Enter"},{"expect":"role:option","count":0},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":"@test-reviewer-two "},{"type":"keys desktop"},{"expect":{"css":".slack-compose"},"text":"Calls TEST-Reviewer Two"},{"press":"Enter"},{"expect":{"css":".slack-messages"},"text":"keys desktop"},{"type":"@"},{"expect":{"role":"option","name":"TEST-Reviewer Two @test-reviewer-two"}},{"eval":"[...document.querySelectorAll(\"[role=option]\")].slice(0, 2).map((o) => o.textContent).join(\" | \")","equals":"TEST-Reviewer@test-reviewer | TEST-Reviewer Two@test-reviewer-two"},{"expect":{"role":"option","name":"TEST-Stranger"}},{"press":"Enter"},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":"@test-reviewer "},{"fill":"label:Message TEST-Ana, TEST-Stranger","value":""},{"type":"@"},{"press":"Escape"},{"expect":"role:option","count":0},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":"@"},{"type":"t"},{"expect":{"role":"option","name":"TEST-Reviewer Two @test-reviewer-two"}},{"eval":"[...document.querySelectorAll(\"[role=option]\")].slice(0, 2).map((o) => o.textContent).join(\" | \")","equals":"TEST-Reviewer@test-reviewer | TEST-Reviewer Two@test-reviewer-two"},{"expect":{"role":"option","name":"TEST-Stranger"}},{"fill":"label:Message TEST-Ana, TEST-Stranger","value":""},{"type":"ping exact desktop @test-reviewer"},{"expect":"role:option","count":2},'"$HL"',"equals":"TEST-Reviewer@test-reviewer"},{"press":"Enter"},{"expect":{"css":".slack-messages"},"text":"ping exact desktop"},{"expect":"label:Message TEST-Ana, TEST-Stranger","value":""},{"shot":"sent"},{"click":{"css":".slack-message","hasText":"keys desktop"}},{"click":"role:button:Reply in thread"},{"click":"label:Reply in the thread"},{"type":"@test-rev"},{"expect":{"css":".slack-thread [role=option]"},"count":2},{"press":"ArrowDown"},'"$HL"',"equals":"TEST-Reviewer Two@test-reviewer-two"},{"shot":"thread-highlighted"},{"press":"Escape"},{"expect":"role:option","count":0},{"expect":"css:.slack-thread"},{"type":"-"},{"press":"Backspace"},{"press":"ArrowDown"},{"press":"Enter"},{"expect":"label:Reply in the thread","value":"@test-reviewer-two "},{"type":"thread keys"},{"press":"Enter"},{"expect":{"css":".slack-thread"},"text":"thread keys"}]'
 yv drive 'slack:TEST-Stranger' --viewport mobile --steps '[{"click":"label:Message TEST-Ana, TEST-Stranger"},{"type":"@test-rev"},{"expect":"role:option","count":2},'"$CENTRED"',{"eval":"(r => r.left >= 0 && r.right <= innerWidth && r.top >= 0)(document.querySelector(\".slack-compose .mention-list\").getBoundingClientRect())","equals":true},{"shot":"suggest"},{"tap":{"role":"option","name":"TEST-Reviewer Two @test-reviewer-two"}},{"expect":"role:option","count":0},{"type":"tap mobile"},{"click":"role:button:Send"},{"expect":{"css":".slack-messages"},"text":"tap mobile"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"sent"},{"click":{"css":".slack-message","hasText":"tap mobile"}},{"click":"role:button:Reply in thread"},{"click":"label:Reply in the thread"},{"type":"@test-rev"},{"expect":{"css":".slack-thread [role=option]"},"count":2},{"eval":"(r => r.left >= 0 && r.right <= innerWidth && r.top >= 0)(document.querySelector(\".slack-thread .mention-list\").getBoundingClientRect())","equals":true},{"shot":"thread-suggest"},{"tap":{"role":"option","name":"TEST-Reviewer Two @test-reviewer-two"}},{"type":"thread tap mobile"},{"click":{"css":".slack-thread button[aria-label=Send]"}},{"expect":{"css":".slack-thread"},"text":"thread tap mobile"}]'
 S=$(curl -sf "$(v slack)/_fake/state")
 echo "$S" | jq -e '[.posts[] | select(.app == "you" and .thread_ts == null and (.text | startswith("<@UAGENT2> keys desktop")))] | length == 1'
@@ -464,6 +563,9 @@ yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant
 yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user-'"$vp"'"}' --wait '{"op":"slack"}'
 yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app-'"$vp"'"}' --wait '{"op":"slack"}'
 yv api '{"op":"slack.allow","user":"U0TESTDBL","name":"TEST-Doubler","ref":"allow-'"$vp"'"}' --wait '{"op":"slack"}'
+# Connecting again imports again: its dialog is closed, as he would close it.
+for i in $(seq 100); do yv state --full 2>/dev/null | grep -q D0ANA && break; sleep 0.2; done
+yv api '{"op":"slack.inbox.sync.seen"}'
 yv drive connectors --viewport "$vp" --steps '[{"expect": {"css": ".slack-card"}, "text": "As @test-owner in TEST-workspace"}, {"expect": {"css": ".slack-card .connector", "hasText": "TEST-Doubler"}, "text": "Can request tool use"}, {"eval": "(async () => { const b = [...document.querySelectorAll(\"button\")].find((x) => x.getAttribute(\"aria-label\") === \"Remove TEST-Doubler\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.getAttribute(\"aria-label\") : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \"second click hit: \" + label; })()"}, {"expect": "role:button:Confirm removing TEST-Doubler"}, {"expect": {"css": ".slack-card .connector", "hasText": "TEST-Doubler"}}, {"eval": "(async () => { const b = [...document.querySelectorAll(\"button\")].find((x) => x.getAttribute(\"aria-label\") === \"Disconnect your Slack\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.getAttribute(\"aria-label\") : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \"second click hit: \" + label; })()"}, {"expect": "role:button:Confirm disconnecting your Slack"}, {"expect": {"css": ".slack-card"}, "text": "As @test-owner in TEST-workspace"}, {"shot": "double-click-asks"}, {"click": "role:button:Confirm removing TEST-Doubler"}, {"expect": {"css": ".slack-card .connector", "hasText": "TEST-Doubler"}, "count": 0}, {"click": "role:button:Confirm disconnecting your Slack"}, {"expect": {"css": ".slack-card .connector-account-state"}, "text": "Not connected"}]'
 done
 ```
@@ -484,6 +586,17 @@ done
   `pick-an-agent-with-the-keys`; the inbox names `<@UAGENT2>` after the
   agent that took it last. So the keys recipe comes after the one that reads
   the name TEST-Far, and checks Slack's posts by bot id, not by name.
+- The first import's dialog covers the Connectors page until a window closes
+  it, so a recipe that clicks in the card after connecting closes it first
+  (`slack.inbox.sync.seen`). The fake's three conversations load in an
+  instant: the dialog's running state (the bar, "N of M", Keep working) is
+  not driven here, only its finished one and the daemon's counts.
+- yv's browser blocks every address but its own yardd, so a person's picture
+  never loads in a recipe: the page falls back to initials, and recipes
+  check the address the daemon keeps, not the drawn image.
+- Not covered: sharing a file, an image or a video from the reply box, and
+  showing one inline (his app has no `files:read`/`files:write`); a file
+  shows as a chip that opens its page in Slack.
 - Not covered here (no real Slack can be reached from tests): a real
   workspace's events, rate limits and Slack's own manifest import, update
   and icon upload. The install redirect to an https address from an http

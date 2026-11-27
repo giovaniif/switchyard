@@ -503,7 +503,7 @@ function usePanelCollapsed(key: string): [boolean, (collapsed: boolean) => void]
 }
 
 /** A width the user drags, kept per browser. */
-function useWidth(key: string, initial: number): [number, (w: number) => void] {
+export function useWidth(key: string, initial: number): [number, (w: number) => void] {
   const [width, setWidth] = useState(() => {
     try {
       const saved = Number(localStorage.getItem(key));
@@ -526,7 +526,7 @@ function useWidth(key: string, initial: number): [number, (w: number) => void] {
 /** A drag handle on a panel's edge. `dir` is 1 when dragging right widens the
  *  panel (a left sidebar), -1 when dragging left does (a right pane).
  *  Double-click restores the default; arrow keys nudge it. */
-function Resizer(props: {
+export function Resizer(props: {
   width: number;
   min: number;
   max: number;
@@ -888,12 +888,14 @@ function useMedia(query: string): boolean {
   return matches;
 }
 
-/** Which groups the user folded in this browser. */
+/** Which groups the user folded in this browser, and (under a key of their
+ *  own, so a group named Slack is not one) which of the sidebar's sections. */
 const COLLAPSED_KEY = "yard.groups.collapsed";
-function useCollapsedGroups(): [Set<string>, (name: string) => void] {
+const SECTIONS_KEY = "yard.sidebar.collapsed";
+function useCollapsedGroups(key = COLLAPSED_KEY): [Set<string>, (name: string) => void] {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "[]");
+      const saved = JSON.parse(localStorage.getItem(key) ?? "[]");
       return new Set(Array.isArray(saved) ? saved.filter((n) => typeof n === "string") : []);
     } catch {
       return new Set();
@@ -903,10 +905,25 @@ function useCollapsedGroups(): [Set<string>, (name: string) => void] {
     setCollapsed((was) => {
       const next = new Set(was);
       if (!next.delete(name)) next.add(name);
-      localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...next]));
+      localStorage.setItem(key, JSON.stringify([...next]));
       return next;
     });
   return [collapsed, toggle];
+}
+
+/** A sidebar section's heading, which folds it: Pinned, Sessions, Slack,
+ *  Agents. Folded, it shows what `children` says is inside (a count, a mark),
+ *  so a folded section never hides that something waits. */
+export function SectionToggle({ label, open, onToggle, children }: { label: string; open: boolean; onToggle(): void; children?: ReactNode }) {
+  return (
+    <button className="list-head list-toggle section-toggle" aria-expanded={open} aria-label={label} onClick={onToggle}>
+      <span>{label}</span>
+      <span className={`tool-chevron ${open ? "open" : ""}`}>
+        <Icon d={CHEVRON_RIGHT} size={11} />
+      </span>
+      {children}
+    </button>
+  );
 }
 
 /** A group's header: the name, how many sessions, a chevron; its menu renames
@@ -1028,6 +1045,18 @@ function GroupHead({ name, count, open, onToggle, members, mark, actions }: { na
   );
 }
 
+/** What a folded section of sessions still says: how many, and the dot a
+ *  folded group carries when one of them works or waits for the user. */
+function FoldedMark({ sessions }: { sessions: SessionMeta[] }) {
+  const mark = runsAttention(sessions);
+  return (
+    <>
+      <span className="muted">{sessions.length}</span>
+      {mark && <span className={`dot ${mark === "approval" ? "dot-needs_approval" : "dot-running"}`} role="img" aria-label={GROUP_MARK[mark]} title={GROUP_MARK[mark]} />}
+    </>
+  );
+}
+
 function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImport, onNavigate, collapseControl }: {
   state: State;
   actions: Actions;
@@ -1050,6 +1079,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
   // members are pinned.
   const groupNames = [...new Set(all.filter((s) => s.group && !s.archived).map((s) => s.group as string))].sort((a, b) => a.localeCompare(b));
   const [collapsed, toggleGroup] = useCollapsedGroups();
+  const [folded, toggleSection] = useCollapsedGroups(SECTIONS_KEY);
   const { route } = state;
   const narrow = useMedia(NARROW);
   // The row being dragged. The ref answers dragover at once; the state (the
@@ -1220,14 +1250,20 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
       <div className="session-list">
         {pinned.length > 0 && (
           <div {...dropZone("pinned", { kind: "pinned" })}>
-            <div className="list-head">Pinned</div>
-            {pinned.map(tree)}
+            <SectionToggle label="Pinned" open={!folded.has("pinned")} onToggle={() => toggleSection("pinned")}>
+              {folded.has("pinned") && <FoldedMark sessions={pinned} />}
+            </SectionToggle>
+            {!folded.has("pinned") && pinned.map(tree)}
           </div>
         )}
         {(active.length > 0 || ungroupSlot) && (
           <div {...dropZone("ungrouped", { kind: "ungrouped" })}>
-            {pinned.length > 0 && active.length > 0 && <div className="list-head">Sessions</div>}
-            {roots(active).map(tree)}
+            {active.length > 0 && (
+              <SectionToggle label="Sessions" open={!folded.has("sessions")} onToggle={() => toggleSection("sessions")}>
+                {folded.has("sessions") && <FoldedMark sessions={active} />}
+              </SectionToggle>
+            )}
+            {!folded.has("sessions") && roots(active).map(tree)}
             {ungroupSlot && <div className="drop-slot">{dragged?.group ? "Drop here to remove from group" : "Drop here to unpin"}</div>}
           </div>
         )}
@@ -1250,12 +1286,15 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
           );
         })}
         {/* The owner's own Slack: his direct messages and group DMs. */}
-        <SlackSidebar state={state} actions={actions} route={route} />
+        <SlackSidebar state={state} actions={actions} route={route} open={!folded.has("slack")} onToggle={() => toggleSection("slack")} />
         {/* Agents, like direct messages: the list's last section. */}
         {state.agents.length > 0 && (
           <div className="agent-dms" role="group" aria-label="Agents">
-            <div className="list-head">Agents</div>
-            {state.agents.map((a) => (
+            <SectionToggle label="Agents" open={!folded.has("agents")} onToggle={() => toggleSection("agents")}>
+              {folded.has("agents") && <span className="muted">{state.agents.length}</span>}
+              {folded.has("agents") && agentsMark && <span className={`dot dot-agents dot-${agentsMark}`} role="img" aria-label={AGENTS_MARK[agentsMark]} title={AGENTS_MARK[agentsMark]} />}
+            </SectionToggle>
+            {!folded.has("agents") && state.agents.map((a) => (
               <AgentRow
                 key={a.id}
                 state={state}

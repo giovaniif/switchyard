@@ -1510,7 +1510,10 @@ async fn the_owner_imports_the_channels_he_picks_and_only_those() {
     assert_eq!((general["kind"].as_str(), general["name"].as_str()), (Some("channel"), Some("#general")));
     assert!(!list.iter().any(|v| v["id"] == "G0PRIV"));
     let page = inbox(&mut c, json!({ "op": "slack.inbox.messages", "team": "T0TEST", "channel": "C0GENERAL" })).await;
-    assert_eq!(texts(&page), ["TEST-standup in 5", "TEST-shipping today"]);
+    // An app's alert has no text of its own: its attachment is kept as it is.
+    assert_eq!(texts(&page), ["TEST-standup in 5", "", "TEST-shipping today"]);
+    let alert = &page["messages"][1];
+    assert_eq!((alert["username"].as_str(), alert["attachments"][0]["title"].as_str(), alert["attachments"][0]["color"].as_str()), (Some("TEST-Datadog"), Some("TEST-Recovered: load balancer"), Some("#36a64f")));
     let channels = inbox(&mut c, json!({ "op": "slack.inbox.channels" })).await;
     assert_eq!(channels["channels"][0], json!({ "id": "C0GENERAL", "name": "#general", "private": false, "imported": true }));
 

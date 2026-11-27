@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SlackAgentApp, SlackConversation, SlackMessage } from "./protocol";
-import { applyMessage, callableAgents, calledAgents, composerKey, initials, mentionQuery, mergePage, pageKey, shownConversations, startsGroup, suggestAgents } from "./slackInbox";
+import { applyFormat, applyLink, applyMessage, callableAgents, calledAgents, composerKey, initials, linkUrl, mentionablePeople, mentionedPeople, mentionQuery, mergePage, pageKey, readListPrefs, shownConversations, sidebarConversations, startsGroup, suggestAgents, suggestMentions } from "./slackInbox";
 import { initial, parseHash, reduce, routeHash } from "./store";
 // The same cases yardd's `mention_handle` is tested on: the box must say a
 // message calls an agent exactly when yardd will make it a mention.
@@ -14,7 +14,7 @@ describe("the Slack inbox's pages", () => {
     let p = mergePage(undefined, [msg("3"), msg("4")], { U1: "Ana" }, true, false);
     expect(p.messages.map((m) => m.ts)).toEqual(["3", "4"]);
     // A page that was only waiting (Loading…) takes its first answer's `more`.
-    expect(mergePage({ messages: [], users: {}, more: false, loading: true }, [msg("3")], {}, true, false).more).toBe(true);
+    expect(mergePage({ messages: [], users: {}, faces: {}, more: false, loading: true }, [msg("3")], {}, true, false).more).toBe(true);
     p = mergePage(p, [msg("1"), msg("2")], {}, false, true);
     expect(p.messages.map((m) => m.ts)).toEqual(["1", "2", "3", "4"]);
     expect(p.more).toBe(false);
@@ -151,5 +151,88 @@ describe("the Slack inbox in the store", () => {
     s = reduce(s, { t: "server", msg: { op: "slack.inbox.messages", team: "T", channel: "A", thread: null, before: null, messages: [msg("1")], users: {}, more: true } });
     s = reduce(s, { t: "server", msg: { op: "slack.inbox.message", team: "T", channel: "A", message: msg("2"), users: {} } });
     expect(s.slackPages["T/A"].messages.map((m) => m.ts)).toEqual(["1", "2"]);
+  });
+});
+
+describe("the sidebar's Slack list as he sets it", () => {
+  const list = [conv("D1", { name: "Marc" }), conv("C1", { name: "#eng", kind: "channel", unread: 2 }), conv("D2", { name: "Ana", favorite: true }), conv("D3", { name: "Bo" })];
+  const ids = (prefs: Parameters<typeof sidebarConversations>[1], limit = 8, open: string | null = null, expanded = false) => sidebarConversations(list, prefs, limit, open, expanded).shown.map((c) => c.id);
+
+  test("favorites come first, then the rest newest first", () => {
+    expect(ids({ show: "all", sort: "recent" })).toEqual(["D2", "D1", "C1", "D3"]);
+  });
+
+  test("A to Z ignores a channel's #", () => {
+    expect(ids({ show: "all", sort: "name" })).toEqual(["D2", "D3", "C1", "D1"]);
+  });
+
+  test("a filter keeps its conversations and the one open", () => {
+    expect(ids({ show: "unread", sort: "recent" })).toEqual(["C1"]);
+    expect(ids({ show: "unread", sort: "recent" }, 8, "T/D3")).toEqual(["C1", "D3"]);
+    expect(ids({ show: "favorites", sort: "recent" })).toEqual(["D2"]);
+  });
+
+  test("the limit cuts only the rest, never a favorite, an unread or the open one", () => {
+    const cut = sidebarConversations(list, { show: "all", sort: "recent" }, 1, "T/D3", false);
+    expect(cut.shown.map((c) => c.id)).toEqual(["D2", "D1", "C1", "D3"]);
+    expect(sidebarConversations(list, { show: "all", sort: "recent" }, 1, null, false)).toMatchObject({ hidden: 1 });
+    expect(sidebarConversations(list, { show: "all", sort: "recent" }, 1, null, true).hidden).toBe(0);
+    // A filter lists everything it keeps.
+    expect(sidebarConversations(list, { show: "unread", sort: "recent" }, 0, null, false).hidden).toBe(0);
+  });
+
+  test("saved preferences are read back, anything else is the default", () => {
+    expect(readListPrefs(JSON.stringify({ show: "unread", sort: "name" }))).toEqual({ show: "unread", sort: "name" });
+    expect(readListPrefs("{\"show\":\"toString\"}")).toEqual({ show: "all", sort: "recent" });
+    expect(readListPrefs("not json")).toEqual({ show: "all", sort: "recent" });
+    expect(readListPrefs(null)).toEqual({ show: "all", sort: "recent" });
+  });
+});
+
+describe("the reply box's formatting", () => {
+  test("marks go round the selection, or a placeholder left selected", () => {
+    expect(applyFormat("say hello now", 4, 9, "bold")).toEqual({ text: "say *hello* now", start: 5, end: 10 });
+    const empty = applyFormat("", 0, 0, "code");
+    expect(empty.text).toBe("`code`");
+    expect(empty.text.slice(empty.start, empty.end)).toBe("code");
+    expect(applyFormat("x", 0, 1, "block").text).toBe("```\nx\n```");
+  });
+
+  test("a quote or a list takes whole lines", () => {
+    expect(applyFormat("one\ntwo\nthree", 5, 9, "quote").text).toBe("one\n> two\n> three");
+    expect(applyFormat("one\ntwo", 0, 7, "numbers").text).toBe("1. one\n2. two");
+    expect(applyFormat("one", 1, 1, "bullets").text).toBe("• one");
+  });
+
+  test("a link is written for yardd to make Slack's", () => {
+    expect(applyLink("see docs", 4, 8, "https://example.com", "docs").text).toBe("see [docs](https://example.com)");
+    expect(applyLink("", 0, 0, "https://example.com", "").text).toBe("https://example.com");
+    expect(applyLink("", 0, 0, "https://example.com", "a [b] | c").text).toBe("[a  b    c](https://example.com)");
+    expect(linkUrl(" example.com/a ")).toBe("https://example.com/a");
+    expect(linkUrl("http://x.test")).toBe("http://x.test");
+    expect(linkUrl("javascript:alert(1)")).toBeNull();
+    expect(linkUrl("https://a b")).toBeNull();
+  });
+});
+
+describe("mentioning people from the reply box", () => {
+  const people = mentionablePeople([{ id: "U1", name: "Hugo Alves", face: "" }, { id: "U2", name: "Hugo", face: "https://x/y.png" }, { id: "U3", name: "Marc", face: "" }, { id: "U4", name: "Marc", face: "" }]);
+  const agent = { id: "a1", name: "Reviewer", handle: "reviewer" };
+
+  test("@ offers agents first, then people by any part of their name", () => {
+    expect(suggestMentions([agent], people, "hug").map((a) => a.id)).toEqual(["U1", "U2"]);
+    expect(suggestMentions([agent], people, "r").map((a) => a.id)).toEqual(["a1", "U3", "U4"]);
+    expect(suggestMentions([agent], people, "alv").map((a) => a.id)).toEqual(["U1"]);
+  });
+
+  test("a name counts only whole, the longer one first, the picked one of two", () => {
+    expect(mentionedPeople("hi @Hugo Alves and @Marc.", people).map((p) => p.id)).toEqual(["U1", "U3"]);
+    expect(mentionedPeople("hi @Hugo, @Hugo Alves", people).map((p) => p.id)).toEqual(["U1", "U2"]);
+    expect(mentionedPeople("hi @Marc", people, ["U4"]).map((p) => p.id)).toEqual(["U4"]);
+    expect(mentionedPeople("mail a@Marc or @Marcus", people)).toEqual([]);
+  });
+
+  test("a person is never an agent call", () => {
+    expect(calledAgents("@Marc @reviewer", [agent, ...people])).toEqual(["a1"]);
   });
 });

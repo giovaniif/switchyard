@@ -69,6 +69,7 @@ const SCHEMA: &str = "
         synced INTEGER NOT NULL DEFAULT 0,
         complete INTEGER NOT NULL DEFAULT 0,
         imported INTEGER NOT NULL DEFAULT 0,
+        favorite INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (team, id)
     );
     CREATE TABLE IF NOT EXISTS slack_messages (
@@ -85,6 +86,8 @@ const SCHEMA: &str = "
         reply_count INTEGER NOT NULL DEFAULT 0,
         reactions TEXT NOT NULL DEFAULT '[]',
         files TEXT NOT NULL DEFAULT '[]',
+        icon TEXT NOT NULL DEFAULT '',
+        attachments TEXT NOT NULL DEFAULT '[]',
         PRIMARY KEY (team, channel, ts)
     );
     CREATE INDEX IF NOT EXISTS slack_messages_thread ON slack_messages (team, channel, thread_ts, ts);
@@ -92,9 +95,37 @@ const SCHEMA: &str = "
         team TEXT NOT NULL,
         id TEXT NOT NULL,
         name TEXT NOT NULL,
+        image TEXT,
+        bot INTEGER NOT NULL DEFAULT 0,
+        gone INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (team, id)
     );
 ";
+
+/// How the background loading goes: what the card, the sidebar and the first
+/// import's dialog show (`slack.inbox.sync`, `slackSync` in the snapshot).
+#[derive(Default, Clone)]
+struct Progress {
+    running: bool,
+    /// Most of his conversations load for the first time: the import he
+    /// watches, not a catch-up after a dropped connection.
+    first: bool,
+    /// A window closed the first import's dialog.
+    seen: bool,
+    done: usize,
+    total: usize,
+    /// The conversation loading now, by name.
+    current: String,
+    error: Option<String>,
+    /// Channels whose first 60 days load (`slack.inbox.import`).
+    channels: Vec<String>,
+}
+
+impl Progress {
+    fn view(&self) -> Value {
+        json!({ "running": self.running, "first": self.first, "seen": self.seen, "done": self.done, "total": self.total, "current": self.current, "error": self.error, "channels": self.channels })
+    }
+}
 
 pub struct Inbox {
     db: Mutex<Option<Connection>>,
@@ -104,6 +135,7 @@ pub struct Inbox {
     pub(super) due: AtomicBool,
     /// Asks for the list to be broadcast (coalesced).
     changed: Mutex<Option<mpsc::UnboundedSender<()>>>,
+    progress: Mutex<Progress>,
 }
 
 impl Inbox {
@@ -116,6 +148,21 @@ impl Inbox {
             conn.execute_batch(SCHEMA)?;
             // Tables made before channels could be imported.
             let _ = conn.execute_batch("ALTER TABLE slack_conversations ADD COLUMN imported INTEGER NOT NULL DEFAULT 0;");
+            // And before favorites, people's pictures and attachments.
+            for sql in [
+                "ALTER TABLE slack_conversations ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;",
+                "ALTER TABLE slack_users ADD COLUMN image TEXT;",
+                "ALTER TABLE slack_users ADD COLUMN bot INTEGER NOT NULL DEFAULT 0;",
+                "ALTER TABLE slack_users ADD COLUMN gone INTEGER NOT NULL DEFAULT 0;",
+                "ALTER TABLE slack_messages ADD COLUMN icon TEXT NOT NULL DEFAULT '';",
+            ] {
+                let _ = conn.execute_batch(sql);
+            }
+            // Messages kept before attachments were had them flattened into
+            // their text: every conversation loads its 60 days again, once.
+            if conn.execute_batch("ALTER TABLE slack_messages ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]';").is_ok() {
+                let _ = conn.execute_batch("UPDATE slack_conversations SET synced = 0;");
+            }
             Ok(conn)
         })();
         let db = match db {
@@ -125,7 +172,7 @@ impl Inbox {
                 None
             }
         };
-        Inbox { db: Mutex::new(db), syncing: AtomicBool::new(false), due: AtomicBool::new(true), changed: Mutex::new(None) }
+        Inbox { db: Mutex::new(db), syncing: AtomicBool::new(false), due: AtomicBool::new(true), changed: Mutex::new(None), progress: Mutex::new(Progress::default()) }
     }
 
     fn with<T>(&self, f: impl FnOnce(&Connection) -> rusqlite::Result<T>) -> Option<T> {
@@ -152,7 +199,8 @@ impl Inbox {
             let mut stmt = c.prepare(
                 "SELECT team, id, kind, name, peer, last_ts, last_read,
                    (SELECT COUNT(*) FROM slack_messages m WHERE m.team = v.team AND m.channel = v.id AND m.ts > v.last_read
-                      AND m.user != ?1 AND m.deleted = 0 AND (m.thread_ts = '' OR m.thread_ts = m.ts OR m.subtype = 'thread_broadcast'))
+                      AND m.user != ?1 AND m.deleted = 0 AND (m.thread_ts = '' OR m.thread_ts = m.ts OR m.subtype = 'thread_broadcast')),
+                   favorite, COALESCE((SELECT image FROM slack_users u WHERE u.team = v.team AND u.id = v.peer), '')
                  FROM slack_conversations v WHERE last_ts != '' ORDER BY last_ts DESC",
             )?;
             let rows = stmt.query_map([me], |r| {
@@ -165,6 +213,8 @@ impl Inbox {
                     "lastTs": r.get::<_, String>(5)?,
                     "lastRead": r.get::<_, String>(6)?,
                     "unread": r.get::<_, i64>(7)?,
+                    "favorite": r.get::<_, i64>(8)? != 0,
+                    "face": r.get::<_, String>(9)?,
                 }))
             })?;
             rows.collect::<rusqlite::Result<Vec<_>>>()
@@ -172,18 +222,20 @@ impl Inbox {
         let mut list = rows.unwrap_or_default();
         for v in &mut list {
             let (team, id) = (v["team"].as_str().unwrap_or("").to_string(), v["id"].as_str().unwrap_or("").to_string());
-            if let Some((user, text, deleted)) = self.with(|c| {
+            if let Some((user, text, deleted, username, attachments)) = self.with(|c| {
                 c.query_row(
-                    "SELECT user, text, deleted FROM slack_messages WHERE team = ?1 AND channel = ?2 AND (thread_ts = '' OR thread_ts = ts OR subtype = 'thread_broadcast') ORDER BY ts DESC LIMIT 1",
+                    "SELECT user, text, deleted, username, attachments FROM slack_messages WHERE team = ?1 AND channel = ?2 AND (thread_ts = '' OR thread_ts = ts OR subtype = 'thread_broadcast') ORDER BY ts DESC LIMIT 1",
                     params![team, id],
-                    |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, i64>(2)? != 0)),
+                    |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, i64>(2)? != 0, r.get::<_, String>(3)?, r.get::<_, String>(4)?)),
                 )
                 .optional()
             })
             .flatten()
             {
+                // A message that is only an attachment (an alert, say) reads as its title.
+                let text = if text.is_empty() { attachment_line(&attachments) } else { text };
                 v["preview"] = json!(if deleted { String::new() } else { preview(&text) });
-                v["previewFrom"] = json!(self.name_of(&team, &user).unwrap_or(user));
+                v["previewFrom"] = json!(self.name_of(&team, &user).unwrap_or(if username.is_empty() { user } else { username }));
             }
         }
         Value::Array(list)
@@ -221,8 +273,47 @@ impl Inbox {
             .is_some_and(|v| v != 0)
     }
 
-    fn put_user(&self, team: &str, id: &str, name: &str) {
-        self.with(|c| c.execute("INSERT OR REPLACE INTO slack_users (team, id, name) VALUES (?1, ?2, ?3)", params![team, id, name]));
+    /// Whether a person's picture was asked for already (some have none).
+    fn face_known(&self, team: &str, user: &str) -> bool {
+        self.with(|c| c.query_row("SELECT image IS NOT NULL FROM slack_users WHERE team = ?1 AND id = ?2", params![team, user], |r| r.get::<_, bool>(0)).optional())
+            .flatten()
+            .unwrap_or(false)
+    }
+
+    fn put_user(&self, team: &str, id: &str, name: &str, image: &str, bot: bool, gone: bool) {
+        self.with(|c| {
+            c.execute(
+                "INSERT INTO slack_users (team, id, name, image, bot, gone) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                 ON CONFLICT (team, id) DO UPDATE SET name = excluded.name, image = excluded.image, bot = excluded.bot, gone = excluded.gone",
+                params![team, id, name, image, bot as i64, gone as i64],
+            )
+        });
+    }
+
+    /// A user as Slack describes one (`users.info`, `users.list`).
+    fn put_member(&self, team: &str, u: &Value) {
+        let Some(id) = u["id"].as_str() else { return };
+        let name = [&u["profile"]["display_name"], &u["real_name"], &u["profile"]["real_name"], &u["name"]]
+            .iter()
+            .find_map(|n| n.as_str().map(str::trim).filter(|n| !n.is_empty()))
+            .unwrap_or(id);
+        let image = face_url(u["profile"]["image_72"].as_str().or(u["profile"]["image_48"].as_str()).unwrap_or(""));
+        self.put_user(team, id, name, &image, u["is_bot"] == true || u["is_app_user"] == true || id == "USLACKBOT", u["deleted"] == true);
+    }
+
+    /// The people he can mention: everyone in the workspace Slack listed,
+    /// apps and people who left aside.
+    fn people(&self, team: &str, me: &str) -> Vec<Value> {
+        self.with(|c| {
+            let mut stmt = c.prepare("SELECT id, name, COALESCE(image, '') FROM slack_users WHERE team = ?1 AND bot = 0 AND gone = 0 AND id != ?2 ORDER BY name COLLATE NOCASE LIMIT 5000")?;
+            let rows = stmt.query_map(params![team, me], |r| Ok(json!({ "id": r.get::<_, String>(0)?, "name": r.get::<_, String>(1)?, "face": r.get::<_, String>(2)? })))?.collect::<rusqlite::Result<Vec<_>>>();
+            rows
+        })
+        .unwrap_or_default()
+    }
+
+    fn conversation_name(&self, team: &str, id: &str) -> String {
+        self.with(|c| c.query_row("SELECT name FROM slack_conversations WHERE team = ?1 AND id = ?2", params![team, id], |r| r.get::<_, String>(0)).optional()).flatten().unwrap_or_default()
     }
 
     /// Stores one message as Slack sent it. `live`: it just happened (an
@@ -231,21 +322,40 @@ impl Inbox {
     fn put_message(&self, team: &str, channel: &str, m: &Value, live: bool) {
         let Some(ts) = m["ts"].as_str() else { return };
         let thread = m["thread_ts"].as_str().unwrap_or("");
+        // Attachments are kept as they are, to be drawn as Slack draws them;
+        // a message with neither text nor one reads from its blocks.
+        let attached = attachments(m);
         let text = match m["text"].as_str().unwrap_or("") {
-            "" => super::message_text(m),
+            "" if attached.is_empty() => super::message_text(m),
             t => t.to_string(),
         };
-        let files: Vec<Value> = m["files"].as_array().map(|f| f.iter().map(|f| json!({ "name": f["name"].as_str().or(f["title"].as_str()).unwrap_or("file") })).collect()).unwrap_or_default();
+        // An app's own picture travels with its message.
+        let icon = face_url(
+            [&m["bot_profile"]["icons"]["image_72"], &m["bot_profile"]["icons"]["image_48"], &m["icons"]["image_72"], &m["icons"]["image_64"], &m["icons"]["image_48"]]
+                .iter()
+                .find_map(|v| v.as_str())
+                .unwrap_or(""),
+        );
+        let files: Vec<Value> = m["files"].as_array().map(|f| {
+            f.iter()
+                .map(|f| {
+                    // Its page in Slack: the bytes themselves need a scope his app does not ask for.
+                    let url = f["permalink"].as_str().filter(|u| u.starts_with("https://") && u.len() <= 500).unwrap_or("");
+                    json!({ "name": f["name"].as_str().or(f["title"].as_str()).unwrap_or("file"), "url": url, "kind": f["mimetype"].as_str().unwrap_or("") })
+                })
+                .collect()
+        }).unwrap_or_default();
         let reactions: Vec<Value> = m["reactions"].as_array().map(|r| r.iter().map(|r| json!({ "name": r["name"], "users": r["users"] })).collect()).unwrap_or_default();
         let username = m["user_profile"]["display_name"].as_str().filter(|s| !s.is_empty()).or(m["username"].as_str()).or(m["bot_profile"]["name"].as_str()).unwrap_or("");
         self.with(|c| {
             let new = c.query_row("SELECT 1 FROM slack_messages WHERE team = ?1 AND channel = ?2 AND ts = ?3", params![team, channel, ts], |_| Ok(())).optional()?.is_none();
             c.execute(
-                "INSERT INTO slack_messages (team, channel, ts, thread_ts, user, username, text, subtype, edited, reply_count, reactions, files)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+                "INSERT INTO slack_messages (team, channel, ts, thread_ts, user, username, text, subtype, edited, reply_count, reactions, files, icon, attachments)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
                  ON CONFLICT (team, channel, ts) DO UPDATE SET thread_ts = excluded.thread_ts, user = excluded.user, username = excluded.username,
                    text = excluded.text, subtype = excluded.subtype, edited = excluded.edited,
-                   reply_count = MAX(reply_count, excluded.reply_count), reactions = excluded.reactions, files = excluded.files",
+                   reply_count = MAX(reply_count, excluded.reply_count), reactions = excluded.reactions, files = excluded.files,
+                   icon = excluded.icon, attachments = excluded.attachments",
                 params![
                     team,
                     channel,
@@ -259,6 +369,8 @@ impl Inbox {
                     m["reply_count"].as_i64().unwrap_or(0),
                     Value::Array(reactions).to_string(),
                     Value::Array(files).to_string(),
+                    icon,
+                    Value::Array(attached).to_string(),
                 ],
             )?;
             // A new live reply is one more on its parent (whose count came
@@ -283,27 +395,44 @@ impl Inbox {
         self.with(|c| c.query_row(&format!("{SELECT} WHERE team = ?1 AND channel = ?2 AND ts = ?3"), params![team, channel, ts], row).optional()).flatten()
     }
 
-    /// The names a list of messages needs: their authors, the people they
-    /// mention, and who reacted.
-    fn users_for(&self, team: &str, messages: &[Value]) -> Value {
+    /// The names a list of messages needs, and those people's pictures:
+    /// their authors, the people they mention, and who reacted.
+    fn users_for(&self, team: &str, messages: &[Value]) -> (Value, Value) {
         let mut ids: Vec<String> = Vec::new();
         for m in messages {
             if let Some(u) = m["user"].as_str() {
                 ids.push(u.to_string());
             }
             ids.extend(mentions(m["text"].as_str().unwrap_or("")));
+            for a in m["attachments"].as_array().into_iter().flatten() {
+                for k in ["pretext", "text"] {
+                    ids.extend(mentions(a[k].as_str().unwrap_or("")));
+                }
+            }
             for r in m["reactions"].as_array().into_iter().flatten() {
                 ids.extend(r["users"].as_array().into_iter().flatten().filter_map(|u| u.as_str().map(str::to_string)));
             }
         }
         ids.sort();
         ids.dedup();
-        let map: serde_json::Map<String, Value> = ids.into_iter().filter_map(|id| self.name_of(team, &id).map(|n| (id, json!(n)))).collect();
-        Value::Object(map)
+        let (mut names, mut faces) = (serde_json::Map::new(), serde_json::Map::new());
+        for id in ids {
+            let Some((name, image)) = self
+                .with(|c| c.query_row("SELECT name, COALESCE(image, '') FROM slack_users WHERE team = ?1 AND id = ?2", params![team, id], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))).optional())
+                .flatten()
+            else {
+                continue;
+            };
+            if !image.is_empty() {
+                faces.insert(id.clone(), json!(image));
+            }
+            names.insert(id, json!(name));
+        }
+        (Value::Object(names), Value::Object(faces))
     }
 }
 
-const SELECT: &str = "SELECT ts, thread_ts, user, username, text, subtype, edited, deleted, reply_count, reactions, files FROM slack_messages";
+const SELECT: &str = "SELECT ts, thread_ts, user, username, text, subtype, edited, deleted, reply_count, reactions, files, icon, attachments FROM slack_messages";
 
 fn row(r: &rusqlite::Row) -> rusqlite::Result<Value> {
     let ts: String = r.get(0)?;
@@ -330,7 +459,140 @@ fn row(r: &rusqlite::Row) -> rusqlite::Result<Value> {
     if !subtype.is_empty() {
         v["subtype"] = json!(subtype);
     }
+    let icon: String = r.get(11)?;
+    if !icon.is_empty() {
+        v["icon"] = json!(icon);
+    }
+    let attached = serde_json::from_str::<Value>(&r.get::<_, String>(12)?).unwrap_or(json!([]));
+    if !deleted && attached.as_array().is_some_and(|a| !a.is_empty()) {
+        v["attachments"] = attached;
+    }
     Ok(v)
+}
+
+/// A picture's address as the page may load it: https only (and the loopback
+/// fake in tests), else none.
+fn face_url(url: &str) -> String {
+    if url.len() <= 500 && (url.starts_with("https://") || url.starts_with("http://127.0.0.1:")) && !url.contains(char::is_whitespace) {
+        url.to_string()
+    } else {
+        String::new()
+    }
+}
+
+/// A message's attachments as the page draws them (an alert's card, a link's
+/// preview): the words only, no images. At most ten, twenty fields each.
+fn attachments(m: &Value) -> Vec<Value> {
+    let s = |v: &Value| v.as_str().unwrap_or("").trim().to_string();
+    let mut out = Vec::new();
+    for a in m["attachments"].as_array().into_iter().flatten().take(10) {
+        let mut v = serde_json::Map::new();
+        let mut put = |k: &str, text: String| {
+            if !text.is_empty() {
+                v.insert(k.to_string(), json!(text));
+            }
+        };
+        put("pretext", s(&a["pretext"]));
+        put("author", s(&a["author_name"]));
+        put("title", s(&a["title"]));
+        put("titleLink", s(if a["title_link"].is_string() { &a["title_link"] } else { &a["from_url"] }));
+        put("text", s(&a["text"]));
+        put("footer", s(if a["footer"].is_string() { &a["footer"] } else { &a["service_name"] }));
+        let fields: Vec<Value> = a["fields"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .take(20)
+            .map(|f| json!({ "title": s(&f["title"]), "value": s(&f["value"]), "short": f["short"] == true }))
+            .filter(|f| f["title"] != "" || f["value"] != "")
+            .collect();
+        // Nothing of its own to read: its blocks, else what Slack would show in a notification.
+        if !["pretext", "title", "text"].iter().any(|k| v.contains_key(*k)) && fields.is_empty() {
+            let words = match super::message_text(a) {
+                t if t.is_empty() => s(&a["fallback"]),
+                t => t,
+            };
+            if words.is_empty() {
+                continue;
+            }
+            v.insert("text".into(), json!(words));
+        }
+        if !fields.is_empty() {
+            v.insert("fields".into(), json!(fields));
+        }
+        // Slack's bar colour: a hex colour, or one of its three names.
+        let color = s(&a["color"]);
+        let hex = color.trim_start_matches('#');
+        if matches!(color.as_str(), "good" | "warning" | "danger") {
+            v.insert("color".into(), json!(color));
+        } else if hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            v.insert("color".into(), json!(format!("#{hex}")));
+        }
+        out.push(Value::Object(v));
+    }
+    out
+}
+
+/// The first words of a message's attachments (kept as JSON), for the sidebar.
+fn attachment_line(kept: &str) -> String {
+    let list: Value = serde_json::from_str(kept).unwrap_or(Value::Null);
+    list.as_array()
+        .into_iter()
+        .flatten()
+        .find_map(|a| ["pretext", "title", "text"].iter().find_map(|k| a[*k].as_str().filter(|t| !t.is_empty())))
+        .unwrap_or("")
+        .to_string()
+}
+
+/// `[label](https://…)` as the reply box writes a link, made Slack's
+/// `<url|label>`. Runs on the escaped text, so no other markup of his gets
+/// through; only http and https, and a label without a bar or a bracket.
+fn link_markup(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(i) = rest.find('[') {
+        let after = &rest[i + 1..];
+        let link = after.find("](").and_then(|close| {
+            let (label, tail) = (&after[..close], &after[close + 2..]);
+            let end = tail.find(')')?;
+            let url = &tail[..end];
+            let fine = !label.is_empty()
+                && !label.contains(['[', '|', '\n'])
+                && (url.starts_with("https://") || url.starts_with("http://"))
+                && !url.contains(|c: char| c.is_whitespace() || c == '|' || c == '<' || c == '>');
+            fine.then(|| (format!("<{url}|{label}>"), close + 2 + end + 1))
+        });
+        out.push_str(&rest[..i]);
+        match link {
+            Some((markup, used)) => {
+                out.push_str(&markup);
+                rest = &after[used..];
+            }
+            None => {
+                out.push('[');
+                rest = after;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// `@Name` as he picked it in the reply box, made a Slack mention of `user`:
+/// the whole name, not the start of a longer word.
+fn mention_name(text: &str, name: &str, user: &str) -> String {
+    let needle = format!("@{name}");
+    let mut out = String::new();
+    let mut from = 0;
+    while let Some(k) = text[from..].find(&needle) {
+        let (i, end) = (from + k, from + k + needle.len());
+        let alone = text[..i].chars().next_back().is_none_or(|c| !c.is_alphanumeric()) && text[end..].chars().next().is_none_or(|c| !c.is_alphanumeric());
+        out.push_str(&text[from..i]);
+        out.push_str(&if alone { format!("<@{user}>") } else { needle.clone() });
+        from = end;
+    }
+    out.push_str(&text[from..]);
+    out
 }
 
 /// The user ids a text mentions (`<@U123>`, `<@U123|name>`).
@@ -421,19 +683,54 @@ pub fn snapshot(app: &App) -> Value {
     app.slack.inbox.list(&me)
 }
 
-/// Remembers who a user is (name from Slack, cached).
+/// How the loading goes, for the snapshot.
+pub fn sync_view(app: &App) -> Value {
+    app.slack.inbox.progress.lock().unwrap().view()
+}
+
+/// Changes the progress and tells every window.
+fn set_progress(app: &App, f: impl FnOnce(&mut Progress)) {
+    let view = {
+        let mut p = app.slack.inbox.progress.lock().unwrap();
+        f(&mut p);
+        p.view()
+    };
+    app.broadcast(json!({ "op": "slack.inbox.sync", "sync": view }));
+}
+
+/// Remembers who a user is (name and picture from Slack, kept).
 async fn learn_user(app: &App, token: &str, team: &str, user: &str) {
-    if user.is_empty() || app.slack.inbox.name_of(team, user).is_some() {
+    if user.is_empty() || app.slack.inbox.face_known(team, user) {
         return;
     }
     // An agent's own bot reads as the agent, here or on a host.
     if let Some(name) = super::callable_apps(app).into_iter().find(|a| a.bot_user == user).map(|a| a.name).filter(|n| !n.is_empty()) {
-        app.slack.inbox.put_user(team, user, &name);
+        app.slack.inbox.put_user(team, user, &name, "", true, false);
         return;
     }
-    let name = app.slack.user_name(token, user).await;
-    if name != user {
-        app.slack.inbox.put_user(team, user, &name);
+    if let Ok(v) = app.slack.api(token, "users.info", &[("user", user)]).await {
+        app.slack.inbox.put_member(team, &v["user"]);
+    }
+}
+
+/// Everyone in the workspace, names and pictures, in a few calls: the people
+/// he can mention, and no lookup per person while conversations load. Best
+/// effort (a page refused ends it; at most 5000 people).
+async fn learn_everyone(app: &App, token: &str, team: &str) {
+    let mut cursor = String::new();
+    for _ in 0..25 {
+        let mut form = vec![("limit", "200")];
+        if !cursor.is_empty() {
+            form.push(("cursor", cursor.as_str()));
+        }
+        let Ok(v) = app.slack.api(token, "users.list", &form).await else { return };
+        for u in v["members"].as_array().into_iter().flatten() {
+            app.slack.inbox.put_member(team, u);
+        }
+        cursor = v["response_metadata"]["next_cursor"].as_str().unwrap_or("").to_string();
+        if cursor.is_empty() {
+            return;
+        }
     }
 }
 
@@ -502,10 +799,17 @@ pub async fn sync(app: Arc<App>) {
     if inbox.syncing.swap(true, Ordering::SeqCst) {
         return;
     }
-    if let Err(e) = sync_all(&app).await {
+    set_progress(&app, |p| *p = Progress { running: true, channels: std::mem::take(&mut p.channels), ..Progress::default() });
+    let result = sync_all(&app).await;
+    if let Err(e) = &result {
         eprintln!("yardd: slack inbox sync: {e:#}");
         inbox.due.store(true, Ordering::SeqCst);
     }
+    set_progress(&app, |p| {
+        p.running = false;
+        p.current.clear();
+        p.error = result.err().map(|e| format!("{e:#}"));
+    });
     inbox.syncing.store(false, Ordering::SeqCst);
     inbox.touched();
 }
@@ -513,6 +817,7 @@ pub async fn sync(app: Arc<App>) {
 async fn sync_all(app: &Arc<App>) -> Result<()> {
     let Some(me) = ready(app) else { return Ok(()) };
     let (token, team) = (me.user_token.clone(), me.team_id.clone());
+    learn_everyone(app, &token, &team).await;
     let mut cursor = String::new();
     let mut found = Vec::new();
     loop {
@@ -537,11 +842,23 @@ async fn sync_all(app: &Arc<App>) -> Result<()> {
             rows
         })
         .unwrap_or_default();
+    // How much there is to do, and whether it is the import he watches: most
+    // of it loads for the first time.
+    let ids = || imported.iter().map(|(id, _)| id.as_str()).chain(found.iter().filter_map(|c| c["id"].as_str()));
+    let total = ids().count();
+    let fresh = ids().filter(|id| app.slack.inbox.conversation(&team, id).is_none_or(|c| !c.2)).count();
+    set_progress(app, |p| {
+        p.total = total;
+        p.first = fresh * 2 > total;
+    });
     for (id, _) in &imported {
         if ready(app).is_none_or(|m| m.user_token != token) {
             return Ok(());
         }
+        let name = app.slack.inbox.conversation_name(&team, id);
+        set_progress(app, |p| p.current = name);
         load_conversation(app, &token, &team, id).await?;
+        set_progress(app, |p| p.done += 1);
         app.slack.inbox.touched();
     }
     for c in &found {
@@ -552,7 +869,9 @@ async fn sync_all(app: &Arc<App>) -> Result<()> {
         }
         let (kind, name, peer) = describe(app, &token, &team, &me.user_id, c).await;
         app.slack.inbox.put_conversation(&team, id, &kind, &name, &peer);
+        set_progress(app, |p| p.current = name);
         load_conversation(app, &token, &team, id).await?;
+        set_progress(app, |p| p.done += 1);
         app.slack.inbox.touched();
     }
     Ok(())
@@ -673,8 +992,8 @@ fn toggle(list: &mut Vec<Value>, name: &str, user: &str, add: bool) {
 
 fn send_message(app: &App, team: &str, channel: &str, ts: &str) {
     let Some(m) = app.slack.inbox.message(team, channel, ts) else { return };
-    let users = app.slack.inbox.users_for(team, std::slice::from_ref(&m));
-    app.broadcast(json!({ "op": "slack.inbox.message", "team": team, "channel": channel, "message": m, "users": users }));
+    let (users, faces) = app.slack.inbox.users_for(team, std::slice::from_ref(&m));
+    app.broadcast(json!({ "op": "slack.inbox.message", "team": team, "channel": channel, "message": m, "users": users, "faces": faces }));
 }
 
 /// The page's reading ops (see the module notes). Answers the asking window.
@@ -738,8 +1057,8 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
                 rows.reverse();
                 rows
             };
-            let users = inbox.users_for(&team, &messages);
-            json!({ "op": "slack.inbox.messages", "team": team, "channel": channel, "thread": if thread.is_empty() { Value::Null } else { json!(thread) }, "before": if before.is_empty() { Value::Null } else { json!(before) }, "messages": messages, "users": users, "more": more })
+            let (users, faces) = inbox.users_for(&team, &messages);
+            json!({ "op": "slack.inbox.messages", "team": team, "channel": channel, "thread": if thread.is_empty() { Value::Null } else { json!(thread) }, "before": if before.is_empty() { Value::Null } else { json!(before) }, "messages": messages, "users": users, "faces": faces, "more": more })
         }
         "slack.inbox.read" => {
             let (team, channel, ts) = (s("team"), s("channel"), s("ts"));
@@ -756,6 +1075,30 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
                 });
             }
             return Ok(());
+        }
+        "slack.inbox.favorite" => {
+            let (team, channel) = (s("team"), s("channel"));
+            let on = msg["on"].as_bool().unwrap_or(true);
+            let found = inbox.with(|c| c.execute("UPDATE slack_conversations SET favorite = ?3 WHERE team = ?1 AND id = ?2", params![team, channel, on as i64])).unwrap_or(0) > 0;
+            anyhow::ensure!(found, "no such conversation");
+            inbox.touched();
+            json!({ "op": "slack.inbox.favorited", "team": team, "channel": channel, "on": on })
+        }
+        "slack.inbox.people" => {
+            let m = me.context("Your Slack is not connected.")?;
+            json!({ "op": "slack.inbox.people", "team": m.team_id, "people": inbox.people(&m.team_id, &m.user_id) })
+        }
+        // The first import's dialog was closed: in every window.
+        "slack.inbox.sync.seen" => {
+            set_progress(app, |p| p.seen = true);
+            return Ok(());
+        }
+        // Again now, not at the connection's next hello.
+        "slack.inbox.sync.retry" => {
+            me.context("Your Slack is not connected.")?;
+            inbox.due.store(false, Ordering::SeqCst);
+            tokio::spawn(sync(app.clone()));
+            json!({ "op": "slack.inbox.sync", "sync": sync_view(app) })
         }
         "slack.inbox.channels" => {
             let m = me.context("Your Slack is not connected.")?;
@@ -798,10 +1141,12 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
                 // Its 60 days load in the background.
                 let app2 = app.clone();
                 let (token, team2, channel2) = (m.user_token.clone(), team.clone(), channel.clone());
+                set_progress(app, |p| p.channels.push(channel.clone()));
                 tokio::spawn(async move {
                     if let Err(e) = load_conversation(&app2, &token, &team2, &channel2).await {
                         eprintln!("yardd: slack inbox: importing {channel2}: {e:#}");
                     }
+                    set_progress(&app2, |p| p.channels.retain(|c| *c != channel2));
                     app2.slack.inbox.touched();
                 });
             } else {
@@ -820,7 +1165,7 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
             anyhow::ensure!(!text.is_empty(), "Write something first.");
             anyhow::ensure!(text.len() <= 40_000, "That message is too long for Slack.");
             inbox.conversation(&team, &channel).context("no such conversation")?;
-            let mut escaped = text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+            let mut escaped = link_markup(&text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;"));
             // Agents he called by handle (`mentions`, their ids): a real
             // mention of each one's bot, so its app answers there. Only
             // agents with an app in this workspace, here or on a host;
@@ -830,6 +1175,23 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
                 if let Some(rec) = apps.iter().find(|a| a.agent == id && a.team == team) {
                     escaped = mention_handle(&escaped, &rec.handle, &rec.bot_user);
                 }
+            }
+            // People he picked on `@` (`people`, their ids): a real mention
+            // of each, where their name still stands as he picked it. Longer
+            // names first, so "Ana Lima" is not read as "Ana".
+            let mut picked: Vec<(String, String)> = msg["people"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .take(20)
+                .filter(|id| id.len() <= 20 && id.starts_with(['U', 'W']) && id.chars().all(|c| c.is_ascii_alphanumeric()))
+                .filter_map(|id| inbox.name_of(&team, id).map(|name| (id.to_string(), name)))
+                .collect();
+            picked.sort_by_key(|(_, name)| std::cmp::Reverse(name.len()));
+            for (id, name) in &picked {
+                let name = name.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+                escaped = mention_name(&escaped, &name, id);
             }
             let mut form = vec![("channel", channel.as_str()), ("text", escaped.as_str())];
             if !thread.is_empty() {
@@ -889,6 +1251,7 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
 pub fn forget(app: &App) {
     app.slack.inbox.with(|c| c.execute_batch("DELETE FROM slack_messages; DELETE FROM slack_conversations; DELETE FROM slack_users;"));
     app.slack.inbox.due.store(true, Ordering::SeqCst);
+    set_progress(app, |p| *p = Progress::default());
     app.slack.inbox.touched();
 }
 
@@ -915,6 +1278,34 @@ mod tests {
     }
 
     #[test]
+    fn a_written_link_becomes_slacks_and_nothing_else_does() {
+        assert_eq!(link_markup("see [the docs](https://example.com/a?b=1&amp;c=2) and [x](javascript:alert(1)) [y]"), "see <https://example.com/a?b=1&amp;c=2|the docs> and [x](javascript:alert(1)) [y]");
+        assert_eq!(link_markup("[a|b](https://example.com) [ok](https://e.com/&lt;x)"), "[a|b](https://example.com) <https://e.com/&lt;x|ok>");
+    }
+
+    #[test]
+    fn a_picked_name_becomes_a_mention_only_whole() {
+        assert_eq!(mention_name("hi @Hugo Alves, and @Hugo Alvesson; @Hugo Alves", "Hugo Alves", "U1"), "hi <@U1>, and @Hugo Alvesson; <@U1>");
+        assert_eq!(mention_name("mail a@Ana or @Ana.", "Ana", "U2"), "mail a@Ana or <@U2>.");
+    }
+
+    #[test]
+    fn attachments_keep_their_words_and_a_safe_colour() {
+        let m = json!({ "attachments": [
+            { "color": "36a64f", "title": "Recovered", "title_link": "https://example.com/m", "text": "all *good*", "fields": [{ "title": "Value", "value": "0.002", "short": true }], "footer": "Datadog" },
+            { "color": "red; x", "fallback": "only a fallback" },
+            { "image_url": "https://example.com/x.png" },
+        ] });
+        let kept = attachments(&m);
+        assert_eq!(kept.len(), 2);
+        assert_eq!(kept[0], json!({ "color": "#36a64f", "title": "Recovered", "titleLink": "https://example.com/m", "text": "all *good*", "fields": [{ "title": "Value", "value": "0.002", "short": true }], "footer": "Datadog" }));
+        assert_eq!(kept[1], json!({ "text": "only a fallback" }));
+        assert_eq!(attachment_line(&Value::Array(kept).to_string()), "Recovered");
+        assert_eq!(face_url("javascript:alert(1)"), "");
+        assert_eq!(face_url("https://avatars.slack-edge.com/a_72.png"), "https://avatars.slack-edge.com/a_72.png");
+    }
+
+    #[test]
     fn mentions_are_user_ids_only() {
         assert_eq!(mentions("hi <@U1ABC> and <@W2XYZ|ana>, not <#C1|general> or <@B1>"), ["U1ABC", "W2XYZ"]);
     }
@@ -938,7 +1329,12 @@ mod tests {
         let edited = inbox.message("T", "D1", "1.000100").unwrap();
         assert_eq!((edited["text"].as_str(), edited["edited"].as_bool()), (Some("hi!"), Some(true)));
         // The list: the newest top-level message, and what the owner has not read.
+        inbox.put_member("T", &json!({ "id": "U2", "profile": { "display_name": "Ana", "image_72": "https://example.com/ana.png" } }));
+        inbox.put_member("T", &json!({ "id": "U9", "real_name": "Old Bot", "is_bot": true }));
+        assert_eq!(inbox.people("T", "U1"), [json!({ "id": "U2", "name": "Ana", "face": "https://example.com/ana.png" })]);
+        inbox.with(|c| c.execute("UPDATE slack_conversations SET favorite = 1 WHERE id = 'D1'", []));
         let list = inbox.list("U1");
+        assert_eq!((list[0]["favorite"].as_bool(), list[0]["face"].as_str()), (Some(true), Some("https://example.com/ana.png")));
         assert_eq!(list[0]["lastTs"], "2.000100");
         assert_eq!(list[0]["unread"], 2);
         assert_eq!(list[0]["preview"], "a thread");
