@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "session:s1a21d5e4e60a",
+  "build": {
+    "sha": "dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2",
+    "short": "dd8cbb5",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T14:17:25.734Z"
+  },
+  "dir": ".verify/evidence/claude-models-base-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2806,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/claude-models-base-desktop/picker-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/claude-models-base-desktop/codex-unfolded-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

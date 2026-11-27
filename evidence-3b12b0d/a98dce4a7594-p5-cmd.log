@@ -1,0 +1,18 @@
+$ /tmp/claude-models-probe/newtests.sh
+# exit 1 after 53294 ms at c9cccf4a00994720979ce6ed77a84b2fe3955042
+
+test claude_models_fall_back_to_a_built_in_list_with_fable ... FAILED
+test claude_models_are_what_each_account_reports ... FAILED
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 97 filtered out; finished in 20.14s
+test a_model_picked_on_an_idle_claude_session_is_the_one_its_next_sidecar_runs ... FAILED
+thread 'a_model_picked_on_an_idle_claude_session_is_the_one_its_next_sidecar_runs' (2760136) panicked at crates/yardd/tests/release.rs:297:5:
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 3.82s
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file. [5.00ms]
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file. [5.00ms]
+

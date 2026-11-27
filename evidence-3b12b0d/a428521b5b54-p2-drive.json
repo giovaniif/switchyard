@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "session:s1a21d5e4e60a",
+  "build": {
+    "sha": "dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2",
+    "short": "dd8cbb5",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T14:17:25.734Z"
+  },
+  "dir": ".verify/evidence/claude-models-base-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2786,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/claude-models-base-mobile/picker-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/claude-models-base-mobile/codex-unfolded-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

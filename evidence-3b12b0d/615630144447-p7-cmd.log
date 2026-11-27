@@ -1,0 +1,167 @@
+$ verify/yv api '{"op":"session.setModel","sessionId":"{{sid_claude}}","model":"claude-fable-5-2","effort":"high"}' && verify/yv state --expect '{"sessions":[{"id":"{{sid_claude}}","model":"claude-fable-5-2"}]}' && verify/yv api '{"op":"session.send","sessionId":"{{sid_claude}}","text":"TEST-on fable again"}' --wait '{"op":"event","event":{"type":"turn_completed"}}' && grep 'start pid=' "$(verify/yv var get fake | jq -r .value)/sidecar.log" | tail -1 | grep -q ' model=claude-fable-5-2 '
+# exit 0 after 975 ms at 3b12b0dc7ce1f5e93634b27b0b78a3c6d600a7be
+
+{
+  "command": "api",
+  "ok": true,
+  "sent": {
+    "op": "session.setModel",
+    "sessionId": "s1a21d5e4e60a",
+    "model": "claude-fable-5-2",
+    "effort": "high"
+  },
+  "reply": null,
+  "saved": {},
+  "received": 1,
+  "problems": []
+}
+{
+  "command": "state",
+  "ok": true,
+  "sessions": [
+    {
+      "id": "s1a21d5e4ea9c",
+      "title": "[cmd] TEST-run the migration",
+      "status": "idle",
+      "engine": "codex",
+      "model": "fake-fast",
+      "permission": "ask",
+      "branch": "yard/cmd-test-run-the-migration-e91b",
+      "pinned": false,
+      "archived": false,
+      "group": null,
+      "cwd": "/tmp/yv-default-2582144-mwz2fjs6/data/wt/TEST-demo-app/yard-cmd-test-run-the-migration-e91b",
+      "automation": null,
+      "agent": null,
+      "needsYou": null,
+      "updatedAt": 1795790322253
+    },
+    {
+      "id": "s1a21d5e4e60a",
+      "title": "TEST-hello from Claude",
+      "status": "idle",
+      "engine": "claude",
+      "model": "claude-fable-5-2",
+      "permission": "ask",
+      "branch": "yard/test-hello-from-claude-e459",
+      "pinned": false,
+      "archived": false,
+      "group": null,
+      "cwd": "/tmp/yv-default-2582144-mwz2fjs6/data/wt/TEST-demo-app/yard-test-hello-from-claude-e459",
+      "automation": null,
+      "agent": null,
+      "needsYou": null,
+      "updatedAt": 1795791336630
+    },
+    {
+      "id": "s1a21d5e4e118",
+      "title": "[edit] TEST-fix the greeting",
+      "status": "idle",
+      "engine": "codex",
+      "model": "fake-fast",
+      "permission": "ask",
+      "branch": "yard/edit-test-fix-the-greeting-df97",
+      "pinned": false,
+      "archived": false,
+      "group": null,
+      "cwd": "/tmp/yv-default-2582144-mwz2fjs6/data/wt/TEST-demo-app/yard-edit-test-fix-the-greeting-df97",
+      "automation": null,
+      "agent": null,
+      "needsYou": null,
+      "updatedAt": 1795789049366
+    },
+    {
+      "id": "s1a21d5e4dc56",
+      "title": "TEST-say hello",
+      "status": "idle",
+      "engine": "codex",
+      "model": "fake-fast",
+      "permission": "ask",
+      "branch": "yard/test-say-hello-dad5",
+      "pinned": false,
+      "archived": false,
+      "group": null,
+      "cwd": "/tmp/yv-default-2582144-mwz2fjs6/data/wt/TEST-demo-app/yard-test-say-hello-dad5",
+      "automation": null,
+      "agent": null,
+      "needsYou": null,
+      "updatedAt": 1795789049289
+    },
+    {
+      "id": "s1a21d5e4d794",
+      "title": "[think] TEST-plan the refactor",
+      "status": "idle",
+      "engine": "codex",
+      "model": "fake-fast",
+      "permission": "ask",
+      "branch": "yard/think-test-plan-the-refactor-d613",
+      "pinned": false,
+      "archived": false,
+      "group": null,
+      "cwd": "/tmp/yv-default-2582144-mwz2fjs6/data/wt/TEST-demo-app/yard-think-test-plan-the-refactor-d613",
+      "automation": null,
+      "agent": null,
+      "needsYou": null,
+      "updatedAt": 1795789049213
+    },
+    {
+      "id": "s1a21d5e4d2c2",
+      "title": "[fail] TEST-failing turn",
+      "status": "idle",
+      "engine": "codex",
+      "model": "fake-fast",
+      "permission": "ask",
+      "branch": "yard/fail-test-failing-turn-d151",
+      "pinned": false,
+      "archived": false,
+      "group": null,
+      "cwd": "/tmp/yv-default-2582144-mwz2fjs6/data/wt/TEST-demo-app/yard-fail-test-failing-turn-d151",
+      "automation": null,
+      "agent": null,
+      "needsYou": null,
+      "updatedAt": 1795789049137
+    }
+  ],
+  "host": null,
+  "vars": {
+    "port": "44331",
+    "url": "http://127.0.0.1:44331",
+    "work": "/tmp/yv-default-2582144-mwz2fjs6/work",
+    "home": "/tmp/yv-default-2582144-mwz2fjs6/home",
+    "fake": "/tmp/yv-default-2582144-mwz2fjs6/fake",
+    "data": "/tmp/yv-default-2582144-mwz2fjs6/data",
+    "repo": "/tmp/yv-default-2582144-mwz2fjs6/work/TEST-demo-app",
+    "plain": "/tmp/yv-default-2582144-mwz2fjs6/work/TEST-plain-folder",
+    "sid_fail": "s1a21d5e4d2c2",
+    "sid_think": "s1a21d5e4d794",
+    "sid_echo": "s1a21d5e4dc56",
+    "sid_edit": "s1a21d5e4e118",
+    "sid_claude": "s1a21d5e4e60a",
+    "sid_cmd": "s1a21d5e4ea9c",
+    "edit_branch": "yard/edit-test-fix-the-greeting-df97"
+  },
+  "problems": []
+}
+{
+  "command": "api",
+  "ok": true,
+  "sent": {
+    "op": "session.send",
+    "sessionId": "s1a21d5e4e60a",
+    "text": "TEST-on fable again"
+  },
+  "reply": {
+    "event": {
+      "at": 1795791337490,
+      "status": "completed",
+      "type": "turn_completed"
+    },
+    "op": "event",
+    "seq": 11,
+    "sessionId": "s1a21d5e4e60a"
+  },
+  "saved": {},
+  "received": 7,
+  "problems": []
+}
+

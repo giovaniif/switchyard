@@ -1,0 +1,19 @@
+$ verify/yv api '{"op":"session.setModel","sessionId":"{{sid_claude}}","model":"claude-sonnet-5-5","effort":"medium"}' --expect '{"op":"error","message":"session has no Claude sidecar"}'
+# exit 1 after 463 ms at dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2
+
+{
+  "command": "api {\"op\":\"session.setModel\",\"sessionId\":\"{{sid_claude}}\",\"model\":\"claude-sonnet-5-5\",\"effort\":\"medium\"}",
+  "ok": false,
+  "reply": {
+    "for": "session.setModel",
+    "message": "session has no Claude sidecar",
+    "op": "error"
+  },
+  "problems": [
+    {
+      "code": "api-error",
+      "msg": "session.setModel failed: session has no Claude sidecar"
+    }
+  ]
+}
+

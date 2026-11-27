@@ -1,0 +1,94 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test daemon claude_models; a=$?; CARGO_BUILD_JOBS=2 cargo test -p yardd --test release a_model_picked; b=$?; (cd sidecar/yard-claude && bun test src/models.test.ts); c=$?; (cd ui && bun test src/engines.test.ts); d=$?; exit $((a|b|c|d))
+# exit 101 after 39930 ms at a2f329d0d4f08f5f49bf511d93aae383d954de8e
+
+
+running 2 tests
+test claude_models_fall_back_to_a_built_in_list_with_fable ... FAILED
+test claude_models_are_what_each_account_reports ... FAILED
+
+failures:
+
+---- claude_models_fall_back_to_a_built_in_list_with_fable stdout ----
+
+thread 'claude_models_fall_back_to_a_built_in_list_with_fable' (2853829) panicked at crates/yardd/tests/daemon.rs:117:5:
+assertion `left == right` failed
+  left: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"]
+ right: ["claude-opus-5-5", "claude-fable-5-2", "claude-sonnet-5-5", "claude-haiku-5-5"]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-2853827-claude-models-fallback-0 for inspection
+
+---- claude_models_are_what_each_account_reports stdout ----
+
+thread 'claude_models_are_what_each_account_reports' (2853828) panicked at crates/yardd/tests/common/mod.rs:436:27:
+timed out after 20s waiting for the models Claude reports; last messages:
+{"accounts":[],"agents":[],"automations":[],"home":"/tmp/yardd-test-2853827-claude-models-1/home","host":null,"hostName":"giovani","hosts":[],"mobile":{"configured":false,"devices":[],"live":[],"origins":[],"testFlightUrl":"https://testflight.apple.com/join/BygX29JY"},"models":{"claude":[{"defaultEf
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"op":"usage","usage":{"codex":{"byLimitId":{"codex":{"limitId":"codex","primary":{"resetsAt":1795798967,"usedPercent":12,"windowDurationMins":300},"secondary":{"resetsAt":1796064767,"usedPercent":34,"windowDurationMins":10080}},"codex_spark":{"limitId":"codex_spark","limitName":"TEST-Spark","primar
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+kept /tmp/yardd-test-2853827-claude-models-1 for inspection
+
+
+failures:
+    claude_models_are_what_each_account_reports
+    claude_models_fall_back_to_a_built_in_list_with_fable
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 97 filtered out; finished in 20.14s
+
+
+running 1 test
+test a_model_picked_on_an_idle_claude_session_is_the_one_its_next_sidecar_runs ... FAILED
+
+failures:
+
+---- a_model_picked_on_an_idle_claude_session_is_the_one_its_next_sidecar_runs stdout ----
+
+thread 'a_model_picked_on_an_idle_claude_session_is_the_one_its_next_sidecar_runs' (2855678) panicked at crates/yardd/tests/release.rs:297:5:
+[Object {"for": String("session.setModel"), "message": String("session has no Claude sidecar"), "op": String("error")}]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-2855677-release-claude-model-0 for inspection
+
+
+failures:
+    a_model_picked_on_an_idle_claude_session_is_the_one_its_next_sidecar_runs
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 3.83s
+
+bun test v1.4.4 (38afee6c8)
+bun test v1.4.4 (38afee6c8)
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/claude-models/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 14.94s
+     Running tests/daemon.rs (target/debug/build/yardd/bc3e500ead7d3ac6/out/daemon-bc3e500ead7d3ac6)
+error: test failed, to rerun pass `-p yardd --test daemon`
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/claude-models/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 0.90s
+     Running tests/release.rs (target/debug/build/yardd/0b506b7daac5aed6/out/release-0b506b7daac5aed6)
+error: test failed, to rerun pass `-p yardd --test release`
+
+src/models.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module './models' from '/home/giovani/www/better-than-claude-code/.claude/worktrees/claude-models/sidecar/yard-claude/src/models.test.ts'
+-------------------------------
+
+
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file. [5.00ms]
+
+src/engines.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+SyntaxError: Export named 'modelsForAccount' not found in module '/home/giovani/www/better-than-claude-code/.claude/worktrees/claude-models/ui/src/engines.ts'.
+-------------------------------
+
+
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file. [7.00ms]

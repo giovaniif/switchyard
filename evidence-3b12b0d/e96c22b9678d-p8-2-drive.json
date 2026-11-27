@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "session:s1a21d5e4e60a",
+  "build": {
+    "sha": "3b12b0dc7ce1f5e93634b27b0b78a3c6d600a7be",
+    "short": "3b12b0d",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T14:55:28.882Z"
+  },
+  "dir": "/home/giovani/www/better-than-claude-code/.claude/worktrees/claude-models/.verify/evidence/claude-models-head-desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2953,
+      "steps": 8,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/www/better-than-claude-code/.claude/worktrees/claude-models/.verify/evidence/claude-models-head-desktop/picker-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/www/better-than-claude-code/.claude/worktrees/claude-models/.verify/evidence/claude-models-head-desktop/codex-unfolded-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

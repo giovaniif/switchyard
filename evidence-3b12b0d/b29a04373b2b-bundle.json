@@ -1,0 +1,339 @@
+{
+  "v": 1,
+  "claim": "The model picker lists only Opus, Sonnet and Haiku 5.5 for Claude: yardd's list is hard-coded, so Fable 5.2 (on the owner's plan) never shows. Claude's list should be what Claude Code reports per account.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/claude-models",
+  "base": "dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2",
+  "head": "3b12b0dc7ce1f5e93634b27b0b78a3c6d600a7be",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/claude.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/login.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/common/mod.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/yard-claude"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/release.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/main.ts"
+    },
+    {
+      "status": "A",
+      "path": "sidecar/yard-claude/src/models.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "sidecar/yard-claude/src/models.ts"
+    },
+    {
+      "status": "M",
+      "path": "sidecar/yard-claude/src/oneshot.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/AgentsPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/engines.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/engines.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/models.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T14:17:05.161Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "e03f05ed30b2515d23ce19fe148565f0a4df00b972c8601da511cb812f7c3df1"
+        },
+        {
+          "path": "p1-picker-desktop.png",
+          "sha256": "d6cc2bf39f6ff72e5f5ae4df3ea90a32af8adb99f1c300338c129b569c3b185a"
+        },
+        {
+          "path": "p1-codex-unfolded-desktop.png",
+          "sha256": "a55bd4b5fc0efca8641a9dba564f5e52affe2839c80f225e8768094de2a8ef25"
+        }
+      ],
+      "addedAt": "2026-11-27T14:35:30.351Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "a428521b5b54441e99162d0e3023c1f2f7b9b914b6aaded332782257ec72027f"
+        },
+        {
+          "path": "p2-picker-mobile.png",
+          "sha256": "ec628153ebb6c9a78e4cc7550bf2f59412cbd29bb0a75a7219a0e5b07fb10cb9"
+        },
+        {
+          "path": "p2-codex-unfolded-mobile.png",
+          "sha256": "5fdfc6d1d8504fb7ef7ac96c7d072b2f1541c2078938d251517b22c3f8247fd2"
+        }
+      ],
+      "addedAt": "2026-11-27T14:35:30.401Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "repro",
+      "at": "dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "62f981a5162ab5130551120b8dfef43dd2538df0b32737295a454cbd23d6ef14"
+        }
+      ],
+      "addedAt": "2026-11-27T14:38:49.679Z",
+      "cmd": "verify/yv api '{\"op\":\"session.setModel\",\"sessionId\":\"{{sid_claude}}\",\"model\":\"claude-sonnet-5-5\",\"effort\":\"medium\"}' --expect '{\"op\":\"error\",\"message\":\"session has no Claude sidecar\"}'",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "note",
+      "at": "dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T14:38:50.189Z",
+      "text": "expected-api: session.setModel: base repro of the second bug: after a yardd restart (or an idle release) a Claude session has no sidecar, and picking any model (Fable included) is refused with 'session has no Claude sidecar'; the session stays on its old model."
+    },
+    {
+      "id": 5,
+      "ref": "base",
+      "kind": "test",
+      "at": "c9cccf4a00994720979ce6ed77a84b2fe3955042",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "a98dce4a75949a0edac2db9db6e21abc14f091db2c0db00db21b1812dc697362"
+        }
+      ],
+      "addedAt": "2026-11-27T14:40:01.536Z",
+      "cmd": "/tmp/claude-models-probe/newtests.sh",
+      "exit": 1
+    },
+    {
+      "id": 6,
+      "ref": "base",
+      "kind": "test",
+      "at": "a2f329d0d4f08f5f49bf511d93aae383d954de8e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "de4c8bbe8cd8fe6fcd0c577aa748b23417ce19c3da79ddade1cd0ad2f3de54f9"
+        }
+      ],
+      "addedAt": "2026-11-27T14:52:02.529Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test daemon claude_models; a=$?; CARGO_BUILD_JOBS=2 cargo test -p yardd --test release a_model_picked; b=$?; (cd sidecar/yard-claude && bun test src/models.test.ts); c=$?; (cd ui && bun test src/engines.test.ts); d=$?; exit $((a|b|c|d))",
+      "exit": 101
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "fix",
+      "at": "3b12b0dc7ce1f5e93634b27b0b78a3c6d600a7be",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-cmd.log",
+          "sha256": "61563014444780b5a2ba57c3b194076f2a3d38e70201434316b82094a5622b47"
+        }
+      ],
+      "addedAt": "2026-11-27T14:55:36.571Z",
+      "cmd": "verify/yv api '{\"op\":\"session.setModel\",\"sessionId\":\"{{sid_claude}}\",\"model\":\"claude-fable-5-2\",\"effort\":\"high\"}' && verify/yv state --expect '{\"sessions\":[{\"id\":\"{{sid_claude}}\",\"model\":\"claude-fable-5-2\"}]}' && verify/yv api '{\"op\":\"session.send\",\"sessionId\":\"{{sid_claude}}\",\"text\":\"TEST-on fable again\"}' --wait '{\"op\":\"event\",\"event\":{\"type\":\"turn_completed\"}}' && grep 'start pid=' \"$(verify/yv var get fake | jq -r .value)/sidecar.log\" | tail -1 | grep -q ' model=claude-fable-5-2 '",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "fix",
+      "at": "3b12b0dc7ce1f5e93634b27b0b78a3c6d600a7be",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p8-2-drive.json",
+          "sha256": "e96c22b9678d1aea53f6c1966c32d4287cfbd2a669ea395e1428f314fd2bcdeb"
+        },
+        {
+          "path": "p8-picker-desktop.png",
+          "sha256": "3c3f1e46183056bdff8d983b40cd1e2b074db35a4028d5c1f280083ea896d9ba"
+        },
+        {
+          "path": "p8-codex-unfolded-desktop.png",
+          "sha256": "4a230cfcb03bdbd1d3670de16924c73a5aeccff41ce2bad572781adb9ae27405"
+        }
+      ],
+      "addedAt": "2026-11-27T15:00:19.739Z",
+      "failedApi": []
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "fix",
+      "at": "3b12b0dc7ce1f5e93634b27b0b78a3c6d600a7be",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p9-drive.json",
+          "sha256": "c5c67ed52f31531d20819ea32b3775af5ced05db9c067a096dee8d296bcc7855"
+        },
+        {
+          "path": "p9-picker-mobile.png",
+          "sha256": "2b34c95456b307074dc0def6124900d1fc0959df3c177bdbfd3bf6da291df4b3"
+        },
+        {
+          "path": "p9-codex-unfolded-mobile.png",
+          "sha256": "05799efd2c4b30529bb13dbbeff7ffe85c1e98b3a26a3eb7f79ed3a84e598935"
+        }
+      ],
+      "addedAt": "2026-11-27T15:00:19.781Z",
+      "failedApi": []
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "design",
+      "at": "3b12b0dc7ce1f5e93634b27b0b78a3c6d600a7be",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-design.json",
+          "sha256": "6984d7aaea963b9aadc8f35912799ef0f2647dbc0aa0ba5c297d287bad506900"
+        }
+      ],
+      "addedAt": "2026-11-27T15:00:19.820Z",
+      "cmd": "verify/yv design-check --base dd8cbb5b1c4e",
+      "exit": 0
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "test",
+      "at": "3b12b0dc7ce1f5e93634b27b0b78a3c6d600a7be",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-cmd.log",
+          "sha256": "4b48b596b5efacfa39a926e25dbca523800bb85b0dabf10289bf2d09c5d17c12"
+        }
+      ],
+      "addedAt": "2026-11-27T15:00:23.112Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test) && (cd sidecar/yard-claude && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 12,
+      "ref": "head",
+      "kind": "regression",
+      "at": "3b12b0dc7ce1f5e93634b27b0b78a3c6d600a7be",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p12-map-models.json",
+          "sha256": "649a4341a53b360a60cb3975c6ed4d854620942fd2ce308fb7df067c0df4d1f8"
+        }
+      ],
+      "addedAt": "2026-11-27T16:01:32.499Z",
+      "cmd": "verify/yv map run models",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "models/model-list-scrolls-under-the-header",
+        "models/switch-model-same-engine",
+        "models/effort-is-its-own-chip",
+        "models/permission-mode",
+        "models/hand-off-to-claude",
+        "models/hand-off-notes-link-both-sessions",
+        "models/hand-off-note-links-survive-a-deleted-sibling",
+        "models/codex-speed-reaches-the-turn",
+        "models/claude-lists-what-claude-reports"
+      ]
+    }
+  ]
+}

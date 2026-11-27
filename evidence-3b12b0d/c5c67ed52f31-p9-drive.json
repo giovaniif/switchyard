@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "session:s1a21d5e4e60a",
+  "build": {
+    "sha": "3b12b0dc7ce1f5e93634b27b0b78a3c6d600a7be",
+    "short": "3b12b0d",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T14:55:28.882Z"
+  },
+  "dir": "/home/giovani/www/better-than-claude-code/.claude/worktrees/claude-models/.verify/evidence/claude-models-head-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3357,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": "/home/giovani/www/better-than-claude-code/.claude/worktrees/claude-models/.verify/evidence/claude-models-head-mobile/picker-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": "/home/giovani/www/better-than-claude-code/.claude/worktrees/claude-models/.verify/evidence/claude-models-head-mobile/codex-unfolded-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

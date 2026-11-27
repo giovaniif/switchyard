@@ -1,0 +1,68 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "models",
+      "at": "2026-11-27T16:02:50.803Z",
+      "counts": {
+        "pass": 9,
+        "manual": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "model-list-scrolls-under-the-header",
+          "status": "pass",
+          "ms": 11508
+        },
+        {
+          "label": "switch-model-same-engine",
+          "status": "pass",
+          "ms": 4490
+        },
+        {
+          "label": "effort-is-its-own-chip",
+          "status": "pass",
+          "ms": 12967
+        },
+        {
+          "label": "permission-mode",
+          "status": "pass",
+          "ms": 4363
+        },
+        {
+          "label": "hand-off-to-claude",
+          "status": "pass",
+          "ms": 4325
+        },
+        {
+          "label": "hand-off-notes-link-both-sessions",
+          "status": "pass",
+          "ms": 5622
+        },
+        {
+          "label": "hand-off-note-links-survive-a-deleted-sibling",
+          "status": "pass",
+          "ms": 5041
+        },
+        {
+          "label": "codex-speed-reaches-the-turn",
+          "status": "pass",
+          "ms": 19649
+        },
+        {
+          "label": "claude-lists-what-claude-reports",
+          "status": "pass",
+          "ms": 9472
+        },
+        {
+          "label": "effort-change-claude-mid-session",
+          "status": "manual",
+          "why": "not built, see ARCHITECTURE \"Engines\""
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
