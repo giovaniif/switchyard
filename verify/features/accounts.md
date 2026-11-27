@@ -227,6 +227,19 @@ yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"lo
 yv drive hosts --allow-errors --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Remove TEST-Unbroken"},{"click":"role:button:Remove TEST-Unbroken"},{"expect":"css:.banner-error","text":"still use"},{"shot":"long-word-refusal"},{"eval":"(() => { const w = document.documentElement.clientWidth, b = document.querySelector(\".banner-error\").getBoundingClientRect(), d = [...document.querySelectorAll(\".banner-error button\")].find((x) => x.textContent.trim() === \"Dismiss\").getBoundingClientRect(); return document.documentElement.scrollWidth <= w && b.right <= w + 0.5 && d.left >= b.left && d.right <= b.right + 0.5; })()","equals":true},{"click":"role:button:Dismiss"},{"expect":"css:.banner-error","count":0}]'
 ```
 
+### long-account-name-keeps-its-state-under-the-name
+Viewports: both
+An added account whose name fills the line (40 characters, yardd's limit)
+keeps its login state and its Log in and Remove after the dot, lined up under
+the name like the engine rows above it, never back under the dot at the
+row's left edge. (#423: at 390 px the row wrapped "not logged in" to the
+row's start, under the dot.)
+
+```sh
+yv api '{"op":"account.add","engine":"codex","name":"TEST-A very long company account name 40"}' --wait '{"op":"accounts"}'
+yv drive hosts --steps '[{"click":"role:tab:Engine logins"},{"expect":{"css":".account-row","hasText":"TEST-A very long company account name 40"},"text":"not logged in"},{"eval":"document.querySelector(\".account-row\").scrollIntoView({ block: \"center\" })"},{"shot":"long-account-row"},{"eval":"(() => { const row = [...document.querySelectorAll(\".account-row\")].find((r) => r.textContent.includes(\"TEST-A very long\")), name = row.querySelector(\".account-name\").getBoundingClientRect(); return [...row.querySelectorAll(\".muted, button\")].every((e) => e.getBoundingClientRect().left >= name.left - 0.5) && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()","equals":true}]'
+```
+
 ## Gotchas
 - An account's folder is deleted with it, login included. There is no "log out" separate from Remove.
 - The account of a session cannot be changed after it starts.
