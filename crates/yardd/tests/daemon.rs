@@ -500,6 +500,61 @@ async fn messages_queued_during_an_approval_reach_the_agent_after_it() {
     assert!(pending_texts(&c, &sid).is_empty());
 }
 
+// The owner's messages reach the agent in the order he sent them, however
+// fast they came. One worker thread makes the daemon run ops it read
+// together in a fixed order, so one that hands each op to its own task
+// swaps them every time instead of now and then under load.
+#[tokio::test]
+async fn messages_sent_in_a_row_reach_the_agent_in_the_order_sent() {
+    let sb = Sandbox::new("send-order");
+    let d = sb.start_with(&[("TOKIO_WORKER_THREADS", "1")]);
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "TEST-hi", json!({})).await;
+    c.wait_turn_done(&sid, 0).await;
+    c.wait_status(&sid, "idle").await;
+    let send = |text: &str| json!({ "op": "session.send", "sessionId": sid, "text": text });
+
+    // To an idle session: the first starts the turn, the second waits for it.
+    let seq = c.next_seq(&sid);
+    c.send_burst(&[send("TEST-one"), send("TEST-two")]).await;
+    let done = c.wait_turn_done(&sid, seq).await;
+    c.wait_turn_done(&sid, done["seq"].as_u64().unwrap() + 1).await;
+    c.wait_status(&sid, "idle").await;
+    assert_eq!(user_texts(&c, &sid), ["TEST-hi", "TEST-one", "TEST-two"]);
+
+    // Behind an approval: queued as sent.
+    let seq = c.next_seq(&sid);
+    c.send(send("[cmd] TEST-run it")).await;
+    c.wait_event(&sid, "approval_request", seq).await;
+    c.wait_status(&sid, "needs_approval").await;
+    let queued = ["TEST-a", "TEST-b", "TEST-c", "TEST-d"];
+    c.send_burst(&queued.map(send)).await;
+    c.wait_for("four queued messages", |m| m["op"] == "session" && m["session"]["pending"].as_array().is_some_and(|p| p.len() == 4)).await;
+    assert_eq!(pending_texts(&c, &sid), queued);
+}
+
+// A session's settings too: a group set and then cleared stays cleared
+// (seen as sessions_are_grouped_across_restarts failing under load).
+#[tokio::test]
+async fn session_settings_sent_in_a_row_apply_in_the_order_sent() {
+    let sb = Sandbox::new("update-order");
+    let d = sb.start_with(&[("TOKIO_WORKER_THREADS", "1")]);
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "TEST-hi", json!({})).await;
+    c.wait_turn_done(&sid, 0).await;
+    let update = |change: Value| {
+        let mut op = json!({ "op": "session.update", "sessionId": sid });
+        op.as_object_mut().unwrap().extend(change.as_object().unwrap().clone());
+        op
+    };
+    c.send_burst(&[update(json!({ "group": "TEST-release" })), update(json!({ "group": null }))]).await;
+    c.wait_for("the group cleared", |m| m["op"] == "session" && m["session"]["id"] == sid && m["session"]["group"].is_null()).await;
+    // Sent after, so its answer shows where both left the session.
+    c.send(update(json!({ "pinned": true }))).await;
+    let pinned = c.wait_for("pinned", |m| m["op"] == "session" && m["session"]["id"] == sid && m["session"]["pinned"] == true).await;
+    assert!(pinned["session"]["group"].is_null(), "{pinned}");
+}
+
 #[tokio::test]
 async fn a_session_says_when_and_how_its_last_turn_ended() {
     let sb = Sandbox::new("turn-end");

@@ -144,6 +144,9 @@ pub enum Backend {
     Codex {
         thread_id: String,
         turn_id: Option<String>,
+        /// The last turn the app-server said completed, so the answer to its
+        /// turn/start, read after that, does not make it run again.
+        ended: Option<String>,
     },
     Claude {
         tx: mpsc::UnboundedSender<String>,

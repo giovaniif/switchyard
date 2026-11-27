@@ -99,6 +99,24 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
         });
     }
 
+    // A session's messages and settings apply one after another, in the
+    // order sent, for the same reason: two sent in a row could be queued
+    // swapped (the agent reads them out of order), or a group cleared right
+    // after it was set could end up set. None of them waits on anything; the
+    // turn a message opens runs on in its own task (`send`).
+    let (in_order, mut in_order_rx) = mpsc::unbounded_channel::<Value>();
+    {
+        let app = app.clone();
+        let direct = direct.clone();
+        tokio::spawn(async move {
+            while let Some(msg) = in_order_rx.recv().await {
+                if let Err(e) = handle(&app, &direct, &msg).await {
+                    let _ = direct.send(error_reply(&msg, &e));
+                }
+            }
+        });
+    }
+
     // Set once this client says it is a phone's app: it shows as connected
     // until the socket closes.
     let mut phone: Option<String> = None;
@@ -169,6 +187,10 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
                         let _ = keys.send(msg);
                         continue;
                     }
+                    if msg["op"].as_str().is_some_and(|op| IN_ORDER.contains(&op)) {
+                        let _ = in_order.send(msg);
+                        continue;
+                    }
                     let app = app.clone();
                     let direct = direct.clone();
                     tokio::spawn(async move {
@@ -188,6 +210,36 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
         app.mobile.disconnected(&name);
         app.broadcast(json!({ "op": "mobile.status", "mobile": app.mobile.status() }));
     }
+}
+
+/// Ops that run one after another per client (see `client`). Each must
+/// return without waiting: the next one waits for it.
+const IN_ORDER: [&str; 8] = [
+    "session.send",
+    "session.unqueue",
+    "session.steer",
+    "session.setModel",
+    "session.setServiceTier",
+    "session.setPermission",
+    "session.rename",
+    "session.update",
+];
+
+/// A window's message, put in its place at once (`sessions::take_message`);
+/// the turn it opens runs in its own task, so the next op need not wait.
+fn send(app: &Arc<App>, msg: &Value) -> Result<()> {
+    let sid = str_field(msg, "sessionId")?;
+    let text = msg["text"].as_str().unwrap_or("").trim();
+    let files = attachments::resolve(&msg["attachments"])?;
+    if text.is_empty() && files.is_empty() {
+        bail!("the message is empty");
+    }
+    let next = sessions::take_message(app, sid, text, &files, None)?;
+    if !matches!(next, sessions::Taken::Done) {
+        let (app, sid) = (app.clone(), sid.to_string());
+        tokio::spawn(async move { sessions::follow_up(&app, &sid, next).await });
+    }
+    Ok(())
 }
 
 /// An op's failure. `ref` comes back when the op had one, so a client
@@ -570,15 +622,7 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             let sid = str_field(msg, "sessionId")?;
             let _ = direct.send(app.history(sid).to_string());
         }
-        "session.send" => {
-            let sid = str_field(msg, "sessionId")?;
-            let text = msg["text"].as_str().unwrap_or("").trim();
-            let files = attachments::resolve(&msg["attachments"])?;
-            if text.is_empty() && files.is_empty() {
-                bail!("the message is empty");
-            }
-            sessions::send_message(app, sid, text, &files, None).await?;
-        }
+        "session.send" => send(app, msg)?,
         // Taken back to edit (or dropped): the asking window gets it, if it
         // had not reached the agent yet.
         "session.unqueue" => {

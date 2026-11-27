@@ -48,23 +48,52 @@ pub async fn begin(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value],
 /// A message for a session: queued while a turn runs (see Meta::pending),
 /// else the next turn, with anything still queued going first.
 pub async fn send_message(app: &Arc<App>, sid: &str, text: &str, files: &[Value], origin: Option<&Value>) -> anyhow::Result<()> {
+    let next = take_message(app, sid, text, files, origin)?;
+    follow_up(app, sid, next).await;
+    Ok(())
+}
+
+/// What a message taken by `take_message` still needs.
+pub enum Taken {
+    /// Nothing: it waits in the queue, or a guest's turn took it.
+    Done,
+    /// A Slack place's queue: deliver its next turn.
+    Deliver,
+    /// It opened a turn: run it on the engine.
+    Run(String, Vec<Value>),
+}
+
+/// The part of `send_message` that puts the message in its place (the
+/// queue, or a turn it opens), with no await in it: a caller that takes
+/// messages one after another keeps them in the order they were sent.
+pub fn take_message(app: &Arc<App>, sid: &str, text: &str, files: &[Value], origin: Option<&Value>) -> anyhow::Result<Taken> {
     let meta = app.meta(sid).ok_or_else(|| anyhow::anyhow!("no such session"))?;
     if meta.slack_place.is_some() {
         app.queue_message(sid, text, files, origin.filter(|o| crate::origins::is_tagged(Some(o))));
-        Box::pin(deliver(app, sid, Delivery::NextTurn)).await;
-        return Ok(());
+        return Ok(Taken::Deliver);
     }
     if meta.status == "running" || meta.status == "needs_approval" {
         app.queue_message(sid, text, files, origin.filter(|o| crate::origins::is_tagged(Some(o))));
-        return Ok(());
+        return Ok(Taken::Done);
     }
     if meta.status == "queued" {
         anyhow::bail!("this session is queued; start it first");
     }
     let mut items = app.take_all_queued(sid, |_| true);
     items.push(item(text, files, origin));
-    send_turn(app, sid, &items).await;
-    Ok(())
+    Ok(match open_turn(app, sid, &items) {
+        Some((text, attachments)) => Taken::Run(text, attachments),
+        None => Taken::Done,
+    })
+}
+
+/// The rest of `send_message`, once `take_message` placed the message.
+pub async fn follow_up(app: &Arc<App>, sid: &str, next: Taken) {
+    match next {
+        Taken::Done => {}
+        Taken::Deliver => Box::pin(deliver(app, sid, Delivery::NextTurn)).await,
+        Taken::Run(text, attachments) => run_engine_turn(app, sid, &text, &attachments).await,
+    }
 }
 
 /// One message: its text, attachments and, unless the owner typed it, origin.
@@ -235,15 +264,25 @@ pub async fn deliver(app: &Arc<App>, sid: &str, when: Delivery) {
 
 /// Record the messages and hand them to the session's engine as one turn.
 pub async fn send_turn(app: &Arc<App>, sid: &str, items: &[Value]) {
+    if let Some((text, attachments)) = open_turn(app, sid, items) {
+        run_engine_turn(app, sid, &text, &attachments).await;
+    }
+}
+
+/// Log the messages and open their turn, before any await, so a message
+/// taken right after finds the session running. The engine's input, unless
+/// a guest's turn took them.
+fn open_turn(app: &Arc<App>, sid: &str, items: &[Value]) -> Option<(String, Vec<Value>)> {
     record(app, sid, items, false);
     if let [item] = items {
         if crate::origins::slack_guest(&item["origin"]) {
             crate::slack::guest_turn(app, sid, item["text"].as_str().unwrap_or(""), &item["origin"]);
-            return;
+            return None;
         }
     }
     let (text, attachments) = engine_input(items);
-    start_turn(app, sid, &text, &attachments).await;
+    app.emit(sid, json!({ "type": "turn_started" }));
+    Some((text, attachments))
 }
 
 /// What the engine reads for messages that go together: each framed with

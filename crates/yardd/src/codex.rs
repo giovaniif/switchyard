@@ -400,7 +400,7 @@ impl Client {
             "item/started" => on_item(app, &sid, true, &p["item"]),
             "item/completed" => on_item(app, &sid, false, &p["item"]),
             "turn/completed" => {
-                set_turn(app, &sid, None);
+                end_turn(app, &sid, p["turn"]["id"].as_str());
                 app.guard.turn_done(&sid);
                 let turn = &p["turn"];
                 if !turn["error"].is_null() {
@@ -448,8 +448,22 @@ fn detach(app: &Arc<App>, sid: &str, thread_id: &str, why: &str) {
 
 fn set_turn(app: &Arc<App>, sid: &str, turn: Option<&str>) {
     if let Some(s) = app.sessions.lock().unwrap().get_mut(sid) {
-        if let Backend::Codex { turn_id, .. } = &mut s.backend {
+        if let Backend::Codex { turn_id, ended, .. } = &mut s.backend {
+            // The reader saw this turn end before its turn/start answer got
+            // here (a busy yardd, a turn that ends at once): it does not run.
+            if turn.is_some() && turn == ended.as_deref() {
+                return;
+            }
             *turn_id = turn.map(str::to_string);
+        }
+    }
+}
+
+fn end_turn(app: &Arc<App>, sid: &str, turn: Option<&str>) {
+    if let Some(s) = app.sessions.lock().unwrap().get_mut(sid) {
+        if let Backend::Codex { turn_id, ended, .. } = &mut s.backend {
+            *turn_id = None;
+            *ended = turn.map(str::to_string);
         }
     }
 }
@@ -893,7 +907,7 @@ fn attach(app: &Arc<App>, c: &Client, sid: &str, thread_id: String) {
     c.threads.lock().unwrap().insert(thread_id.clone(), sid.to_string());
     app.set_engine_ref(sid, &thread_id);
     if let Some(s) = app.sessions.lock().unwrap().get_mut(sid) {
-        s.backend = Backend::Codex { thread_id, turn_id: None };
+        s.backend = Backend::Codex { thread_id, turn_id: None, ended: None };
         s.active_at = crate::state::now_ms();
     }
 }
@@ -957,7 +971,7 @@ pub async fn release(app: &Arc<App>, sid: &str) -> Result<bool> {
         if !crate::release::quiet(&s.meta) {
             return Ok(false);
         }
-        let Backend::Codex { thread_id, turn_id: None } = &s.backend else { return Ok(false) };
+        let Backend::Codex { thread_id, turn_id: None, .. } = &s.backend else { return Ok(false) };
         let thread_id = thread_id.clone();
         // The engine id stays, so `resumable` hands the thread to the next turn.
         s.backend = Backend::Pending;
@@ -990,7 +1004,7 @@ pub async fn thread_for_widget(app: &Arc<App>, sid: &str) -> Result<String> {
 fn thread_of(app: &Arc<App>, sid: &str) -> Result<(String, Option<String>)> {
     let map = app.sessions.lock().unwrap();
     match map.get(sid).map(|s| &s.backend) {
-        Some(Backend::Codex { thread_id, turn_id }) => Ok((thread_id.clone(), turn_id.clone())),
+        Some(Backend::Codex { thread_id, turn_id, .. }) => Ok((thread_id.clone(), turn_id.clone())),
         _ => bail!("session has no Codex thread"),
     }
 }
