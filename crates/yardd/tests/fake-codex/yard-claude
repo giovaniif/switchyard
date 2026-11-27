@@ -51,15 +51,22 @@
 // listed too, needing sign-in until a pasted address with `code=` arrives.
 // Each start also reports plan usage (47% of 5 hours, 17% of the week, Sonnet 8%;
 // 91% of 5 hours when CLAUDE_CONFIG_DIR names an extra account).
-// FAKE_CODEX_DIR gets `sidecar.log`: one line per start, with its resume id,
-// CLAUDE_CONFIG_DIR (`config=`, empty for the default account) and the
-// session's connector scope when it has one (`mcp=only:a,b` / `mcp=except:a`),
-// one per turn with the permission mode yardd named for it (`turn permission=plan`),
+// FAKE_CODEX_DIR gets `sidecar.log`: one line per start, with
+// CLAUDE_CONFIG_DIR (`config=`, empty for the default account), the model it
+// starts on (`model=`), its resume id and the session's connector scope when
+// it has one (`mcp=only:a,b` / `mcp=except:a`); one per `set_model`
+// (`set_model <id>`), one per turn with the permission mode yardd named for it (`turn permission=plan`),
 // and one per one-shot `sessions` / `messages <id>` call.
 //
 // `usage` answers the plan limits the real one reads from Claude Code's usage
 // report, without a turn: 47% of 5 hours and 17% of the week, or 91% / 40%
 // when CLAUDE_CONFIG_DIR names an extra account. Logged as `usage config=…`.
+//
+// `models` answers the model list the real one reads from Claude Code
+// (`supportedModels()`, mapped to the picker's shape), without a turn: Opus
+// 5.5 (the default), Fable 5.2, Sonnet 5.5 and Haiku 5.5, or the same without
+// Fable when CLAUDE_CONFIG_DIR names an extra account. Logged as
+// `models config=…`.
 //
 // One-shot modes, like the real sidecar's, for importing Claude Code sessions:
 //   sessions        three TEST- sessions: two in FAKE_CLAUDE_CWD (else HOME),
@@ -101,6 +108,18 @@ if (mode === "usage") {
       },
     },
   });
+  process.exit(0);
+}
+if (mode === "models") {
+  log(`models config=${process.env.CLAUDE_CONFIG_DIR ?? ""}`);
+  const efforts = ["low", "medium", "high", "xhigh", "max"];
+  const models = [
+    { id: "claude-opus-5-5", name: "Opus 5.5", efforts, defaultEffort: "high", isDefault: true },
+    { id: "claude-fable-5-2", name: "Fable 5.2", efforts, defaultEffort: "high" },
+    { id: "claude-sonnet-5-5", name: "Sonnet 5.5", efforts, defaultEffort: "medium" },
+    { id: "claude-haiku-5-5", name: "Haiku 5.5", efforts, defaultEffort: "medium" },
+  ];
+  out({ models: process.env.CLAUDE_CONFIG_DIR ? models.filter((m) => !m.id.includes("fable")) : models });
   process.exit(0);
 }
 if (mode === "sessions" || mode === "messages") {
@@ -389,7 +408,7 @@ for await (const line of console) {
   }
   if (msg.type === "start") {
     start = msg;
-    log(`start pid=${process.pid} config=${process.env.CLAUDE_CONFIG_DIR ?? ""} resume=${msg.resume ?? ""}${msg.restricted ? " restricted=true" : ""}${msg.tools ? " tools=switchyard" : ""}${mcpScope(msg.mcp)}`);
+    log(`start pid=${process.pid} config=${process.env.CLAUDE_CONFIG_DIR ?? ""} model=${msg.model ?? ""} resume=${msg.resume ?? ""}${msg.restricted ? " restricted=true" : ""}${msg.tools ? " tools=switchyard" : ""}${mcpScope(msg.mcp)}`);
     tools = msg.tools ?? null;
     out({ type: "session", claudeSessionId: msg.resume ?? `fake-claude-${process.pid}` });
     // The shape the real sidecar sends (sidecar/yard-claude/src/usage.ts):
@@ -488,6 +507,8 @@ for await (const line of console) {
     }
     emit({ type: "assistant_message", itemId, text: `Echo: ${typed(text)}` });
     emit({ type: "turn_completed", status: "completed" });
+  } else if (msg.type === "set_model") {
+    log(`set_model ${msg.model}`);
   } else if (msg.type === "mcp_reconnect") {
     log(`reconnect ${msg.server}`);
   } else if (msg.type === "mcp_call") {

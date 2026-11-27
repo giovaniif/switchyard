@@ -216,7 +216,7 @@ export function AgentRunPickers({ state, actions, agent, save, onHost, speed }: 
   return (
     <>
       {onHost && <HostPicker state={state} value={host} onChange={onHost} onAddHost={() => actions.go({ page: "hosts" })} />}
-      <ModelPicker models={models} value={choice} engines={engines} onChange={pickModel} speed={speed} />
+      <ModelPicker models={models} value={choice} engines={engines} onChange={pickModel} speed={speed} accounts={{ [choice.engine]: account }} />
       {accountChoices(accounts, choice.engine).length > 1 && (
         <AccountPicker
           state={state}
@@ -1091,7 +1091,7 @@ export function AgentForm({ state, actions, id }: { state: State; actions: Actio
                 )}
               </div>
               <div className="automation-pickers">
-                <ModelPicker models={models} value={choice} engines={engines} onChange={setChoice} />
+                <ModelPicker models={models} value={choice} engines={engines} onChange={setChoice} accounts={{ [choice.engine]: account }} />
                 {accountChoices(accounts, choice.engine).length > 1 && (
                   <AccountPicker state={state} host={host} engine={choice.engine} account={account} engines={engines} onPick={pickAccount} onManage={() => actions.go({ page: "hosts", host, tab: "engines" })} />
                 )}

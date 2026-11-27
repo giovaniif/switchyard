@@ -201,6 +201,9 @@ pub struct App {
     pub acp: Mutex<HashMap<String, Arc<OnceCell<Arc<crate::acp::Client>>>>>,
     pub accounts: crate::accounts::Accounts,
     pub models: Mutex<Value>,
+    /// Each Claude account's models as Claude Code last reported them (see
+    /// `claude::refresh_models`); `models.claude` merges them.
+    pub claude_models: Mutex<Value>,
     pub usage: Mutex<Value>,
     pub host: Mutex<Value>,
     pub cpu_history: Mutex<VecDeque<f32>>,
@@ -264,6 +267,8 @@ impl App {
         let (next_turns, next_turns_rx) = mpsc::unbounded_channel();
         let (naming, naming_rx) = mpsc::unbounded_channel();
         let (replies, replies_rx) = mpsc::unbounded_channel();
+        let accounts = crate::accounts::Accounts::load(crate::store::data_dir());
+        let claude_lists = crate::claude::load_model_lists();
         App {
             root,
             port,
@@ -271,8 +276,9 @@ impl App {
             sessions: Mutex::new(HashMap::new()),
             codex: Mutex::new(HashMap::new()),
             acp: Mutex::new(HashMap::new()),
-            accounts: crate::accounts::Accounts::load(crate::store::data_dir()),
-            models: Mutex::new(json!({ "claude": claude_models(), "codex": [] })),
+            models: Mutex::new(json!({ "claude": crate::claude::merged_models(&claude_lists, &crate::claude::claude_accounts(&accounts)), "codex": [] })),
+            claude_models: Mutex::new(claude_lists),
+            accounts,
             usage: Mutex::new(load_usage(&crate::store::data_dir())),
             host: Mutex::new(Value::Null),
             cpu_history: Mutex::new(VecDeque::new()),
@@ -927,11 +933,3 @@ fn queued_reason(events: &[Value]) -> String {
         .to_string()
 }
 
-fn claude_models() -> Value {
-    let efforts = json!(["low", "medium", "high", "xhigh", "max"]);
-    json!([
-        { "id": "claude-opus-5-5", "name": "Opus 5.5", "efforts": efforts, "defaultEffort": "high" },
-        { "id": "claude-sonnet-5-5", "name": "Sonnet 5.5", "efforts": efforts, "defaultEffort": "medium" },
-        { "id": "claude-haiku-5-5", "name": "Haiku 5.5", "efforts": efforts, "defaultEffort": "medium" },
-    ])
-}
