@@ -195,6 +195,8 @@ impl Daemon {
             .env_remove("GROK_HOME")
             // No background Claude usage reads, except where a test asks for them.
             .env("YARD_CLAUDE_USAGE_EVERY_MS", "0")
+            // Nor model list reads: Claude keeps its built-in list.
+            .env("YARD_CLAUDE_MODELS_EVERY_MS", "0")
             .env_remove("YARD_FORCE_PRESSURE")
             .env_remove("YARD_TEST_READINGS")
             .env_remove("YARD_TEST_STALL_SECS")

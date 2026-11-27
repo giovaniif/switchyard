@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ENGINES, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, pickerEngines, queuedHint, reviewEngine, shownEffort } from "./engines";
+import { ENGINES, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, modelsForAccount, pickerEngines, queuedHint, reviewEngine, shownEffort } from "./engines";
 import type { ModelInfo, Models } from "./protocol";
 
 const m = (id: string): ModelInfo => ({ id, name: id, efforts: [] });
@@ -66,4 +66,15 @@ describe("shownEffort", () => {
   test("a model with efforts shows the chosen one", () => {
     expect(shownEffort(models, "claude", "opus", "high")).toBe("high");
   });
+});
+
+test("an account is offered only the models its plan has; the one in use stays", () => {
+  const list = [
+    { id: "claude-opus-5-5", name: "Opus 5.5", efforts: [] },
+    { id: "claude-fable-5-2", name: "Fable 5.2", efforts: [], accounts: ["default"] },
+  ];
+  expect(modelsForAccount(list, "default").map((m) => m.id)).toEqual(["claude-opus-5-5", "claude-fable-5-2"]);
+  expect(modelsForAccount(list, "work").map((m) => m.id)).toEqual(["claude-opus-5-5"]);
+  expect(modelsForAccount(list, "work", "claude-fable-5-2").map((m) => m.id)).toEqual(["claude-opus-5-5", "claude-fable-5-2"]);
+  expect(modelsForAccount(list, undefined)).toBe(list);
 });

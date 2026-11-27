@@ -576,9 +576,17 @@ function reduceServer(state: State, msg: any): State {
       // The Connectors page shows it on the host's cards instead of waiting forever.
       if (msg.for === "mcp.add" || msg.for === "mcp.remove") {
         const host = msg.hostId ?? "local";
+        // A host that is down shows no cards, and its Add dialog closed with
+        // them: the error would be seen nowhere (a removal's, only once the
+        // host is back), so the banner says it too.
+        const hidden = host !== "local" && !hostOnline(state, host);
         const mcpChange = { ...state.mcpChange };
-        for (const [key, ch] of Object.entries(mcpChange)) if (key.startsWith(`${host}\n`) && (ch.state === "adding" || ch.state === "removing")) mcpChange[key] = { state: "failed", error: msg.message };
-        return { ...state, mcpChange };
+        for (const [key, ch] of Object.entries(mcpChange)) {
+          if (!key.startsWith(`${host}\n`) || (ch.state !== "adding" && ch.state !== "removing")) continue;
+          if (hidden && ch.state === "adding") delete mcpChange[key];
+          else mcpChange[key] = { state: "failed", error: msg.message };
+        }
+        return hidden ? { ...state, mcpChange, error: msg.message, errorCount: state.errorCount + 1 } : { ...state, mcpChange };
       }
       if (typeof msg.for === "string" && msg.for.startsWith("mcp.")) {
         const host = msg.hostId ?? "local";

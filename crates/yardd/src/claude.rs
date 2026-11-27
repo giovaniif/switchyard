@@ -81,9 +81,10 @@ pub fn refresh_usage_soon(app: &Arc<App>, account: &str) {
     });
 }
 
-pub async fn refresh_usage(app: &Arc<App>, account: &str) -> Result<()> {
+/// A one-shot of the sidecar (`usage`, `models`) on an account: its one JSON line.
+async fn one_shot(app: &Arc<App>, account: &str, mode: &str) -> Result<Value> {
     let mut cmd = sidecar_command(app)?;
-    cmd.arg("usage").stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).kill_on_drop(true);
+    cmd.arg(mode).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).kill_on_drop(true);
     if let Some(dir) = app.accounts.config_dir("claude", account)? {
         cmd.env(crate::accounts::env_var("claude"), dir);
     }
@@ -93,15 +94,180 @@ pub async fn refresh_usage(app: &Arc<App>, account: &str) -> Result<()> {
         .context("could not start the Claude sidecar")?;
     let text = String::from_utf8_lossy(&out.stdout);
     let line = text.lines().rev().find(|l| l.trim_start().starts_with('{')).unwrap_or("");
-    let v: Value = serde_json::from_str(line).context("no usage line")?;
+    let v: Value = serde_json::from_str(line).with_context(|| format!("no {mode} line"))?;
     if let Some(e) = v["error"].as_str() {
         bail!("{e}");
     }
+    Ok(v)
+}
+
+pub async fn refresh_usage(app: &Arc<App>, account: &str) -> Result<()> {
+    let v = one_shot(app, account, "usage").await?;
     // An account with no plan limits (an API key) has none to show.
     if v["usage"]["windows"].is_object() {
         app.set_usage("claude", account, v["usage"].clone());
     }
     Ok(())
+}
+
+/// How often each Claude account's model list is read again. A read runs no
+/// turn: the list is Claude Code's answer when it starts.
+/// `YARD_CLAUDE_MODELS_EVERY_MS=0` turns the reads off (the tests do, but
+/// two), leaving the saved or built-in list.
+pub fn models_every() -> Option<std::time::Duration> {
+    match std::env::var("YARD_CLAUDE_MODELS_EVERY_MS").ok().and_then(|v| v.trim().parse::<u64>().ok()) {
+        Some(0) => None,
+        Some(ms) => Some(std::time::Duration::from_millis(ms)),
+        None => Some(std::time::Duration::from_secs(24 * 3600)),
+    }
+}
+
+/// What Claude lists before Claude Code has answered, or when it cannot.
+pub fn fallback_models() -> Value {
+    let efforts = json!(["low", "medium", "high", "xhigh", "max"]);
+    json!([
+        { "id": "claude-opus-5-5", "name": "Opus 5.5", "efforts": efforts, "defaultEffort": "high" },
+        { "id": "claude-fable-5-2", "name": "Fable 5.2", "efforts": efforts, "defaultEffort": "high" },
+        { "id": "claude-sonnet-5-5", "name": "Sonnet 5.5", "efforts": efforts, "defaultEffort": "medium" },
+        { "id": "claude-haiku-5-5", "name": "Haiku 5.5", "efforts": efforts, "defaultEffort": "medium" },
+    ])
+}
+
+fn models_file() -> std::path::PathBuf {
+    crate::store::data_dir().join("claude-models.json")
+}
+
+/// Each account's last list, `{ account: { at, models } }`, kept across
+/// restarts so the picker does not fall back to the built-in list meanwhile.
+pub fn load_model_lists() -> Value {
+    std::fs::read(models_file())
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
+        .filter(Value::is_object)
+        .unwrap_or_else(|| json!({}))
+}
+
+fn save_model_lists(lists: &Value) {
+    // Written aside, then renamed, so a crash never leaves half a file.
+    let file = models_file();
+    let tmp = file.with_extension("json.tmp");
+    if std::fs::write(&tmp, lists.to_string()).is_ok() {
+        let _ = std::fs::rename(&tmp, file);
+    }
+}
+
+/// Default, then every added Claude account.
+pub fn claude_accounts(accounts: &crate::accounts::Accounts) -> Vec<String> {
+    let mut all = vec![crate::accounts::DEFAULT.to_string()];
+    all.extend(accounts.all().into_iter().filter(|a| a.engine == "claude").map(|a| a.id));
+    all
+}
+
+/// The picker's Claude list from each account's: Default's order, then what
+/// only other accounts have. Plans differ, so a model that not every account
+/// reports names the ones that do (`accounts`). None read yet: the built-in list.
+pub fn merged_models(lists: &Value, accounts: &[String]) -> Value {
+    let read: Vec<(&str, &Vec<Value>)> = accounts
+        .iter()
+        .filter_map(|a| lists[a.as_str()]["models"].as_array().filter(|l| !l.is_empty()).map(|l| (a.as_str(), l)))
+        .collect();
+    if read.is_empty() {
+        return fallback_models();
+    }
+    let mut out: Vec<Value> = Vec::new();
+    for (i, (_, list)) in read.iter().enumerate() {
+        for m in list.iter() {
+            if out.iter().any(|o| o["id"] == m["id"]) {
+                continue;
+            }
+            let mut m = m.clone();
+            if let Some(o) = m.as_object_mut() {
+                o.remove("accounts");
+                // The plan's default is the first account's.
+                if i > 0 {
+                    o.remove("isDefault");
+                }
+            }
+            out.push(m);
+        }
+    }
+    if read.len() > 1 {
+        for m in &mut out {
+            let has: Vec<&str> = read.iter().filter(|(_, l)| l.iter().any(|x| x["id"] == m["id"])).map(|(a, _)| *a).collect();
+            if has.len() < read.len() {
+                m["accounts"] = json!(has);
+            }
+        }
+    }
+    json!(out)
+}
+
+/// Put the merged list in the picker, telling every window when it changed.
+pub fn publish_models(app: &App) {
+    let list = merged_models(&app.claude_models.lock().unwrap(), &claude_accounts(&app.accounts));
+    let all = {
+        let mut current = app.models.lock().unwrap();
+        if current["claude"] == list {
+            return;
+        }
+        current["claude"] = list;
+        current.clone()
+    };
+    app.broadcast(json!({ "op": "models", "models": all }));
+}
+
+/// Read one account's models from Claude Code (`yard-claude models`). A failed
+/// read keeps what the account had.
+pub async fn refresh_models(app: &Arc<App>, account: &str) -> Result<()> {
+    let v = one_shot(app, account, "models").await?;
+    let models: Vec<Value> = v["models"]
+        .as_array()
+        .map(|l| l.iter().filter(|m| m["id"].as_str().is_some_and(|id| !id.is_empty()) && m["name"].is_string()).cloned().collect())
+        .unwrap_or_default();
+    if models.is_empty() {
+        bail!("Claude Code reported no models");
+    }
+    let lists = {
+        let known = claude_accounts(&app.accounts);
+        let mut lists = app.claude_models.lock().unwrap();
+        lists[account] = json!({ "at": crate::state::now_ms(), "models": models });
+        // A removed account's list goes with it.
+        if let Some(map) = lists.as_object_mut() {
+            map.retain(|a, _| known.contains(a));
+        }
+        lists.clone()
+    };
+    save_model_lists(&lists);
+    publish_models(app);
+    Ok(())
+}
+
+/// Read every Claude account's models at start, then now and then: a plan
+/// gains models (Fable) without Switchyard changing.
+pub async fn run_models_refresh(app: Arc<App>) {
+    let Some(every) = models_every() else { return };
+    loop {
+        for account in claude_accounts(&app.accounts) {
+            if let Err(e) = refresh_models(&app, &account).await {
+                eprintln!("yardd: claude models for {account}: {e:#}");
+            }
+        }
+        tokio::time::sleep(every).await;
+    }
+}
+
+/// Read one account's models now (a new account, a fresh login), unless the
+/// reads are turned off.
+pub fn refresh_models_soon(app: &Arc<App>, account: &str) {
+    if models_every().is_none() {
+        return;
+    }
+    let (app, account) = (app.clone(), account.to_string());
+    tokio::spawn(async move {
+        if let Err(e) = refresh_models(&app, &account).await {
+            eprintln!("yardd: claude models for {account}: {e:#}");
+        }
+    });
 }
 
 pub async fn create(app: &Arc<App>, sid: &str) -> Result<()> {
@@ -295,6 +461,12 @@ pub fn push(app: &Arc<App>, sid: &str, text: &str, attachments: &[Value]) -> Res
 }
 
 pub fn set_model(app: &Arc<App>, sid: &str, model: &str) -> Result<()> {
+    // No sidecar (let go while idle, or restored after a restart): the next
+    // one starts on the session's model, saved by the caller.
+    let pending = matches!(app.sessions.lock().unwrap().get(sid).map(|s| &s.backend), Some(Backend::Pending));
+    if pending {
+        return Ok(());
+    }
     line(app, sid, json!({ "type": "set_model", "model": model }))
 }
 
@@ -368,6 +540,28 @@ pub fn approve(app: &Arc<App>, sid: &str, request_id: &str, decision: &str, answ
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn models_merge_every_accounts_list_and_name_the_accounts_of_one_not_all_have() {
+        let m = |id: &str, default: bool| json!({ "id": id, "name": id, "efforts": [], "isDefault": default });
+        let accounts = ["default".to_string(), "work".to_string()];
+        assert_eq!(merged_models(&json!({}), &accounts), fallback_models());
+        let lists = json!({
+            "default": { "models": [m("opus", true), m("fable", false)] },
+            "work": { "models": [m("sonnet", true), m("opus", false)] },
+            "gone": { "models": [m("removed", false)] },
+        });
+        assert_eq!(
+            merged_models(&lists, &accounts),
+            json!([
+                m("opus", true),
+                { "id": "fable", "name": "fable", "efforts": [], "isDefault": false, "accounts": ["default"] },
+                { "id": "sonnet", "name": "sonnet", "efforts": [], "accounts": ["work"] },
+            ])
+        );
+        // One account read: nothing to name.
+        assert_eq!(merged_models(&lists, &accounts[..1]), json!([m("opus", true), m("fable", false)]));
+    }
 
     /// The sidecar may run the tool and end the turn the moment it reads the
     /// answer, so `approval_resolved` must already be in the log by then. Logged

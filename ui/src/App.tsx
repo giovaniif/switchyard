@@ -38,7 +38,7 @@ import { ConnectorsPage } from "./ConnectorsPage";
 import { WidgetFrame } from "./WidgetFrame";
 import { hiddenFromSidebar, runsAttention } from "./automations";
 import { dragHasSession, dropUpdate, SESSION_DRAG_TYPE, type DropTarget } from "./sidebarDrop";
-import { addsProviders, canSteer, ENGINES, ENGINE_ACCOUNT, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, pickerEngines, queuedHint, shownEffort } from "./engines";
+import { addsProviders, canSteer, ENGINES, ENGINE_ACCOUNT, ENGINE_INSTALL, ENGINE_LABEL, ENGINE_LOGIN, ENGINE_NAME, modelsForAccount, pickerEngines, queuedHint, shownEffort } from "./engines";
 import { didNotRun, duration, handoffLinks, layout, sessionSubagents, stillPinned, summarize, stepCommand, thoughtLine, toolLabel, type Row, type WorkItem } from "./thread";
 import { voiceCue, type Cue } from "./voice";
 import { useVoice } from "./useVoice";
@@ -1571,6 +1571,8 @@ export function ModelPicker(props: {
   speed?: { value: string; onChange(value: string): void; nextTurn?: boolean };
   /** In a session, a model of another engine means a hand-off, never a silent switch. */
   handoff?: { blocked: boolean; onConfirm(next: Choice): void };
+  /** The account each engine runs on, where known: it lists only its plan's models. */
+  accounts?: Partial<Record<Engine, string>>;
 }) {
   const { models, value, engines, onChange, handoff } = props;
   const [open, setOpen] = useState(false);
@@ -1677,7 +1679,7 @@ export function ModelPicker(props: {
                 {ordered.map((engine) => {
                   const isHandoff = !!handoff && engine !== value.engine;
                   const disabled = isHandoff && handoff.blocked;
-                  const list = models[engine] ?? [];
+                  const list = modelsForAccount(models[engine] ?? [], props.accounts?.[engine], engine === value.engine ? value.model : undefined);
                   // The engine in use is open; each other one is a row until asked for.
                   const folded = engine !== value.engine && !expanded.includes(engine);
                   return (
@@ -2657,7 +2659,7 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
           settings={setupSettings(modelName(models, choice.engine, choice.model), accountName(accounts, choice.engine, selectedAccount), shownEffort(models, choice.engine, choice.model, choice.effort), permission)}
           busy={pending || !online || !choice.model || !cwd || gone}
         >
-          <ModelPicker models={models} value={choice} engines={pickerEngines(models, choice.engine)} onChange={choose} speed={{ value: speed, onChange: setSpeed }} />
+          <ModelPicker models={models} value={choice} engines={pickerEngines(models, choice.engine)} onChange={choose} speed={{ value: speed, onChange: setSpeed }} accounts={picks} />
           <AccountPicker state={state} host={target} engine={choice.engine} account={picks[choice.engine]} onPick={pickAccount} onManage={() => actions.go({ page: "hosts", host: target, tab: "engines" })} />
           <EffortPicker models={models} value={choice} onChange={(effort) => choose({ ...choice, effort })} />
           <PermissionPicker engine={choice.engine} value={permission} onChange={setPermission} />
@@ -3387,6 +3389,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
               onChange={(c) => actions.setModel(meta.id, c.model, c.effort)}
               speed={{ value: meta.serviceTier ?? STANDARD_SPEED.id, onChange: (tier) => actions.setServiceTier(meta.id, tier), nextTurn: busy }}
               handoff={{ blocked: busy, onConfirm: (c) => actions.handoff(meta.id, c.engine, c.model, c.effort) }}
+              accounts={{ [meta.engine]: accountOf(meta) }}
             />
             <AccountPicker state={state} host={host} engine={meta.engine} account={accountOf(meta)} onManage={() => actions.go({ page: "new" })} />
             <EffortPicker models={models} value={{ engine: meta.engine, model: meta.model, effort: meta.effort }} onChange={(effort) => actions.setModel(meta.id, meta.model, effort)} />

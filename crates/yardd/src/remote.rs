@@ -813,8 +813,8 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
     let flag = up.clone();
     let shown = conn.clone();
     // Built outside the task, so a pipe dropped before its task first runs
-    // still answers what it was sent.
-    let mut pending = Pending { held: VecDeque::new(), rx, direct: direct.clone() };
+    // (or while it writes) still answers what it was sent.
+    let mut pending = Pending { held: VecDeque::new(), rx, direct: direct.clone(), host: host.clone(), name: name.clone(), sent: HashMap::new(), writing: None, refs: 0, greeted: false };
     let task = tokio::spawn(async move {
         let mut backoff = Backoff::new(Duration::from_secs(10));
         loop {
@@ -823,13 +823,19 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
                 backoff.reset();
                 let (mut sink, mut stream) = ws.split();
                 flag.store(true, Ordering::Relaxed);
+                pending.greeted = false;
+                // The op whose write failed, answered once the page knows
+                // the host is down (below).
+                let mut unwritten = None;
                 loop {
                     let op = match pending.held.pop_front() {
                         Some(op) => op,
                         None => tokio::select! {
                             incoming = stream.next() => match incoming {
                                 Some(Ok(Message::Text(text))) => {
-                                    if let Some(out) = rewrite(&host, &name, &text) {
+                                    let Ok(mut msg) = serde_json::from_str::<Value>(&text) else { continue };
+                                    pending.heard(&mut msg);
+                                    if let Some(out) = rewrite(&host, &name, msg) {
                                         remember(&last, &out);
                                         if direct.send(out.to_string()).is_err() { return; }
                                     }
@@ -846,16 +852,30 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
                     };
                     // Made now: the op goes out with the host's own ids, and
                     // its error must carry the page's.
-                    let refused = refusal(&op, NOT_CONNECTED);
-                    if sink.send(Message::Text(outgoing(op).to_string())).await.is_err() {
-                        if let Some(refused) = refused {
-                            let _ = direct.send(refused);
-                        }
+                    let refused = refusal(&host, &op, NOT_CONNECTED);
+                    let awaited = pending.awaited(&op);
+                    let mut out = outgoing(op);
+                    if let Some((r, _)) = &awaited {
+                        out["ref"] = r.clone();
+                    }
+                    // Held where a pipe dropped mid-write still answers it.
+                    pending.writing = awaited;
+                    if sink.send(Message::Text(out.to_string())).await.is_err() {
+                        pending.writing = None;
+                        unwritten = refused;
                         break;
                     }
+                    pending.wrote();
                 }
                 flag.store(false, Ordering::Relaxed);
+                // `host.down` first: a page shows an error where the host's
+                // state says it can be seen (a connector's card is hidden
+                // while its host is down).
                 let _ = direct.send(json!({ "op": "host.down", "hostId": host }).to_string());
+                if let Some(refused) = unwritten {
+                    let _ = direct.send(refused);
+                }
+                pending.lose_sent();
             }
             // Ops that waited for this try and still could not go: say so.
             pending.fail(NOT_CONNECTED);
@@ -873,22 +893,175 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
     Pipe { tx, up, conn: shown, task }
 }
 
-/// Ops a pipe took and has not written to the host. Each one gets an
-/// error if it cannot go, so a page never waits on a `ref` with no answer.
+/// Ops a pipe took and the page has no answer for yet: not written to the
+/// host, or written and waiting on its answer. Each one gets an error if
+/// it cannot go or its answer is lost, so a page never waits on a `ref`
+/// with no answer.
 struct Pending {
     /// Ops sent while it waited to try again: they go first once it opens.
     held: VecDeque<Value>,
     rx: mpsc::UnboundedReceiver<Value>,
     direct: mpsc::UnboundedSender<String>,
+    /// The host's id, which every error made here carries (`error_for`).
+    host: String,
+    /// The host's name, for `lost`.
+    name: String,
+    /// Ops written on this connection that wait on the host's answer, by the
+    /// `ref` it will carry (as JSON text, so any `ref` a page sends matches).
+    sent: HashMap<String, Awaited>,
+    /// The op being written, if the page waits on its answer.
+    writing: Option<(Value, Awaited)>,
+    /// Awaited ops so far: it orders them (`Awaited::seq`) and numbers the
+    /// pipe's own refs (`awaited`).
+    refs: u64,
+    /// The host sent this connection's first snapshot: another one is a
+    /// resync (`heard`).
+    greeted: bool,
+}
+
+/// An op the host took whose answer the page waits on.
+struct Awaited {
+    /// The op's name and the page's own ids, which its error carries
+    /// (`ws::error_reply`). Not the op itself: an upload is megabytes.
+    stub: Value,
+    /// Its place among the ops this pipe wrote, so an answer that names no
+    /// op settles the oldest it could be for (`Pending::heard`).
+    seq: u64,
+    /// Host news that answers it, for an op whose success has no `ref`.
+    news: Option<News>,
+}
+
+#[derive(PartialEq)]
+enum News {
+    /// The request's `approval_resolved` event (`session.approve`).
+    Approval { session: String, request: String },
+    /// `mcp.change` for the server (`mcp.add`, `mcp.remove`).
+    Connector { engine: String, name: String },
+}
+
+/// The `ref` prefix of the pipe's own refs (`Pending::awaited`).
+const OWN_REF: &str = "yardd-pipe~";
+
+/// Plenty for every op a page waits on at once. Past it an op is not
+/// tracked, and says so: some op is answered without its `ref`.
+const MAX_AWAITED: usize = 4096;
+
+/// What a page gets for an op the host took when the connection ends before
+/// its answer. The host may well have done it, so it claims neither way.
+fn lost(name: &str) -> String {
+    format!("Lost the connection to {name} before it answered. This may have gone through; check once it's back.")
 }
 
 impl Pending {
+    /// Whether the page waits on the host's answer to `op`, and the `ref`
+    /// that answer will carry.
+    /// - An op with the page's own `ref`: a page sends one only to wait on
+    ///   it, and the host answers with it, done or refused (every op the UI
+    ///   and the iOS app `ask` for).
+    /// - `session.create`, `session.approve`, `mcp.add` and `mcp.remove`,
+    ///   which a page sends without one and whose button waits for the
+    ///   host's answer or any error: the op goes out with a `ref` of the
+    ///   pipe's own, which the host's `created` or error carries. An
+    ///   approval's and a connector's success is news to every window
+    ///   instead (`News`).
+    ///
+    /// Anything else is fire-and-forget, with nothing to answer.
+    fn awaited(&mut self, op: &Value) -> Option<(Value, Awaited)> {
+        let kind = op["op"].as_str()?;
+        // Silent when refused, too (`refusal`).
+        if kind == "agent.seen" {
+            return None;
+        }
+        let text = |key: &str| op[key].as_str().unwrap_or_default().trim().to_string();
+        let news = match kind {
+            "session.approve" => Some(News::Approval { session: own_id(&text("sessionId")).to_string(), request: text("requestId") }),
+            "mcp.add" => Some(News::Connector { engine: text("engine"), name: text("name") }),
+            "mcp.remove" => Some(News::Connector { engine: text("engine"), name: text("server") }),
+            _ => None,
+        };
+        if op["ref"].is_null() && news.is_none() && kind != "session.create" {
+            return None;
+        }
+        self.refs += 1;
+        let r = match &op["ref"] {
+            Value::Null => json!(format!("{OWN_REF}{}", self.refs)),
+            r => r.clone(),
+        };
+        let stub = json!({ "op": kind, "ref": op["ref"], "sessionId": op["sessionId"] });
+        Some((r, Awaited { stub, seq: self.refs, news }))
+    }
+
+    /// The op being written went out whole: it waits for its answer now.
+    fn wrote(&mut self) {
+        let Some((r, awaited)) = self.writing.take() else { return };
+        if self.sent.len() >= MAX_AWAITED {
+            eprintln!("yardd: {} ops to {} wait on an answer; not tracking {}", self.sent.len(), self.name, awaited.stub["op"]);
+            return;
+        }
+        self.sent.insert(r.to_string(), awaited);
+    }
+
+    /// A message from the host, before it is rewritten (it may be dropped):
+    /// whatever it answers no longer waits. A `ref` of the pipe's own is
+    /// taken off, so the page sees the answer as it would without the pipe.
+    fn heard(&mut self, msg: &mut Value) {
+        if let Some(r) = msg.get("ref").filter(|r| !r.is_null()) {
+            self.sent.remove(&r.to_string());
+            if r.as_str().is_some_and(|r| r.starts_with(OWN_REF)) {
+                if let Some(o) = msg.as_object_mut() {
+                    o.remove("ref");
+                }
+            }
+        } else if msg["op"] == "created" {
+            // A host older than v0.18.0 answers `session.create` with
+            // `created` and no `ref`, whatever the op carried: the session
+            // was made, so the oldest create still waiting is answered. (A
+            // current host says `created` without one only for an import or
+            // a hand-over.)
+            let oldest = self.sent.iter().filter(|(_, a)| a.stub["op"] == "session.create").min_by_key(|(_, a)| a.seq).map(|(r, _)| r.clone());
+            if let Some(r) = oldest {
+                self.sent.remove(&r);
+            }
+        }
+        if self.sent.is_empty() && msg["op"] != "snapshot" {
+            return;
+        }
+        let news = match msg["op"].as_str() {
+            Some("event") if msg["event"]["type"] == "approval_resolved" => {
+                let text = |v: &Value| v.as_str().unwrap_or_default().to_string();
+                News::Approval { session: text(&msg["sessionId"]), request: text(&msg["event"]["requestId"]) }
+            }
+            Some("mcp.change") => News::Connector { engine: msg["engine"].as_str().unwrap_or_default().to_string(), name: msg["name"].as_str().unwrap_or_default().to_string() },
+            // A host whose broadcasts fell behind sends a snapshot instead of
+            // the news it skipped, and the page reloads from it: that news
+            // will not come, and the page needs no answer from this pipe.
+            Some("snapshot") => {
+                if self.greeted {
+                    self.sent.retain(|_, a| a.news.is_none());
+                }
+                self.greeted = true;
+                return;
+            }
+            _ => return,
+        };
+        self.sent.retain(|_, a| a.news.as_ref() != Some(&news));
+    }
+
+    /// The connection ended: every op the host took and has not answered
+    /// gets `lost`, once.
+    fn lose_sent(&mut self) {
+        let why = anyhow::Error::msg(lost(&self.name));
+        for awaited in self.writing.take().map(|(_, a)| a).into_iter().chain(self.sent.drain().map(|(_, a)| a)) {
+            let _ = self.direct.send(error_for(&self.host, &awaited.stub, &why));
+        }
+    }
+
     fn fail(&mut self, why: &str) {
         while let Ok(op) = self.rx.try_recv() {
             self.held.push_back(op);
         }
         for op in self.held.drain(..) {
-            if let Some(refused) = refusal(&op, why) {
+            if let Some(refused) = refusal(&self.host, &op, why) {
                 let _ = self.direct.send(refused);
             }
         }
@@ -899,6 +1072,7 @@ impl Drop for Pending {
     /// The pipe ended: its host was removed (the page drops the pipe, or the
     /// hub's connection closes), or the page is gone.
     fn drop(&mut self) {
+        self.lose_sent();
         self.fail("no such host");
     }
 }
@@ -906,8 +1080,18 @@ impl Drop for Pending {
 /// The error a page gets for an op that did not reach the host. A window
 /// opening an agent's conversation has nothing to clear: `agent.seen` stays
 /// silent, as when `Pipe::send` refuses it (ws.rs).
-fn refusal(op: &Value, why: &str) -> Option<String> {
-    (op["op"] != "agent.seen").then(|| crate::ws::error_reply(op, &anyhow::Error::msg(why.to_string())))
+fn refusal(host: &str, op: &Value, why: &str) -> Option<String> {
+    (op["op"] != "agent.seen").then(|| error_for(host, op, &anyhow::Error::msg(why.to_string())))
+}
+
+/// An error the hub itself makes for an op meant for `host`. It names the
+/// host as that host's own errors do (`rewrite`), so a page files it under
+/// the host it asked: a connector's card, say, is released by its host's
+/// error only.
+pub(crate) fn error_for(host: &str, op: &Value, why: &anyhow::Error) -> String {
+    let mut reply = crate::ws::error_value(op, why);
+    reply["hostId"] = json!(host);
+    reply.to_string()
 }
 
 /// The host's url to connect to. Ops cannot wait while there is none (an
@@ -970,6 +1154,11 @@ pub fn agent_ref(msg: &Value) -> Option<&str> {
         _ => return None,
     };
     slot.as_str()
+}
+
+/// A host's own id for an id the hub shows (`<hostId>~<id>`).
+fn own_id(id: &str) -> &str {
+    id.split_once(SEP).map_or(id, |(_, rest)| rest)
 }
 
 fn strip(slot: &mut Value) {
@@ -1107,11 +1296,10 @@ fn remember(last: &Mutex<Option<Value>>, msg: &Value) {
 /// `None` drops it.
 #[cfg(test)]
 fn rewrite_incoming(host: &str, name: &str, text: &str) -> Option<String> {
-    rewrite(host, name, text).map(|msg| msg.to_string())
+    rewrite(host, name, serde_json::from_str(text).ok()?).map(|msg| msg.to_string())
 }
 
-fn rewrite(host: &str, name: &str, text: &str) -> Option<Value> {
-    let mut msg: Value = serde_json::from_str(text).ok()?;
+fn rewrite(host: &str, name: &str, mut msg: Value) -> Option<Value> {
     let op = msg["op"].as_str().unwrap_or("").to_string();
     match op.as_str() {
         "snapshot" => {
@@ -1444,6 +1632,311 @@ mod tests {
         for r in ["a", "b", "c"] {
             assert_eq!(got.get(r).map(String::as_str), Some(NOT_CONNECTED), "{r} answered: {got:?}");
         }
+    }
+
+    // An op the host took, whose answer the connection lost: one error with
+    // its `ref` (or its `for`, when the page waits without one), worded so
+    // it claims nothing, since the host may have done it.
+
+    const LOST: &str = "Lost the connection to box before it answered. This may have gone through; check once it's back.";
+
+    type HostWs = tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>;
+
+    /// A host that completes one pipe's handshake and runs `script` on it.
+    /// The pipe's next tries are refused.
+    async fn host_with<F, Fut>(script: F) -> String
+    where
+        F: FnOnce(HostWs) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = ()> + Send,
+    {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("ws://{}/ws", listener.local_addr().unwrap());
+        tokio::spawn(async move {
+            let (socket, _) = listener.accept().await.unwrap();
+            drop(listener);
+            let mut config = tokio_tungstenite::tungstenite::protocol::WebSocketConfig::default();
+            config.max_message_size = None;
+            config.max_frame_size = None;
+            let ws = tokio_tungstenite::accept_async_with_config(socket, Some(config)).await.unwrap();
+            script(ws).await;
+        });
+        url
+    }
+
+    /// The next op the pipe wrote.
+    async fn read_op(ws: &mut HostWs) -> Value {
+        loop {
+            match ws.next().await {
+                Some(Ok(Message::Text(text))) => return serde_json::from_str(&text).unwrap(),
+                Some(Ok(_)) => continue,
+                other => panic!("the pipe went away: {:?}", other.map(|r| r.map(|_| ()))),
+            }
+        }
+    }
+
+    async fn say(ws: &mut HostWs, msg: Value) {
+        ws.send(Message::Text(msg.to_string())).await.unwrap();
+    }
+
+    /// Everything the page gets until `stop` matches one, then for `quiet`
+    /// more (so a second answer would show).
+    async fn page_gets(replies: &mut mpsc::UnboundedReceiver<String>, stop: impl Fn(&Value) -> bool, quiet: Duration) -> Vec<Value> {
+        let mut got = Vec::new();
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+        while let Ok(Some(text)) = tokio::time::timeout_at(deadline, replies.recv()).await {
+            let reply: Value = serde_json::from_str(&text).unwrap();
+            let done = stop(&reply);
+            got.push(reply);
+            if done {
+                break;
+            }
+        }
+        let deadline = tokio::time::Instant::now() + quiet;
+        while let Ok(Some(text)) = tokio::time::timeout_at(deadline, replies.recv()).await {
+            got.push(serde_json::from_str(&text).unwrap());
+        }
+        got
+    }
+
+    fn errors_in(got: &[Value]) -> Vec<&Value> {
+        got.iter().filter(|r| r["op"] == "error").collect()
+    }
+
+    #[tokio::test]
+    async fn an_op_the_host_took_gets_one_answer_when_the_connection_drops_before_its_reply() {
+        // `a` is answered, `b` is taken and its answer never comes, `c`
+        // waits on nothing (no `ref`).
+        let url = host_with(|mut ws| async move {
+            let a = read_op(&mut ws).await;
+            say(&mut ws, json!({ "op": "session.renamed", "ref": a["ref"] })).await;
+            read_op(&mut ws).await;
+            read_op(&mut ws).await;
+            // Gone without a close: a dropped tunnel, a host that died.
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(json!({ "op": "session.rename", "sessionId": "h~s1", "title": "x", "ref": "a" })).unwrap();
+        pipe.send(op("b")).unwrap();
+        pipe.send(json!({ "op": "session.send", "sessionId": "h~s1", "text": "hi" })).unwrap();
+        let got = page_gets(&mut replies, |r| r["op"] == "host.down", Duration::from_millis(1500)).await;
+        let answers = |r: &str| got.iter().filter(|m| m["ref"] == r).count();
+        assert_eq!((answers("a"), answers("b")), (1, 1), "one answer each: {got:?}");
+        let errors = errors_in(&got);
+        assert_eq!(errors.len(), 1, "only `b` gets an error: {got:?}");
+        assert_eq!((errors[0]["ref"].as_str(), errors[0]["message"].as_str(), errors[0]["for"].as_str()), (Some("b"), Some(LOST), Some("session.open")));
+    }
+
+    #[tokio::test]
+    async fn an_op_the_host_took_gets_one_answer_when_its_pipe_is_dropped() {
+        // The host is removed (or the page leaves) after the host read the
+        // op and before it answered.
+        let (took, taken) = tokio::sync::oneshot::channel();
+        let url = host_with(|mut ws| async move {
+            read_op(&mut ws).await;
+            let _ = took.send(());
+            std::future::pending::<()>().await;
+            drop(ws);
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(op("a")).unwrap();
+        taken.await.unwrap();
+        drop(pipe);
+        let got = page_gets(&mut replies, |r| r["op"] == "error", Duration::from_millis(500)).await;
+        let errors = errors_in(&got);
+        assert_eq!(errors.len(), 1, "{got:?}");
+        assert_eq!((errors[0]["ref"].as_str(), errors[0]["message"].as_str()), (Some("a"), Some(LOST)));
+    }
+
+    #[tokio::test]
+    async fn an_op_being_written_when_its_pipe_is_dropped_gets_one_answer() {
+        // The write of a big upload is under way (the host does not read, so
+        // it cannot finish) when the host is removed: the task is aborted
+        // mid-write.
+        let (opened, open) = tokio::sync::oneshot::channel();
+        let url = host_with(|ws| async move {
+            let _ = opened.send(());
+            std::future::pending::<()>().await;
+            drop(ws);
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(json!({ "op": "attach.put", "host": "h", "ref": "a", "data": "x".repeat(24 << 20) })).unwrap();
+        open.await.unwrap();
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        drop(pipe);
+        let got = page_gets(&mut replies, |r| r["op"] == "error", Duration::from_millis(500)).await;
+        let errors = errors_in(&got);
+        assert_eq!(errors.len(), 1, "{got:?}");
+        assert_eq!((errors[0]["ref"].as_str(), errors[0]["message"].as_str()), (Some("a"), Some(LOST)));
+    }
+
+    #[tokio::test]
+    async fn ops_a_page_waits_on_without_a_ref_get_one_answer_too() {
+        // A new session's Send, an approval's buttons and a connector being
+        // added wait for an error or for the host's news: `created`, the
+        // approval's event, `mcp.change`. The host answers the first of each
+        // and takes the second, then the connection drops.
+        let url = host_with(|mut ws| async move {
+            say(&mut ws, json!({ "op": "snapshot", "sessions": [] })).await;
+            let create = read_op(&mut ws).await;
+            // The real host answers with the op's `ref` when it has one.
+            let mut created = json!({ "op": "created", "sessionId": "s9" });
+            if !create["ref"].is_null() {
+                created["ref"] = create["ref"].clone();
+            }
+            say(&mut ws, created).await;
+            let approve = read_op(&mut ws).await;
+            say(&mut ws, json!({ "op": "event", "sessionId": approve["sessionId"], "seq": 3, "event": { "type": "approval_resolved", "requestId": approve["requestId"], "decision": "accept" } })).await;
+            let add = read_op(&mut ws).await;
+            say(&mut ws, json!({ "op": "mcp.change", "engine": add["engine"], "account": "default", "name": add["name"], "state": "done" })).await;
+            for _ in 0..3 {
+                read_op(&mut ws).await;
+            }
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        let create = json!({ "op": "session.create", "host": "h", "engine": "codex", "model": "m", "effort": "low", "cwd": "/x", "text": "go" });
+        let approve = |r: &str| json!({ "op": "session.approve", "sessionId": "h~s1", "requestId": r, "decision": "accept" });
+        let add = |n: &str| json!({ "op": "mcp.add", "host": "h", "engine": "claude", "name": n, "url": "https://x.example/mcp" });
+        for msg in [create.clone(), approve("r1"), add("one"), create, approve("r2"), add("two")] {
+            pipe.send(msg).unwrap();
+        }
+        let got = page_gets(&mut replies, |r| r["op"] == "host.down", Duration::from_millis(1500)).await;
+        let created: Vec<&Value> = got.iter().filter(|r| r["op"] == "created").collect();
+        assert_eq!(created.len(), 1, "{got:?}");
+        // As the host gave it: a `ref` the page did not send is not its own.
+        assert_eq!((created[0]["sessionId"].as_str(), created[0].get("ref")), (Some("h~s9"), None), "{got:?}");
+        let errors = errors_in(&got);
+        let mut failed: Vec<&str> = errors.iter().map(|e| e["for"].as_str().unwrap_or_default()).collect();
+        failed.sort();
+        assert_eq!(failed, ["mcp.add", "session.approve", "session.create"], "one error for each op left unanswered: {got:?}");
+        for e in errors {
+            assert_eq!((e["message"].as_str(), e.get("ref")), (Some(LOST), None), "{e}");
+        }
+    }
+
+    #[tokio::test]
+    async fn a_host_that_resyncs_its_page_settles_what_its_news_would_have() {
+        // A host whose broadcasts fell behind sends a fresh snapshot instead
+        // of the events it skipped (the page reloads from it): an approval
+        // taken before it is not reported lost, one after it is.
+        let url = host_with(|mut ws| async move {
+            say(&mut ws, json!({ "op": "snapshot", "sessions": [] })).await;
+            read_op(&mut ws).await;
+            say(&mut ws, json!({ "op": "snapshot", "sessions": [] })).await;
+            read_op(&mut ws).await;
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        let approve = |r: &str| json!({ "op": "session.approve", "sessionId": "h~s1", "requestId": r, "decision": "accept" });
+        pipe.send(approve("r1")).unwrap();
+        let mut seen = 0;
+        while seen < 2 {
+            let text = tokio::time::timeout(Duration::from_secs(5), replies.recv()).await.unwrap().unwrap();
+            seen += usize::from(serde_json::from_str::<Value>(&text).unwrap()["op"] == "host.snapshot");
+        }
+        pipe.send(approve("r2")).unwrap();
+        let got = page_gets(&mut replies, |r| r["op"] == "host.down", Duration::from_millis(1000)).await;
+        assert_eq!(errors_in(&got).len(), 1, "{got:?}");
+    }
+
+    #[tokio::test]
+    async fn the_pipe_s_own_errors_name_their_host_and_come_after_it_went_down() {
+        // A page files an error under the host it names (`hostId`): a
+        // connector's row, for one. Without it the error was the hub's own.
+        let url = host_with(|mut ws| async move {
+            read_op(&mut ws).await;
+            read_op(&mut ws).await;
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(op("a")).unwrap();
+        pipe.send(json!({ "op": "mcp.remove", "host": "h", "engine": "claude", "server": "linear" })).unwrap();
+        let got = page_gets(&mut replies, |r| r["op"] == "error" && r["for"] == "mcp.remove", Duration::from_millis(500)).await;
+        let down = got.iter().position(|r| r["op"] == "host.down").expect("host.down");
+        let errors: Vec<(usize, &Value)> = got.iter().enumerate().filter(|(_, r)| r["op"] == "error").collect();
+        assert_eq!(errors.len(), 2, "{got:?}");
+        for (i, e) in errors {
+            assert_eq!(e["hostId"], "h", "{e}");
+            // The page knows the host is down when the error comes: its
+            // connectors are hidden then, so it says it where it shows.
+            assert!(i > down, "after host.down: {got:?}");
+        }
+        // Refused before it went: no url, and still held when the pipe goes.
+        let (_shown, pipe, mut replies) = test_pipe(connected(None));
+        pipe.send(op("b")).unwrap();
+        let got = errors_in(&page_gets(&mut replies, |r| r["op"] == "error", Duration::from_millis(100)).await).into_iter().cloned().collect::<Vec<_>>();
+        assert_eq!((got.len(), got[0]["hostId"].as_str()), (1, Some("h")), "{got:?}");
+        let url = silent_host().await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(op("c")).unwrap();
+        drop(pipe);
+        let got = errors_in(&page_gets(&mut replies, |r| r["op"] == "error", Duration::from_millis(100)).await).into_iter().cloned().collect::<Vec<_>>();
+        assert_eq!((got.len(), got[0]["hostId"].as_str()), (1, Some("h")), "{got:?}");
+    }
+
+    #[tokio::test]
+    async fn a_host_from_before_v0_18_is_not_reported_lost_for_the_sessions_it_made() {
+        // Before v0.18.0 a host answered `session.create` with `created`
+        // and no `ref` (and its snapshot had no `agents`). The sessions were
+        // made and announced: a later disconnect has nothing to report.
+        let url = host_with(|mut ws| async move {
+            say(&mut ws, json!({ "op": "snapshot", "sessions": [] })).await;
+            for sid in ["s8", "s9"] {
+                read_op(&mut ws).await;
+                say(&mut ws, json!({ "op": "created", "sessionId": sid })).await;
+            }
+            // Updated and restarted, say, a while later.
+            tokio::time::sleep(Duration::from_millis(300)).await;
+            let _ = ws.close(None).await;
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        let create = json!({ "op": "session.create", "host": "h", "engine": "codex", "model": "m", "effort": "low", "cwd": "/x", "text": "go" });
+        pipe.send(create.clone()).unwrap();
+        // The iOS app's, with a `ref` of its own.
+        let mut ios = create;
+        ios["ref"] = json!("m1");
+        pipe.send(ios).unwrap();
+        let got = page_gets(&mut replies, |r| r["op"] == "host.down", Duration::from_millis(1000)).await;
+        assert_eq!(got.iter().filter(|r| r["op"] == "created").count(), 2, "{got:?}");
+        assert!(errors_in(&got).is_empty(), "no error: {got:?}");
+    }
+
+    #[tokio::test]
+    async fn a_healthy_host_answers_every_op_once_and_in_order() {
+        // The healthy path: a big upload and many ops, each answered by the
+        // host, then a clean end. No error, nothing twice, the same order.
+        let (n, big) = (300, 16usize << 20);
+        let url = host_with(move |mut ws| async move {
+            for _ in 0..n + 2 {
+                let op = read_op(&mut ws).await;
+                if op["ref"].is_null() {
+                    continue;
+                }
+                let reply = if op["op"] == "attach.put" {
+                    json!({ "op": "attach.stored", "ref": op["ref"], "attachment": { "id": "a1", "size": op["data"].as_str().map_or(0, str::len) } })
+                } else {
+                    json!({ "op": "session.renamed", "ref": op["ref"] })
+                };
+                say(&mut ws, reply).await;
+            }
+            let _ = ws.close(None).await;
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(json!({ "op": "attach.put", "host": "h", "ref": "big", "data": "x".repeat(big) })).unwrap();
+        for i in 0..n {
+            pipe.send(json!({ "op": "session.rename", "sessionId": "h~s1", "title": "t", "ref": format!("r{i}") })).unwrap();
+        }
+        pipe.send(json!({ "op": "session.send", "sessionId": "h~s1", "text": "no answer wanted" })).unwrap();
+        let got = page_gets(&mut replies, |r| r["op"] == "host.down", Duration::from_millis(1500)).await;
+        assert!(errors_in(&got).is_empty(), "no error: {:?}", errors_in(&got));
+        let refs: Vec<&str> = got.iter().filter_map(|r| r["ref"].as_str()).collect();
+        let want: Vec<String> = std::iter::once("big".to_string()).chain((0..n).map(|i| format!("r{i}"))).collect();
+        assert_eq!(refs, want, "every op answered once, in the order sent");
+        assert_eq!(got[0]["attachment"]["size"], big, "the upload arrived whole");
     }
 }
 

@@ -278,6 +278,8 @@ fn start_claude(app: &Arc<App>, account: &str) -> Result<()> {
         runtime.spawn(async move {
             if logged_in {
                 crate::claude::refresh_usage_soon(&app, &account);
+                // Another login may be another plan, with other models.
+                crate::claude::refresh_models_soon(&app, &account);
             }
             app.broadcast(status(&app).await)
         });

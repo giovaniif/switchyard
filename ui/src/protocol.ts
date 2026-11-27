@@ -255,6 +255,8 @@ export interface ModelInfo {
   defaultEffort?: string;
   isDefault?: boolean;
   serviceTiers?: ModelServiceTier[];
+  /** The accounts whose plans have it, when not every account's does (Claude). */
+  accounts?: string[];
 }
 
 /** Per engine; an engine that is not installed on the host may be missing. */

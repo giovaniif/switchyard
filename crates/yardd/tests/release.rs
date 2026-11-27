@@ -269,6 +269,41 @@ async fn an_idle_claude_sidecar_is_stopped_and_the_next_message_resumes() {
     assert!(starts[1].contains(&format!("resume=fake-claude-{pid}")), "the new sidecar resumes the conversation: {starts:?}");
 }
 
+/// Picking another model (Fable) on a Claude session tells a running sidecar
+/// at once, and one that was let go while idle (or lost to a restart) has
+/// nothing to tell: the switch must still be saved, and the next sidecar start
+/// on it. It was refused ("session has no Claude sidecar") and the session
+/// stayed on its old model.
+#[tokio::test]
+async fn a_model_picked_on_an_idle_claude_session_is_the_one_its_next_sidecar_runs() {
+    let sb = Sandbox::new("release-claude-model");
+    let d = sb.start_with(&[("YARD_RELEASE_IDLE_MS", "400"), ("YARD_SIDECAR", &sidecar())]);
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "TEST-hi", json!({ "engine": "claude", "model": "claude-haiku-5-5", "effort": "low" })).await;
+    c.wait_turn_done(&sid, 0).await;
+    let starts = sidecar_starts(&sb);
+    assert!(starts[0].contains(" model=claude-haiku-5-5 "), "{starts:?}");
+
+    // A running sidecar hears it.
+    c.send(json!({ "op": "session.setModel", "sessionId": sid, "model": "claude-sonnet-5-5", "effort": "low" })).await;
+    until("the sidecar to switch", 10, || fs::read_to_string(sb.fake_state().join("sidecar.log")).unwrap_or_default().contains("set_model claude-sonnet-5-5")).await;
+
+    let pid = pid_of(&starts[0]);
+    until("the idle sidecar to exit", 10, || !alive(&pid)).await;
+    let from = c.mark();
+    c.send(json!({ "op": "session.setModel", "sessionId": sid, "model": "claude-fable-5-2", "effort": "high" })).await;
+    c.drain_for(Duration::from_millis(500)).await;
+    let errors: Vec<&Value> = c.log[from..].iter().filter(|m| m["op"] == "error").collect();
+    assert!(errors.is_empty(), "{errors:?}");
+
+    let seq = c.next_seq(&sid);
+    c.send(json!({ "op": "session.send", "sessionId": sid, "text": "TEST-again" })).await;
+    assert_eq!(c.wait_turn_done(&sid, seq).await["status"], "completed", "{:?}", c.events(&sid));
+    let starts = sidecar_starts(&sb);
+    assert_eq!(starts.len(), 2, "{starts:?}");
+    assert!(starts[1].contains(" model=claude-fable-5-2 "), "the next sidecar runs on Fable: {starts:?}");
+}
+
 #[tokio::test]
 async fn a_claude_session_with_subagents_at_work_keeps_its_sidecar() {
     let sb = Sandbox::new("release-claude-bg");

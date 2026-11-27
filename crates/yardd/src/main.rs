@@ -118,6 +118,7 @@ async fn main() -> anyhow::Result<()> {
     tokio::spawn(hosts::run(app.clone()));
     tokio::spawn(automations::run_scheduler(app.clone()));
     tokio::spawn(claude::run_usage_refresh(app.clone()));
+    tokio::spawn(claude::run_models_refresh(app.clone()));
     tokio::spawn(grok::run_usage_refresh(app.clone()));
     tokio::spawn(sweep::run(app.clone()));
     tokio::spawn(slack::run(app.clone()));

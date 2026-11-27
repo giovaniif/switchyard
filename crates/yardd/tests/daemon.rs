@@ -56,6 +56,83 @@ async fn snapshot_has_its_shape_and_the_fake_models() {
     assert_eq!(usage["usage"]["codex"]["primary"]["usedPercent"], 12);
 }
 
+/// The Claude models a snapshot or `models` message lists.
+fn claude_ids(m: &Value) -> Vec<String> {
+    let models = if m["op"] == "snapshot" || m["op"] == "models" { &m["models"]["claude"] } else { &Value::Null };
+    models.as_array().map(|l| l.iter().filter_map(|x| x["id"].as_str().map(String::from)).collect()).unwrap_or_default()
+}
+
+/// Claude's models are what Claude Code reports for each account (the fake
+/// sidecar's `models`, read without a turn), not a list built into yardd: the
+/// owner's plan has Fable, and the picker never offered it. A model only some
+/// accounts report names them. The lists are saved: a restart whose reads
+/// fail still lists them.
+#[tokio::test]
+async fn claude_models_are_what_each_account_reports() {
+    let sb = Sandbox::new("claude-models");
+    let sidecar = fake_bin().join("yard-claude");
+    let d = sb.start_with(&[("YARD_SIDECAR", sidecar.to_str().unwrap()), ("YARD_CLAUDE_MODELS_EVERY_MS", "600000")]);
+    let mut c = d.client().await;
+    let efforts = json!(["low", "medium", "high", "xhigh", "max"]);
+    // The built-in list marks no default; Claude Code's does.
+    let got = c.wait_for("the models Claude reports", |m| !claude_ids(m).is_empty() && m["models"]["claude"][0]["isDefault"] == true).await;
+    assert_eq!(claude_ids(&got), ["claude-opus-5-5", "claude-fable-5-2", "claude-sonnet-5-5", "claude-haiku-5-5"]);
+    assert_eq!(got["models"]["claude"][0], json!({ "id": "claude-opus-5-5", "name": "Opus 5.5", "efforts": efforts, "defaultEffort": "high", "isDefault": true }));
+    assert_eq!(got["models"]["claude"][1], json!({ "id": "claude-fable-5-2", "name": "Fable 5.2", "efforts": efforts, "defaultEffort": "high" }));
+    assert!(c.log.iter().all(|m| m["op"] != "event"), "no turn ran");
+    let log = fs::read_to_string(sb.fake_state().join("sidecar.log")).unwrap();
+    assert!(log.lines().any(|l| l == "models config="), "{log}");
+
+    // An account whose plan has no Fable: Fable stays, as Default's only.
+    let from = c.mark();
+    c.send(json!({ "op": "account.add", "engine": "claude", "name": "Work" })).await;
+    let accounts = c.wait_after(from, "the accounts list", |m| m["op"] == "accounts" && m["accounts"].as_array().is_some_and(|l| !l.is_empty())).await;
+    let id = accounts["accounts"][0]["id"].as_str().unwrap().to_string();
+    let fable_only_default = |m: &Value| m["op"] == "models" && m["models"]["claude"][1]["accounts"] == json!(["default"]);
+    let got = c.wait_after(from, "Fable marked as Default's", fable_only_default).await;
+    assert_eq!(claude_ids(&got), ["claude-opus-5-5", "claude-fable-5-2", "claude-sonnet-5-5", "claude-haiku-5-5"]);
+    assert!(got["models"]["claude"][0].get("accounts").is_none(), "a model every account has names none: {got}");
+    let log = fs::read_to_string(sb.fake_state().join("sidecar.log")).unwrap();
+    assert!(log.contains(&format!("models config={}", sb.data().join("accounts").join(&id).display())), "{log}");
+    d.stop();
+
+    // The sidecar is now the plain fake `claude`, which answers nothing.
+    let d = sb.start_with(&[("YARD_CLAUDE_MODELS_EVERY_MS", "600000")]);
+    let mut c = d.client().await;
+    assert!(fable_only_default(&json!({ "op": "models", "models": c.log[0]["models"] })), "the saved lists: {}", c.log[0]["models"]);
+    wait_for_models_read(&sb).await;
+    c.drain_for(Duration::from_millis(300)).await;
+    let last = c.log.iter().rev().find(|m| !claude_ids(m).is_empty()).unwrap().clone();
+    assert_eq!(last["models"]["claude"][1]["id"], "claude-fable-5-2", "a failed read keeps them: {last}");
+}
+
+/// Until Claude Code answers (or when it cannot), the built-in list stands,
+/// and it has Fable.
+#[tokio::test]
+async fn claude_models_fall_back_to_a_built_in_list_with_fable() {
+    let sb = Sandbox::new("claude-models-fallback");
+    let d = sb.start_with(&[("YARD_CLAUDE_MODELS_EVERY_MS", "600000")]);
+    let mut c = d.client().await;
+    let built_in = ["claude-opus-5-5", "claude-fable-5-2", "claude-sonnet-5-5", "claude-haiku-5-5"];
+    assert_eq!(claude_ids(&c.log[0]), built_in);
+    wait_for_models_read(&sb).await;
+    c.drain_for(Duration::from_millis(300)).await;
+    let last = c.log.iter().rev().find(|m| !claude_ids(m).is_empty()).unwrap().clone();
+    assert_eq!(claude_ids(&last), built_in);
+    assert_eq!(last["models"]["claude"][1]["name"], "Fable 5.2");
+}
+
+/// The fake `claude` records the failed `models` read.
+async fn wait_for_models_read(sb: &Sandbox) {
+    for _ in 0..100 {
+        if fs::read_to_string(sb.fake_state().join("claude.log")).is_ok_and(|l| l.contains("args=models")) {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    panic!("yardd never asked the sidecar for its models");
+}
+
 #[tokio::test]
 async fn the_snapshot_names_this_machine_before_its_first_stats_sample() {
     // Stats come every few seconds; until then the snapshot's `host` is null,
