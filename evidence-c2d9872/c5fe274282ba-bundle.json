@@ -1,0 +1,198 @@
+{
+  "v": 1,
+  "claim": "Closing the page (or the window, or losing the connection) while the Claude Code login dialog is open leaves `claude auth login` running under yardd until yardd stops: a closed tab never sends login.cancel and nothing ends a login nobody finishes.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-e398",
+  "base": "f3f81f16557382ff6b894eca7481e27e8949276f",
+  "head": "c2d9872df4e86cad5fdf33404265fb5f0ed090bc",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/login.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/logins.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T08:05:47.985Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "e2a387a3c805ee482c146c17f00d068df3e6af14",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "07d947699fb48a6437fbbc50fb452f246171b539e971415b4fcd94636fd164f2"
+        },
+        {
+          "path": "p1-login-open-then-page-closed-desktop.png",
+          "sha256": "9cbbc5026c960bedc236d32ca464576d0d46b44118eb8fc12f668625884b216c"
+        },
+        {
+          "path": "p1-abandoned-claude-login-base-pgrep.txt",
+          "sha256": "64e2d39070463101f49b9a923d532c4a77b74aa2bb6ea4f482fd0e660615dd96"
+        }
+      ],
+      "addedAt": "2026-11-27T08:06:12.047Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "e2a387a3c805ee482c146c17f00d068df3e6af14",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "e9f967144054e6b7f776fa4e3391f4590cc22a15a1ebcccceba90156293493ad"
+        }
+      ],
+      "addedAt": "2026-11-27T08:06:12.097Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd --test daemon an_abandoned_claude_login_is_stopped",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "e2a387a3c805ee482c146c17f00d068df3e6af14",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "9b06022a384a693fb633659108f94e23f739d0f08d322ee2963c6590f28ad42c"
+        }
+      ],
+      "addedAt": "2026-11-27T08:06:33.543Z",
+      "cmd": "verify/yv map run logins --recipe an-abandoned-login-stops-on-time",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "c2d9872df4e86cad5fdf33404265fb5f0ed090bc",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-3-drive.json",
+          "sha256": "f6632b2b74b089255486df501f0fe14630a96de299aef7807265b7c3a5f8e8b8"
+        },
+        {
+          "path": "p4-2-login-open-mobile.png",
+          "sha256": "6cce48072dfdca6ab12c3d8d14bd587107326346ec8b53472afab1a7034cd58c"
+        },
+        {
+          "path": "p4-2-login-timed-out-mobile.png",
+          "sha256": "c92e6162a59a5511df10116efd6132c8175e66537cf73a6501029d0594be7eb0"
+        },
+        {
+          "path": "p4-2-login-open-desktop.png",
+          "sha256": "93c8e30e5beac5b425cbce116005b0eda133da66f9d21594887619e600a99984"
+        },
+        {
+          "path": "p4-2-login-timed-out-desktop.png",
+          "sha256": "2c26752b73036321eea90c02158716802ee80aec0cc39a46dd78f052aa7df65e"
+        },
+        {
+          "path": "p4-4-drive.json",
+          "sha256": "07476cad26715410620064fa981c2fa0b952d5611a707e37033791bfdb1c2f70"
+        },
+        {
+          "path": "p4-2-login-open-then-page-closed-desktop.png",
+          "sha256": "06e47d9aacbb15e530e3a968684a4bad289f42b3a65f652ea94b2d9fa0b74b80"
+        },
+        {
+          "path": "p4-2-abandoned-claude-login-head-pgrep.txt",
+          "sha256": "d234f8fc858c6ce89e215a6f628d33a02ed94bc330946f1da7de4d7340e300f1"
+        }
+      ],
+      "addedAt": "2026-11-27T08:08:54.312Z",
+      "failedApi": [
+        "login: The sign-in waited too long for its code. Start again.",
+        "login: The sign-in waited too long for its code. Start again."
+      ]
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "note",
+      "at": "c2d9872df4e86cad5fdf33404265fb5f0ed090bc",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T08:08:54.359Z",
+      "text": "expected-api: login: the head drive waits for the login's own failed reply (state failed, 'The sign-in waited too long for its code. Start again.'), which the UI reports as a failed API call; that reply is the fix, as in the claude-code-login recipe's wrong-code path."
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "c2d9872df4e86cad5fdf33404265fb5f0ed090bc",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "9eb41e1333fe182c3b30e65329c2268cc56a46310eb9eb2729eda34b4b0f62fc"
+        }
+      ],
+      "addedAt": "2026-11-27T08:08:54.399Z",
+      "cmd": "CARGO_BUILD_JOBS=4 cargo test -p yardd",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "c2d9872df4e86cad5fdf33404265fb5f0ed090bc",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-logins.json",
+          "sha256": "09377c1ee4c0bb061d0a661532de62f0412b9fb41d9eb5f34d538a8c6ecedfe9"
+        }
+      ],
+      "addedAt": "2026-11-27T08:10:37.231Z",
+      "cmd": "verify/yv map run logins",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "logins/hosts-page-shows-logged-out",
+        "logins/usage-trigger-skips-signed-out-account",
+        "logins/new-session-log-in-fits",
+        "logins/closing-a-login-cancels-it",
+        "logins/an-abandoned-login-stops-on-time",
+        "logins/codex-device-login",
+        "logins/claude-code-login",
+        "logins/grok-device-login",
+        "logins/gemini-check-login-says-still-logged-out",
+        "logins/opencode-api-key",
+        "logins/opencode-device-sign-in"
+      ]
+    }
+  ]
+}

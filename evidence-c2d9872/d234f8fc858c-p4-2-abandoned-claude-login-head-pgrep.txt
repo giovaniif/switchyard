@@ -1,0 +1,3 @@
+yardd pid 80340 on port 43415 at c2d9872 (fix), YARD_CLAUDE_LOGIN_TIMEOUT_MS=4000; the drive opened the Claude Code login and ended with the dialog open (page closed). 8 s later:
+$ pgrep -a -P 80340 -f 'auth login'
+exit 1

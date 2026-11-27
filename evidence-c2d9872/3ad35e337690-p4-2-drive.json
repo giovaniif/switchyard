@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "9063b7be5fc6ebdcbd2f407a35c5a935066fdd89",
+    "short": "9063b7b",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T08:07:15.499Z"
+  },
+  "dir": ".verify/evidence/abandoned-claude-login-head-closed",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 2513,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/abandoned-claude-login-head-closed/login-open-then-page-closed-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

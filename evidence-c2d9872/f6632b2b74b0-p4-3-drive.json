@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "c2d9872df4e86cad5fdf33404265fb5f0ed090bc",
+    "short": "c2d9872",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T08:08:27.569Z"
+  },
+  "dir": ".verify/evidence/abandoned-claude-login-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 8138,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/abandoned-claude-login-head/login-open-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/abandoned-claude-login-head/login-timed-out-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "login",
+          "message": "The sign-in waited too long for its code. Start again."
+        }
+      ],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 6553,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/abandoned-claude-login-head/login-open-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/abandoned-claude-login-head/login-timed-out-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "login",
+          "message": "The sign-in waited too long for its code. Start again."
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

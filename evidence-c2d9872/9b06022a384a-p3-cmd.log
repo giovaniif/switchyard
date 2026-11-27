@@ -1,0 +1,40 @@
+$ verify/yv map run logins --recipe an-abandoned-login-stops-on-time
+# exit 1 after 20438 ms at e2a387a3c805ee482c146c17f00d068df3e6af14
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "logins",
+      "at": "2026-11-27T08:06:53.977Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "an-abandoned-login-stops-on-time",
+          "status": "fail",
+          "ms": 19931,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 3 {\"expect\":\"role:dialog\",\"text\":\"The sign-in waited too long for its code. Start again.\",\"timeout\":15000}: expected \"role:dialog\" to contain \"The sign-in waited too long for its code. Start again.\", got \"Log in to Claude Code on iso-host",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-e398/.verify/drives/2026-11-27T08-06-34-294Z/fail-mobile-step3.png and the aria snapshot"
+            }
+          ],
+          "tail": "ss in the host's\\n    - code: YARD_ALLOW_ORIGIN\\n    - text: \\\", such as its Tailscale name.\\\"\\n- button \\\"Select iso-host\\\" [pressed]:\\n  - strong: iso-host\\n  - text: This machine Healthy CPU\\n  - strong: 7%\\n  - text: Memory\\n  - strong: 18.9 GB\\n  - text: Disk\\n  - strong: 161 GB\\n- region \\\"iso-host details\\\":\\n  - heading \\\"iso-host\\\" [level=2]\\n  - text: Healthy\\n  - tablist \\\"Host details\\\":\\n    - tab \\\"Sessions\\\"\\n    - tab \\\"Engine logins\\\" [selected]\\n    - tab \\\"System\\\"\\n  - tabpanel \\\"Engine logins\\\":\\n    - text: Claude Code not logged in\\n    - button \\\"Log in\\\"\\n    - button \\\"Add Claude Code account\\\": Add account\\n    - text: Codex not logged in\\n    - button \\\"Log in\\\"\\n    - button \\\"Add Codex account\\\": Add account\\n    - text: \\\"OpenCode providers: opencode\\\"\\n    - button \\\"Add provider\\\"\\n    - button \\\"Add OpenCode account\\\": Add account\\n    - text: Grok not logged in\\n    - button \\\"Log in\\\"\\n    - button \\\"Add Grok account\\\": Add account\\n    - text: Gemini not logged in\\n    - button \\\"Log in\\\"\\n    - button \\\"Add Gemini account\\\": Add account\\n    - button \\\"View subscription usage →\\\"\\n- button \\\"Run sessions on another machine Add a server or desktop you reach over SSH.\\\":\\n  - strong: Run sessions on another machine\\n  - text: Add a server or desktop you reach over SSH.\\n- dialog \\\"Log in to Claude Code\\\":\\n  - banner:\\n    - heading \\\"Log in to Claude Code on iso-host\\\" [level=2]\\n    - button \\\"Close\\\"\\n  - list:\\n    - listitem:\\n      - link \\\"Open the sign-in page\\\":\\n        - /url: https://claude.com/cai/oauth/authorize?code=true&state=fake\\n    - listitem: Sign in with your Claude account and copy the code it shows.\\n    - listitem: \\\"Paste it here:\\\"\\n  - textbox \\\"Code from the sign-in page\\\"\\n  - button \\\"Log in\\\" [disabled]\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 3 {\\\"expect\\\":\\\"role:dialog\\\",\\\"text\\\":\\\"The sign-in waited too long for its code. Start again.\\\",\\\"timeout\\\":15000}: expected \\\"role:dialog\\\" to contain \\\"The sign-in waited too long for its code. Start again.\\\", got \\\"Log in to Claude Code on iso-host\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-e398/.verify/drives/2026-11-27T08-06-34-294Z/fail-mobile-step3.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "logins/an-abandoned-login-stops-on-time",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

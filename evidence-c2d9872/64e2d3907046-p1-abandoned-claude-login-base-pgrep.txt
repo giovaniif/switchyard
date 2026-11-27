@@ -1,0 +1,4 @@
+yardd pid 57327 on port 37707 at e2a387a (base + test only), YARD_CLAUDE_LOGIN_TIMEOUT_MS=4000; the drive opened the Claude Code login and ended with the dialog open (page closed). 8 s later:
+$ pgrep -a -P 57327 -f 'auth login'
+57931 /bin/sh /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-e398/crates/yardd/tests/fake-codex/claude auth login
+exit 0
