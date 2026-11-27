@@ -36,10 +36,10 @@
 //! (`YARD_SLACK_PUBLIC_URL`), as signed HTTP requests to `/slack/events`, so
 //! the configuration token is the only thing pasted.
 //!
-//! An agent's app can also watch channels the owner chose (`watched`): their
-//! new top-level messages, integrations' alerts included, are batched per
-//! channel into one notice that reaches the agent as data, in a turn that is
-//! read-only whatever the agent's permission (see `watch` and origins.rs).
+//! An agent's app also watches every channel it is added to: their new
+//! top-level messages, integrations' alerts included, are batched per channel
+//! into one notice that reaches the agent as data, in a turn that is read-only
+//! whatever the agent's permission (see `watch` and origins.rs).
 //!
 //! `YARD_SLACK_API` points the Web API (and so Socket Mode) elsewhere: tests
 //! and `verify/yv` use the fake in `verify/fakes/fake-slack`.
@@ -176,12 +176,6 @@ struct AgentApp {
     icon_set: bool,
     /// Why the last update did not reach Slack.
     sync_error: String,
-    /// The only people its answers may @mention, chosen by the owner: an
-    /// agent's text is untrusted, so it never widens this list itself.
-    mentions: Vec<Person>,
-    /// Channels whose top-level messages and alerts reach the agent as data,
-    /// chosen by the owner (the agent has no tool to change this).
-    watched: Vec<Watch>,
     /// Being handed over to another yardd, which may run it too until the
     /// hand-over settles (`settled`): deleting this copy then leaves the app
     /// in Slack.
@@ -192,14 +186,6 @@ struct AgentApp {
     /// host (`export_app`, `adopt_app`).
     #[serde(flatten)]
     extra: serde_json::Map<String, Value>,
-}
-
-/// A channel an agent's app watches.
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Watch {
-    id: String,
-    name: String,
 }
 
 /// Watched messages are collected this long per agent and channel, so an
@@ -213,7 +199,6 @@ const WATCH_REPEAT_MS: u64 = 5 * 60_000;
 const WATCH_BATCH_MAX: usize = 20;
 /// Each message's text is clipped to this many bytes.
 const WATCH_TEXT_MAX: usize = 3_000;
-const MAX_WATCHED: usize = 20;
 
 /// Watched messages waiting for their turn, per agent and channel.
 struct Batch {
@@ -476,8 +461,6 @@ impl Slack {
                     "eventsUrl": a.events_url,
                     "syncError": Some(&a.sync_error).filter(|e| !e.is_empty()),
                     "iconKey": a.icon_key,
-                    "mentions": a.mentions,
-                    "watched": a.watched,
                 });
                 if a.step() == "install" && !a.redirect.is_empty() {
                     v["authorizeUrl"] = json!(a.authorize_url);
@@ -651,18 +634,6 @@ impl Slack {
         self.cfg.lock().unwrap().apps.iter().any(|a| a.agent == agent)
     }
 
-    /// Who the agent's answers may @mention, as it should write them.
-    pub fn mentions_note(&self, agent: &str) -> Option<String> {
-        let people = self.app_of(agent)?.mentions;
-        (!people.is_empty()).then(|| people.iter().map(|p| format!("{} (<@{}>)", p.name, p.id)).collect::<Vec<_>>().join(", "))
-    }
-
-    /// The channels the agent watches, as it reads them.
-    pub fn watched_note(&self, agent: &str) -> Option<String> {
-        let list = self.app_of(agent)?.watched;
-        (!list.is_empty()).then(|| list.iter().map(|w| format!("{} ({})", w.name, w.id)).collect::<Vec<_>>().join(", "))
-    }
-
     /// A message one of Switchyard's own bots posted: any agent's app.
     fn own_bot(&self, ev: &Value) -> bool {
         let user = ev["user"].as_str().unwrap_or("");
@@ -831,11 +802,10 @@ pub fn backup(app: &App) -> Result<()> {
 }
 
 /// An agent leaving this host takes its Slack app: the whole record (every
-/// field, its watched channels and mention list and those this build does
-/// not know too), its workspace's configuration token and its icon. Null
-/// without one. Its Slack threads, places and pending approvals are this
-/// host's and stay (`release_app`): its next Slack message starts a new
-/// conversation on the new host. Nothing changes here: while the agent is
+/// field, those this build does not know too), its workspace's configuration
+/// token and its icon. Null without one. Its Slack threads, places and pending
+/// approvals are this host's and stay (`release_app`): its next Slack message
+/// starts a new conversation on the new host. Nothing changes here: while the agent is
 /// leaving (`agents::leaving`) deleting it leaves the app in Slack. The
 /// owner's own Slack and the allowlist stay.
 pub fn export_app(app: &App, agent: &str) -> Value {
@@ -1059,56 +1029,6 @@ pub async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg:
             start_app(app, &a.id);
         }
         "slack.app.remove" => remove_app(app, &agent()?.id).await,
-        "slack.app.mention" => {
-            let a = agent()?;
-            let user = msg["user"].as_str().unwrap_or("").trim().to_uppercase();
-            if !user_id_ok(&user) {
-                bail!("A Slack member ID looks like U0123ABCD. Find it in Slack under the person's profile, More, Copy member ID.");
-            }
-            let name = msg["name"].as_str().map(str::trim).filter(|n| !n.is_empty()).unwrap_or(&user).to_string();
-            slack.app_of(&a.id).context("Make its Slack app first.")?;
-            slack.update_app(&a.id, |r| {
-                r.mentions.retain(|p| p.id != user);
-                r.mentions.push(Person { id: user, name });
-            });
-        }
-        "slack.app.unmention" => {
-            let a = agent()?;
-            let user = msg["user"].as_str().context("missing `user`")?.to_string();
-            slack.update_app(&a.id, |r| r.mentions.retain(|p| p.id != user));
-        }
-        // Watched channels are the owner's to set, here only: an agent's own
-        // words are untrusted, so it has no tool for this.
-        "slack.app.watch" => {
-            let a = agent()?;
-            let channel = msg["channel"].as_str().unwrap_or("").trim().trim_start_matches('#').to_uppercase();
-            let id_ok = channel.len() >= 9 && channel.len() <= 15 && (channel.starts_with('C') || channel.starts_with('G')) && channel.chars().all(|c| c.is_ascii_alphanumeric());
-            if !id_ok {
-                bail!("A Slack channel ID looks like C0123ABCD. Find it in Slack under the channel's name, About, at the bottom.");
-            }
-            let rec = slack.app_of(&a.id).context("Make its Slack app first.")?;
-            if rec.watched.len() >= MAX_WATCHED && !rec.watched.iter().any(|w| w.id == channel) {
-                bail!("{} already watches {MAX_WATCHED} channels.", a.name);
-            }
-            let typed = msg["name"].as_str().unwrap_or("").trim().trim_start_matches('#').to_string();
-            let name = if !typed.is_empty() {
-                format!("#{typed}")
-            } else if !rec.bot_token.is_empty() {
-                slack.channel_name(&rec.bot_token, &channel, false).await
-            } else {
-                channel.clone()
-            };
-            slack.update_app(&a.id, |r| {
-                r.watched.retain(|w| w.id != channel);
-                r.watched.push(Watch { id: channel, name });
-            });
-        }
-        "slack.app.unwatch" => {
-            let a = agent()?;
-            let channel = msg["channel"].as_str().context("missing `channel`")?.to_string();
-            slack.update_app(&a.id, |r| r.watched.retain(|w| w.id != channel));
-            slack.batches.lock().unwrap().remove(&format!("{}/{channel}", a.id));
-        }
         // The owner's own Slack: made in a workspace that has a configuration
         // token (`slack.grant` with `me` makes it at once), approved in
         // Slack, then connected with an app-level token.
@@ -2305,14 +2225,16 @@ async fn on_event(app: &Arc<App>, me: &Me, payload: &Value) -> Result<()> {
     Ok(())
 }
 
-/// A message in a channel the agent's app watches, taken as data for a
-/// batched, read-only turn: a top-level message from a person or an
-/// integration (`bot_id`, `bot_message`). Not one of Switchyard's own bots,
-/// not an edit, deletion or join, not a thread reply (those keep the
-/// follow-up rules); a person's @mention of the agent is a request, left to
-/// the mention path. Not gated by the allowlist: nobody asks the agent
-/// anything, and the text reaches it framed as data. Answers whether the
-/// message was the watch's (taken, a repeat, or one of ours).
+/// A message in a channel the agent's app is in, taken as data for a batched,
+/// read-only turn: a top-level message from a person or an integration
+/// (`bot_id`, `bot_message`). Not one of Switchyard's own bots, not an edit,
+/// deletion or join, not a thread reply (those keep the follow-up rules); a
+/// person's @mention of the agent is a request, left to the mention path. A
+/// channel is watched by the app being in it (Slack only sends it messages for
+/// the channels it was added to); a direct message is not. Not gated by the
+/// allowlist: nobody asks the agent anything, and the text reaches it framed
+/// as data. Answers whether the message was the watch's (taken, a repeat, or
+/// one of ours).
 async fn watch(app: &Arc<App>, me: &Me, agent: &str, payload: &Value) -> bool {
     let slack = &app.slack;
     let ev = &payload["event"];
@@ -2320,8 +2242,14 @@ async fn watch(app: &Arc<App>, me: &Me, agent: &str, payload: &Value) -> bool {
         return false;
     }
     let (Some(channel), Some(ts)) = (ev["channel"].as_str(), ev["ts"].as_str()) else { return false };
-    let Some(rec) = slack.app_of(agent) else { return false };
-    let Some(place) = rec.watched.iter().find(|w| w.id == channel).map(|w| w.name.clone()) else { return false };
+    // A direct message is a person writing to the agent, not a channel it
+    // watches.
+    if ev["channel_type"] == "im" || (ev["channel_type"].is_null() && channel.starts_with('D')) {
+        return false;
+    }
+    if slack.app_of(agent).is_none() {
+        return false;
+    }
     let subtype = ev["subtype"].as_str();
     if !matches!(subtype, None | Some("bot_message") | Some("file_share")) || ev["thread_ts"].as_str().is_some_and(|t| t != ts) {
         return false;
@@ -2351,6 +2279,7 @@ async fn watch(app: &Arc<App>, me: &Me, agent: &str, payload: &Value) -> bool {
         let name = slack.user_name(&token, &id).await;
         (id, name)
     };
+    let place = slack.channel_name(&token, channel, false).await;
     let link = slack.team_urls.lock().unwrap().get(&team).map(|u| format!("{u}archives/{channel}/p{}", ts.replace('.', ""))).unwrap_or_default();
     let item = Watched { ts: ts.into(), user, name, hash: text_hash(&text), text, link, repeats: 0 };
     collect(app, agent, channel, Batch { team, place, token, items: vec![item], more: 0 });
@@ -2439,8 +2368,8 @@ fn agent_note(app: &App, agent: &str, text: String) {
 async fn deliver_watched(app: &Arc<App>, agent: &str, channel: &str, b: Batch) {
     let slack = &app.slack;
     let Some(a) = app.agents.get(agent).filter(|a| !a.hosted && !a.setup) else { return };
-    // Unwatched, or the app removed, while it waited.
-    if !slack.app_of(agent).is_some_and(|r| r.watched.iter().any(|w| w.id == channel)) {
+    // The app removed while it waited: nothing to deliver.
+    if slack.app_of(agent).is_none() {
         return;
     }
     let Some(first) = b.items.first() else { return };
@@ -2584,11 +2513,7 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
             eprintln!("yardd: {agent}: {text}");
         }
     };
-    let mentions_for = |o: &Value| match o["app"].as_str().filter(|a| !a.is_empty()) {
-        Some(agent) => slack.app_of(agent).map(|a| a.mentions.into_iter().map(|p| p.id).collect()).unwrap_or_default(),
-        None => Vec::new(),
-    };
-    let mut threads: Vec<(String, String, String, String, Vec<String>)> = Vec::new();
+    let mut threads: Vec<(String, String, String, String)> = Vec::new();
     for o in origins {
         let token = token_for(o);
         if token.is_empty() {
@@ -2597,7 +2522,7 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
             }
             continue;
         }
-        let t = (o["channel"].as_str().unwrap_or("").to_string(), o["threadTs"].as_str().unwrap_or("").to_string(), o["channelName"].as_str().unwrap_or("Slack").to_string(), token, mentions_for(o));
+        let t = (o["channel"].as_str().unwrap_or("").to_string(), o["threadTs"].as_str().unwrap_or("").to_string(), o["channelName"].as_str().unwrap_or("Slack").to_string(), token);
         if !t.0.is_empty() && !t.1.is_empty() && !threads.iter().any(|x| x.0 == t.0 && x.1 == t.1 && x.3 == t.3) {
             threads.push(t);
         }
@@ -2622,9 +2547,8 @@ pub async fn answer(app: &Arc<App>, owed: &Owed, agent: &str, origins: &[Value])
         _ => (vec![why().map_or_else(|| format!("Your message did not reach {agent}."), |w| format!("Your message did not reach {agent}: {w}"))], Some("x")),
     };
     let answered = owed.status == "completed" && !owed.text.trim().is_empty();
-    for (channel, thread, place, token, mentions) in &threads {
-        // Each thread's app has its own people to mention.
-        let parts = if answered { split(&to_mrkdwn_with(&parts[0], mentions), PART) } else { parts.clone() };
+    for (channel, thread, place, token) in &threads {
+        let parts = if answered { split(&to_mrkdwn(&parts[0]), PART) } else { parts.clone() };
         for part in &parts {
             if let Err(e) = slack.post(token, channel, thread, part).await {
                 note(format!("Could not post to Slack ({place}): {e:#}"));
@@ -2653,8 +2577,6 @@ pub struct Thread {
     place: String,
     handle: String,
     token: String,
-    /// Who its posts may @mention (the owner's list for its app).
-    mentions: Vec<String>,
 }
 
 /// How recent a thread must be to be the one `slack_reply` picks unasked,
@@ -2734,17 +2656,16 @@ pub fn thread_for(slack: &Slack, agent: &str, channel: &str, thread: &str, origi
         place: if l.place.is_empty() { c.to_string() } else { l.place.clone() },
         handle: rec.handle.clone(),
         token: rec.bot_token.clone(),
-        mentions: rec.mentions.iter().map(|p| p.id.clone()).collect(),
     })
 }
 
 /// Posts an agent's own message in a thread from `thread_for`, as an answer
-/// is: mrkdwn (only its app's chosen people can be mentioned), split, after
-/// any answer being posted.
+/// is: mrkdwn (any person can be mentioned), split, after any answer being
+/// posted.
 pub async fn post_in(app: &Arc<App>, t: &Thread, text: &str) -> Result<String> {
     let slack = &app.slack;
     let _order = slack.posting.lock().await;
-    let parts = split(&to_mrkdwn_with(text, &t.mentions), PART);
+    let parts = split(&to_mrkdwn(text), PART);
     for (i, part) in parts.iter().enumerate() {
         if let Err(e) = slack.post(&t.token, &t.channel, &t.ts, part).await {
             let why = format!("{e:#}");
@@ -2834,14 +2755,10 @@ pub fn from_slack(text: &str) -> String {
 }
 
 /// Markdown as Slack mrkdwn: bold, italics, strikes, links, headings and
-/// bullets converted; `&`, `<` and `>` escaped everywhere, so an answer can
-/// never ping `<!channel>` or a user; code kept as code.
+/// bullets converted; `&`, `<` and `>` escaped, except a person's `@mention`
+/// written as `<@U…>`/`<@W…>`, which stays a real mention; `<!channel>` and
+/// the like can never ping anyone; code kept as code.
 pub fn to_mrkdwn(md: &str) -> String {
-    to_mrkdwn_with(md, &[])
-}
-
-/// `to_mrkdwn`, with `<@U…>` kept as a real mention for these users only.
-pub fn to_mrkdwn_with(md: &str, mentions: &[String]) -> String {
     let mut out = Vec::new();
     let mut fence = false;
     for line in md.lines() {
@@ -2860,11 +2777,11 @@ pub fn to_mrkdwn_with(md: &str, mentions: &[String]) -> String {
         let indent = &line[..line.len() - line.trim_start().len()];
         let body = line.trim_start();
         let converted = if let Some(h) = heading(body) {
-            format!("*{}*", inline(h, mentions).replace('*', ""))
+            format!("*{}*", inline(h).replace('*', ""))
         } else if let Some(item) = ["- ", "* ", "+ "].iter().find_map(|b| body.strip_prefix(b)) {
-            format!("{indent}• {}", inline(item, mentions))
+            format!("{indent}• {}", inline(item))
         } else {
-            format!("{indent}{}", inline(body, mentions))
+            format!("{indent}{}", inline(body))
         };
         out.push(converted);
     }
@@ -2885,7 +2802,7 @@ fn heading(line: &str) -> Option<&str> {
 }
 
 /// Inline Markdown outside code spans.
-fn inline(line: &str, mentions: &[String]) -> String {
+fn inline(line: &str) -> String {
     let mut out = String::new();
     for (i, part) in line.split('`').enumerate() {
         if i > 0 {
@@ -2899,12 +2816,40 @@ fn inline(line: &str, mentions: &[String]) -> String {
         let s = pairs(&s, "__", "\u{1}");
         let s = pairs(&s, "~~", "~");
         let s = pairs(&s, "*", "_");
-        let mut s = links(&s.replace('\u{1}', "*"));
-        for id in mentions {
-            s = s.replace(&format!("&lt;@{id}&gt;"), &format!("<@{id}>"));
-        }
-        out.push_str(&s);
+        let s = links(&s.replace('\u{1}', "*"));
+        out.push_str(&mention_users(&s));
     }
+    out
+}
+
+/// A person's `@mention` (`<@U…>`/`<@W…>`, already escaped as
+/// `&lt;@U…&gt;`) is kept as a real mention; every other `<…>` stays
+/// escaped, so `<!channel>`, `<!here>` and a user group can never ping.
+fn mention_users(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(at) = rest.find("&lt;@") {
+        out.push_str(&rest[..at]);
+        let after = &rest[at + "&lt;@".len()..];
+        let bytes = after.as_bytes();
+        let mut end = 0;
+        if bytes.first().is_some_and(|b| *b == b'U' || *b == b'W') {
+            end = 1;
+            while end < bytes.len() && (bytes[end].is_ascii_uppercase() || bytes[end].is_ascii_digit()) {
+                end += 1;
+            }
+        }
+        if end > 1 && after[end..].starts_with("&gt;") {
+            out.push_str("<@");
+            out.push_str(&after[..end]);
+            out.push('>');
+            rest = &after[end + "&gt;".len()..];
+        } else {
+            out.push_str("&lt;@");
+            rest = after;
+        }
+    }
+    out.push_str(rest);
     out
 }
 
@@ -3028,21 +2973,22 @@ mod tests {
         assert_eq!(to_mrkdwn("**Done** with _care_ and *style*, ~~old~~"), "*Done* with _care_ and _style_, ~old~");
         assert_eq!(to_mrkdwn("## Summary\n- one\n  * two"), "*Summary*\n• one\n  • two");
         assert_eq!(to_mrkdwn("see [the PR](https://github.com/o/r/pull/1)"), "see <https://github.com/o/r/pull/1|the PR>");
-        // Nothing an agent writes can mention everyone or forge a link.
-        assert_eq!(to_mrkdwn("<!channel> <@U1> <https://evil|ok> a & b"), "&lt;!channel&gt; &lt;@U1&gt; &lt;https://evil|ok&gt; a &amp; b");
+        // A person can be mentioned; a channel ping or a link can never be forged.
+        assert_eq!(to_mrkdwn("<!channel> <@U1> <https://evil|ok> a & b"), "&lt;!channel&gt; <@U1> &lt;https://evil|ok&gt; a &amp; b");
         // Code stays code: no conversion inside, the language dropped.
         assert_eq!(to_mrkdwn("run `a **b** c` then\n```rust\nlet x = **y** < 2;\n```"), "run `a **b** c` then\n```\nlet x = **y** &lt; 2;\n```");
         assert_eq!(to_mrkdwn("2 * 3 and a*b"), "2 * 3 and a*b");
     }
 
     #[test]
-    fn only_the_owners_chosen_people_can_be_mentioned() {
-        let ok = vec!["U1".to_string()];
-        assert_eq!(to_mrkdwn_with("cc <@U1> and <@U2>", &ok), "cc <@U1> and &lt;@U2&gt;");
-        assert_eq!(to_mrkdwn_with("<!channel> <!here> <@U1|x> <@U12>", &ok), "&lt;!channel&gt; &lt;!here&gt; &lt;@U1|x&gt; &lt;@U12&gt;");
-        assert_eq!(to_mrkdwn_with("- **ask** <@U1>, see [PR](https://x.dev/1)", &ok), "• *ask* <@U1>, see <https://x.dev/1|PR>");
-        assert_eq!(to_mrkdwn_with("code `<@U1>` stays", &ok), "code `&lt;@U1&gt;` stays");
-        assert_eq!(to_mrkdwn("<@U1>"), "&lt;@U1&gt;");
+    fn anyone_can_be_mentioned_but_channel_pings_stay_escaped() {
+        assert_eq!(to_mrkdwn("cc <@U1> and <@U2>"), "cc <@U1> and <@U2>");
+        assert_eq!(to_mrkdwn("<!channel> <!here> <@U1|x> <@U12>"), "&lt;!channel&gt; &lt;!here&gt; &lt;@U1|x&gt; <@U12>");
+        assert_eq!(to_mrkdwn("<@W9ABC>"), "<@W9ABC>");
+        assert_eq!(to_mrkdwn("- **ask** <@U1>, see [PR](https://x.dev/1)"), "• *ask* <@U1>, see <https://x.dev/1|PR>");
+        assert_eq!(to_mrkdwn("code `<@U1>` stays"), "code `&lt;@U1&gt;` stays");
+        // A user id only: a group, a channel, a link or a bare `@` is not one.
+        assert_eq!(to_mrkdwn("<@bogus> <@> <@U> <@u1>"), "&lt;@bogus&gt; &lt;@&gt; &lt;@U&gt; &lt;@u1&gt;");
     }
 
     #[test]
@@ -3211,7 +3157,7 @@ mod tests {
         let now = now_ms();
         {
             let mut cfg = slack.cfg.lock().unwrap();
-            cfg.apps.push(AgentApp { agent: "a".into(), team_id: "T1".into(), bot_token: "xoxb-a".into(), handle: "a".into(), mentions: vec![Person { id: "U1".into(), name: "Gio".into() }], ..Default::default() });
+            cfg.apps.push(AgentApp { agent: "a".into(), team_id: "T1".into(), bot_token: "xoxb-a".into(), handle: "a".into(), ..Default::default() });
             let link = |key: &str, at: u64, place: &str| Link { key: key.into(), agent: "a".into(), at, app: true, place: place.into() };
             // Ticket A's thread heard from last; ticket B's earlier.
             cfg.threads.push(link("T1/C1/1.0", now - 60_000, "#ops"));
@@ -3219,7 +3165,7 @@ mod tests {
         }
         let origin = |c: &str, t: &str| json!({ "kind": "slack", "team": "T1", "channel": c, "threadTs": t });
         let t = thread_for(&slack, "a", "", "", Some(&origin("C1", "1.0"))).unwrap();
-        assert_eq!((t.channel.as_str(), t.ts.as_str(), t.mentions.clone()), ("C1", "1.0", vec!["U1".to_string()]));
+        assert_eq!((t.channel.as_str(), t.ts.as_str()), ("C1", "1.0"));
         // A turn from elsewhere with two recent threads must say which.
         let e = thread_for(&slack, "a", "", "", None).err().unwrap().to_string();
         assert!(e.contains("did not come from Slack") && e.contains("#dev (channel C2, thread_ts 2.0") && e.contains("#ops (channel C1, thread_ts 1.0"), "{e}");

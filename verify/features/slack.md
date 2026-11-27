@@ -423,25 +423,25 @@ yv api '{"op":"slack.publicUrl","url":"","ref":"pub"}' --wait '{"op":"slack","sl
 
 ### a-watched-channel
 Viewports: both
-In an agent's Slack dialog the owner watches a channel by its ID (#incidents,
-C0INCIDENT in the fake; the name comes from Slack) and can stop watching it.
-An integration's alert there (a `bot_message` with an attachment, no mention)
-reaches the agent as one read-only notice after the batching window (1 s in
-this area's Setup): the conversation shows it with the badge "Watched on
-Slack · #incidents · from TEST-Datadog" and the note that the turn is
-read-only (Plan), and the answer is posted in the alert's thread.
+Every channel an agent's app is added to is watched: an integration's alert
+there (a `bot_message` with an attachment, no mention) reaches the agent as
+one read-only notice after the batching window (1 s in this area's Setup).
+The conversation shows it with the badge "Watched on Slack · #incidents · from
+TEST-Datadog" and the note that the turn is read-only (Plan), and the answer
+is posted in the alert's thread. The agent's Slack dialog says it watches the
+channels it is added to and can @mention anyone.
 
 ```sh
 yv api '{"op":"agent.save","agent":{"name":"TEST-Oncall","engine":"codex","model":"fake-fast","effort":"low","color":"amber","about":"TEST-triages alerts"},"ref":"oncall"}' --wait '{"op":"agent.saved"}' --save oncall=agent.id
 yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","agentId":"{{oncall}}","origin":"http://127.0.0.1","ref":"grant"}' --wait '{"op":"slack"}'
 yv api '{"op":"slack.app.botToken","agentId":"{{oncall}}","token":"xoxb-agent-TEST","ref":"bot"}' --wait '{"op":"slack"}'
 yv api '{"op":"slack.app.appToken","agentId":"{{oncall}}","token":"xapp-1-agent-TEST","ref":"app"}' --wait '{"op":"slack"}'
-yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Oncall\"] .agent-message"},{"click":"role:button:In Slack"},{"expect":"role:dialog:TEST-Oncall is in Slack"},{"expect":"css:.slack-modal","text":"answers only when someone mentions it"},{"fill":"label:Slack channel ID","value":"incidents"},{"click":{"role":"button","name":"Watch","exact":true}},{"expect":"css:.slack-modal","text":"C0123ABCD"},{"fill":"label:Slack channel ID","value":"C0INCIDENT"},{"click":{"role":"button","name":"Watch","exact":true}},{"expect":{"css":".slack-mention-list li","hasText":"#incidents"}},{"expect":"css:.slack-modal","text":"TEST-Oncall watches these channels"},{"expect":"role:button:Stop watching"},{"shot":"watching"}]' --allow-errors
+yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Oncall\"] .agent-message"},{"click":"role:button:In Slack"},{"expect":"role:dialog:TEST-Oncall is in Slack"},{"expect":"css:.slack-modal","text":"watches every channel it is added to"},{"expect":"css:.slack-modal","text":"can @mention anyone"},{"shot":"in-slack"}]'
 TS=$(curl -sf -XPOST "$(v slack)/_fake/message" -d '{"app":"agent","channel":"C0INCIDENT","user":null,"bot_id":"BTESTDD","subtype":"bot_message","username":"TEST-Datadog","text":"","attachments":[{"title":"[P1] TEST-High error rate on api","text":"Error rate 12%"}]}' | jq -r .ts)
 for i in $(seq 150); do curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '.reactions[$ts] == ["white_check_mark"]' > /dev/null && break; sleep 0.2; done
 curl -sf "$(v slack)/_fake/state" | jq -e --arg ts "$TS" '(.posts | map(select(.thread_ts == $ts and .app == "agent")) | length == 1) and .reactions[$ts] == ["white_check_mark"]'
 yv drive agents --viewport desktop --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Oncall\"] .agent-message"},{"expect":{"css":".origin-badge.origin-slack","hasText":"Watched on Slack · #incidents · from TEST-Datadog"}},{"expect":{"css":".user-message .bubble","hasText":"TEST-High error rate on api"}},{"expect":{"css":".thread"},"text":"This turn is read-only (Plan)"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"notice"}]'
-yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Oncall\"] .agent-message"},{"expect":{"css":".origin-badge.origin-slack","hasText":"Watched on Slack · #incidents"}},{"expect":{"css":".thread"},"text":"This turn is read-only (Plan)"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"notice"},{"click":"role:button:In Slack"},{"expect":{"css":".slack-mention-list li","hasText":"#incidents"}},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"watching"},{"click":"role:button:Stop watching"},{"expect":"css:.slack-modal","text":"answers only when someone mentions it"}]'
+yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label=\"TEST-Oncall\"] .agent-message"},{"expect":{"css":".origin-badge.origin-slack","hasText":"Watched on Slack · #incidents"}},{"expect":{"css":".thread"},"text":"This turn is read-only (Plan)"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"notice"},{"click":"role:button:In Slack"},{"expect":"css:.slack-modal","text":"watches every channel it is added to"},{"eval":"document.documentElement.scrollWidth <= document.documentElement.clientWidth","equals":true},{"shot":"in-slack"}]'
 yv api '{"op":"slack.app.remove","agentId":"{{oncall}}","ref":"rm"}' --wait '{"op":"slack"}'
 ```
 
