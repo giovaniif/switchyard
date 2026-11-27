@@ -1,0 +1,48 @@
+$ verify/yv map run connectors --recipe connectors-list && verify/yv map run connectors --recipe focused-search-and-status
+# exit 0 after 16573 ms at 9153b3e357c50ee53955389e264be19107d9c5fe
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "connectors",
+      "at": "2026-11-27T01:38:45.545Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "connectors-list",
+          "status": "pass",
+          "ms": 7287
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "connectors",
+      "at": "2026-11-27T01:38:53.729Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "focused-search-and-status",
+          "status": "pass",
+          "ms": 7082
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
