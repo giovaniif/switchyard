@@ -1400,6 +1400,248 @@ mod tests {
             assert_eq!(got.get(r).map(String::as_str), Some(NOT_CONNECTED), "{r} answered: {got:?}");
         }
     }
+
+    // An op the host took, whose answer the connection lost: one error with
+    // its `ref` (or its `for`, when the page waits without one), worded so
+    // it claims nothing, since the host may have done it.
+
+    const LOST: &str = "Lost the connection to box before it answered. This may have gone through; check once it's back.";
+
+    type HostWs = tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>;
+
+    /// A host that completes one pipe's handshake and runs `script` on it.
+    /// The pipe's next tries are refused.
+    async fn host_with<F, Fut>(script: F) -> String
+    where
+        F: FnOnce(HostWs) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = ()> + Send,
+    {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("ws://{}/ws", listener.local_addr().unwrap());
+        tokio::spawn(async move {
+            let (socket, _) = listener.accept().await.unwrap();
+            drop(listener);
+            let mut config = tokio_tungstenite::tungstenite::protocol::WebSocketConfig::default();
+            config.max_message_size = None;
+            config.max_frame_size = None;
+            let ws = tokio_tungstenite::accept_async_with_config(socket, Some(config)).await.unwrap();
+            script(ws).await;
+        });
+        url
+    }
+
+    /// The next op the pipe wrote.
+    async fn read_op(ws: &mut HostWs) -> Value {
+        loop {
+            match ws.next().await {
+                Some(Ok(Message::Text(text))) => return serde_json::from_str(&text).unwrap(),
+                Some(Ok(_)) => continue,
+                other => panic!("the pipe went away: {:?}", other.map(|r| r.map(|_| ()))),
+            }
+        }
+    }
+
+    async fn say(ws: &mut HostWs, msg: Value) {
+        ws.send(Message::Text(msg.to_string())).await.unwrap();
+    }
+
+    /// Everything the page gets until `stop` matches one, then for `quiet`
+    /// more (so a second answer would show).
+    async fn page_gets(replies: &mut mpsc::UnboundedReceiver<String>, stop: impl Fn(&Value) -> bool, quiet: Duration) -> Vec<Value> {
+        let mut got = Vec::new();
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+        while let Ok(Some(text)) = tokio::time::timeout_at(deadline, replies.recv()).await {
+            let reply: Value = serde_json::from_str(&text).unwrap();
+            let done = stop(&reply);
+            got.push(reply);
+            if done {
+                break;
+            }
+        }
+        let deadline = tokio::time::Instant::now() + quiet;
+        while let Ok(Some(text)) = tokio::time::timeout_at(deadline, replies.recv()).await {
+            got.push(serde_json::from_str(&text).unwrap());
+        }
+        got
+    }
+
+    fn errors_in(got: &[Value]) -> Vec<&Value> {
+        got.iter().filter(|r| r["op"] == "error").collect()
+    }
+
+    #[tokio::test]
+    async fn an_op_the_host_took_gets_one_answer_when_the_connection_drops_before_its_reply() {
+        // `a` is answered, `b` is taken and its answer never comes, `c`
+        // waits on nothing (no `ref`).
+        let url = host_with(|mut ws| async move {
+            let a = read_op(&mut ws).await;
+            say(&mut ws, json!({ "op": "session.renamed", "ref": a["ref"] })).await;
+            read_op(&mut ws).await;
+            read_op(&mut ws).await;
+            // Gone without a close: a dropped tunnel, a host that died.
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(json!({ "op": "session.rename", "sessionId": "h~s1", "title": "x", "ref": "a" })).unwrap();
+        pipe.send(op("b")).unwrap();
+        pipe.send(json!({ "op": "session.send", "sessionId": "h~s1", "text": "hi" })).unwrap();
+        let got = page_gets(&mut replies, |r| r["op"] == "host.down", Duration::from_millis(1500)).await;
+        let answers = |r: &str| got.iter().filter(|m| m["ref"] == r).count();
+        assert_eq!((answers("a"), answers("b")), (1, 1), "one answer each: {got:?}");
+        let errors = errors_in(&got);
+        assert_eq!(errors.len(), 1, "only `b` gets an error: {got:?}");
+        assert_eq!((errors[0]["ref"].as_str(), errors[0]["message"].as_str(), errors[0]["for"].as_str()), (Some("b"), Some(LOST), Some("session.open")));
+    }
+
+    #[tokio::test]
+    async fn an_op_the_host_took_gets_one_answer_when_its_pipe_is_dropped() {
+        // The host is removed (or the page leaves) after the host read the
+        // op and before it answered.
+        let (took, taken) = tokio::sync::oneshot::channel();
+        let url = host_with(|mut ws| async move {
+            read_op(&mut ws).await;
+            let _ = took.send(());
+            std::future::pending::<()>().await;
+            drop(ws);
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(op("a")).unwrap();
+        taken.await.unwrap();
+        drop(pipe);
+        let got = page_gets(&mut replies, |r| r["op"] == "error", Duration::from_millis(500)).await;
+        let errors = errors_in(&got);
+        assert_eq!(errors.len(), 1, "{got:?}");
+        assert_eq!((errors[0]["ref"].as_str(), errors[0]["message"].as_str()), (Some("a"), Some(LOST)));
+    }
+
+    #[tokio::test]
+    async fn an_op_being_written_when_its_pipe_is_dropped_gets_one_answer() {
+        // The write of a big upload is under way (the host does not read, so
+        // it cannot finish) when the host is removed: the task is aborted
+        // mid-write.
+        let (opened, open) = tokio::sync::oneshot::channel();
+        let url = host_with(|ws| async move {
+            let _ = opened.send(());
+            std::future::pending::<()>().await;
+            drop(ws);
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(json!({ "op": "attach.put", "host": "h", "ref": "a", "data": "x".repeat(24 << 20) })).unwrap();
+        open.await.unwrap();
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        drop(pipe);
+        let got = page_gets(&mut replies, |r| r["op"] == "error", Duration::from_millis(500)).await;
+        let errors = errors_in(&got);
+        assert_eq!(errors.len(), 1, "{got:?}");
+        assert_eq!((errors[0]["ref"].as_str(), errors[0]["message"].as_str()), (Some("a"), Some(LOST)));
+    }
+
+    #[tokio::test]
+    async fn ops_a_page_waits_on_without_a_ref_get_one_answer_too() {
+        // A new session's Send, an approval's buttons and a connector being
+        // added wait for an error or for the host's news: `created`, the
+        // approval's event, `mcp.change`. The host answers the first of each
+        // and takes the second, then the connection drops.
+        let url = host_with(|mut ws| async move {
+            say(&mut ws, json!({ "op": "snapshot", "sessions": [] })).await;
+            let create = read_op(&mut ws).await;
+            // The real host answers with the op's `ref` when it has one.
+            let mut created = json!({ "op": "created", "sessionId": "s9" });
+            if !create["ref"].is_null() {
+                created["ref"] = create["ref"].clone();
+            }
+            say(&mut ws, created).await;
+            let approve = read_op(&mut ws).await;
+            say(&mut ws, json!({ "op": "event", "sessionId": approve["sessionId"], "seq": 3, "event": { "type": "approval_resolved", "requestId": approve["requestId"], "decision": "accept" } })).await;
+            let add = read_op(&mut ws).await;
+            say(&mut ws, json!({ "op": "mcp.change", "engine": add["engine"], "account": "default", "name": add["name"], "state": "done" })).await;
+            for _ in 0..3 {
+                read_op(&mut ws).await;
+            }
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        let create = json!({ "op": "session.create", "host": "h", "engine": "codex", "model": "m", "effort": "low", "cwd": "/x", "text": "go" });
+        let approve = |r: &str| json!({ "op": "session.approve", "sessionId": "h~s1", "requestId": r, "decision": "accept" });
+        let add = |n: &str| json!({ "op": "mcp.add", "host": "h", "engine": "claude", "name": n, "url": "https://x.example/mcp" });
+        for msg in [create.clone(), approve("r1"), add("one"), create, approve("r2"), add("two")] {
+            pipe.send(msg).unwrap();
+        }
+        let got = page_gets(&mut replies, |r| r["op"] == "host.down", Duration::from_millis(1500)).await;
+        let created: Vec<&Value> = got.iter().filter(|r| r["op"] == "created").collect();
+        assert_eq!(created.len(), 1, "{got:?}");
+        // As the host gave it: a `ref` the page did not send is not its own.
+        assert_eq!((created[0]["sessionId"].as_str(), created[0].get("ref")), (Some("h~s9"), None), "{got:?}");
+        let errors = errors_in(&got);
+        let mut failed: Vec<&str> = errors.iter().map(|e| e["for"].as_str().unwrap_or_default()).collect();
+        failed.sort();
+        assert_eq!(failed, ["mcp.add", "session.approve", "session.create"], "one error for each op left unanswered: {got:?}");
+        for e in errors {
+            assert_eq!((e["message"].as_str(), e.get("ref")), (Some(LOST), None), "{e}");
+        }
+    }
+
+    #[tokio::test]
+    async fn a_host_that_resyncs_its_page_settles_what_its_news_would_have() {
+        // A host whose broadcasts fell behind sends a fresh snapshot instead
+        // of the events it skipped (the page reloads from it): an approval
+        // taken before it is not reported lost, one after it is.
+        let url = host_with(|mut ws| async move {
+            say(&mut ws, json!({ "op": "snapshot", "sessions": [] })).await;
+            read_op(&mut ws).await;
+            say(&mut ws, json!({ "op": "snapshot", "sessions": [] })).await;
+            read_op(&mut ws).await;
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        let approve = |r: &str| json!({ "op": "session.approve", "sessionId": "h~s1", "requestId": r, "decision": "accept" });
+        pipe.send(approve("r1")).unwrap();
+        let mut seen = 0;
+        while seen < 2 {
+            let text = tokio::time::timeout(Duration::from_secs(5), replies.recv()).await.unwrap().unwrap();
+            seen += usize::from(serde_json::from_str::<Value>(&text).unwrap()["op"] == "host.snapshot");
+        }
+        pipe.send(approve("r2")).unwrap();
+        let got = page_gets(&mut replies, |r| r["op"] == "host.down", Duration::from_millis(1000)).await;
+        assert_eq!(errors_in(&got).len(), 1, "{got:?}");
+    }
+
+    #[tokio::test]
+    async fn a_healthy_host_answers_every_op_once_and_in_order() {
+        // The healthy path: a big upload and many ops, each answered by the
+        // host, then a clean end. No error, nothing twice, the same order.
+        let (n, big) = (300, 16usize << 20);
+        let url = host_with(move |mut ws| async move {
+            for _ in 0..n + 2 {
+                let op = read_op(&mut ws).await;
+                if op["ref"].is_null() {
+                    continue;
+                }
+                let reply = if op["op"] == "attach.put" {
+                    json!({ "op": "attach.stored", "ref": op["ref"], "attachment": { "id": "a1", "size": op["data"].as_str().map_or(0, str::len) } })
+                } else {
+                    json!({ "op": "session.renamed", "ref": op["ref"] })
+                };
+                say(&mut ws, reply).await;
+            }
+            let _ = ws.close(None).await;
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(json!({ "op": "attach.put", "host": "h", "ref": "big", "data": "x".repeat(big) })).unwrap();
+        for i in 0..n {
+            pipe.send(json!({ "op": "session.rename", "sessionId": "h~s1", "title": "t", "ref": format!("r{i}") })).unwrap();
+        }
+        pipe.send(json!({ "op": "session.send", "sessionId": "h~s1", "text": "no answer wanted" })).unwrap();
+        let got = page_gets(&mut replies, |r| r["op"] == "host.down", Duration::from_millis(1500)).await;
+        assert!(errors_in(&got).is_empty(), "no error: {:?}", errors_in(&got));
+        let refs: Vec<&str> = got.iter().filter_map(|r| r["ref"].as_str()).collect();
+        let want: Vec<String> = std::iter::once("big".to_string()).chain((0..n).map(|i| format!("r{i}"))).collect();
+        assert_eq!(refs, want, "every op answered once, in the order sent");
+        assert_eq!(got[0]["attachment"]["size"], big, "the upload arrived whole");
+    }
 }
 
 /// How long a daemon-owned request waits for its answer
