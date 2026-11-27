@@ -134,7 +134,7 @@ yv drive 'session:{{sid_edit}}' --viewport mobile --steps '[{"click":"role:butto
 ```
 
 ## Gotchas
-- Below 1100 px the docked pane is hidden (`@media (max-width: 1100px)`); the Processes view is reached through the header's Workspace button (`.workspace-open`). Mobile recipes open it first.
+- Below 1100 px the docked pane is hidden (`@media (max-width: 1100px)`); the Processes view is reached through the header's Workspace button. Mobile recipes open it first with `role:button:Workspace`, then pick the view with `role:button:Processes` (the view switches are buttons, not tabs). `.workspace-open` is the class the session gets while that sheet is open, not the button: a `click` on it times out (patrol 2026-11-27).
 - The list is the host sampler's, up to 3 s old, so a process that started a moment ago shows on the next refresh.
 - An interactive shell ignores SIGTERM, so stopping a terminal's own shell reads "Still running after SIGTERM."; Force kill ends it and the terminal.
 - `force-kill-what-ignores-sigterm` leaves `trap "" TERM` in `sid_think`'s terminal shell, and every later command in that terminal inherits the ignored SIGTERM: a Stop there reads "Still running after SIGTERM.". Recipes that stop something use a session whose terminal no other recipe traps (`sid_edit`, `sid_fail`, `sid_cmd`).
