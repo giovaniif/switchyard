@@ -14,6 +14,7 @@ use std::{collections::HashMap, process::Stdio, sync::Arc, time::Duration};
 
 use anyhow::{bail, Context, Result};
 use base64::Engine as _;
+use jsonc_parser::cst::{CstInputValue, CstRootNode};
 use serde_json::{json, Value};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -35,8 +36,8 @@ fn command(app: &App, account: &str) -> Result<Command> {
     Ok(cmd)
 }
 
-/// `opencode models --verbose`: each model's `provider/model` id on a line
-/// of its own, then its details as indented JSON.
+/// Both CLIs print one `provider/model` id per line. V1's verbose output
+/// adds the name and variants as indented JSON after each id.
 pub fn parse_models(text: &str) -> Vec<Value> {
     let mut out = Vec::new();
     let mut id: Option<String> = None;
@@ -44,8 +45,8 @@ pub fn parse_models(text: &str) -> Vec<Value> {
     let mut flush = |id: &mut Option<String>, body: &mut String| {
         if let Some(full) = id.take() {
             let m: Value = serde_json::from_str(body).unwrap_or(Value::Null);
-            let provider = full.split('/').next().unwrap_or("").to_string();
-            let name = m["name"].as_str().unwrap_or(&full).to_string();
+            let provider = full.split('/').next().unwrap_or("");
+            let name = m["name"].as_str().map_or_else(|| full.clone(), |name| format!("{name} ({provider})"));
             let mut efforts: Vec<String> = m["variants"].as_object().map(|v| v.keys().cloned().collect()).unwrap_or_default();
             // Lowest to highest; the JSON's own order is lost in parsing.
             const ORDER: [&str; 7] = ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
@@ -54,7 +55,7 @@ pub fn parse_models(text: &str) -> Vec<Value> {
             if !efforts.is_empty() {
                 efforts.insert(0, "default".into());
             }
-            let mut model = json!({ "id": full, "name": format!("{name} ({provider})"), "efforts": efforts });
+            let mut model = json!({ "id": full, "name": name, "efforts": efforts });
             if !efforts.is_empty() {
                 model["defaultEffort"] = json!("default");
             }
@@ -85,9 +86,52 @@ async fn run(app: &App, account: &str, args: &[&str]) -> std::io::Result<std::pr
     }
 }
 
+/// Both CLIs ask before these tools so that yardd can apply the session's
+/// permission mode. OpenCode 2 reads ordered rules in its inline config.
+pub(crate) async fn configure_agent(app: &App, account: &str, cmd: &mut Command) -> Result<()> {
+    let out = run(app, account, &["--version"]).await.context("could not check the OpenCode version")?;
+    if !out.status.success() {
+        bail!("`opencode --version` failed");
+    }
+    let version = String::from_utf8_lossy(&out.stdout);
+    let major = version
+        .split_whitespace()
+        .last()
+        .and_then(|v| v.trim_start_matches('v').split('.').next())
+        .and_then(|v| v.parse::<u32>().ok());
+    if major.is_some_and(|v| v >= 2) {
+        let content = std::env::var_os("OPENCODE_CONFIG_CONTENT").unwrap_or_default();
+        let content = content.to_str().context("OpenCode's inline config is not UTF-8")?;
+        cmd.env("OPENCODE_CONFIG_CONTENT", v2_permission_config(content)?);
+    } else {
+        cmd.env("OPENCODE_PERMISSION", r#"{"edit":"ask","bash":"ask","webfetch":"ask"}"#);
+    }
+    Ok(())
+}
+
+fn v2_permission_config(content: &str) -> Result<String> {
+    let root = CstRootNode::parse(content, &Default::default())
+        .map_err(|_| anyhow::anyhow!("OpenCode's inline config is invalid JSONC"))?;
+    let config = root.object_value_or_create().context("OpenCode's inline config must be an object")?;
+    let permissions = config.array_value_or_create("permissions").context("OpenCode's inline permissions must be an array")?;
+    for action in ["edit", "shell", "webfetch"] {
+        permissions.append(CstInputValue::Object(vec![
+            ("action".into(), action.into()),
+            ("resource".into(), "*".into()),
+            ("effect".into(), "ask".into()),
+        ]));
+    }
+    Ok(root.to_string())
+}
+
 /// The models of Default's providers. Added accounts share the list, like Codex's.
 pub async fn load_models(app: &Arc<App>) -> Result<()> {
-    let out = run(app, DEFAULT, &["models", "--verbose"]).await?;
+    let mut out = run(app, DEFAULT, &["models", "--verbose"]).await?;
+    if !out.status.success() {
+        // OpenCode 2 removed --verbose, but its plain catalog still has the
+        // exact model IDs the ACP agent takes.
+        out = run(app, DEFAULT, &["models"]).await?;
+    }
     if !out.status.success() {
         bail!("`opencode models` failed");
     }
@@ -489,6 +533,25 @@ mod tests {
                 json!({ "id": "anthropic/claude-x", "name": "Claude X (anthropic)", "efforts": ["default", "high", "max"], "defaultEffort": "default" }),
             ]
         );
+    }
+
+    #[test]
+    fn v2_approval_rules_append_to_inline_jsonc() {
+        let content = r#"{
+            // Keep the user's inline settings and existing rule order.
+            "model": "opencode-go/fake-go",
+            "permissions": [{"action":"read","resource":"*","effect":"allow"}],
+        }"#;
+        let config = v2_permission_config(content).unwrap();
+        assert!(config.contains("Keep the user's inline settings"));
+        let rendered = config.find(r#""edit""#).unwrap();
+        assert!(config.find(r#""read""#).unwrap() < rendered);
+        let empty: Value = serde_json::from_str(&v2_permission_config("").unwrap()).unwrap();
+        assert_eq!(empty["permissions"], json!([
+            {"action":"edit","resource":"*","effect":"ask"},
+            {"action":"shell","resource":"*","effect":"ask"},
+            {"action":"webfetch","resource":"*","effect":"ask"}
+        ]));
     }
 
     #[test]

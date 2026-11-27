@@ -39,17 +39,12 @@ static EPOCH: AtomicU64 = AtomicU64::new(1);
 /// Tool output kept per call; a `cat` of a large file should not fill the log.
 const MAX_OUTPUT: usize = 50_000;
 
-/// What OpenCode asks before, on top of the user's own config. Without it
-/// OpenCode runs commands and edits unasked, and Ask first would mean nothing;
-/// the session's mode then decides what yardd answers itself (see `policy`).
-pub const OPENCODE_PERMISSION: &str = r#"{"edit":"ask","bash":"ask","webfetch":"ask"}"#;
-
 /// The command that runs an engine's ACP agent.
 pub(crate) fn agent_command(engine: &str) -> Result<Command> {
     let mut cmd = match engine {
         "opencode" => {
             let mut cmd = Command::new("opencode");
-            cmd.arg("acp").env("OPENCODE_PERMISSION", OPENCODE_PERMISSION);
+            cmd.arg("acp");
             cmd
         }
         "grok" => {
@@ -119,6 +114,9 @@ impl Client {
         let mut cmd = agent_command(&engine)?;
         if let Some(dir) = app.accounts.config_dir(&engine, &account)? {
             cmd.env(crate::accounts::env_var(&engine), dir);
+        }
+        if engine == "opencode" {
+            crate::opencode::configure_agent(&app, &account, &mut cmd).await?;
         }
         let label = crate::engines::name(&engine);
         let mut child = cmd.spawn().with_context(|| format!("could not start {label}: is it installed here?"))?;
