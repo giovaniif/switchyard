@@ -8,7 +8,7 @@ itself; the Automations page is a grid of small cards (side by side on a wide
 window, stacked below 700 px), each with the schedule in words and the next
 run, an enabled switch, one status line (a working run, else how the last one
 went), a strip of marks for the recent runs (each opens its session), and
-Run now, Runs (every run, with a pin) and Edit. Pinning a run brings it back
+Runs (every run, with a pin; it shows once there are runs, left of Run now so Run now never moves), Run now and Edit. Pinning a run brings it back
 to the sidebar. Scheduled
 runs skip while the previous one is still going and, when set, while the
 engine's usage is above a limit.
@@ -267,6 +267,23 @@ all of it. Viewports: both.
 yv api '{"op":"automation.save","automation":{"name":"TEST-Night shift","prompt":"TEST-night shift","cwd":"{{repo}}","engine":"codex","model":"fake-fast","effort":"low","enabled":true,"schedule":{"kind":"interval","every":5,"unit":"minutes"},"window":{"start":"21:00","end":"09:00","days":[1,3,5]}}}' --wait '{"op":"automation.saved"}' --expect '{"automation":{"enabled":true,"window":{"start":"21:00","end":"09:00","days":[1,3,5]}}}'
 yv drive new --viewport desktop --steps '[{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Night shift\"] .automation-when","hasText":"Every 5 minutes · 21:00–09:00, Mon, Wed, Fri · next "}},{"eval":"(() => { const el = document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\"); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { const i = n.data.indexOf(\"next \"); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, n.data.length); return r.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 ? \"next run in view\" : \"next run cut off\"; } } return \"no next run\"; })()","equals":"next run in view"},{"eval":"/^Every 5 minutes · 21:00–09:00, Mon, Wed, Fri · next .+/.test(document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\").title)","equals":true},{"shot":"night-shift-card"}]'
 yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":"role:button:Automations"},{"expect":{"css":".automation[aria-label=\"TEST-Night shift\"] .automation-when","hasText":"Every 5 minutes · 21:00–09:00, Mon, Wed, Fri · next "}},{"eval":"(() => { const el = document.querySelector(\".automation[aria-label=\\\"TEST-Night shift\\\"] .automation-when\"); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { const i = n.data.indexOf(\"next \"); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, n.data.length); return r.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 ? \"next run in view\" : \"next run cut off\"; } } return \"no next run\"; })()","equals":"next run in view"},{"shot":"night-shift-card"}]'
+```
+
+### run-now-stays-put-after-the-first-run
+Viewports: both
+Run now does not move when its click adds the card's first run. The Runs
+button only shows once there are runs; it used to appear in Run now's place
+(between Run now and Edit) and push Run now one button left, so a second
+click or a double tap in the same spot opened the runs list instead of
+starting another run. Now Runs appears to the left of Run now.
+
+```sh
+for vp in desktop mobile; do
+  yv api '{"op":"automation.save","automation":{"name":"TEST-Steady '$vp'","prompt":"TEST-steady","cwd":"{{repo}}","engine":"codex","model":"fake-fast","effort":"low","permission":"ask","schedule":{"kind":"manual"}}}' --wait '{"op":"automation.saved"}'
+  open='[{"click":"role:button:Automations"},'
+  [ $vp = mobile ] && open='[{"click":"role:button:Open sessions"},{"click":"role:button:Automations"},'
+  yv drive new --viewport $vp --steps "$open"'{"expect":{"css":".automation","hasText":"TEST-Steady '$vp'"}},{"expect":"role:button:Runs: TEST-Steady '$vp'","count":0},{"eval":"(() => { const b = document.querySelector(\"[aria-label=\\\"Run now: TEST-Steady '$vp'\\\"]\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); window.__runNow = [r.x + r.width / 2, r.y + r.height / 2]; return true })()","equals":true},{"click":"role:button:Run now: TEST-Steady '$vp'"},{"expect":"role:button:Runs: TEST-Steady '$vp'"},{"shot":"after-first-run"},{"eval":"document.elementFromPoint(...window.__runNow).closest(\"button\").getAttribute(\"aria-label\")","equals":"Run now: TEST-Steady '$vp'"}]'
+done
 ```
 
 ## Gotchas
