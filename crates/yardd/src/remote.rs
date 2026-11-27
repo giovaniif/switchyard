@@ -793,20 +793,25 @@ const NOT_CONNECTED: &str = "this host is not connected";
 /// Open (and keep reopening) a client's connection to a host. Everything the
 /// host sends goes to `direct`, with ids rewritten.
 pub fn pipe(app: &Arc<App>, host_id: &str, direct: mpsc::UnboundedSender<String>) -> Option<Pipe> {
-    let (mut conn, name, last) = app.remotes.lookup(host_id)?;
-    let (tx, mut rx) = mpsc::unbounded_channel::<Value>();
-    let up = Arc::new(AtomicBool::new(false));
-    let host = host_id.to_string();
-    let flag = up.clone();
-    let shown = conn.clone();
+    let (conn, name, last) = app.remotes.lookup(host_id)?;
     if conn.borrow().status != "connected" {
         if let Some(mut snapshot) = last.lock().unwrap().clone() {
             // Its stats are stale; the host's row says it is offline instead.
             snapshot["host"] = Value::Null;
             let _ = direct.send(snapshot.to_string());
-            let _ = direct.send(json!({ "op": "host.down", "hostId": host }).to_string());
+            let _ = direct.send(json!({ "op": "host.down", "hostId": host_id }).to_string());
         }
     }
+    Some(open(conn, host_id.to_string(), name, last, direct))
+}
+
+/// The connection itself, given the hub's own connection to the host
+/// (`conn`), which the tests stand in for.
+fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<Mutex<Option<Value>>>, direct: mpsc::UnboundedSender<String>) -> Pipe {
+    let (tx, mut rx) = mpsc::unbounded_channel::<Value>();
+    let up = Arc::new(AtomicBool::new(false));
+    let flag = up.clone();
+    let shown = conn.clone();
     let task = tokio::spawn(async move {
         let mut backoff = Backoff::new(Duration::from_secs(10));
         // Ops sent while it waited to try again: they go first once it opens.
@@ -869,7 +874,7 @@ pub fn pipe(app: &Arc<App>, host_id: &str, direct: mpsc::UnboundedSender<String>
             }
         }
     });
-    Some(Pipe { tx, up, conn: shown, task })
+    Pipe { tx, up, conn: shown, task }
 }
 
 /// Which host an op is for, when it is not for this yardd.
@@ -1249,6 +1254,101 @@ mod tests {
         assert!(check_destination("-oProxyCommand=evil").is_err());
         assert!(check_destination("devbox -v").is_err());
         assert!(check_destination("user@100.64.0.1").is_ok());
+    }
+
+    // A page's pipe answers every op it takes: the host's reply, or an error
+    // with the op's `ref`. These drive one pipe with a stand-in for the hub's
+    // own connection (`conn`) and a hand-made host.
+
+    fn test_pipe(conn: Conn) -> (watch::Sender<Conn>, Pipe, mpsc::UnboundedReceiver<String>) {
+        let (shown, rx) = watch::channel(conn);
+        let (direct, replies) = mpsc::unbounded_channel();
+        let pipe = open(rx, "h".into(), "box".into(), Arc::new(Mutex::new(None)), direct);
+        (shown, pipe, replies)
+    }
+
+    fn connected(url: Option<String>) -> Conn {
+        Conn { url, status: "connected", error: None, no_daemon: false }
+    }
+
+    fn op(r: &str) -> Value {
+        json!({ "op": "session.open", "sessionId": "h~s1", "ref": r })
+    }
+
+    /// The error replies (`ref` → message) that come back by `deadline`,
+    /// stopping once `want` of them are in.
+    async fn errors(replies: &mut mpsc::UnboundedReceiver<String>, want: usize, within: Duration) -> HashMap<String, String> {
+        let deadline = tokio::time::Instant::now() + within;
+        let mut got = HashMap::new();
+        while got.len() < want {
+            let Ok(Some(text)) = tokio::time::timeout_at(deadline, replies.recv()).await else { break };
+            let reply: Value = serde_json::from_str(&text).unwrap();
+            if reply["op"] == "error" {
+                got.insert(reply["ref"].as_str().unwrap_or_default().to_string(), reply["message"].as_str().unwrap_or_default().to_string());
+            }
+        }
+        got
+    }
+
+    /// A host that accepts connections and never answers the handshake.
+    async fn silent_host() -> String {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("ws://{}/ws", listener.local_addr().unwrap());
+        tokio::spawn(async move {
+            let mut held = Vec::new();
+            while let Ok((socket, _)) = listener.accept().await {
+                held.push(socket);
+            }
+        });
+        url
+    }
+
+    #[tokio::test]
+    async fn an_op_taken_as_an_ssh_tunnel_drops_is_answered_without_waiting_for_it() {
+        // The host showed connected when the page's op went in, and its
+        // tunnel dropped before the pipe took the op: no url to connect to,
+        // maybe for a long time.
+        let (_shown, pipe, mut replies) = test_pipe(connected(None));
+        pipe.send(op("a")).unwrap();
+        let got = errors(&mut replies, 1, CONNECT_TIMEOUT + Duration::from_secs(2)).await;
+        assert_eq!(got.get("a").map(String::as_str), Some(NOT_CONNECTED), "answered within the connect bound: {got:?}");
+    }
+
+    #[tokio::test]
+    async fn an_op_a_pipe_still_holds_when_its_host_is_removed_gets_an_error() {
+        // The host is removed while the pipe is still opening: the page's
+        // socket loop drops the pipe (`sync_pipes`).
+        let url = silent_host().await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url.clone())));
+        pipe.send(op("a")).unwrap();
+        drop(pipe);
+        let got = errors(&mut replies, 1, Duration::from_secs(2)).await;
+        assert_eq!(got.get("a").map(String::as_str), Some("no such host"), "{got:?}");
+    }
+
+    #[tokio::test]
+    async fn every_op_a_failed_write_leaves_unsent_gets_an_error() {
+        // The host completes the handshake, never reads, and lets go while
+        // the pipe is still writing the first op (too big for the socket
+        // buffers): that write fails, and the two ops behind it never go.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("ws://{}/ws", listener.local_addr().unwrap());
+        tokio::spawn(async move {
+            let (socket, _) = listener.accept().await.unwrap();
+            let ws = tokio_tungstenite::accept_async(socket).await.unwrap();
+            tokio::time::sleep(Duration::from_millis(300)).await;
+            // Closed with data unread, so the pipe's write is reset.
+            drop(ws);
+        });
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        let big = json!({ "op": "attach.put", "host": "h", "ref": "a", "data": "x".repeat(24 << 20) });
+        pipe.send(big).unwrap();
+        pipe.send(op("b")).unwrap();
+        pipe.send(op("c")).unwrap();
+        let got = errors(&mut replies, 3, Duration::from_secs(5)).await;
+        for r in ["a", "b", "c"] {
+            assert_eq!(got.get(r).map(String::as_str), Some(NOT_CONNECTED), "{r} answered: {got:?}");
+        }
     }
 }
 
