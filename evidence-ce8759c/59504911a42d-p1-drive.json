@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "route": "session:s1a21ac57f7316",
+  "build": {
+    "sha": "f50fb69ce4c87d042020f26bd88c0a1ca9f96fd9",
+    "short": "f50fb69",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T02:20:13.626Z"
+  },
+  "dir": "/tmp/pat-ev2-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2636,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": "/tmp/pat-ev2-base/delete-ask-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "(() => { const h = document.querySelector(\".main header.bar h1\"); const vis = (n) => [...document.querySelectorAll(\".main header.bar button\")].some((b) => b.textContent.trim() === n && b.getClientRects().length > 0); return { title: Math.round(h.getBoundingClientRect().width), needs: h.scrollWidth, workspace: vis(\"Workspace\") }; })()",
+          "value": {
+            "title": 46,
+            "needs": 175,
+            "workspace": true
+          }
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,160 @@
+{
+  "v": 1,
+  "claim": "On a phone, tapping Delete on a session without its own worktree arms 'Delete session?' and the title shrinks to 'TES…' (46 of 175 px) while the iPhone icon and Workspace keep their room, so you confirm a delete without seeing which session it is; the worktree ask already steps those controls aside (#312)",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-6b68",
+  "base": "d6250e8547f68bdd17e90df55f6c281c6db14586",
+  "head": "ce8759c2e8d99825bd51838c55ff2ff5bf6d4bbe",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/layout.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T02:20:07.604Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "f50fb69ce4c87d042020f26bd88c0a1ca9f96fd9",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "59504911a42d928f8047605b5a15ac3af3fa22f65d9dd4830c300cbf9894b687"
+        },
+        {
+          "path": "p1-delete-ask-mobile.png",
+          "sha256": "238dd6e1eb0522d5cd0d9ad2094ca5babb7ce1cec9aa968becfafbed869613bb"
+        }
+      ],
+      "addedAt": "2026-11-27T02:20:16.934Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "f50fb69ce4c87d042020f26bd88c0a1ca9f96fd9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "a464fd0ab2f5439c8facd773a59d345a17777530b7bc235db6193f6397cebb65"
+        }
+      ],
+      "addedAt": "2026-11-27T02:20:16.978Z",
+      "cmd": "verify/yv map run layout --recipe mobile-delete-ask-keeps-the-title",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "ce8759c2e8d99825bd51838c55ff2ff5bf6d4bbe",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "0ecc415509d99a913c3a072a32d16f964090123371eae9d21ead365112f52e51"
+        },
+        {
+          "path": "p3-delete-ask-mobile.png",
+          "sha256": "34f2bae3ca5595e4f70ffb960d0793be47c502a3198371ac8a35d3bdc11b40c0"
+        },
+        {
+          "path": "p3-delete-ask-desktop.png",
+          "sha256": "b774d425d30bc389c74aad13e82e116191b3ec18777d3bac85a22441c3834d4b"
+        }
+      ],
+      "addedAt": "2026-11-27T02:20:42.971Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "ce8759c2e8d99825bd51838c55ff2ff5bf6d4bbe",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "305e9f465bed8b416e14a88da025fe59c9fede124c43c38af05c66e6c859ca1d"
+        }
+      ],
+      "addedAt": "2026-11-27T02:20:43.010Z",
+      "cmd": "verify/yv map run layout --recipe mobile-delete-ask-keeps-the-title && verify/yv map run layout --recipe mobile-delete-confirm-fits-the-bar && verify/yv map run layout --recipe mobile-delete-confirm-fits-the-bar-without-worktree && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "ce8759c2e8d99825bd51838c55ff2ff5bf6d4bbe",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "6a37013b54c2ad7216d6e16bb4235d7f03769b24492c20c72d2469bbc6e26189"
+        }
+      ],
+      "addedAt": "2026-11-27T02:21:00.795Z",
+      "cmd": "verify/yv design-check --base d6250e8547f6",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "ce8759c2e8d99825bd51838c55ff2ff5bf6d4bbe",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-layout.json",
+          "sha256": "842ef29085fc079598e8338ba307c7b36c3b9df2d1d42b79d0d75a8e788a2de6"
+        }
+      ],
+      "addedAt": "2026-11-27T02:21:00.876Z",
+      "cmd": "verify/yv map run layout",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "layout/desktop-three-columns",
+        "layout/narrow-hides-pane",
+        "layout/desktop-sidebars-collapse-independently",
+        "layout/mobile-panels-have-close-controls",
+        "layout/mobile-main-column-usable",
+        "layout/mobile-hosts-page",
+        "layout/mobile-drawer-opens-and-closes",
+        "layout/mobile-menu-on-every-page",
+        "layout/mobile-delete-confirm-fits-the-bar",
+        "layout/mobile-delete-confirm-fits-the-bar-without-worktree",
+        "layout/mobile-delete-ask-keeps-the-title",
+        "layout/send-stays-at-the-right",
+        "layout/new-session-send-shares-controls-row",
+        "layout/desktop-sidebar-is-a-column",
+        "layout/workspace-tabs-fit-minimum-width"
+      ]
+    }
+  ]
+}

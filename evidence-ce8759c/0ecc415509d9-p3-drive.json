@@ -1,0 +1,79 @@
+{
+  "ok": true,
+  "route": "session:s1a21ac57f7316",
+  "build": {
+    "sha": "ce8759c2e8d99825bd51838c55ff2ff5bf6d4bbe",
+    "short": "ce8759c",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T02:20:37.542Z"
+  },
+  "dir": "/tmp/pat-ev2-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2264,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": "/tmp/pat-ev2-head/delete-ask-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "(() => { const h = document.querySelector(\".main header.bar h1\"); const vis = (n) => [...document.querySelectorAll(\".main header.bar button\")].some((b) => b.textContent.trim() === n && b.getClientRects().length > 0); return { title: Math.round(h.getBoundingClientRect().width), needs: h.scrollWidth, workspace: vis(\"Workspace\") }; })()",
+          "value": {
+            "title": 175,
+            "needs": 175,
+            "workspace": false
+          }
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 2458,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": "/tmp/pat-ev2-head/delete-ask-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "(() => { const h = document.querySelector(\".main header.bar h1\"); const vis = (n) => [...document.querySelectorAll(\".main header.bar button\")].some((b) => b.textContent.trim() === n && b.getClientRects().length > 0); return { title: Math.round(h.getBoundingClientRect().width), needs: h.scrollWidth, workspace: vis(\"Workspace\") }; })()",
+          "value": {
+            "title": 175,
+            "needs": 175,
+            "workspace": false
+          }
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
