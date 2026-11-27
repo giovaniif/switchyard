@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "13860570833a08475f3cc8dd5112c9b1c0c46351",
+    "short": "1386057",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T04:41:12.838Z"
+  },
+  "dir": ".verify/evidence/double-click-remove-host3-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 4567,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/double-click-remove-host3-head/double-click-remove-host-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\".host-foot button\")].find((x) => x.textContent.trim() === \"Remove host\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Click again to remove"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 4648,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/double-click-remove-host3-head/double-click-remove-host-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\".host-foot button\")].find((x) => x.textContent.trim() === \"Remove host\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Click again to remove"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

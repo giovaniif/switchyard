@@ -1,0 +1,48 @@
+{
+  "ok": false,
+  "route": "hosts",
+  "build": {
+    "sha": "18ba0fb54058fa743d5f163dd065882b850296c1",
+    "short": "18ba0fb",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T04:40:12.216Z"
+  },
+  "dir": ".verify/evidence/double-click-remove-host3-base-mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 13106,
+      "steps": 9,
+      "failed": {
+        "step": 4,
+        "action": {
+          "expect": "role:button:Select TEST-rb3-mobile"
+        },
+        "reason": "for: Timeout 10000ms exceeded.",
+        "screenshot": ".verify/evidence/double-click-remove-host3-base-mobile/fail-mobile-step4.png",
+        "aria": "- banner:\n  - button \"Open sessions\"\n  - heading \"Hosts\" [level=1]\n  - button \"Add host\"\n- region \"iPhone app\":\n  - heading \"Switchyard for iPhone\" [level=2]\n  - status: No phone connected yet\n  - list:\n    - listitem:\n      - link \"Install with TestFlight\":\n        - /url: https://testflight.apple.com/join/BygX29JY\n    - listitem: Turn on Tailscale (or your private network) on the iPhone.\n    - listitem: Enter the HTTPS address you open this host at on your phone.\n  - text: Address the phone can reach\n  - textbox \"Address the phone can reach\":\n    - /placeholder: https://your-host.ts.net\n  - paragraph:\n    - text: None of your hosts lists one yet. It is the address in the host's\n    - code: YARD_ALLOW_ORIGIN\n    - text: \", such as its Tailscale name.\"\n- button \"Select iso-host\" [pressed]:\n  - strong: iso-host\n  - text: This machine Healthy CPU\n  - strong: 19%\n  - text: Memory\n  - strong: 14.2 GB\n  - text: Disk\n  - strong: 163 GB\n- button \"Select TEST-head-dbl\":\n  - strong: TEST-head-dbl\n  - text: test@head-dbl.invalid Offline CPU\n  - strong: —\n  - text: Memory\n  - strong: —\n  - text: Disk\n  - strong: —\n- button \"Select TEST-pic-dbl\":\n  - strong: TEST-pic-dbl\n  - text: test@pic-dbl.invalid Offline CPU\n  - strong: —\n  - text: Memory\n  - strong: —\n  - text: Disk\n  - strong: —\n- button \"Select TEST-rb-head\":\n  - strong: TEST-rb-head\n  - text: test@rb-head.invalid Offline CPU\n  - strong: —\n  - text: Memory\n  - strong: —\n  - text: Disk\n  - strong: —\n- region \"iso-host details\":\n  - heading \"iso-host\" [level=2]\n  - text: Healthy\n  - tablist \"Host details\":\n    - tab \"Sessions\" [selected]\n    - tab \"Engine logins\"\n    - tab \"System\"\n  - tabpanel \"Sessions\":\n    - strong: Nothing running on iso-host\n    - paragraph: Start a session whenever you're ready.\n    - button \"New session\"\n    - button \"View all sessions →\""
+      },
+      "captures": [],
+      "notes": [
+        {
+          "step": 3,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\".host-foot button\")].find((x) => x.textContent.trim() === \"Remove host\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Click again to remove"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 4 {\"expect\":\"role:button:Select TEST-rb3-mobile\"}: for: Timeout 10000ms exceeded.",
+      "hint": "see .verify/evidence/double-click-remove-host3-base-mobile/fail-mobile-step4.png and the aria snapshot"
+    }
+  ]
+}

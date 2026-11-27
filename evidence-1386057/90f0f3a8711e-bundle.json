@@ -1,0 +1,184 @@
+{
+  "v": 1,
+  "claim": "Hosts: a double click on Remove host removed the host without the ask. The ask ('Click again to remove') takes the button's own place, so the second click of the double click answered it. Now that second click (detail 2) is ignored; a separate second click still removes.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-9674",
+  "base": "3b049352f4f3e47265e469f9e8e3cbb7ee11f909",
+  "head": "13860570833a08475f3cc8dd5112c9b1c0c46351",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/hosts.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T04:40:12.373Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "18ba0fb54058fa743d5f163dd065882b850296c1",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "cef5beab6f012063c354b0364a8dfafc07b75345c83dab72922a31c4c8dc26c2"
+        },
+        {
+          "path": "p1-fail-mobile-step4.png",
+          "sha256": "5d68eed833e4495ca9243a05351bc52a5ae9b0a29cd756843d604069aae3b4e3"
+        }
+      ],
+      "addedAt": "2026-11-27T04:40:26.186Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "18ba0fb54058fa743d5f163dd065882b850296c1",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "2e3612fe74ad7196791d29d900c0a7dfc19248869163313a8e1c764a7405ab15"
+        },
+        {
+          "path": "p2-fail-desktop-step4.png",
+          "sha256": "bd5b60c7f76a0b79ed1e3fdffd3c2f0a4c0ad2aa1f4b792eb3fb148c01dadcbd"
+        }
+      ],
+      "addedAt": "2026-11-27T04:40:39.944Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "18ba0fb54058fa743d5f163dd065882b850296c1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "a79a744e6581750530cfd93f16f6799ca81a4ce50b9869a6a4532634df81c2ae"
+        }
+      ],
+      "addedAt": "2026-11-27T04:40:39.995Z",
+      "cmd": "verify/yv map run hosts --recipe double-click-on-remove-host-only-asks",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "13860570833a08475f3cc8dd5112c9b1c0c46351",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "4337b58e83baf0e7f867c693c09738475d4271fc0c37afc216774d2a49a65f98"
+        },
+        {
+          "path": "p4-double-click-remove-host-mobile.png",
+          "sha256": "1ff9b85864cd64254a578924dd66c7cf6413973e98afcd6b19987aad601eefe1"
+        },
+        {
+          "path": "p4-double-click-remove-host-desktop.png",
+          "sha256": "daa34ff2bb3cd0f3bfbbe7db7f4413039950d718e86c59c1e8c86ccae7749cf6"
+        }
+      ],
+      "addedAt": "2026-11-27T04:41:22.914Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "13860570833a08475f3cc8dd5112c9b1c0c46351",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "6c26023a2ff3f5ee79ff594ce212c19c5179911f6f662207005ec2e0370e5f72"
+        }
+      ],
+      "addedAt": "2026-11-27T04:41:22.965Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run hosts --recipe double-click-on-remove-host-only-asks",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "13860570833a08475f3cc8dd5112c9b1c0c46351",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "d1add08e49e500ce100e67d87c0a9641d11e03ef7d13c15004307601556ab0cc"
+        }
+      ],
+      "addedAt": "2026-11-27T04:41:34.294Z",
+      "cmd": "verify/yv design-check --base 3b049352f4f3",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "13860570833a08475f3cc8dd5112c9b1c0c46351",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-hosts.json",
+          "sha256": "03443f8837325b9af559d494981d27ad16ba6e56fdc526da9ca44ab710e9a00a"
+        }
+      ],
+      "addedAt": "2026-11-27T04:41:34.395Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/double-click-on-remove-host-only-asks",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/processes-say-the-host-is-offline",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    }
+  ]
+}

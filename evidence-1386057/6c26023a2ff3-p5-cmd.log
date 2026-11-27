@@ -1,0 +1,32 @@
+$ (cd ui && bun test) && verify/yv map run hosts --recipe double-click-on-remove-host-only-asks
+# exit 0 after 11278 ms at 13860570833a08475f3cc8dd5112c9b1c0c46351
+
+bun test v1.4.4 (38afee6c8)
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "hosts",
+      "at": "2026-11-27T04:41:34.240Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "double-click-on-remove-host-only-asks",
+          "status": "pass",
+          "ms": 9590
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
+
+ 536 pass
+ 0 fail
+ 5134 expect() calls
+Ran 536 tests across 39 files. [415.00ms]
