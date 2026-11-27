@@ -171,6 +171,22 @@ yv drive 'session:{{long_title}}' --viewport mobile --steps '[{"click":{"role":"
 yv state --expect '{"sessions":[{"id":"{{long_title}}"}]}'
 ```
 
+### mobile-delete-ask-keeps-the-title
+Viewports: mobile
+At 390 px the single "Delete session?" ask of a session without its own
+worktree steps the side controls aside like the worktree choices do (#312),
+so the title stays whole and you see which session you are deleting (#516:
+it shrank to "TES…" while iPhone and Workspace kept their room). When the ask
+lapses they come back, and nothing was deleted. It works in the plain
+folder: a turn still going in `{{repo}}` (from the recipe above) would
+refuse a second session there.
+
+```sh
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-remove the old one"}' --wait '{"op":"event","event":{"type":"turn_completed"}}' --save delete_ask=sessionId
+yv drive 'session:{{delete_ask}}' --viewport mobile --steps '[{"click":{"role":"button","name":"Delete","exact":true}},{"expect":"role:button:Delete session?"},{"expect":"role:button:Workspace","visible":false},{"expect":"role:button:Set up iPhone app","visible":false},{"eval":"(() => { const h = document.querySelector(\".main header.bar h1\"); const bar = document.querySelector(\".main header.bar\").getBoundingClientRect(); return h.scrollWidth <= h.clientWidth && document.documentElement.scrollWidth <= Math.round(bar.right); })()","equals":true},{"shot":"delete-ask-title"},{"expect":"role:button:Workspace","timeout":6000},{"expect":{"role":"button","name":"Delete","exact":true}}]'
+yv state --expect '{"sessions":[{"id":"{{delete_ask}}"}]}'
+```
+
 ### send-stays-at-the-right
 At 390 px the reply box's tools (attach, dictate, voice mode, model, permission)
 fill the row, so Send moves to a second line. It stays at the right edge of
