@@ -1,6 +1,6 @@
 //! Pressure episodes: yardd records each stretch of time its host is
-//! overloaded (load above the cores, memory under the floor, swap nearly
-//! full), with its peaks and who used the most at the peak, keeps them across
+//! overloaded (load above the cores, or memory under the floor; swap nearly
+//! full is noted with low memory and is never pressure by itself), with its peaks and who used the most at the peak, keeps them across
 //! restarts, and says which running turns went quiet meanwhile. The load,
 //! swap and per-process numbers come from a readings file
 //! (`YARD_TEST_READINGS`), so the test machine's own load decides nothing.
@@ -148,6 +148,71 @@ async fn an_episode_records_the_top_session_and_a_stray_process_closes_and_survi
     c.send(json!({ "op": "host.pressure", "before": start })).await;
     let older = c.wait_after(from, "host.pressure before the first", |m| m["op"] == "host.pressure" && m["ref"].is_null()).await;
     assert_eq!(older["episodes"], json!([]));
+}
+
+/// Linux leaves stale pages in swap long after the pressure is over: this
+/// project's own server sat at load 1.3 with 11.5 GB available and swap 4078
+/// of 4095 MB used, and was told it was overloaded for as long as yardd ran.
+#[tokio::test]
+async fn full_swap_on_a_calm_host_opens_no_episode_and_holds_none_open() {
+    const MIB: u64 = 1024 * 1024;
+    let sb = Sandbox::new("pressure-swap");
+    let readings = sb.root.join("readings.json");
+    let readings_path = readings.to_str().unwrap().to_string();
+    let env = [
+        ("YARD_TEST_READINGS", readings_path.as_str()),
+        ("YARD_TEST_PRESSURE_CALM_SECS", "1"),
+        ("YARD_TEST_PRESSURE_NOTIFY_SECS", "0"),
+        ("YARD_MIN_FREE_GB", "2"),
+    ];
+    let full = |load: f64, free: u64| json!({ "load": load, "memFree": free, "swapUsed": 4078 * MIB, "swapTotal": 4095 * MIB });
+    write_readings(&readings, full(1.3, 10 * GIB));
+    let d = sb.start_with(&env);
+    let mut c = d.client().await;
+
+    // Three samples in a row with the full swap read, and none under pressure.
+    let mut from = 0;
+    for _ in 0..3 {
+        let host = host_after(&mut c, from, "a sample that read the swap", |h| h["swapUsed"] == 4078 * MIB).await;
+        assert!(host["episode"].is_null(), "swap full, host calm: {host}");
+        assert_eq!(host["episodes"], json!([]), "{host}");
+        assert!(host["pressure"].is_null(), "and the queue agrees: {host}");
+        assert_eq!(host["stalled"], json!([]));
+        from = c.mark();
+    }
+    assert!(!sb.data().join("pressure.json").exists(), "nothing recorded");
+    assert_eq!(c.log.iter().filter(|m| m["op"] == "notify").count(), 0, "nobody told");
+
+    // Full swap and no memory left either: the host has nowhere to go.
+    write_readings(&readings, full(1.3, GIB));
+    let from = c.mark();
+    let host = host_after(&mut c, from, "an open episode", |h| h["episode"].is_object()).await;
+    assert_eq!(host["episode"]["reasons"], json!(["memory", "swap"]), "{host}");
+    assert_eq!(host["episode"]["peak"]["swapUsed"], 4078 * MIB);
+    assert!(host["pressure"].is_string(), "the queue holds new sessions for the same sample: {host}");
+    let id = host["episode"]["id"].as_str().unwrap().to_string();
+    // The notification says what the trouble is: memory, not a load of 1.
+    let note = c.wait_after(from, "the episode's notification", |m| m["op"] == "notify").await;
+    let body = note["body"].as_str().unwrap();
+    assert!(body.starts_with("1.0 GB of memory free, swap full"), "{note}");
+    assert!(!body.contains("Load"), "{note}");
+
+    // Memory is back; swap is still full, as it stays on Linux. It closes.
+    write_readings(&readings, full(1.3, 10 * GIB));
+    let from = c.mark();
+    host_after(&mut c, from, "the episode closed", |h| h["episode"].is_null() && h["episodes"][0]["id"] == id.as_str()).await;
+
+    // One that load opened closes once the load is calm, swap full or not.
+    write_readings(&readings, full(140.0, 10 * GIB));
+    let from = c.mark();
+    let host = host_after(&mut c, from, "an episode for the load", |h| h["episode"].is_object()).await;
+    assert_eq!(host["episode"]["reasons"], json!(["load"]), "{host}");
+    let id = host["episode"]["id"].as_str().unwrap().to_string();
+    let note = c.wait_after(from, "its notification", |m| m["op"] == "notify").await;
+    assert!(note["body"].as_str().unwrap().starts_with("Load 140 on "), "{note}");
+    write_readings(&readings, full(1.3, 10 * GIB));
+    let from = c.mark();
+    host_after(&mut c, from, "that one closed too", |h| h["episode"].is_null() && h["episodes"][0]["id"] == id.as_str()).await;
 }
 
 #[tokio::test]

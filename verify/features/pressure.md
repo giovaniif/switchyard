@@ -41,6 +41,20 @@ No banner while the host has room, even with a turn running.
 yv drive 'session:{{sid_echo}}' --steps '[{"expect":"css:.thread","text":"Echo:"},{"wait":3500},{"expect":"css:.pressure-banner","count":0},{"shot":"calm"}]'
 ```
 
+### full-swap-on-a-calm-host
+Viewports: both
+Linux leaves stale pages in swap long after the pressure is over. Swap full
+on a host with a low load and memory to spare (the readings of the owner's
+own server on a calm day) is no overload: no banner, the host reads Healthy,
+and nothing is recorded.
+
+```sh
+printf '{"load":1.3,"swapUsed":4276183040,"swapTotal":4294963200}' > "$(v readings)"
+yv drive hosts --steps '[{"click":"role:tab:System"},{"expect":"css:.host-system","text":"4.0 of 4.0 GB used"},{"wait":3500},{"expect":"css:.pressure-banner","count":0},{"expect":"css:.pressure-now","count":0},{"expect":"css:.pressure-episode","count":0},{"expect":"css:.host-system","text":"Healthy"},{"shot":"swap-full-calm"}]'
+test ! -e "$(v data)/pressure.json"
+printf '{"load":0,"swapUsed":0,"swapTotal":0}' > "$(v readings)"
+```
+
 ### banner-names-the-worst-session
 Viewports: both
 Load 140 on the host: the banner names the host, the load and the session

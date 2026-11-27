@@ -515,9 +515,16 @@ mod tests {
         assert!(reasons(&r(3.0, 10, (1, 10)), false, false, 2).is_empty());
         assert_eq!(reasons(&r(5.0, 10, (0, 0)), false, false, 2), ["load"]);
         assert_eq!(reasons(&r(1.0, 1, (0, 0)), false, false, 2), ["memory"]);
-        assert_eq!(reasons(&r(1.0, 10, (9, 10)), false, false, 2), ["swap"]);
+        // Linux leaves stale pages in swap long after the pressure is over:
+        // full swap on a host with memory to spare is no pressure.
+        assert!(reasons(&r(1.0, 10, (10, 10)), false, false, 2).is_empty(), "swap full, host calm");
+        assert_eq!(reasons(&r(5.0, 10, (10, 10)), false, false, 2), ["load"], "full swap adds nothing to load");
+        assert_eq!(reasons(&r(1.0, 1, (9, 10)), false, false, 2), ["memory", "swap"], "nowhere left to go");
+        assert_eq!(reasons(&r(1.0, 1, (8, 10)), false, false, 2), ["memory"]);
         assert!(reasons(&r(5.0, 10, (9, 10)), false, true, 2).is_empty(), "a test machine's own");
-        assert_eq!(reasons(&Readings { load_injected: true, swap_injected: true, ..r(5.0, 10, (9, 10)) }, false, true, 2), ["load", "swap"]);
+        assert_eq!(reasons(&r(5.0, 1, (9, 10)), false, true, 2), ["memory"], "a test machine's own swap");
+        assert_eq!(reasons(&Readings { load_injected: true, swap_injected: true, ..r(5.0, 10, (9, 10)) }, false, true, 2), ["load"]);
+        assert_eq!(reasons(&Readings { load_injected: true, swap_injected: true, ..r(5.0, 1, (9, 10)) }, false, true, 2), ["load", "memory", "swap"]);
         assert_eq!(reasons(&r(0.0, 10, (0, 0)), true, false, 2), ["forced"]);
     }
 }

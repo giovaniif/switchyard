@@ -44,8 +44,8 @@ describe("the worst contributor", () => {
     const stray = episode({ top: { ...episode().top, procs: [{ pid: 7, name: "cargo", cmd: "cargo test", cpuCores: 20, memBytes: GB }] } });
     expect(culprit(stray)).toMatchObject({ kind: "proc", proc: { pid: 7 } });
   });
-  test("by memory when memory or swap is", () => {
-    expect(culprit(episode({ reasons: ["swap"] }))).toMatchObject({ kind: "session", session: { id: "s2" }, byCpu: false });
+  test("by memory when memory is", () => {
+    expect(culprit(episode({ reasons: ["memory", "swap"] }))).toMatchObject({ kind: "session", session: { id: "s2" }, byCpu: false });
   });
   test("nobody when nothing was measured", () => {
     expect(culprit(episode({ top: { ...episode().top, sessions: [], procs: [] } }))).toBeNull();
@@ -59,7 +59,10 @@ describe("the banner", () => {
   test("memory and swap say how much is left; a stray process is named with its pid", () => {
     const h = host({ memUsed: 22.6 * GB, episode: episode({ reasons: ["memory", "swap"], top: { ...episode().top, sessions: [], procs: [{ pid: 9, name: "node", cmd: "node server.js", cpuCores: 0.1, memBytes: 6 * GB }] } }) });
     expect(bannerText("box", h)).toBe("box is overloaded · 819 MB free · mostly node, pid 9 (0.1 cores, 6.0 GB)");
-    expect(bannerText("box", host({ swapUsed: 2.9 * GB, swapTotal: 3 * GB, episode: episode({ reasons: ["swap"] }) }))).toBe("box is overloaded · swap 97% full · mostly TEST-small (0.5 cores, 12.0 GB)");
+    // yardd counts full swap only with memory low too: both are said.
+    expect(bannerText("box", host({ memUsed: 22.6 * GB, swapUsed: 2.9 * GB, swapTotal: 3 * GB, episode: episode({ reasons: ["memory", "swap"] }) }))).toBe(
+      "box is overloaded · 819 MB free, swap 97% full · mostly TEST-small (0.5 cores, 12.0 GB)",
+    );
   });
   test("quiet when there is no episode", () => {
     expect(bannerText("box", host({ episode: null }))).toBeNull();
