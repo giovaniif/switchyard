@@ -28,13 +28,22 @@ const connect = (id) => writeFileSync(connectedFile, JSON.stringify([...new Set(
 const log = (line) => appendFileSync(`${dir}/opencode.log`, `${line}\n`);
 
 const args = process.argv.slice(2);
+const v2 = process.env.YARD_TEST_OPENCODE_V2 === "1";
 log(`run ${args.join(" ")} account=${account}`);
 
 if (args[0] === "--version") {
-  console.log("0.0.0-fake");
+  console.log(v2 ? "opencode v2.4.2" : "0.0.0-fake");
 } else if (args[0] === "acp") {
   runAgent({ engine: "opencode", state, account, loggedIn: () => true });
 } else if (args[0] === "models") {
+  if (v2) {
+    if (args.includes("--verbose")) {
+      console.error("Unrecognized flag: --verbose in command opencode models");
+      process.exit(1);
+    }
+    console.log("opencode/fake-free\nopencode-go/fake-go");
+    process.exit(0);
+  }
   const models = [["opencode/fake-free", { name: "Fake Free", variants: {} }]];
   if (connected().includes("fakeprov")) models.push(["fakeprov/fake-pro", { name: "Fake Pro", variants: { low: {}, high: {} } }]);
   for (const [id, m] of models) {

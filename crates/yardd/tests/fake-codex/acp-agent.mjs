@@ -58,6 +58,7 @@ export function runAgent({ engine, state, account, loggedIn }) {
     { modelId: "fake-large", name: "Fake Large", efforts: [] },
   ];
   const modelIds = engine === "opencode" ? ["opencode/fake-free", "fakeprov/fake-pro"] : MODELS.map((m) => m.modelId);
+  if (engine === "opencode" && process.env.YARD_TEST_OPENCODE_V2 === "1") modelIds.push("opencode-go/fake-go");
   const effortId = engine === "opencode" ? "effort" : "reasoning_effort";
   const configOptions = (s) => {
     const list = [
