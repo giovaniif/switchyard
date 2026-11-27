@@ -2,7 +2,7 @@
 
 The conversation workspace contains Terminal, Subagents and Processes. Any pull request
 opens on GitHub from the conversation header. The composer has one toolbar row.
-Connectors are grouped by account, and Usage starts with one compact summary.
+Connectors are one card per service (design/connectors.html), and Usage starts with one compact summary.
 
 ## Setup
 
@@ -38,13 +38,14 @@ yv drive new --steps '[{"expect":"role:button:Attach files"},{"expect":"role:but
 yv drive 'session:{{sid_echo}}' --viewport mobile --steps '[{"click":"role:button:Session setup"},{"expect":"role:dialog:Session setup"},{"expect":"role:button:Ask first"},{"press":"Escape"},{"shot":"reply-composer"}]'
 ```
 
-### account-card-separation
+### one-card-per-service
 Viewports: both
-A host's account cards are visible together and their connector lists stay
-within their respective cards.
+A service is one card whatever account lists it, under Needs you, Connected or
+Available, with a mark per account that says where it works. The account
+boxes the page had before are gone (the owner's redesign, design/connectors.html).
 
 ```sh
-yv drive connectors --steps '[{"expect":{"css":".connectors-card","hasText":"Claude"}},{"expect":{"css":".connectors-card","hasText":"Codex"}},{"expect":"css:.connectors-card","count":2},{"shot":"per-account-connectors"}]'
+yv drive connectors --steps '[{"expect":"role:region:Needs you"},{"expect":"role:region:Connected"},{"expect":"role:region:Available"},{"expect":{"css":".cx-card","hasText":"chart"},"count":1},{"expect":"css:.cx-card:has-text(\"chart\") .cx-acct","count":3},{"expect":"css:.cx-card:has-text(\"chart\") .cx-acct-on","count":2},{"expect":"css:.connectors-card","count":0},{"shot":"service-cards"}]'
 ```
 
 ### compact-usage
