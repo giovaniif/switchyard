@@ -52,10 +52,10 @@ yv drive 'session:{{sid_echo}}' --steps '[{"expect":"css:.pressure-banner","text
 ### stalled-turn-note
 Viewports: both
 The running turn has said nothing since its first words while the host is
-overloaded: its thread says why, under Working, and the turn keeps running.
+overloaded: its thread says why, below the turn, and the turn keeps running.
 
 ```sh
-yv drive 'session:{{busy}}' --steps '[{"expect":"css:.stall-note","text":"the host is overloaded (load 140)."},{"expect":"css:.working","text":"Working"},{"shot":"stalled"},{"click":"role:button:See Hosts"},{"expect":"role:tab:System","text":"System"}]'
+yv drive 'session:{{busy}}' --steps '[{"expect":"css:.stall-note","text":"the host is overloaded (load 140)."},{"shot":"stalled"},{"click":"role:button:See Hosts"},{"expect":"role:tab:System","text":"System"}]'
 yv state --expect '{"sessions":[{"id":"{{busy}}","status":"running"}]}'
 ```
 
@@ -77,7 +77,7 @@ its peaks and top use, the session linking to its conversation.
 
 ```sh
 printf '{"load":0,"swapUsed":0,"swapTotal":0}' > "$(v readings)"
-yv drive hosts --steps '[{"click":"role:tab:System"},{"expect":{"css":".pressure-episode","hasText":"Load 140 on"}},{"expect":"css:.pressure-now","count":0},{"expect":"css:.pressure-banner","count":0},{"expect":{"css":".pressure-tops","hasText":"8.0 cores, 9.0 GB"}},{"shot":"history"},{"click":{"css":".pressure-session","hasText":"[slow] TEST-busy build"}},{"expect":"css:.thread","text":"[slow] TEST-busy build"}]'
+yv drive hosts --steps '[{"click":"role:tab:System"},{"expect":{"css":".pressure-episode","hasText":"Load 140 on"}},{"expect":"css:.pressure-now","count":0},{"expect":"css:.pressure-banner","count":0},{"expect":{"css":".pressure-tops","hasText":"8.0 cores, 9.0 GB"}},{"eval":"(() => { document.querySelector(\".pressure-history\").scrollIntoView({ block: \"start\" }); return true; })()","equals":true},{"shot":"history"},{"click":{"css":".pressure-session","hasText":"[slow] TEST-busy build"}},{"expect":"css:.thread","text":"[slow] TEST-busy build"}]'
 ```
 
 ### a-stray-process-is-named
@@ -90,7 +90,7 @@ as not a session.
 sleep 600 >/dev/null 2>&1 &
 yv var set stray "$!"
 printf '{"load":140,"swapUsed":0,"swapTotal":0,"procs":{"%s":{"cpu":2400,"mem":4294967296}}}' "$(v stray)" > "$(v readings)"
-yv drive hosts --steps '[{"expect":"css:.pressure-banner","text":"mostly sleep, pid"},{"expect":{"css":".pressure-banner button","hasText":"Open"},"count":0},{"click":"role:tab:System"},{"expect":{"css":".pressure-episode","hasText":"Now"},"text":"not a session"},{"shot":"stray"}]'
+yv drive hosts --steps '[{"expect":"css:.pressure-banner","text":"mostly sleep, pid"},{"expect":{"css":".pressure-banner button","hasText":"Open"},"count":0},{"click":"role:tab:System"},{"expect":{"css":".pressure-episode","hasText":"Now"},"text":"not a session"},{"eval":"(() => { document.querySelector(\".pressure-history\").scrollIntoView({ block: \"start\" }); return true; })()","equals":true},{"shot":"stray"}]'
 printf '{"load":0,"swapUsed":0,"swapTotal":0}' > "$(v readings)"
 ```
 

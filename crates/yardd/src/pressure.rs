@@ -32,6 +32,10 @@ const RECENT: usize = 5;
 const TOP: usize = 3;
 /// Swap at least this full is pressure: the host is paging hard.
 const SWAP_FULL: f64 = 0.9;
+/// Below both, a session or process is no contributor at all: a calm
+/// helper would only crowd the list.
+const MIN_CORES: f64 = 0.05;
+const MIN_MEM: u64 = 64 * 1024 * 1024;
 /// How often an open episode's new peaks are written out.
 const SAVE_EVERY_MS: u64 = 30_000;
 
@@ -234,11 +238,11 @@ fn score(r: &Readings) -> f64 {
 }
 
 /// The top `TOP` by CPU and the top `TOP` by memory, once each, largest
-/// memory first.
+/// memory first; nothing that uses next to nothing.
 fn pick<T: Clone>(rows: &[T], cpu: impl Fn(&T) -> f64, mem: impl Fn(&T) -> u64, same: impl Fn(&T, &T) -> bool) -> Vec<T> {
-    let mut by_cpu: Vec<&T> = rows.iter().filter(|r| cpu(r) > 0.0).collect();
+    let mut by_cpu: Vec<&T> = rows.iter().filter(|r| cpu(r) >= MIN_CORES).collect();
     by_cpu.sort_by(|a, b| cpu(b).total_cmp(&cpu(a)));
-    let mut by_mem: Vec<&T> = rows.iter().filter(|r| mem(r) > 0).collect();
+    let mut by_mem: Vec<&T> = rows.iter().filter(|r| mem(r) >= MIN_MEM).collect();
     by_mem.sort_by_key(|r| std::cmp::Reverse(mem(r)));
     let mut out: Vec<T> = Vec::new();
     for r in by_cpu.into_iter().take(TOP).chain(by_mem.into_iter().take(TOP)) {
@@ -489,9 +493,10 @@ mod tests {
 
     #[test]
     fn the_top_by_cpu_and_by_memory_once_each() {
-        let rows: Vec<(u32, f64, u64)> = vec![(1, 9.0, 10), (2, 0.1, 900), (3, 5.0, 5), (4, 4.0, 4), (5, 0.0, 800), (6, 3.0, 3), (7, 0.0, 700)];
+        const MB: u64 = 1024 * 1024;
+        let rows: Vec<(u32, f64, u64)> = vec![(1, 9.0, 70 * MB), (2, 0.1, 900 * MB), (3, 5.0, 5), (4, 4.0, 4), (5, 0.0, 800 * MB), (6, 3.0, 3), (7, 0.0, 700 * MB), (8, 0.01, 10 * MB)];
         let got: Vec<u32> = pick(&rows, |r| r.1, |r| r.2, |a, b| a.0 == b.0).iter().map(|r| r.0).collect();
-        assert_eq!(got, vec![2, 5, 7, 1, 3, 4]);
+        assert_eq!(got, vec![2, 5, 7, 1, 3, 4], "8 uses next to nothing");
     }
 
     #[test]
