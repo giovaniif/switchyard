@@ -1,0 +1,115 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "50e669af61cba4f7194f1652a0379891bd914fc9",
+    "short": "50e669a",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T00:10:29.185Z"
+  },
+  "dir": ".verify/evidence/long-account-row-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3518,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/long-account-row-head/long-account-row-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/long-account-row-head/armed-remove-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "document.querySelector(\".account-row\").scrollIntoView({ block: \"center\" })"
+        },
+        {
+          "step": 4,
+          "eval": "(() => { const row = [...document.querySelectorAll(\".account-row\")].find((r) => r.textContent.includes(\"TEST-A very long\")), name = row.querySelector(\".account-name\").getBoundingClientRect(); return [...row.querySelectorAll(\".muted, button\")].every((e) => e.getBoundingClientRect().left >= name.left - 0.5) && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()",
+          "value": true
+        },
+        {
+          "step": 5,
+          "eval": "(() => { const row = [...document.querySelectorAll(\".account-row\")].find((r) => r.textContent.includes(\"TEST-Work\")), name = row.querySelector(\".account-name\").getBoundingClientRect(); return [...row.querySelectorAll(\".muted, button\")].every((e) => e.getBoundingClientRect().left >= name.left - 0.5); })()",
+          "value": true
+        },
+        {
+          "step": 6,
+          "eval": "(() => { const a = document.querySelector(\".account-row .account-name\").getBoundingClientRect().left, e = document.querySelector(\".engine-row > span:nth-child(2)\").getBoundingClientRect().left; return Math.abs(a - e) < 0.5; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 1744,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/long-account-row-head/long-account-row-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/long-account-row-head/armed-remove-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "document.querySelector(\".account-row\").scrollIntoView({ block: \"center\" })"
+        },
+        {
+          "step": 4,
+          "eval": "(() => { const row = [...document.querySelectorAll(\".account-row\")].find((r) => r.textContent.includes(\"TEST-A very long\")), name = row.querySelector(\".account-name\").getBoundingClientRect(); return [...row.querySelectorAll(\".muted, button\")].every((e) => e.getBoundingClientRect().left >= name.left - 0.5) && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()",
+          "value": true
+        },
+        {
+          "step": 5,
+          "eval": "(() => { const row = [...document.querySelectorAll(\".account-row\")].find((r) => r.textContent.includes(\"TEST-Work\")), name = row.querySelector(\".account-name\").getBoundingClientRect(); return [...row.querySelectorAll(\".muted, button\")].every((e) => e.getBoundingClientRect().left >= name.left - 0.5); })()",
+          "value": true
+        },
+        {
+          "step": 6,
+          "eval": "(() => { const a = document.querySelector(\".account-row .account-name\").getBoundingClientRect().left, e = document.querySelector(\".engine-row > span:nth-child(2)\").getBoundingClientRect().left; return Math.abs(a - e) < 0.5; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

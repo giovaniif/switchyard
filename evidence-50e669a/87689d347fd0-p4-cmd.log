@@ -1,0 +1,32 @@
+$ (cd ui && bun test) && verify/yv map run accounts --recipe long-account-name-keeps-its-state-under-the-name
+# exit 0 after 6335 ms at 50e669af61cba4f7194f1652a0379891bd914fc9
+
+bun test v1.4.4 (38afee6c8)
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "accounts",
+      "at": "2026-11-27T00:10:50.344Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "long-account-name-keeps-its-state-under-the-name",
+          "status": "pass",
+          "ms": 5063
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
+
+ 536 pass
+ 0 fail
+ 5134 expect() calls
+Ran 536 tests across 39 files. [413.00ms]

@@ -1,0 +1,217 @@
+{
+  "v": 1,
+  "claim": "Hosts → Engine logins at 390 px: an added account whose name fills the line (40 characters) wraps its login state, Log in and Remove back to the row's start, under the status dot, instead of under the name like the engine rows above it.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-0b58",
+  "base": "8db35626f6731b334069d8239f8552ce8bc49a3b",
+  "head": "50e669af61cba4f7194f1652a0379891bd914fc9",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/accounts.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T00:09:07.510Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "88f42a25cd0595b5c1ae701b3000c4f372e1db6d",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "29dc759347d99171473555cc475560ecad26e718eea9ab2eab4a7be969193e36"
+        },
+        {
+          "path": "p1-long-account-row-mobile.png",
+          "sha256": "d6a139fc4be56e20e562cdb63ac9364d19bf41491b9ac87608d5aac8328becba"
+        },
+        {
+          "path": "p1-long-account-row-desktop.png",
+          "sha256": "8f5fcfcd6ff0453a69c0701daa5c7e7130e70102368a56d84c4fabcf1bbc3afc"
+        }
+      ],
+      "addedAt": "2026-11-27T00:10:10.223Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "88f42a25cd0595b5c1ae701b3000c4f372e1db6d",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "c042c3624a063dfd7e10bb399b241c36b3bbfd0f8a3f9cb138f03148ea81ef4a"
+        }
+      ],
+      "addedAt": "2026-11-27T00:10:10.267Z",
+      "cmd": "verify/yv map run accounts --recipe long-account-name-keeps-its-state-under-the-name",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "50e669af61cba4f7194f1652a0379891bd914fc9",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "252ea3e10bc1ab180b65b1a5e441291e7521b40d2c29a98271f180c13aee0c47"
+        },
+        {
+          "path": "p3-long-account-row-mobile.png",
+          "sha256": "c13ca97d2e46946289e12670d20d1fbd16a067a5684c94a934d327c686630dd0"
+        },
+        {
+          "path": "p3-armed-remove-mobile.png",
+          "sha256": "42a49ae4acb6f56f29246bd3df82c5939c22e306e43ed3832d52c6ef78232cb9"
+        },
+        {
+          "path": "p3-long-account-row-desktop.png",
+          "sha256": "f1511341073dd5cf113c1b84e121fca15091a991c9d1f0683b40c3549499d3c1"
+        },
+        {
+          "path": "p3-armed-remove-desktop.png",
+          "sha256": "b00bb1bea74669d2ef505964b2d4c15f13cecd8432fa7ac51d2881b58d5abcfc"
+        }
+      ],
+      "addedAt": "2026-11-27T00:10:43.971Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "50e669af61cba4f7194f1652a0379891bd914fc9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "87689d347fd000af72dec8cec7dc5342ecfd083980585fb534011c474a18e72d"
+        }
+      ],
+      "addedAt": "2026-11-27T00:10:44.011Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run accounts --recipe long-account-name-keeps-its-state-under-the-name",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "50e669af61cba4f7194f1652a0379891bd914fc9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "d39f8ccbe2cd4f5602e4d5af46241186e0d65c63d9843ed8340c0fd778cdddc5"
+        }
+      ],
+      "addedAt": "2026-11-27T00:10:50.387Z",
+      "cmd": "verify/yv design-check --base 8db35626f673",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "50e669af61cba4f7194f1652a0379891bd914fc9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-accounts.json",
+          "sha256": "4217fe5525613e99eda57af8551fd84d86925ebebda79c11505c58559fab08b6"
+        }
+      ],
+      "addedAt": "2026-11-27T00:10:54.092Z",
+      "cmd": "verify/yv map run accounts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "accounts/add-account",
+        "accounts/empty-name-add-looks-disabled",
+        "accounts/refused-add-account-keeps-the-form",
+        "accounts/log-in-account",
+        "accounts/pick-account-desktop",
+        "accounts/pick-account-mobile",
+        "accounts/default-has-no-account-row-without-a-choice",
+        "accounts/pick-other-engine-account-switches-engine",
+        "accounts/remove-refused-while-in-use",
+        "accounts/refusal-names-the-sessions-archived-too",
+        "accounts/remove-account",
+        "accounts/add-account-stays-at-the-right",
+        "accounts/install-command-stays-at-the-right",
+        "accounts/account-chip-shows-the-whole-name",
+        "accounts/account-chip-chevron-keeps-its-size",
+        "accounts/long-account-name-fits-the-setup-sheet",
+        "accounts/long-account-name-wraps-in-the-login-banner",
+        "accounts/refusal-with-a-long-word-keeps-dismiss-on-screen",
+        "accounts/long-account-name-keeps-its-state-under-the-name"
+      ]
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "50e669af61cba4f7194f1652a0379891bd914fc9",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-focused-pages.json",
+          "sha256": "13e1915ea9e8679bfc1923eab2c022910da2d57ae047e569ca7863d3ae277b67"
+        }
+      ],
+      "addedAt": "2026-11-27T00:12:40.652Z",
+      "cmd": "verify/yv map run focused-pages",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "focused-pages/selected-host-tabs",
+        "focused-pages/compact-usage-popover",
+        "focused-pages/usage-popover-leads-with-trigger-account",
+        "focused-pages/usage-row-lines-up-with-host-rows",
+        "focused-pages/subscriptions-page",
+        "focused-pages/account-picker-separate-from-model",
+        "focused-pages/other-engine-account-and-fixed-session",
+        "focused-pages/sessions-search-and-archive",
+        "focused-pages/sessions-visibility-tabs",
+        "focused-pages/archived-waiting-session-says-needs-approval",
+        "focused-pages/sessions-search-no-match-says-so",
+        "focused-pages/sessions-search-finds-the-account",
+        "focused-pages/host-rows-line-up-with-the-page",
+        "focused-pages/session-rows-line-up-with-the-page",
+        "focused-pages/session-rows-have-straight-dividers",
+        "focused-pages/offline-host-and-selection-fallback",
+        "focused-pages/workspace-widths-and-views",
+        "focused-pages/manage-accounts-opens-logins",
+        "focused-pages/sidebar-skips-duplicate-page-links",
+        "focused-pages/subscriptions-page-signed-out-account"
+      ]
+    }
+  ]
+}

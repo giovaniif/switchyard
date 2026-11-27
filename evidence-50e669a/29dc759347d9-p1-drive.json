@@ -1,0 +1,79 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "88f42a25cd0595b5c1ae701b3000c4f372e1db6d",
+    "short": "88f42a2",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T00:10:00.154Z"
+  },
+  "dir": ".verify/evidence/long-account-row-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 3446,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/long-account-row-base/long-account-row-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "document.querySelector(\".account-row\").scrollIntoView({ block: \"center\" })"
+        },
+        {
+          "step": 4,
+          "eval": "(() => { const row = [...document.querySelectorAll(\".account-row\")].find((r) => r.textContent.includes(\"TEST-A very long\")), name = row.querySelector(\".account-name\").getBoundingClientRect(); return [...row.querySelectorAll(\".muted, button\")].map((e) => Math.round(e.getBoundingClientRect().left - name.left)).join(\",\"); })()",
+          "value": "-15,212,276"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 1468,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/long-account-row-base/long-account-row-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "document.querySelector(\".account-row\").scrollIntoView({ block: \"center\" })"
+        },
+        {
+          "step": 4,
+          "eval": "(() => { const row = [...document.querySelectorAll(\".account-row\")].find((r) => r.textContent.includes(\"TEST-A very long\")), name = row.querySelector(\".account-name\").getBoundingClientRect(); return [...row.querySelectorAll(\".muted, button\")].map((e) => Math.round(e.getBoundingClientRect().left - name.left)).join(\",\"); })()",
+          "value": "287,870,934"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

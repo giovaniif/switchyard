@@ -1,0 +1,112 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "accounts",
+      "at": "2026-11-27T00:12:40.601Z",
+      "counts": {
+        "pass": 19
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "add-account",
+          "status": "pass",
+          "ms": 4497
+        },
+        {
+          "label": "empty-name-add-looks-disabled",
+          "status": "pass",
+          "ms": 2634
+        },
+        {
+          "label": "refused-add-account-keeps-the-form",
+          "status": "pass",
+          "ms": 5544
+        },
+        {
+          "label": "log-in-account",
+          "status": "pass",
+          "ms": 3633
+        },
+        {
+          "label": "pick-account-desktop",
+          "status": "pass",
+          "ms": 5564
+        },
+        {
+          "label": "pick-account-mobile",
+          "status": "pass",
+          "ms": 6012
+        },
+        {
+          "label": "default-has-no-account-row-without-a-choice",
+          "status": "pass",
+          "ms": 2196
+        },
+        {
+          "label": "pick-other-engine-account-switches-engine",
+          "status": "pass",
+          "ms": 10968
+        },
+        {
+          "label": "remove-refused-while-in-use",
+          "status": "pass",
+          "ms": 2839
+        },
+        {
+          "label": "refusal-names-the-sessions-archived-too",
+          "status": "pass",
+          "ms": 6894
+        },
+        {
+          "label": "remove-account",
+          "status": "pass",
+          "ms": 4246
+        },
+        {
+          "label": "add-account-stays-at-the-right",
+          "status": "pass",
+          "ms": 4373
+        },
+        {
+          "label": "install-command-stays-at-the-right",
+          "status": "pass",
+          "ms": 12398
+        },
+        {
+          "label": "account-chip-shows-the-whole-name",
+          "status": "pass",
+          "ms": 5727
+        },
+        {
+          "label": "account-chip-chevron-keeps-its-size",
+          "status": "pass",
+          "ms": 5711
+        },
+        {
+          "label": "long-account-name-fits-the-setup-sheet",
+          "status": "pass",
+          "ms": 5859
+        },
+        {
+          "label": "long-account-name-wraps-in-the-login-banner",
+          "status": "pass",
+          "ms": 5992
+        },
+        {
+          "label": "refusal-with-a-long-word-keeps-dismiss-on-screen",
+          "status": "pass",
+          "ms": 6593
+        },
+        {
+          "label": "long-account-name-keeps-its-state-under-the-name",
+          "status": "pass",
+          "ms": 3982
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

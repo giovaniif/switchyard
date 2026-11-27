@@ -1,0 +1,40 @@
+$ verify/yv map run accounts --recipe long-account-name-keeps-its-state-under-the-name
+# exit 1 after 5961 ms at 88f42a25cd0595b5c1ae701b3000c4f372e1db6d
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "accounts",
+      "at": "2026-11-27T00:10:16.225Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "long-account-name-keeps-its-state-under-the-name",
+          "status": "fail",
+          "ms": 5108,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 4 {\"eval\":\"(() => { const row = [...document.querySelectorAll(\\\".account-row\\\")].find((r) => r.textContent.includes(\\\"TEST-A very long\\\")), name = row.querySelector(\\\".account-name\\\").getBoundingClientRect(); return [...row.querySelectorAll(\\\".muted, button\\\")].every((e) => e.getBoundingClientRect().left >= name.left - 0.5) && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()\",\"equals\":true}: eval returned false, expected true",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-0b58/.verify/drives/2026-11-27T00-10-11-408Z/fail-mobile-step4.png and the aria snapshot"
+            }
+          ],
+          "tail": "ocument.querySelectorAll(\\\".account-row\\\")].find((r) => r.textContent.includes(\\\"TEST-A very long\\\")), name = row.querySelector(\\\".account-name\\\").getBoundingClientRect(); return [...row.querySelectorAll(\\\".muted, button\\\")].every((e) => e.getBoundingClientRect().left >= name.left - 0.5) && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()\",\n          \"value\": false\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    },\n    {\n      \"viewport\": \"desktop\",\n      \"ms\": 1495,\n      \"steps\": 5,\n      \"failed\": null,\n      \"captures\": [\n        {\n          \"viewport\": \"desktop\",\n          \"file\": \"/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-0b58/.verify/drives/2026-11-27T00-10-11-408Z/long-account-row-desktop.png\",\n          \"size\": {\n            \"width\": 2880,\n            \"height\": 1800\n          }\n        }\n      ],\n      \"notes\": [\n        {\n          \"step\": 2,\n          \"eval\": \"document.querySelector(\\\".account-row\\\").scrollIntoView({ block: \\\"center\\\" })\"\n        },\n        {\n          \"step\": 4,\n          \"eval\": \"(() => { const row = [...document.querySelectorAll(\\\".account-row\\\")].find((r) => r.textContent.includes(\\\"TEST-A very long\\\")), name = row.querySelector(\\\".account-name\\\").getBoundingClientRect(); return [...row.querySelectorAll(\\\".muted, button\\\")].every((e) => e.getBoundingClientRect().left >= name.left - 0.5) && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()\",\n          \"value\": true\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 4 {\\\"eval\\\":\\\"(() => { const row = [...document.querySelectorAll(\\\\\\\".account-row\\\\\\\")].find((r) => r.textContent.includes(\\\\\\\"TEST-A very long\\\\\\\")), name = row.querySelector(\\\\\\\".account-name\\\\\\\").getBoundingClientRect(); return [...row.querySelectorAll(\\\\\\\".muted, button\\\\\\\")].every((e) => e.getBoundingClientRect().left >= name.left - 0.5) && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()\\\",\\\"equals\\\":true}: eval returned false, expected true\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-0b58/.verify/drives/2026-11-27T00-10-11-408Z/fail-mobile-step4.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "accounts/long-account-name-keeps-its-state-under-the-name",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+
