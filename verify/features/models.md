@@ -139,6 +139,21 @@ yv drive new --viewport desktop --steps '[{"click":"css:.account-trigger"},{"cli
 test "$(grep '"TEST-ultrafast start"' "$(v fake)/turn-inputs.jsonl" | jq -r .serviceTierForTurn)" = ultrafast
 ```
 
+### claude-lists-what-claude-reports
+Viewports: both
+Claude's models are what Claude Code reports for the account (the fake
+sidecar's `models`: Opus 5.5, Fable 5.2, Sonnet 5.5, Haiku 5.5), not a list
+built into yardd, which had no Fable. Fable 5.2 is offered and picking it saves
+the session on `claude-fable-5-2`. Codex, in a Claude session, is one folded
+row that says how many models it holds (its models are not missing).
+
+```sh
+yv drive 'session:{{sid_claude}}' --viewport desktop --steps '[{"click":"css:.model-trigger"},{"expect":{"css":".picker-model","hasText":"Fable 5.2"}},{"expect":{"css":".picker-fold","hasText":"Codex · 10 models"}},{"shot":"claude-models"},{"click":{"role":"button","name":"Fable 5.2","exact":true}},{"expect":"css:.model-trigger","text":"Fable 5.2"}]'
+yv state --expect '{"sessions":[{"id":"{{sid_claude}}","model":"claude-fable-5-2"}]}'
+yv drive 'session:{{sid_claude}}' --viewport mobile --steps '[{"click":"role:button:Session setup"},{"click":"css:.model-trigger"},{"expect":{"css":".picker-model[aria-current=true]","hasText":"Fable 5.2"}},{"expect":{"css":".picker-fold","hasText":"Codex · 10 models"}},{"shot":"claude-models"},{"click":{"role":"button","name":"Haiku 5.5","exact":true}},{"expect":"css:.model-trigger","text":"Haiku 5.5"}]'
+yv state --expect '{"sessions":[{"id":"{{sid_claude}}","model":"claude-haiku-5-5"}]}'
+```
+
 ### effort-change-claude-mid-session (manual: not built, see ARCHITECTURE "Engines")
 Changing a Claude session's effort mid-session goes through `applyFlagSettings`, which is not wired yet.
 
