@@ -1,0 +1,72 @@
+{
+  "command": "drive",
+  "ok": true,
+  "route": "connectors",
+  "build": {
+    "sha": "84aa235afab3286351d3fa46b2fb278b89a62ee7",
+    "short": "84aa235",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T05:19:13.008Z"
+  },
+  "dir": ".verify/evidence/pconn-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 8631,
+      "steps": 14,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/pconn-head/double-click-remove-connector-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 8,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\"button\")].find((x) => x.getAttribute(\"aria-label\") === \"Remove Linear\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.getAttribute(\"aria-label\") : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Confirm removing Linear"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 6998,
+      "steps": 14,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/pconn-head/double-click-remove-connector-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 8,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\"button\")].find((x) => x.getAttribute(\"aria-label\") === \"Remove Linear\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.getAttribute(\"aria-label\") : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Confirm removing Linear"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

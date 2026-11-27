@@ -1,0 +1,81 @@
+{
+  "command": "drive",
+  "ok": false,
+  "route": "connectors",
+  "build": {
+    "sha": "01aab59d1d04ed77611f3bfe56f775bfba857cc3",
+    "short": "01aab59",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T05:17:53.309Z"
+  },
+  "dir": ".verify/evidence/pconn-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 16820,
+      "steps": 14,
+      "failed": {
+        "step": 9,
+        "action": {
+          "expect": "role:button:Confirm removing Linear"
+        },
+        "reason": "for: Timeout 10000ms exceeded.",
+        "screenshot": ".verify/evidence/pconn-base/fail-mobile-step9.png",
+        "aria": "- banner:\n  - button \"Open sessions\"\n  - heading \"Connectors\" [level=1]\n  - button \"Subscription usage\": 47%\n  - button \"Check again\"\n- paragraph: A session can only use the tools connected to the account it runs on.\n- group \"Connectors by engine\":\n  - button \"All accounts\" [pressed]\n  - button \"Claude\"\n  - button \"Codex\"\n- text: Host\n- button \"Connector host\": iso-host\n- region \"Claude · Default\":\n  - strong: Default\n  - text: Claude · me@example.com Connected\n  - button \"Manage\"\n  - group \"Show connectors\":\n    - button \"Connected\": Connected 1\n    - button \"Available\": Available 2\n    - button \"Not working\": Not working 1\n    - button \"All\" [pressed]: All 4\n  - searchbox \"Search connectors\": linear\n  - status:\n    - text: No connectors match your search.\n    - button \"Clear search\"\n  - text: 1 connected · 2 need sign-in · 1 not working\n  - button \"Filter tools\" [expanded]\n  - button \"Add connector\"\n- region \"Codex · Default\":\n  - strong: Default\n  - text: Codex · me@example.com Connected\n  - button \"Manage\"\n  - list:\n    - listitem:\n      - text: fake-oauth config.toml Needs sign-in\n      - button \"Connect\"\n      - button \"Remove fake-oauth\": Remove\n    - listitem:\n      - text: GitHub ChatGPT app Needs sign-in\n      - link \"Connect on ChatGPT\":\n        - /url: https://chatgpt.com/apps/github\n    - listitem:\n      - text: chart config.toml widgets 3 tools Connected\n      - button \"Remove chart\": Remove\n  - text: 1 connected · 2 need sign-in\n  - button \"Filter tools\"\n  - button \"Add connector\"\n- heading \"Messaging\" [level=2]\n- paragraph: Your own Slack, and who can talk to your agents there.\n- region \"Slack\":\n  - strong: Slack\n  - text: Your direct messages and the channels you choose\n  - status: Not connected\n  - list \"Steps\":\n    - listitem: Token\n    - listitem: Approve\n    - listitem: Connect\n  - paragraph: \"Switchyard reads your direct messages and the channels you choose, as you, through a Slack app of your own. Slack makes it from a configuration token:\"\n  - link \"Get config token\":\n    - /url: https://api.slack.com/apps\n  - list:\n    - listitem: In Slack app settings, find “Your App Configuration Tokens” and choose Generate Token.\n    - listitem: Select your workspace.\n    - listitem: Copy the Refresh Token (it starts with xoxe-) and paste it below.\n  - text: Configuration refresh token\n  - textbox \"Configuration refresh token\":\n    - /placeholder: xoxe-…\n  - button \"Create my Slack app\" [disabled]\n  - paragraph: Tokens stay on this host, readable by you alone.\n  - list:\n    - listitem:\n      - text: Who can request tool use\n      - paragraph: Whoever approves an agent's app can request tool use. Other people need approval in the place session."
+      },
+      "captures": [],
+      "notes": [
+        {
+          "step": 8,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\"button\")].find((x) => x.getAttribute(\"aria-label\") === \"Remove Linear\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.getAttribute(\"aria-label\") : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Confirm removing Linear"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 16215,
+      "steps": 14,
+      "failed": {
+        "step": 9,
+        "action": {
+          "expect": "role:button:Confirm removing Linear"
+        },
+        "reason": "for: Timeout 10000ms exceeded.",
+        "screenshot": ".verify/evidence/pconn-base/fail-desktop-step9.png",
+        "aria": "- navigation \"Sessions\":\n  - button \"Go to session or page\": Switchyard Ctrl K\n  - button \"Collapse sessions sidebar\" [expanded]\n  - button \"New session\"\n  - button \"Agents\"\n  - button \"Automations\"\n  - button \"Connectors\"\n  - button \"Import\"\n  - button \"Settings\"\n  - button \"[cmd] TEST-run the migration · Fake Fast · Idle\"\n  - button \"Archive [cmd] TEST-run the migration\"\n  - button \"Actions for [cmd] TEST-run the migration\"\n  - button \"TEST-hello from Claude · Haiku 5.5 · Idle\"\n  - button \"Archive TEST-hello from Claude\"\n  - button \"Actions for TEST-hello from Claude\"\n  - button \"[edit] TEST-fix the greeting · Fake Fast · Idle\"\n  - button \"Archive [edit] TEST-fix the greeting\"\n  - button \"Actions for [edit] TEST-fix the greeting\"\n  - button \"TEST-say hello · Fake Fast · Idle\"\n  - button \"Archive TEST-say hello\"\n  - button \"Actions for TEST-say hello\"\n  - button \"[think] TEST-plan the refactor · Fake Fast · Idle\"\n  - button \"Archive [think] TEST-plan the refactor\"\n  - button \"Actions for [think] TEST-plan the refactor\"\n  - button \"[fail] TEST-failing turn · Fake Fast · Idle\"\n  - button \"Archive [fail] TEST-failing turn\"\n  - button \"Actions for [fail] TEST-failing turn\"\n  - button \"Subscription usage\": Usage 47% used 5-hour resets in 1 h 59 min\n  - button \"iso-host 12% · 59%\"\n  - button \"TEST-dbl-host-c Offline\"\n- separator \"Resize the sessions sidebar\"\n- heading \"Connectors\" [level=1]\n- button \"Check again\"\n- paragraph: A session can only use the tools connected to the account it runs on.\n- group \"Connectors by engine\":\n  - button \"All accounts\" [pressed]\n  - button \"Claude\"\n  - button \"Codex\"\n- text: Host\n- button \"Connector host\": iso-host\n- region \"Claude · Default\":\n  - strong: Default\n  - text: Claude · me@example.com Connected\n  - button \"Manage\"\n  - group \"Show connectors\":\n    - button \"Connected\": Connected 1\n    - button \"Available\": Available 2\n    - button \"Not working\": Not working 1\n    - button \"All\" [pressed]: All 4\n  - searchbox \"Search connectors\": linear\n  - status:\n    - text: No connectors match your search.\n    - button \"Clear search\"\n  - text: 1 connected · 2 need sign-in · 1 not working\n  - button \"Filter tools\" [expanded]\n  - button \"Add connector\"\n- region \"Codex · Default\":\n  - strong: Default\n  - text: Codex · me@example.com Connected\n  - button \"Manage\"\n  - list:\n    - listitem:\n      - text: fake-oauth config.toml Needs sign-in\n      - button \"Connect\"\n      - button \"Remove fake-oauth\": Remove\n    - listitem:\n      - text: GitHub ChatGPT app Needs sign-in\n      - link \"Connect on ChatGPT\":\n        - /url: https://chatgpt.com/apps/github\n    - listitem:\n      - text: chart config.toml widgets 3 tools Connected\n      - button \"Remove chart\": Remove\n  - text: 1 connected · 2 need sign-in\n  - button \"Filter tools\"\n  - button \"Add connector\"\n- heading \"Messaging\" [level=2]\n- paragraph: Your own Slack, and who can talk to your agents there.\n- region \"Slack\":\n  - strong: Slack\n  - text: Your direct messages and the channels you choose\n  - status: Not connected\n  - list \"Steps\":\n    - listitem: Token\n    - listitem: Approve\n    - listitem: Connect\n  - paragraph: \"Switchyard reads your direct messages and the channels you choose, as you, through a Slack app of your own. Slack makes it from a configuration token:\"\n  - link \"Get config token\":\n    - /url: https://api.slack.com/apps\n  - list:\n    - listitem: In Slack app settings, find “Your App Configuration Tokens” and choose Generate Token.\n    - listitem: Select your workspace.\n    - listitem: Copy the Refresh Token (it starts with xoxe-) and paste it below.\n  - text: Configuration refresh token\n  - textbox \"Configuration refresh token\":\n    - /placeholder: xoxe-…\n  - button \"Create my Slack app\" [disabled]\n  - paragraph: Tokens stay on this host, readable by you alone.\n  - list:\n    - listitem:\n      - text: Who can request tool use\n      - paragraph: Whoever approves an agent's app can request tool use. Other people need approval in the place session."
+      },
+      "captures": [],
+      "notes": [
+        {
+          "step": 8,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\"button\")].find((x) => x.getAttribute(\"aria-label\") === \"Remove Linear\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.getAttribute(\"aria-label\") : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Confirm removing Linear"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": [
+    {
+      "code": "step-failed",
+      "msg": "mobile: step 9 {\"expect\":\"role:button:Confirm removing Linear\"}: for: Timeout 10000ms exceeded.",
+      "hint": "see .verify/evidence/pconn-base/fail-mobile-step9.png and the aria snapshot"
+    },
+    {
+      "code": "step-failed",
+      "msg": "desktop: step 9 {\"expect\":\"role:button:Confirm removing Linear\"}: for: Timeout 10000ms exceeded.",
+      "hint": "see .verify/evidence/pconn-base/fail-desktop-step9.png and the aria snapshot"
+    }
+  ]
+}

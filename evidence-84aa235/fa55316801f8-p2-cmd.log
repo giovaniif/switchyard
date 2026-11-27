@@ -1,0 +1,45 @@
+$ verify/yv map run connectors --recipe double-click-on-remove-only-asks
+# exit 1 after 34349 ms at 01aab59d1d04ed77611f3bfe56f775bfba857cc3
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "connectors",
+      "at": "2026-11-27T05:19:01.829Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "double-click-on-remove-only-asks",
+          "status": "fail",
+          "ms": 33208,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 9 {\"expect\":\"role:button:Confirm removing Linear\"}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-1e80/.verify/drives/2026-11-27T05-18-28-844Z/fail-mobile-step9.png and the aria snapshot"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 9 {\"expect\":\"role:button:Confirm removing Linear\"}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-1e80/.verify/drives/2026-11-27T05-18-28-844Z/fail-desktop-step9.png and the aria snapshot"
+            }
+          ],
+          "tail": " https://api.slack.com/apps\\n  - list:\\n    - listitem: In Slack app settings, find “Your App Configuration Tokens” and choose Generate Token.\\n    - listitem: Select your workspace.\\n    - listitem: Copy the Refresh Token (it starts with xoxe-) and paste it below.\\n  - text: Configuration refresh token\\n  - textbox \\\"Configuration refresh token\\\":\\n    - /placeholder: xoxe-…\\n  - button \\\"Create my Slack app\\\" [disabled]\\n  - paragraph: Tokens stay on this host, readable by you alone.\\n  - list:\\n    - listitem:\\n      - text: Who can request tool use\\n      - paragraph: Whoever approves an agent's app can request tool use. Other people need approval in the place session.\"\n      },\n      \"captures\": [],\n      \"notes\": [\n        {\n          \"step\": 8,\n          \"eval\": \"(async () => { const b = [...document.querySelectorAll(\\\"button\\\")].find((x) => x.getAttribute(\\\"aria-label\\\") === \\\"Remove Linear\\\"); b.scrollIntoView({ block: \\\"center\\\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\\\"mousedown\\\", \\\"mouseup\\\", \\\"click\\\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\\\"button\\\"); const label = second ? second.getAttribute(\\\"aria-label\\\") : \\\"none\\\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \\\"second click hit: \\\" + label; })()\",\n          \"value\": \"second click hit: Confirm removing Linear\"\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 9 {\\\"expect\\\":\\\"role:button:Confirm removing Linear\\\"}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-1e80/.verify/drives/2026-11-27T05-18-28-844Z/fail-mobile-step9.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 9 {\\\"expect\\\":\\\"role:button:Confirm removing Linear\\\"}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-1e80/.verify/drives/2026-11-27T05-18-28-844Z/fail-desktop-step9.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "connectors/double-click-on-remove-only-asks",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+
