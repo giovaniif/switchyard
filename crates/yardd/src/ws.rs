@@ -543,6 +543,7 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             let added = app.accounts.add(app.id("a"), engine, str_field(msg, "name")?)?;
             if engine == "claude" {
                 claude::refresh_usage_soon(app, &added.id);
+                claude::refresh_models_soon(app, &added.id);
             }
             if engine == "grok" {
                 crate::grok::refresh_usage_soon(app, &added.id);
@@ -569,6 +570,8 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
                 client.shutdown();
             }
             app.guard.clear_codex_server(&removed.id);
+            // A model only it had leaves the picker.
+            claude::publish_models(app);
             let agent = app.acp.lock().unwrap().remove(&crate::acp::key(&removed.engine, &removed.id));
             if let Some(client) = agent.and_then(|cell| cell.get().cloned()) {
                 client.shutdown();

@@ -1,5 +1,5 @@
 // The engines Switchyard drives, in one place (yardd's twin is crates/yardd/src/engines.rs).
-import type { Engine, Models } from "./protocol";
+import type { Engine, ModelInfo, Models } from "./protocol";
 
 /** Every engine, in the order pickers and the Hosts page list them. */
 export const ENGINES: Engine[] = ["claude", "codex", "opencode", "grok", "gemini"];
@@ -50,6 +50,13 @@ const ALWAYS: Engine[] = ["claude", "codex"];
 export function pickerEngines(models: Models, first?: Engine): Engine[] {
   const listed = ENGINES.filter((e) => ALWAYS.includes(e) || (models[e]?.length ?? 0) > 0);
   return first ? [first, ...listed.filter((e) => e !== first)] : listed;
+}
+
+/** The models an account may pick: one only some accounts' plans have names
+ *  them (`accounts`). The model in use stays, so the picker still shows it. */
+export function modelsForAccount(list: ModelInfo[], account: string | undefined, current?: string): ModelInfo[] {
+  if (!account) return list;
+  return list.filter((m) => !m.accounts || m.accounts.includes(account) || m.id === current);
 }
 
 /** Which engine reviews work done on `engine`: Claude and Codex review each
