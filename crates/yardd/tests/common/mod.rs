@@ -181,8 +181,11 @@ impl Daemon {
             .env("FAKE_CODEX_DIR", sandbox.fake_state())
             .env("YARD_SIDECAR", fake_bin().join("claude"))
             // A busy test machine must not queue sessions on its own; the
-            // queue test forces pressure instead.
+            // queue test forces pressure instead. Its load did: on CI's 4
+            // cores a load of 6.7 held a watched channel's turn until the
+            // test timed out.
             .env("YARD_MIN_FREE_GB", "0")
+            .env("YARD_TEST_IGNORE_LOAD", "1")
             // Naming would add engine turns other tests count; tests/naming.rs turns it on.
             .env("YARD_SESSION_NAMES", "off")
             // A test run from inside a Switchyard session inherits its account's
