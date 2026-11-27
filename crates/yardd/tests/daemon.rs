@@ -2013,7 +2013,7 @@ async fn a_claude_session_whose_sidecar_died_takes_the_next_message() {
     let log = fs::read_to_string(sb.fake_state().join("sidecar.log")).unwrap();
     let starts: Vec<&str> = log.lines().filter(|l| l.starts_with("start")).collect();
     assert_eq!(starts.len(), 2, "{log}");
-    assert!(starts[0].ends_with("resume="), "{log}");
+    assert!(starts[0].contains("resume= "), "{log}");
     assert!(starts[1].contains("resume=fake-claude-"), "{log}");
 }
 
@@ -2150,7 +2150,7 @@ async fn claude_code_sessions_are_listed_and_imported_with_their_history() {
     c.send(json!({ "op": "session.send", "sessionId": sid, "text": "carry on" })).await;
     assert_eq!(c.wait_turn_done(&sid, next).await["status"], "completed");
     let log = fs::read_to_string(sb.fake_state().join("sidecar.log")).unwrap();
-    assert!(log.lines().any(|l| l.starts_with("start") && l.ends_with(&format!("resume={found}"))), "{log}");
+    assert!(log.lines().any(|l| l.starts_with("start") && l.contains(&format!("resume={found} "))), "{log}");
 }
 
 #[tokio::test]

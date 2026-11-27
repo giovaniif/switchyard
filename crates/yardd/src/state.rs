@@ -93,6 +93,10 @@ pub struct Meta {
     /// until a window opens the conversation (`agent.seen`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub needs_you: Option<Value>,
+    /// The session asked for a service to be connected (`request_connector`):
+    /// `{ requestId, service, at }`, until the owner connects or skips it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub needs_connector: Option<Value>,
     /// Where the messages the running (or last) turn answers came from, when
     /// the owner did not type them (see `origins`). Set when a turn starts,
     /// grown by steered messages, handed to the reply hook when it ends.
@@ -569,6 +573,7 @@ impl App {
             notes_changed: false,
             last_message: None,
             needs_you: None,
+            needs_connector: None,
             answering: Vec::new(),
             finished_at: None,
             turn_ended_at: None,

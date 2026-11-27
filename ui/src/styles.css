@@ -152,7 +152,7 @@ h1, h2, h3, p { margin: 0; }
 .row-engine .mark { position: absolute; right: -5px; bottom: -5px; width: 13px; height: 13px; border-radius: 50%; background: var(--row-bg); }
 .row-engine .mark-idle, .row-engine .mark-offline, .row-engine .mark-bang { display: none; }
 .row-engine .mark-working::before { width: 10px; height: 10px; border-width: 2px; }
-.row-engine .mark-approval::before { width: 10px; height: 10px; }
+.row-engine :is(.mark-approval, .mark-connector)::before { width: 10px; height: 10px; }
 .row-engine .mark-queued::before { width: 7px; height: 7px; border-width: 1.5px; }
 .row-engine .mark-answered::before, .row-engine .mark-unread::before { width: 8px; height: 8px; box-shadow: none; }
 .row-engine .mark-failed::before { width: 8px; height: 8px; }
@@ -182,13 +182,13 @@ h1, h2, h3, p { margin: 0; }
 .mark-offline::before { border: 1.5px solid var(--line-strong); }
 .mark-queued::before { border: 1.5px dashed var(--warn); width: 9px; height: 9px; }
 .mark-working::before { width: 11px; height: 11px; border: 2px solid var(--ok-soft); border-top-color: var(--ok); animation: spin 0.9s linear infinite; }
-.mark-approval::before { width: 14px; height: 14px; background: var(--warn); animation: breathe 1.6s ease-in-out infinite; }
+.mark-approval::before, .mark-connector::before { width: 14px; height: 14px; background: var(--warn); animation: breathe 1.6s ease-in-out infinite; }
 .mark-bang { position: absolute; inset: 0; display: grid; place-items: center; color: var(--bg); font-size: 10px; font-weight: 700; line-height: 1; }
 .mark-answered::before, .mark-unread::before { width: 9px; height: 9px; background: var(--info); box-shadow: 0 0 0 3px var(--info-soft); }
 .mark-failed::before { width: 9px; height: 9px; background: var(--bad-ink); }
 @keyframes breathe { 0%, 100% { box-shadow: 0 0 0 0 var(--warn-glow); } 50% { box-shadow: 0 0 0 4px var(--warn-clear); } }
-@media (prefers-reduced-motion: reduce) { .mark-working::before, .mark-approval::before { animation: none; } }
-.row-status-approval { color: var(--warn-ink); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { .mark-working::before, .mark-approval::before, .mark-connector::before { animation: none; } }
+.row-status-approval, .row-status-connector { color: var(--warn-ink); font-weight: 500; }
 .row-status-answered, .row-status-unread { color: var(--info); font-weight: 500; }
 .row-status-failed { color: var(--bad-ink); }
 .row-status-working { color: var(--ok-ink); }
@@ -1076,6 +1076,20 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .cx-paste .field { flex: 1 1 0; width: 0; height: 30px; font-size: 12px; }
 .cx-pick { display: grid; gap: 6px; margin-top: 10px; }
 .cx-pick .cx-flow-actions { margin-top: 6px; }
+
+/* The connect card in a conversation: the approval card's family, with the service's face. */
+.connect { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: 12px; font-size: 13px; line-height: 1.45; }
+.connect-head { display: flex; align-items: center; gap: 12px; }
+.connect-title { display: grid; flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
+.connect-title strong { font-size: 14px; font-weight: 600; }
+.connect-where { display: flex; align-items: center; gap: 5px; }
+.connect-why { display: grid; gap: 1px; padding: 6px 12px; border-left: 2px solid var(--line-strong); overflow-wrap: anywhere; }
+.connect-why .muted { font-size: 11px; }
+.connect-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.connect-hint { margin-left: auto; }
+.connect .cx-flow { margin-top: 0; }
+.connect-line { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--muted); }
+.connect-ok { display: inline-flex; align-items: center; gap: 4px; color: var(--ok-ink); font-weight: 500; }
 
 /* Inside a card: a sheet at the side; from the bottom on a phone. */
 .cx-sheet-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: flex-end; background: var(--scrim); }

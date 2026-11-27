@@ -93,10 +93,7 @@ export function ConnectorsPage({ state, actions, usage }: { state: State; action
     setScope("all");
   }, [host]);
 
-  const listed = useMemo(
-    () => groupServices(shown.map((account) => ({ account, servers: state.mcp[keyOf(account)]?.servers ?? [] }))),
-    [shown.map(accountKey).join(), host, ...shown.map((a) => state.mcp[keyOf(a)]?.servers)],
-  );
+  const listed = groupServices(shown.map((account) => ({ account, servers: state.mcp[keyOf(account)]?.servers ?? [] })));
   // A flow's service that no account lists yet (just added, or a typed
   // address) still has its card, where the flow started.
   const services = [...listed, ...[...availableToAdd(listed), ...Object.values(flows).map((f) => f.service)].filter((s, i, all) => !listed.some((l) => l.id === s.id) && all.findIndex((x) => x.id === s.id) === i)];

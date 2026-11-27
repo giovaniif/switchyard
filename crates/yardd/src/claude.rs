@@ -392,7 +392,7 @@ fn spawn(app: &Arc<App>, sid: &str, resume: Option<String>) -> Result<()> {
     });
 
     let restricted = crate::private::restricted(app, sid);
-    // An agent's conversation gets Switchyard's tools as an MCP server.
+    // A session gets Switchyard's tools as an MCP server: an agent's, or `request_connector` alone.
     let tools = crate::agent_tools::launch(app, sid).filter(|_| !restricted).map(|l| l.claude());
     // An agent's or automation's session gets only its connectors (see `scope`).
     let mcp = crate::scope::of_session(app, sid).filter(|_| !restricted).map(|s| s.to_json());

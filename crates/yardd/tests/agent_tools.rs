@@ -146,7 +146,7 @@ async fn a_message_to_another_agent_comes_back_as_its_answer() {
     assert!(sent["text"].as_str().unwrap().starts_with("Sent to @Bea (hop 1 of 3)."), "{sent}");
     // The tool's description names the agents there are.
     let listed = calls(&sb).into_iter().find(|r| r["listed"].is_array()).unwrap();
-    assert_eq!(listed["listed"], json!(["notify_owner", "message_agent", "list_agents", "remember", "set_memory", "update_setup", "slack_reply"]));
+    assert_eq!(listed["listed"], json!(["notify_owner", "message_agent", "list_agents", "remember", "set_memory", "update_setup", "slack_reply", "request_connector"]));
     assert!(listed["messageAgent"].as_str().unwrap().contains("Agents: @Bea."), "{listed}");
     assert_eq!(c.events(&ada_chat).iter().find(|e| e["type"] == "tool_started").unwrap()["title"], "Messaged @bea");
 
@@ -351,27 +351,85 @@ async fn an_opencode_agent_calls_its_tools_without_asking() {
 }
 
 #[tokio::test]
-async fn the_owners_own_sessions_get_no_tools() {
+async fn the_owners_own_sessions_get_only_the_connector_tool() {
     let sb = Sandbox::new("tools-none");
     let daemon = start(&sb);
     let mut c = daemon.client().await;
     ready(&mut c).await;
     let note = marker("notify_owner", json!({ "message": "hello" }));
-    // A plain Codex session: no server in its thread, so the call has nowhere to go.
+    // A plain Codex session has the server, with one tool: an agent's tool is not there to call.
     let plain = c.create(&sb.folder("proj"), &note, json!({})).await;
     c.wait_turn_done(&plain, 0).await;
-    // Its config sets only how it unloads (codex.rs `unload_when_released`): no tools server.
-    assert_eq!(thread_starts(&sb)[0]["config"], json!({ "thread_unload_delay_secs": 0 }), "{:?}", thread_starts(&sb));
-    assert_eq!(results(&sb, "notify_owner")[0]["missing"], true);
-    // Plain Claude and OpenCode sessions too.
+    assert!(thread_starts(&sb)[0]["config"]["mcp_servers.switchyard"].is_object(), "{:?}", thread_starts(&sb));
+    let listed = calls(&sb).into_iter().find(|r| r["listed"].is_array()).unwrap();
+    assert_eq!(listed["listed"], json!(["request_connector"]));
+    let refused = &results(&sb, "notify_owner")[0];
+    assert!(refused["missing"] == true || refused["isError"] == true, "{refused}");
+    assert!(!c.log.iter().any(|m| m["op"] == "notify"));
+    // Plain Claude and OpenCode sessions get the server too.
     let claude = c.create(&sb.folder("proj2"), "hi", json!({ "engine": "claude", "model": "claude-haiku-5-5", "effort": "low" })).await;
     c.wait_turn_done(&claude, 0).await;
-    assert!(!std::fs::read_to_string(sb.fake_state().join("sidecar.log")).unwrap().contains("tools="));
+    assert!(std::fs::read_to_string(sb.fake_state().join("sidecar.log")).unwrap().contains("tools="));
     c.wait_for("opencode models", |m| (m["op"] == "snapshot" || m["op"] == "models") && m["models"]["opencode"].as_array().is_some_and(|l| !l.is_empty())).await;
     let oc = c.create(&sb.folder("proj3"), "hi", json!({ "engine": "opencode", "model": "opencode/fake-free", "effort": "default" })).await;
     c.wait_turn_done(&oc, 0).await;
-    assert!(std::fs::read_to_string(sb.fake_state().join("acp.log")).unwrap().contains("opencode mcpServers \n"));
-    assert!(!c.log.iter().any(|m| m["op"] == "notify"));
+    assert!(std::fs::read_to_string(sb.fake_state().join("acp.log")).unwrap().contains("opencode mcpServers switchyard\n"));
+}
+
+/// The fake engines' `[[tool request_connector …]]`: the card's events, the
+/// mark on the session, and what the owner's answer does.
+#[tokio::test]
+async fn a_session_asks_for_a_connector_and_hears_the_owners_answer() {
+    let sb = Sandbox::new("tools-connector");
+    let daemon = start(&sb);
+    let mut c = daemon.client().await;
+    ready(&mut c).await;
+    let ask = marker("request_connector", json!({ "service": "  Linear\n", "reason": "To read ENG-412\nand its comments." }));
+    let sid = c.create(&sb.folder("proj"), &ask, json!({})).await;
+    c.wait_turn_done(&sid, 0).await;
+    let asked = c.events(&sid).into_iter().find(|e| e["type"] == "connector_request").expect("a connector_request event");
+    // One line each, whatever the agent wrote.
+    assert_eq!(asked["service"], "Linear");
+    assert_eq!(asked["reason"], "To read ENG-412 and its comments.");
+    let id = asked["requestId"].as_str().unwrap().to_string();
+    let told = &results(&sb, "request_connector")[0];
+    assert_eq!(told["isError"], false, "{told}");
+    assert!(told["text"].as_str().unwrap().contains("End your turn now"), "{told}");
+    let meta = c.wait_for("the mark", |m| m["op"] == "session" && m["session"]["id"] == sid.as_str() && m["session"]["needsConnector"].is_object()).await;
+    assert_eq!(meta["session"]["needsConnector"]["requestId"], id.as_str());
+    assert_eq!(meta["session"]["needsConnector"]["service"], "Linear");
+
+    // Asking again for the same service makes no second card.
+    let seq = c.next_seq(&sid);
+    c.send(json!({ "op": "session.send", "sessionId": sid, "text": marker("request_connector", json!({ "service": "linear", "reason": "again" })) })).await;
+    c.wait_turn_done(&sid, seq).await;
+    assert_eq!(c.events(&sid).iter().filter(|e| e["type"] == "connector_request").count(), 1);
+    assert!(results(&sb, "request_connector")[1]["text"].as_str().unwrap().contains("already has a card"));
+
+    // A bad answer changes nothing.
+    c.send(json!({ "op": "connector.resolve", "sessionId": sid, "requestId": id, "service": "Linear", "outcome": "maybe" })).await;
+    c.wait_for("the refusal", |m| m["op"] == "error" && m["for"] == "connector.resolve").await;
+    assert!(!c.events(&sid).iter().any(|e| e["type"] == "connector_resolved"));
+
+    // Connected: the thread records it, the mark goes, and the agent's next turn starts with yardd's word.
+    let seq = c.next_seq(&sid);
+    c.send(json!({ "op": "connector.resolve", "sessionId": sid, "requestId": id, "service": "Linear", "outcome": "connected" })).await;
+    let word = from_kind(&mut c, &sid, "connector").await;
+    assert!(word["text"].as_str().unwrap().starts_with("Linear is connected now."), "{word}");
+    c.wait_turn_done(&sid, seq).await;
+    let events = c.events(&sid);
+    let resolved = events.iter().find(|e| e["type"] == "connector_resolved").unwrap();
+    assert_eq!(resolved["requestId"], id.as_str());
+    assert_eq!(resolved["outcome"], "connected");
+    c.wait_for("the mark gone", |m| m["op"] == "session" && m["session"]["id"] == sid.as_str() && m["session"]["needsConnector"].is_null()).await;
+
+    // Skipped reads differently, and a Claude session asks the same way.
+    let claude = c.create(&sb.folder("proj2"), &marker("request_connector", json!({ "service": "Sentry", "reason": "The stack trace." })), json!({ "engine": "claude", "model": "claude-haiku-5-5", "effort": "low" })).await;
+    c.wait_turn_done(&claude, 0).await;
+    let asked = c.events(&claude).into_iter().find(|e| e["type"] == "connector_request").expect("Claude's connector_request");
+    c.send(json!({ "op": "connector.resolve", "sessionId": claude, "requestId": asked["requestId"], "service": "Sentry", "outcome": "skipped" })).await;
+    let word = from_kind(&mut c, &claude, "connector").await;
+    assert!(word["text"].as_str().unwrap().starts_with("The user chose not to connect Sentry"), "{word}");
 }
 
 /// A raw POST to the tools endpoint: the status line and body.
@@ -557,8 +615,8 @@ async fn a_hosted_agent_gets_tools_only_from_a_hub_that_answers_them() {
     save_hosted(&mut c, hosted("g-old", "")).await;
     let sid = ask_hosted(&mut c, "g-old", "hello").await;
     c.wait_turn_done(&sid, 0).await;
-    // Its config sets only how it unloads (codex.rs `unload_when_released`): no tools server.
-    assert_eq!(thread_starts(&sb)[0]["config"], json!({ "thread_unload_delay_secs": 0 }), "{:?}", thread_starts(&sb));
+    // The server every session has is there (`request_connector`), but none of the agents' tools is promised.
+    assert!(thread_starts(&sb)[0]["config"]["mcp_servers.switchyard"].is_object(), "{:?}", thread_starts(&sb));
     assert!(!sb.turn_inputs()[0][0]["text"].as_str().unwrap().contains("message_agent"));
 
     // A hub that answers them, while it is not connected: the call says so.

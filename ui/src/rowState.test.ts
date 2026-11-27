@@ -10,6 +10,12 @@ describe("rowState", () => {
     expect(rowState(meta({ status: "running" }), 0, true)).toBe("working");
     expect(rowState(meta({ status: "needs_approval" }), 0, true)).toBe("approval");
     expect(rowState(meta({ status: "queued" }), 0, true)).toBe("queued");
+    // Its turn ended on a request for a service: it waits on the owner, like an approval.
+    const asked = { requestId: "r1", service: "Linear", at: 1 };
+    expect(rowState(meta({ needsConnector: asked }), 0, true)).toBe("connector");
+    expect(rowState(meta({ status: "running", needsConnector: asked }), 0, true)).toBe("working");
+    expect(rowState(meta({ needsConnector: asked }), 0, false)).toBe("offline");
+    expect(ROW_LABEL.connector).toBe("Needs connector");
     expect(rowState(meta({ status: "error" }), 0, true)).toBe("failed");
   });
   test("a turn that ended after the user last looked is answered until opened", () => {

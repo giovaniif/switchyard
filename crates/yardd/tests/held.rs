@@ -375,7 +375,8 @@ async fn a_connector_signs_in_on_the_loopback_page_and_sessions_get_its_bridge()
     let early = c.create(&sb.folder("early"), "hi", opencode()).await;
     c.wait_turn_done(&early, 0).await;
     c.wait_status(&early, "idle").await;
-    assert_eq!(servers_given(&sb, "session/new"), [json!([])]);
+    // Only the server every session has (`request_connector`).
+    assert_eq!(names(&servers_given(&sb, "session/new")[0]), ["switchyard"]);
 
     let (open, landed) = start_sign_in(&mut c, "fake").await;
     assert_eq!(open["paste"], true);
@@ -427,8 +428,8 @@ async fn a_connector_signs_in_on_the_loopback_page_and_sessions_get_its_bridge()
     c.wait_turn_done(&sid, 0).await;
     c.wait_status(&sid, "idle").await;
     let given = servers_given(&sb, "session/new");
-    let entry = given[1][0].clone();
-    assert_eq!(names(&given[1]), ["fake"], "{given:?}");
+    let entry = given[1][1].clone();
+    assert_eq!(names(&given[1]), ["switchyard", "fake"], "{given:?}");
     assert_eq!(entry["args"], json!(["mcp-proxy"]));
     assert!(!entry.to_string().contains("TEST-"), "the agent is given a key of yardd's, not the token");
     let next = c.next_seq(&early);
@@ -436,7 +437,7 @@ async fn a_connector_signs_in_on_the_loopback_page_and_sessions_get_its_bridge()
     assert_eq!(c.wait_turn_done(&early, next).await["status"], "completed");
     c.wait_status(&early, "idle").await;
     let reopened = servers_given(&sb, "session/resume");
-    assert_eq!(names(&reopened[0]), ["fake"], "{reopened:?}");
+    assert_eq!(names(&reopened[0]), ["switchyard", "fake"], "{reopened:?}");
     // Nothing changed since: its next turn does not reopen it.
     let next = c.next_seq(&early);
     c.send(json!({ "op": "session.send", "sessionId": early, "text": "and again" })).await;
@@ -501,7 +502,7 @@ async fn a_connector_signs_in_on_the_loopback_page_and_sessions_get_its_bridge()
     let next = c.next_seq(&sid);
     c.send(json!({ "op": "session.send", "sessionId": sid, "text": "still there?" })).await;
     assert_eq!(c.wait_turn_done(&sid, next).await["status"], "completed");
-    assert_eq!(servers_given(&sb, "session/resume").last().unwrap(), &json!([]));
+    assert_eq!(names(servers_given(&sb, "session/resume").last().unwrap()), ["switchyard"]);
 
     no_secret_left_the_file(&c, &d);
 }
@@ -584,7 +585,7 @@ async fn a_pasted_address_signs_in_and_the_token_is_refreshed_until_that_fails()
     assert!(file(&sb).contains("TEST-client-1"), "the registration is kept for the next sign-in");
     let sid = c.create(&sb.folder("proj"), "hi", opencode()).await;
     c.wait_turn_done(&sid, 0).await;
-    assert_eq!(servers_given(&sb, "session/new"), [json!([])], "a connector that needs a sign-in is given to no session");
+    assert_eq!(names(&servers_given(&sb, "session/new")[0]), ["switchyard"], "a connector that needs a sign-in is given to no session");
 
     // Signing in again reuses the registration.
     fake.lock().unwrap().fail_refresh = false;

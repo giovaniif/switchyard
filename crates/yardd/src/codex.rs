@@ -237,7 +237,7 @@ impl Client {
                 self.on_question(app, sid, id, p);
                 return;
             }
-            "mcpServer/elicitation/request" if p["serverName"] == crate::agent_tools::SERVER && sid.as_deref().is_some_and(|s| crate::agent_tools::offered(app, s)) => {
+            "mcpServer/elicitation/request" if p["serverName"] == crate::agent_tools::SERVER && sid.as_deref().is_some_and(|s| crate::agent_tools::served(app, s)) => {
                 self.send(json!({ "id": id, "result": { "action": "accept", "content": {} } }));
                 return;
             }
@@ -865,7 +865,7 @@ async fn thread_config(app: &App, c: &Client, sid: &str, cwd: &str) -> Result<Op
     Ok((!config.is_empty()).then_some(Value::Object(config)))
 }
 
-/// An agent's conversation gets Switchyard's tools: a thread-local
+/// A session gets Switchyard's tools (an agent's, or `request_connector` alone): a thread-local
 /// `mcp_servers.switchyard` override, never written to the user's config.
 fn tools_config(app: &App, sid: &str) -> Option<Value> {
     let launch = crate::agent_tools::launch(app, sid)?;

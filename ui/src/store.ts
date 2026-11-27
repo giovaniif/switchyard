@@ -766,6 +766,8 @@ export interface Actions {
   loadPressure(host: string, before: number): void;
   /** `answers`: a question's answers, question text to answer. */
   approve(sessionId: string, requestId: string, decision: Decision, answers?: Record<string, string>): void;
+  /** The owner connected the service a session asked for, or skipped it: the thread records it and the agent is told. */
+  connectorResolve(sessionId: string, requestId: string, service: string, outcome: "connected" | "skipped"): void;
   loadChanges(sessionId: string): void;
   /** Start a queued session even though the host is under pressure. */
   startNow(sessionId: string): void;
@@ -1127,6 +1129,7 @@ export function useYard(): { state: State; actions: Actions } {
         dispatch({ t: "pressureLoading", host });
         post({ op: "host.pressure", host, before });
       },
+      connectorResolve: (sessionId, requestId, service, outcome) => post({ op: "connector.resolve", sessionId, requestId, service, outcome }),
       approve: (sessionId, requestId, decision, answers) => {
         // Until yardd resolves it, a second click (a double click) would send a second decision.
         dispatch({ t: "deciding", sessionId, requestId });

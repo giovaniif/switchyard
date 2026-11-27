@@ -1,7 +1,8 @@
-/** Switchyard's own tools for an agent's conversation (see yardd's
- * agent_tools.rs). yardd's `start` carries `tools`: the stdio MCP server to
- * launch (`yardd agent-tools` with a key that names this one conversation).
- * Absent for every other session, and never given to a restricted one. */
+/** Switchyard's own tools (see yardd's agent_tools.rs): an agent's
+ * conversation gets them all, every other session `request_connector` alone.
+ * yardd's `start` carries `tools`: the stdio MCP server to launch (`yardd
+ * agent-tools` with a key that names this one conversation). Never given to
+ * a restricted session. */
 export const SERVER = "switchyard";
 
 export type Start = { restricted?: boolean; tools?: Record<string, unknown> | null };
@@ -34,6 +35,8 @@ export function ownToolLabel(name: string, input: any): { title: string; detail:
       return { title: "Updated its setup", detail: Object.keys(input ?? {}).join(", ") };
     case "slack_reply":
       return { title: "Posted in Slack", detail: s(input?.text) };
+    case "request_connector":
+      return { title: `Asked to connect ${s(input?.service)}`, detail: s(input?.reason) };
     default:
       return null;
   }

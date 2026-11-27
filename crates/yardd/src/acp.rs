@@ -406,9 +406,9 @@ impl Client {
             "edit" => "edit",
             _ => "other",
         };
-        // Switchyard's own tools act only on the agent's own conversation and
-        // are capped, so they run unasked.
-        if own_tool(call).is_some() && crate::agent_tools::offered(app, &sid) {
+        // Switchyard's own tools act only on the session's own conversation
+        // and are capped, so they run unasked.
+        if own_tool(call).is_some() && crate::agent_tools::served(app, &sid) {
             self.reply(id, json!({ "outcome": answer(&options, "allow") }));
             return;
         }

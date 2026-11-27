@@ -214,8 +214,10 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
 
 /// Ops that run one after another per client (see `client`), in `in_order`,
 /// which cannot wait on anything: the next one waits for each.
-const IN_ORDER: [&str; 8] = [
+const IN_ORDER: [&str; 9] = [
     "session.send",
+    // It sends the session a message, so it keeps its place among them.
+    "connector.resolve",
     "session.unqueue",
     "session.steer",
     "session.setModel",
@@ -802,6 +804,14 @@ fn in_order(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value)
     not_private(msg)?;
     match msg["op"].as_str().unwrap_or("") {
         "session.send" => send(app, msg)?,
+        "connector.resolve" => {
+            if let Some(next) = crate::agent_tools::resolve_connector(app, msg)? {
+                if !matches!(next, sessions::Taken::Done) {
+                    let (app, sid) = (app.clone(), str_field(msg, "sessionId")?.to_string());
+                    tokio::spawn(async move { sessions::follow_up(&app, &sid, next).await });
+                }
+            }
+        }
         // Taken back to edit (or dropped): the asking window gets it, if it
         // had not reached the agent yet.
         "session.unqueue" => {

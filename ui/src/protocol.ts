@@ -50,6 +50,8 @@ export interface SessionMeta {
   freshContext?: string | null;
   /** The agent asked for the owner (`notify_owner`): kept until a window opens its conversation (`agent.seen`). */
   needsYou?: { message: string; at: number } | null;
+  /** The session asked for a service to be connected (`request_connector`), until the owner connects or skips it on its card. */
+  needsConnector?: { requestId: string; service: string; at: number } | null;
   /** Subagents still at work after their turn ended (Agent call ids). */
   background?: string[];
   /** Where the messages the running turn answers came from (yardd owes them its answer). */
@@ -761,7 +763,11 @@ export type AgentEvent =
   /** A quiet line from yardd itself, such as a hand-off or a worktree setup. Changes no status. */
   | { type: "note"; text: string; /** A hand-off note's other session. */ session?: string }
   /** The session is waiting for the host to have room. Carries its prompt. */
-  | { type: "queued"; reason: string; text?: string; attachments?: Attachment[] };
+  | { type: "queued"; reason: string; text?: string; attachments?: Attachment[] }
+  /** The agent asked for a service to be connected (Switchyard's `request_connector`):
+   *  a card for the owner. Resolved by `connector.resolve`, which also tells the agent. */
+  | { type: "connector_request"; requestId: string; service: string; reason: string; at?: number }
+  | { type: "connector_resolved"; requestId: string; outcome: "connected" | "skipped"; at?: number };
 
 /** A tool call. An Agent call has `agent` (the subagent's type) and, in
  *  `layout`, `steps`: the calls that ran under it, nested as deep as the
@@ -870,7 +876,9 @@ export type Item =
     }
   | { kind: "error"; key: string; message: string }
   | { kind: "note"; key: string; text: string; session?: string }
-  | { kind: "queued"; key: string; reason: string };
+  | { kind: "queued"; key: string; reason: string }
+  /** A service the agent asked the owner to connect: a card until `outcome`. */
+  | { kind: "connector"; key: string; requestId: string; service: string; reason: string; outcome?: "connected" | "skipped" };
 
 /** Where an item with this engine id sits in the current turn, or -1. Ids
  *  are matched only after the last user message: an engine may reuse them
@@ -1050,6 +1058,10 @@ export function applyEvent(items: Item[], ev: AgentEvent, seq: number): Item[] {
       if (last?.kind === "error" && last.message === ev.message) return items;
       return [...items, { kind: "error", key, message: ev.message }];
     }
+    case "connector_request":
+      return [...items, { kind: "connector", key, requestId: ev.requestId, service: ev.service, reason: ev.reason }];
+    case "connector_resolved":
+      return items.map((it) => (it.kind === "connector" && it.requestId === ev.requestId ? { ...it, outcome: ev.outcome } : it));
     case "note":
       return [...items, ev.session ? { kind: "note", key, text: ev.text, session: ev.session } : { kind: "note", key, text: ev.text }];
     case "queued":

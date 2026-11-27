@@ -408,3 +408,38 @@ test("Copy on a step offers the command it ran, and only for commands", () => {
   expect(stepCommand(step("command", "  "))).toBeNull();
   expect(stepCommand(step("read", "src/main.rs"))).toBeNull();
 });
+
+describe("a connect card", () => {
+  const asked: AgentEvent[] = [
+    { type: "user_message", text: "pick up ENG-412" },
+    { type: "turn_started", at: 1_000 },
+    { type: "tool_started", itemId: "t1", kind: "other", title: "Asked to connect Linear", detail: "To read ENG-412" },
+    { type: "connector_request", requestId: "r1", service: "Linear", reason: "To read ENG-412", at: 1_100 },
+    { type: "tool_completed", itemId: "t1", ok: true },
+    { type: "assistant_message", itemId: "m1", text: "Waiting for Linear." },
+    { type: "turn_completed", status: "completed", at: 2_000 },
+  ];
+
+  test("stays in view under the turn that asked, after its answer, when the work folds", () => {
+    const items = fold(asked);
+    expect(items.find((it) => it.kind === "connector")).toMatchObject({ requestId: "r1", service: "Linear", reason: "To read ENG-412" });
+    expect(shape(layout(items, false))).toEqual(["user", "fold(1 other step)", "assistant", "connector"]);
+    // While the turn still runs it is already last.
+    expect(shape(layout(fold(asked.slice(0, 5)), true))).toEqual(["user", "work(1,live)", "connector"]);
+  });
+
+  test("is answered in place, and the word yardd sends the agent opens the next turn", () => {
+    const items = fold([
+      ...asked,
+      { type: "connector_resolved", requestId: "r1", outcome: "connected", at: 3_000 },
+      { type: "user_message", text: "Linear is connected now.", origin: { kind: "connector", service: "Linear", outcome: "connected" } },
+      { type: "turn_started", at: 3_100 },
+      { type: "assistant_message", itemId: "m2", text: "Reading the issue." },
+      { type: "turn_completed", status: "completed", at: 4_000 },
+    ]);
+    expect(items.find((it) => it.kind === "connector")).toMatchObject({ outcome: "connected" });
+    expect(shape(layout(items, false))).toEqual(["user", "fold(1 other step)", "assistant", "connector", "user", "assistant"]);
+    // Another request's answer leaves this one open.
+    expect(fold([...asked, { type: "connector_resolved", requestId: "other", outcome: "skipped" }]).find((it) => it.kind === "connector")).not.toHaveProperty("outcome");
+  });
+});
