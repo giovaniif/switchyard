@@ -710,7 +710,7 @@ fn api_base() -> String {
 }
 
 /// rustls is built with ring only; say so once, before any TLS.
-fn crypto() {
+pub(crate) fn crypto() {
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {
         let _ = rustls::crypto::ring::default_provider().install_default();

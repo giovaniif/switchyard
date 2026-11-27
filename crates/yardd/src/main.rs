@@ -15,6 +15,7 @@ mod gemini;
 mod git;
 mod grok;
 mod handoff;
+mod held;
 mod guard;
 mod hosts;
 mod import;
@@ -72,6 +73,10 @@ async fn main() -> anyhow::Result<()> {
     if std::env::args().nth(1).as_deref() == Some("agent-tools") {
         return agent_tools::serve_stdio().await;
     }
+    // An ACP agent starts it as the bridge to a connector Switchyard holds.
+    if std::env::args().nth(1).as_deref() == Some("mcp-proxy") {
+        return held::serve_stdio().await;
+    }
     let port: u16 = std::env::var("YARD_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
@@ -97,6 +102,7 @@ async fn main() -> anyhow::Result<()> {
         _ => None,
     });
     app.tools.set_url(loopback.map(|ip| format!("http://{}/agent-tools", std::net::SocketAddr::new(ip, port))));
+    app.held.set_base(loopback.map(|ip| format!("http://{}", std::net::SocketAddr::new(ip, port))));
     app.restore(loaded);
     agents::retire(&app).await;
     remote::start(&app);
@@ -177,6 +183,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/ws", get(ws::handler))
         .route("/health", get(health))
         .route("/agent-tools", post(agent_tools::http))
+        .route("/connector-proxy", post(held::proxy))
+        .route("/connector/callback", get(held::callback))
         .route("/slack/oauth", get(slack::oauth))
         .route("/slack/events", get(slack::events_probe).post(slack::events))
         .fallback_service(ServeDir::new(root.join("ui/dist")))
@@ -202,7 +210,7 @@ async fn main() -> anyhow::Result<()> {
     let mut servers = tokio::task::JoinSet::new();
     for listener in listeners {
         let router = router.clone();
-        // The peer address lets /agent-tools answer local processes only.
+        // The peer address lets /agent-tools and the connector routes answer local processes only.
         servers.spawn(async move { axum::serve(listener, router.into_make_service_with_connect_info::<std::net::SocketAddr>()).await });
     }
     // A server only returns on error; one that stops takes yardd down with it.

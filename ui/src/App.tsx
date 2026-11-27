@@ -35,6 +35,7 @@ import { MermaidDiagram } from "./MermaidDiagram";
 import { EngineIcon } from "./EngineIcon";
 import { AutomationForm, AutomationsPage } from "./AutomationsPage";
 import { ConnectorsPage } from "./ConnectorsPage";
+import { ConnectCard } from "./ConnectCard";
 import { WidgetFrame } from "./WidgetFrame";
 import { hiddenFromSidebar, runsAttention } from "./automations";
 import { dragHasSession, dropUpdate, SESSION_DRAG_TYPE, type DropTarget } from "./sidebarDrop";
@@ -2605,6 +2606,11 @@ function NewSession({ state, actions, onUsageAccount }: { state: State; actions:
       setLoggingIn(true);
       return;
     }
+    // The same for connectors: the page where each service is signed in.
+    if (/^\/connect\s*$/.test(text.trim()) && !attachments.length) {
+      actions.go({ page: "connectors" });
+      return;
+    }
     // "@Reviewer look at #12" goes to the agent's chat, not a new session.
     const routed = leadingMention(text, state.agents);
     if (routed) {
@@ -3155,6 +3161,11 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
       setLoggingIn(true);
       return;
     }
+    // The same for connectors: the page where each service is signed in.
+    if (/^\/connect\s*$/.test(text.trim()) && !attachments.length) {
+      actions.go({ page: "connectors" });
+      return;
+    }
     // A reply that starts with another agent's @Name goes to that agent's chat.
     const routed = mentionable ? leadingMention(text, state.agents) : null;
     if (routed && routed.agent.id !== agent?.id) {
@@ -3199,6 +3210,10 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
           <strong>{agent.name}</strong>
         </div>
       )}
+    {item.kind === "connector" ? (
+      <ConnectCard item={item} meta={meta} state={state} actions={actions} />
+    ) : item.kind === "user" && item.origin?.kind === "connector" ? null : (
+    // ^ yardd's own word to the agent that the card was answered: the card says it.
     <ItemView
       item={item}
       link={handoffs[item.key]}
@@ -3215,6 +3230,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
       asker={ENGINE_NAME[meta.engine]}
       agents={state.agents}
     />
+    )}
     </Fragment>
   );
 
@@ -4064,6 +4080,9 @@ function ItemView(props: {
       );
     case "approval":
       return <ApprovalCard item={item} onDecide={onDecide} asker={props.asker} />;
+    // Drawn by the thread itself (ConnectCard): it needs the session.
+    case "connector":
+      return null;
     case "error":
       return <div className="error-line">{item.message}</div>;
     case "queued":

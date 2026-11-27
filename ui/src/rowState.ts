@@ -5,11 +5,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { SessionMeta } from "./protocol";
 
-export type RowState = "working" | "approval" | "unread" | "answered" | "failed" | "queued" | "idle" | "offline";
+export type RowState = "working" | "approval" | "connector" | "unread" | "answered" | "failed" | "queued" | "idle" | "offline";
 
 export const ROW_LABEL: Record<RowState, string> = {
   working: "Running",
   approval: "Needs approval",
+  connector: "Needs connector",
   answered: "Answered",
   unread: "Unread",
   failed: "Failed",
@@ -26,6 +27,8 @@ export function rowState(s: SessionMeta, seen: number, online: boolean, unread =
   if (s.status === "queued") return "queued";
   // Its turn ended, but a subagent it started is still at work.
   if (s.background?.length) return "working";
+  // The agent asked for a service to be connected and its turn ended on that.
+  if (s.needsConnector) return "connector";
   if (unread) return "unread";
   if (s.status === "error") return "failed";
   if (s.turnEndedAt !== undefined && s.turnEndedAt !== null && s.turnEndedAt > seen) {

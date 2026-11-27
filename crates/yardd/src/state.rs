@@ -93,6 +93,10 @@ pub struct Meta {
     /// until a window opens the conversation (`agent.seen`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub needs_you: Option<Value>,
+    /// The session asked for a service to be connected (`request_connector`):
+    /// `{ requestId, service, at }`, until the owner connects or skips it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub needs_connector: Option<Value>,
     /// Where the messages the running (or last) turn answers came from, when
     /// the owner did not type them (see `origins`). Set when a turn starts,
     /// grown by steered messages, handed to the reply hook when it ends.
@@ -163,6 +167,9 @@ pub enum Backend {
         turn: Option<u64>,
         /// Model, effort and permission last set on the agent's session.
         applied: Option<(String, String, String)>,
+        /// The `mcpServers` it was opened with: when they change (a connector
+        /// signed in or removed, an agent's list edited) it is reopened.
+        servers: Value,
     },
 }
 
@@ -223,6 +230,8 @@ pub struct App {
     pub logins: crate::login::Logins,
     /// Connectors processes and replies owed by sidecars (see mcp.rs).
     pub mcp: crate::mcp::Connectors,
+    /// Connectors Switchyard signs in to itself, for the ACP engines (see held.rs).
+    pub held: crate::held::Held,
     pub mobile: crate::mobile::Mobile,
     /// Slack: the connection, its settings and posts owed to threads.
     pub slack: crate::slack::Slack,
@@ -297,6 +306,7 @@ impl App {
             automations: crate::automations::Automations::load(crate::store::data_dir()),
             logins: crate::login::Logins::default(),
             mcp: crate::mcp::Connectors::default(),
+            held: crate::held::Held::load(crate::store::data_dir()),
             mobile: crate::mobile::Mobile::load(crate::store::data_dir()),
             slack: crate::slack::Slack::load(crate::store::data_dir()),
             tools: crate::agent_tools::Tools::default(),
@@ -563,6 +573,7 @@ impl App {
             notes_changed: false,
             last_message: None,
             needs_you: None,
+            needs_connector: None,
             answering: Vec::new(),
             finished_at: None,
             turn_ended_at: None,

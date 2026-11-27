@@ -11,9 +11,14 @@
 //! conversation. The server answers `initialize` itself and passes
 //! `tools/list` and `tools/call` to the running yardd over loopback
 //! (`POST /agent-tools`, the key as a bearer token), so the tools act on the
-//! daemon's state and the key decides who is calling. Private threads
-//! and the owner's own sessions are never given the server, and a key is
-//! only ever made for an agent's conversation.
+//! daemon's state and the key decides who is calling. Private threads are
+//! never given the server.
+//!
+//! Every other session gets it too, with one tool: `request_connector`, which
+//! puts a card in the thread for the owner to sign a service in (Linear,
+//! Sentry, ...). It gives the session nothing by itself: the owner connects,
+//! or does not, and the session hears which as its next message. The agents'
+//! tools stay an agent's alone.
 //!
 //! An agent on a remote host runs there, from a hidden copy of its record
 //! (`agents::save_hosted`), but its tools act on the hub: the record, its
@@ -213,7 +218,7 @@ impl Tools {
 }
 
 /// 32 random bytes as hex, from the kernel.
-fn random_key() -> String {
+pub(crate) fn random_key() -> String {
     let mut bytes = [0u8; 32];
     let read = std::fs::File::open("/dev/urandom").and_then(|mut f| std::io::Read::read_exact(&mut f, &mut bytes));
     if read.is_err() {
@@ -243,10 +248,16 @@ fn tool_agent(app: &App, sid: &str) -> Option<crate::agents::Agent> {
     agent_of(app, sid).filter(|a| !a.hosted || !a.hub.is_empty())
 }
 
-/// Whether the session's engine gets the tools: a user-made agent's
+/// Whether the session's engine gets the agents' tools: a user-made agent's
 /// conversation, while yardd listens on loopback.
 pub fn offered(app: &App, sid: &str) -> bool {
     app.tools.url.lock().unwrap().is_some() && tool_agent(app, sid).is_some()
+}
+
+/// Whether the session's engine gets the server at all: any session of the
+/// owner's or an agent's, for `request_connector` at least.
+pub fn served(app: &App, sid: &str) -> bool {
+    app.tools.url.lock().unwrap().is_some() && !crate::private::internal(sid) && app.meta(sid).is_some()
 }
 
 /// How an engine starts the tools' MCP server for one conversation.
@@ -269,8 +280,13 @@ impl Launch {
 
     /// ACP's `McpServerStdio`.
     pub fn acp(&self) -> Value {
+        self.acp_named(SERVER)
+    }
+
+    /// The same for another server (a held connector's bridge, see `held`).
+    pub fn acp_named(&self, name: &str) -> Value {
         let env: Vec<Value> = self.env.iter().map(|(k, v)| json!({ "name": k, "value": v })).collect();
-        json!({ "name": SERVER, "command": self.command, "args": self.args, "env": env })
+        json!({ "name": name, "command": self.command, "args": self.args, "env": env })
     }
 
     fn env_map(&self) -> Value {
@@ -278,10 +294,12 @@ impl Launch {
     }
 }
 
-/// The MCP server a session's engine launches, or none (see `offered`).
+/// The MCP server a session's engine launches, or none (see `served`).
 pub fn launch(app: &App, sid: &str) -> Option<Launch> {
     let url = app.tools.url.lock().unwrap().clone()?;
-    tool_agent(app, sid)?;
+    if !served(app, sid) {
+        return None;
+    }
     let command = std::env::current_exe().ok()?.to_string_lossy().into_owned();
     Some(Launch {
         command,
@@ -290,7 +308,9 @@ pub fn launch(app: &App, sid: &str) -> Option<Launch> {
     })
 }
 
-pub const TOOLS: [&str; 7] = ["notify_owner", "message_agent", "list_agents", "remember", "set_memory", "update_setup", "slack_reply"];
+pub const TOOLS: [&str; 8] = ["notify_owner", "message_agent", "list_agents", "remember", "set_memory", "update_setup", "slack_reply", CONNECTOR_TOOL];
+/// The one tool every session has.
+pub const CONNECTOR_TOOL: &str = "request_connector";
 
 /// One of our tools, from the name an engine shows for an MCP call: Claude's
 /// `mcp__switchyard__remember`, OpenCode's `switchyard_remember`, or any other
@@ -314,6 +334,7 @@ pub fn label(tool: &str, args: &Value) -> Option<(String, String)> {
         "set_memory" => ("Updated memory".into(), s("text")),
         "update_setup" => ("Updated its setup".into(), args.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>().join(", ")).unwrap_or_default()),
         "slack_reply" => ("Posted in Slack".into(), s("text")),
+        CONNECTOR_TOOL => (format!("Asked to connect {}", s("service")), s("reason")),
         _ => return None,
     })
 }
@@ -590,17 +611,44 @@ pub async fn http(State(app): State<Arc<App>>, ConnectInfo(peer): ConnectInfo<So
     let Ok(req) = serde_json::from_slice::<Value>(&body) else {
         return refuse(StatusCode::BAD_REQUEST, "expected JSON");
     };
+    if !served(&app, &sid) {
+        return refuse(StatusCode::UNAUTHORIZED, "this conversation is gone");
+    }
+    // A connector is signed in on the host the session runs on, whoever
+    // the session is: answered here, never passed to a hub.
+    if req["method"] == "tools/call" && req["params"]["name"] == CONNECTOR_TOOL {
+        let (text, error) = request_connector(&app, &sid, &req["params"]["arguments"]);
+        return Json(json!({ "content": [{ "type": "text", "text": text }], "isError": error })).into_response();
+    }
+    let with_connector = |mut tools: Value| {
+        if let Some(list) = tools.as_array_mut() {
+            list.push(connector_definition());
+        }
+        tools
+    };
     let Some(me) = tool_agent(&app, &sid) else {
-        return refuse(StatusCode::UNAUTHORIZED, "this conversation no longer belongs to an agent");
+        return match req["method"].as_str() {
+            Some("tools/list") => Json(json!({ "tools": with_connector(json!([])) })).into_response(),
+            Some("tools/call") => Json(json!({ "content": [{ "type": "text", "text": "This conversation has no such tool." }], "isError": true })).into_response(),
+            _ => refuse(StatusCode::BAD_REQUEST, "unknown method"),
+        };
     };
     if me.hosted {
         return match req["method"].as_str() {
-            Some("tools/list" | "tools/call") => Json(to_hub(&app, &me, &sid, &req).await).into_response(),
+            Some("tools/list") => {
+                let mut answer = to_hub(&app, &me, &sid, &req).await;
+                // An answer that is not a list (the hub is away) passes as it is.
+                if answer["tools"].is_array() {
+                    answer["tools"] = with_connector(answer["tools"].take());
+                }
+                Json(answer).into_response()
+            }
+            Some("tools/call") => Json(to_hub(&app, &me, &sid, &req).await).into_response(),
             _ => refuse(StatusCode::BAD_REQUEST, "unknown method"),
         };
     }
     match req["method"].as_str() {
-        Some("tools/list") => Json(json!({ "tools": definitions(&app, &me) })).into_response(),
+        Some("tools/list") => Json(json!({ "tools": with_connector(definitions(&app, &me)) })).into_response(),
         Some("tools/call") => {
             let p = &req["params"];
             let tool = p["name"].as_str().unwrap_or("");
@@ -609,6 +657,86 @@ pub async fn http(State(app): State<Arc<App>>, ConnectInfo(peer): ConnectInfo<So
         }
         _ => refuse(StatusCode::BAD_REQUEST, "unknown method"),
     }
+}
+
+/// How long a request's words may be: a name and a line of reason.
+const SERVICE_CHARS: usize = 60;
+const REASON_CHARS: usize = 300;
+
+fn connector_definition() -> Value {
+    let text = |d: &str| json!({ "type": "string", "description": d });
+    json!({
+        "name": CONNECTOR_TOOL,
+        "description": "Ask the user to connect a service you need and cannot reach: an MCP connector such as Linear, Sentry, Notion or Datadog that is missing or says it needs sign-in. A card appears in this conversation for them to sign in. It connects nothing by itself and you cannot sign in for them. After calling it, say in one line what you are waiting for and end your turn: a message tells you when the service is connected or that they skipped it. Do not call it for a service whose tools already work.",
+        "inputSchema": { "type": "object", "properties": { "service": text("The service's name, as people say it: \"Linear\", \"Sentry\"."), "reason": text("One line the user reads on the card: what you need it for.") }, "required": ["service", "reason"] },
+        "annotations": { "title": "Ask to connect a service", "readOnlyHint": false, "destructiveHint": false, "openWorldHint": false },
+    })
+}
+
+/// One line of an agent's words for a card: no line breaks or control
+/// characters, cut to `max`.
+fn one_line(text: &str, max: usize) -> String {
+    clip(&text.split_whitespace().collect::<Vec<_>>().join(" ").chars().filter(|c| !c.is_control()).collect::<String>(), max)
+}
+
+/// `request_connector`: the card for the owner, and what the engine reads.
+/// An automation's run has no one at the thread, so it is told to go on;
+/// the card still stands in the run for when the owner reads it.
+fn request_connector(app: &Arc<App>, sid: &str, args: &Value) -> (String, bool) {
+    let Some(meta) = app.meta(sid) else { return ("This conversation is gone.".into(), true) };
+    if meta.answering.iter().any(origins::slack_guest) {
+        return ("Slack guest turns have no tools.".into(), true);
+    }
+    let service = one_line(args["service"].as_str().unwrap_or(""), SERVICE_CHARS);
+    if service.is_empty() {
+        return ("Name the service to connect.".into(), true);
+    }
+    let waiting = "End your turn now, without retrying or working around it: a message will tell you when it is connected, or that they skipped it.";
+    if meta.needs_connector.as_ref().is_some_and(|c| c["service"].as_str().is_some_and(|s| s.eq_ignore_ascii_case(&service))) {
+        return (format!("The user already has a card to connect {service}. {waiting}"), false);
+    }
+    let id = random_key()[..16].to_string();
+    let at = now_ms();
+    app.emit(sid, json!({ "type": "connector_request", "requestId": id, "service": service, "reason": one_line(args["reason"].as_str().unwrap_or(""), REASON_CHARS), "at": at }));
+    if meta.automation.is_some() {
+        return (format!("No one is watching this run, so {service} cannot be connected now. The request is in the run for the user to see later. Go on without {service}, and say in your answer what you could not do."), false);
+    }
+    app.update_meta(sid, |m| m.needs_connector = Some(json!({ "requestId": id, "service": service, "at": at })));
+    (format!("The user now sees a card to connect {service}. {waiting}"), false)
+}
+
+/// `connector.resolve { sessionId, requestId, service, outcome }`: the owner
+/// connected the service or skipped it on the card. The thread records it and
+/// the session hears it as its next message, which starts the turn the
+/// request ended.
+pub fn resolve_connector(app: &Arc<App>, msg: &Value) -> Result<Option<crate::sessions::Taken>> {
+    let sid = msg["sessionId"].as_str().context("missing `sessionId`")?;
+    let id = msg["requestId"].as_str().filter(|s| !s.is_empty()).context("missing `requestId`")?;
+    let connected = match msg["outcome"].as_str() {
+        Some("connected") => true,
+        Some("skipped") => false,
+        _ => bail!("`outcome` is connected or skipped"),
+    };
+    let meta = app.meta(sid).context("no such session")?;
+    let service = one_line(msg["service"].as_str().unwrap_or(""), SERVICE_CHARS);
+    if service.is_empty() {
+        bail!("missing `service`");
+    }
+    app.emit(sid, json!({ "type": "connector_resolved", "requestId": id, "outcome": if connected { "connected" } else { "skipped" }, "at": now_ms() }));
+    if meta.needs_connector.as_ref().is_some_and(|c| c["requestId"] == id) {
+        app.update_meta(sid, |m| m.needs_connector = None);
+    }
+    // An automation's run went on without it and has ended: nothing waits.
+    if meta.automation.is_some() {
+        return Ok(None);
+    }
+    let text = if connected {
+        format!("{service} is connected now. Its tools are available: continue with what you were doing.")
+    } else {
+        format!("The user chose not to connect {service} for now. Continue without it, or say what you cannot do.")
+    };
+    let origin = json!({ "kind": "connector", "service": service, "outcome": msg["outcome"] });
+    Ok(Some(crate::sessions::take_message(app, sid, &text, &[], Some(&origin))?))
 }
 
 /// A call from a hub's agent that runs here: its hub runs it. The
@@ -748,7 +876,7 @@ pub async fn serve_stdio() -> Result<()> {
                 "serverInfo": { "name": SERVER, "version": env!("CARGO_PKG_VERSION") },
             } }),
             "ping" => json!({ "result": {} }),
-            "tools/list" | "tools/call" => match post(&url, &key, &json!({ "method": method, "params": msg["params"] })).await {
+            "tools/list" | "tools/call" => match post(&url, &key, &json!({ "method": method, "params": msg["params"] }), Duration::from_secs(60)).await {
                 Ok(result) => json!({ "result": result }),
                 // A model reads a failed call; it cannot read a protocol error.
                 Err(e) if method == "tools/call" => {
@@ -768,10 +896,10 @@ pub async fn serve_stdio() -> Result<()> {
     Ok(())
 }
 
-/// One JSON POST to yardd over loopback: plain HTTP/1.1, so the server mode
-/// needs no HTTP client.
-async fn post(url: &str, key: &str, body: &Value) -> Result<Value> {
-    let rest = url.strip_prefix("http://").context("YARD_TOOLS_URL must be an http:// address")?;
+/// One JSON POST to yardd over loopback: plain HTTP/1.1, so the server modes
+/// (this one and `held`'s bridge) need no HTTP client.
+pub(crate) async fn post(url: &str, key: &str, body: &Value, wait: Duration) -> Result<Value> {
+    let rest = url.strip_prefix("http://").context("yardd's address must be an http:// address")?;
     let (host, path) = match rest.split_once('/') {
         Some((h, p)) => (h, format!("/{p}")),
         None => (rest, "/".to_string()),
@@ -788,7 +916,7 @@ async fn post(url: &str, key: &str, body: &Value) -> Result<Value> {
         stream.read_to_end(&mut raw).await?;
         anyhow::Ok(raw)
     };
-    let raw = tokio::time::timeout(Duration::from_secs(60), exchange).await.map_err(|_| anyhow::anyhow!("no answer within 60 s"))??;
+    let raw = tokio::time::timeout(wait, exchange).await.map_err(|_| anyhow::anyhow!("no answer within {} s", wait.as_secs()))??;
     let text = String::from_utf8_lossy(&raw);
     let (head, rest) = text.split_once("\r\n\r\n").context("a malformed answer")?;
     let status = head.split_whitespace().nth(1).unwrap_or("");

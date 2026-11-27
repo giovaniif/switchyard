@@ -50,7 +50,7 @@ when you touch it.
 | [stop](stop.md) | Stopping a running turn, including one the engine ignores |
 | [processes](processes.md) | The Processes tab: the session's process tree, refreshed while visible |
 | [terminal](terminal.md) | The Terminal tab: shells per session, tabs, closing a tab, scrollback, attaching output to a reply |
-| [approved-design](approved-design.md) | The right pane, single-row composer, account connector cards and usage panel |
+| [approved-design](approved-design.md) | The right pane, single-row composer, one connector card per service and usage panel |
 | [pr-pane](pr-pane.md) | The conversation header’s external pull request link |
 | [sidebar](sidebar.md) | Session rows: order, status, names (generated, renamed), pin, archive, restore, delete |
 | [navigation](navigation.md) | Command-K: sessions and pages, Agents (Switchy's old name finds it), repo and branch names, automation runs left out; the macOS app menu |
@@ -75,5 +75,5 @@ when you touch it.
 | [dropdowns](dropdowns.md) | Menus inside the viewport: composer options, workspace tabs, custom schedules, connector host, handover under the same agent |
 | [usage](usage.md) | Usage popover, Subscriptions, reset times and separate account/model controls |
 | [accounts](accounts.md) | More than one login per engine: add, log in, pick for a new session, remove |
-| [connectors](connectors.md) | MCP servers per engine account: states, sign-in (claude.ai, pasted redirects, ChatGPT apps), chart widgets in the thread |
+| [connectors](connectors.md) | One card per service across engine accounts: states, sign-in in the card (claude.ai, pasted redirects, ChatGPT apps), the sheet, the connectors Switchyard holds for OpenCode, Grok and Gemini, the connect card an agent asks for in a conversation, chart widgets in the thread |
 | [slack](slack.md) | The Slack card: connecting the owner's own Slack (token, Approve in Slack, connection token), allowing someone who wrote to an agent's app, agents' own apps, answers posted in the Slack thread, the Slack badge in a conversation, watched channels, tokens kept out of the page and logs |

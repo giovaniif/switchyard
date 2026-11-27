@@ -3,6 +3,7 @@ import { rememberSession } from "./sessionDefaults";
 import { returnToComposer } from "./compose";
 import { peekKey, peekResult, prPeeks, type PeekResult } from "./prPeek";
 import {
+  type ConnectorEngine,
   applyEvent,
   type AgentEvent,
   type BranchList,
@@ -348,8 +349,8 @@ const NO_ACCOUNTS: AccountEntry[] = [];
 
 export const branchKey = (host: string, cwd: string) => `${host}\n${cwd}`;
 /** Default's key is the same as before accounts existed. */
-export const mcpKey = (host: string, engine: Engine, account = "default") => `${host}\n${engine}\n${account}`;
-export const mcpAuthKey = (host: string, engine: Engine, account: string, server: string) => `${mcpKey(host, engine, account)}\n${server}`;
+export const mcpKey = (host: string, engine: ConnectorEngine, account = "default") => `${host}\n${engine}\n${account}`;
+export const mcpAuthKey = (host: string, engine: ConnectorEngine, account: string, server: string) => `${mcpKey(host, engine, account)}\n${server}`;
 export const loginKey = (host: string, engine: Engine, account = "default") =>
   account === "default" ? `${host}\n${engine}` : `${host}\n${engine}\n${account}`;
 export const accountsOn = (state: State, host: string): AccountEntry[] => state.accounts[host] ?? NO_ACCOUNTS;
@@ -765,6 +766,8 @@ export interface Actions {
   loadPressure(host: string, before: number): void;
   /** `answers`: a question's answers, question text to answer. */
   approve(sessionId: string, requestId: string, decision: Decision, answers?: Record<string, string>): void;
+  /** The owner connected the service a session asked for, or skipped it: the thread records it and the agent is told. */
+  connectorResolve(sessionId: string, requestId: string, service: string, outcome: "connected" | "skipped"): void;
   loadChanges(sessionId: string): void;
   /** Start a queued session even though the host is under pressure. */
   startNow(sessionId: string): void;
@@ -821,19 +824,19 @@ export interface Actions {
   /** Run now: starts a run whatever the skip rules say. Resolves with what happened. */
   runAutomation(host: string, id: string): Promise<{ outcome?: string; sessionId?: string; reason?: string; error?: string }>;
   /** List an engine account's MCP servers on a host; answers as `mcp`. */
-  mcpStatus(host: string, engine: Engine, account?: string): void;
+  mcpStatus(host: string, engine: ConnectorEngine, account?: string): void;
   /** Start signing a server in; progress arrives as `mcp.auth`. */
-  mcpAuth(host: string, engine: Engine, account: string, server: string): void;
+  mcpAuth(host: string, engine: ConnectorEngine, account: string, server: string): void;
   /** The address the browser ended on after a sign-in, for a host it cannot reach. */
-  mcpCallback(host: string, engine: Engine, account: string, server: string, url: string): void;
-  mcpReconnect(host: string, engine: Engine, account: string, server: string): void;
+  mcpCallback(host: string, engine: ConnectorEngine, account: string, server: string, url: string): void;
+  mcpReconnect(host: string, engine: ConnectorEngine, account: string, server: string): void;
   /** Add a remote MCP server to an account's own config; progress as `mcp.change`. */
-  mcpAdd(host: string, engine: Engine, account: string, name: string, url: string): void;
+  mcpAdd(host: string, engine: ConnectorEngine, account: string, name: string, url: string): void;
   /** Take a server out of an account's own config. */
-  mcpRemove(host: string, engine: Engine, account: string, server: string): void;
-  mcpChangeClear(host: string, engine: Engine, account: string, name: string): void;
+  mcpRemove(host: string, engine: ConnectorEngine, account: string, server: string): void;
+  mcpChangeClear(host: string, engine: ConnectorEngine, account: string, name: string): void;
   /** Forget a finished or abandoned sign-in on this page. */
-  mcpAuthClear(host: string, engine: Engine, account: string, server: string): void;
+  mcpAuthClear(host: string, engine: ConnectorEngine, account: string, server: string): void;
   /** Slack on the hub: `slack.allow`, `slack.me.retry`, ...; answers as `slack`. */
   slack(op: SlackOp, fields?: Record<string, unknown>): void;
   /** The owner's own Slack: a conversation's newest page, an older one
@@ -1126,6 +1129,7 @@ export function useYard(): { state: State; actions: Actions } {
         dispatch({ t: "pressureLoading", host });
         post({ op: "host.pressure", host, before });
       },
+      connectorResolve: (sessionId, requestId, service, outcome) => post({ op: "connector.resolve", sessionId, requestId, service, outcome }),
       approve: (sessionId, requestId, decision, answers) => {
         // Until yardd resolves it, a second click (a double click) would send a second decision.
         dispatch({ t: "deciding", sessionId, requestId });

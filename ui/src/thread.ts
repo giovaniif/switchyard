@@ -86,7 +86,16 @@ export function layout(items: Item[], running: boolean): Row[] {
   // A message given to the agent mid-turn (steered) splits its turn in two
   // here; each part is timed from its start to the next part's.
   let lastMarker: Extract<Item, { kind: "turn" }> | undefined;
-  turns.forEach((turn, n) => {
+  // A connect card stays at the end of the turn that asked, whatever folds:
+  // it is what the turn waits on.
+  const isCard = (it: Item) => it.kind === "connector";
+  turns.forEach((all, n) => {
+    lay(all.filter((it) => !isCard(it)), n);
+    for (const it of all) if (isCard(it)) rows.push({ type: "item", key: it.key, item: it });
+  });
+  return rows;
+
+  function lay(turn: Item[], n: number) {
     const head = turn[0]?.kind === "user" ? turn[0] : null;
     if (head) rows.push({ type: "item", key: head.key, item: head });
     const body = nest(head ? turn.slice(1) : turn);
@@ -141,8 +150,7 @@ export function layout(items: Item[], running: boolean): Row[] {
     });
     for (const t of work) if (t.kind === "tool" && t.app) rows.push(widgetRow(t));
     rows.push(...group(shown, false));
-  });
-  return rows;
+  }
 }
 
 /** How long this part's approvals waited for the user, within `from`..`to`.

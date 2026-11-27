@@ -14,6 +14,8 @@
   --warn-fill: #fff8ec;
   --warn-border: #e3b877;
   --bad-ink: #b42318;
+  --bad-fill: #fdf1f0;
+  --bad-border: #ecc5c0;
   --info: #2f6fed;
   --info-soft: rgba(47, 111, 237, 0.16);
   --ok-soft: rgba(31, 157, 85, 0.22);
@@ -39,6 +41,18 @@
   --brand-gemini-green: #08b962;
   --brand-gemini-red: #f94543;
   --brand-gemini-yellow: #fabc12;
+  /* The connected services' own brand colours, for their marks (connectorBrands.ts). */
+  --brand-linear: #5e6ad2;
+  --brand-sentry: #362d59;
+  --brand-datadog: #632ca6;
+  --brand-figma: #f24e1e;
+  --brand-googledrive: #4285f4;
+  --brand-gmail: #ea4335;
+  --brand-atlassian: #0052cc;
+  --brand-metabase: #509ee3;
+  --brand-stripe: #635bff;
+  --brand-supabase: #2fb878;
+  --brand-cloudflare: #f38020;
   --usage-track: #e4e4e7;
   --usage-warning: #c2410c;
   --usage-badge: #fde7c7;
@@ -138,7 +152,7 @@ h1, h2, h3, p { margin: 0; }
 .row-engine .mark { position: absolute; right: -5px; bottom: -5px; width: 13px; height: 13px; border-radius: 50%; background: var(--row-bg); }
 .row-engine .mark-idle, .row-engine .mark-offline, .row-engine .mark-bang { display: none; }
 .row-engine .mark-working::before { width: 10px; height: 10px; border-width: 2px; }
-.row-engine .mark-approval::before { width: 10px; height: 10px; }
+.row-engine :is(.mark-approval, .mark-connector)::before { width: 10px; height: 10px; }
 .row-engine .mark-queued::before { width: 7px; height: 7px; border-width: 1.5px; }
 .row-engine .mark-answered::before, .row-engine .mark-unread::before { width: 8px; height: 8px; box-shadow: none; }
 .row-engine .mark-failed::before { width: 8px; height: 8px; }
@@ -168,13 +182,13 @@ h1, h2, h3, p { margin: 0; }
 .mark-offline::before { border: 1.5px solid var(--line-strong); }
 .mark-queued::before { border: 1.5px dashed var(--warn); width: 9px; height: 9px; }
 .mark-working::before { width: 11px; height: 11px; border: 2px solid var(--ok-soft); border-top-color: var(--ok); animation: spin 0.9s linear infinite; }
-.mark-approval::before { width: 14px; height: 14px; background: var(--warn); animation: breathe 1.6s ease-in-out infinite; }
+.mark-approval::before, .mark-connector::before { width: 14px; height: 14px; background: var(--warn); animation: breathe 1.6s ease-in-out infinite; }
 .mark-bang { position: absolute; inset: 0; display: grid; place-items: center; color: var(--bg); font-size: 10px; font-weight: 700; line-height: 1; }
 .mark-answered::before, .mark-unread::before { width: 9px; height: 9px; background: var(--info); box-shadow: 0 0 0 3px var(--info-soft); }
 .mark-failed::before { width: 9px; height: 9px; background: var(--bad-ink); }
 @keyframes breathe { 0%, 100% { box-shadow: 0 0 0 0 var(--warn-glow); } 50% { box-shadow: 0 0 0 4px var(--warn-clear); } }
-@media (prefers-reduced-motion: reduce) { .mark-working::before, .mark-approval::before { animation: none; } }
-.row-status-approval { color: var(--warn-ink); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { .mark-working::before, .mark-approval::before, .mark-connector::before { animation: none; } }
+.row-status-approval, .row-status-connector { color: var(--warn-ink); font-weight: 500; }
 .row-status-answered, .row-status-unread { color: var(--info); font-weight: 500; }
 .row-status-failed { color: var(--bad-ink); }
 .row-status-working { color: var(--ok-ink); }
@@ -952,26 +966,181 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .danger { color: var(--bad-ink); }
 
 /* Connectors page */
-.hosts-inner.connectors-inner { max-width: 880px; }
-.connector-scope { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.connector-scope .field { min-width: 0; font-family: inherit; text-overflow: ellipsis; }
-.connector-filters { display: flex; flex-wrap: wrap; gap: 4px; }
-.connector-filters .btn-text { gap: 6px; }
-.connector-filters [aria-pressed="true"] { background: var(--fill); font-weight: 600; }
-/* At phone width "All" wrapped onto a line of its own and read as a separate
-   control: tighter tabs keep the four on one row. No scrolling row: it would
-   clip the tabs' focus ring. */
+.hosts-inner.connectors-inner { max-width: 1000px; }
+.cx-head { display: flex; align-items: flex-start; gap: 8px; }
+.cx-head-text { flex: 1 1 0; min-width: 0; display: grid; gap: 4px; }
+.cx-head h1 { font-size: 24px; font-weight: 650; letter-spacing: -.02em; }
+.cx-head p { max-width: 520px; line-height: 1.55; }
+.cx-tools { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.cx-scope { display: flex; gap: 6px; flex-wrap: wrap; }
+.cx-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--bg); white-space: nowrap; }
+.cx-chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.cx-search { position: relative; flex: 1 1 200px; max-width: 300px; margin-left: auto; color: var(--muted); }
+.cx-search svg { position: absolute; left: 10px; top: 9px; pointer-events: none; }
+.cx-search .field { height: 32px; padding-left: 32px; border-radius: 8px; font-family: inherit; color: var(--ink); }
+.cx-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--fill); line-height: 1.5; }
+.cx-notice-warn { background: var(--warn-fill); color: var(--warn-ink); }
+.cx-section { display: grid; gap: 12px; margin-top: 10px; }
+.cx-section-head { display: flex; align-items: baseline; gap: 8px; }
+.cx-section-head h2 { font-size: 13px; font-weight: 600; }
+.cx-section-head p { margin-left: auto; text-align: right; }
+.cx-count { font-variant-numeric: tabular-nums; }
+.cx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.cx-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px 0; }
+
+/* One card per service, whatever account or source lists it. */
+.cx-card { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 156px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); transition: border-color .12s, box-shadow .12s; }
+.cx-card:hover { border-color: var(--line-strong); box-shadow: 0 4px 16px rgba(0, 0, 0, .06); }
+.cx-card-bad, .cx-card-bad:hover { border-color: var(--bad-border); background: linear-gradient(var(--bad-fill), var(--bg) 64px); }
+.cx-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.cx-name { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+/* The name opens the card's sheet; its hit area is the whole card, under the card's own controls. */
+.cx-open { min-width: 0; padding: 0; border: 0; background: none; font: inherit; text-align: left; overflow-wrap: anywhere; }
+.cx-open::after { content: ""; position: absolute; inset: 0; border-radius: 14px; }
+.cx-open:focus-visible { outline: 0; }
+.cx-open:focus-visible::after { outline: 2px solid var(--ink); outline-offset: 1px; }
+.cx-avail .cx-open::after { border-radius: 12px; }
+:is(.cx-card, .cx-avail) :is(.btn, .btn-primary, .btn-text, a, input, label, .connector-badge, .cx-acct) { position: relative; z-index: 1; }
+.cx-desc { margin-top: 2px; line-height: 1.45; overflow-wrap: anywhere; }
+.cx-err { margin-top: 8px; padding: 6px 8px; border-radius: 6px; background: var(--bg); box-shadow: 0 0 0 1px var(--bad-border); color: var(--bad-ink); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.cx-foot { display: flex; align-items: center; gap: 8px; min-height: 28px; margin-top: auto; padding-top: 14px; }
+.cx-where { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-chev { display: flex; color: var(--off); }
+.cx-state { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 11px; font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+.cx-state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.cx-state-ok { color: var(--ok-ink); background: var(--add); }
+.cx-state-bad { color: var(--bad-ink); background: var(--del); }
+.cx-state-busy { color: var(--muted); background: var(--fill); }
+.cx-state-busy::before { width: 9px; height: 9px; background: none; border: 1.5px solid var(--off); border-top-color: var(--ink); }
+.cx-spin { flex: none; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--off); border-top-color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) { .cx-state-busy::before, .cx-spin { animation: spin .8s linear infinite; } }
+.cx-spin-line { display: flex; align-items: center; gap: 8px; }
+
+/* A service's face: its mark on a tint of its own colour, or its initial. */
+.cx-tile { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 10px; color: var(--ink); background: color-mix(in srgb, currentColor 9%, var(--bg)); }
+.cx-tile svg { width: 55%; height: 55%; }
+.cx-tile-sm { width: 28px; height: 28px; border-radius: 8px; }
+.cx-tile-md { width: 36px; height: 36px; }
+.cx-tile-xl { width: 52px; height: 52px; border-radius: 13px; }
+.cx-tile-letter { font-size: 16px; font-weight: 600; }
+.cx-tile-sm.cx-tile-letter { font-size: 12px; }
+.cx-tile-empty { background: none; outline: 1px dashed var(--line-strong); outline-offset: -1px; color: var(--muted); }
+.cx-card-bad .cx-tile { background: var(--bg); box-shadow: 0 0 0 1px var(--line); }
+/* The services' own brand colours, for their marks (connectorBrands.ts); the others draw in the text colour. */
+.cx-brand-linear { color: var(--brand-linear); }
+.cx-brand-sentry { color: var(--brand-sentry); }
+.cx-brand-datadog { color: var(--brand-datadog); }
+.cx-brand-figma { color: var(--brand-figma); }
+.cx-brand-googledrive { color: var(--brand-googledrive); }
+.cx-brand-gmail { color: var(--brand-gmail); }
+.cx-brand-atlassian { color: var(--brand-atlassian); }
+.cx-brand-metabase { color: var(--brand-metabase); }
+.cx-brand-slack { color: var(--slack-ink); }
+.cx-brand-stripe { color: var(--brand-stripe); }
+.cx-brand-supabase { color: var(--brand-supabase); }
+.cx-brand-cloudflare { color: var(--brand-cloudflare); }
+.cx-tint-0 { color: var(--agent-blue); }
+.cx-tint-1 { color: var(--agent-green); }
+.cx-tint-2 { color: var(--agent-amber); }
+.cx-tint-3 { color: var(--agent-rose); }
+.cx-tint-4 { color: var(--agent-violet); }
+.cx-tint-5 { color: var(--agent-teal); }
+.cx-tint-6 { color: var(--agent-orange); }
+.cx-tint-7 { color: var(--agent-slate); }
+
+/* Where it works: one engine mark per account. */
+.cx-who { display: flex; align-items: center; padding-right: 4px; }
+.cx-acct { display: grid; place-items: center; width: 22px; height: 22px; margin-right: -4px; border-radius: 50%; background: var(--bg); box-shadow: 0 0 0 1px var(--line-strong); }
+.cx-acct-off { box-shadow: none; outline: 1px dashed var(--off); outline-offset: -1px; }
+.cx-acct-off svg { opacity: .35; filter: grayscale(1); }
+.cx-acct-warn svg { opacity: .55; }
+.cx-acct-warn::after, .cx-acct-bad::after { content: ""; position: absolute; right: -2px; top: -2px; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--bg); background: var(--warn); }
+.cx-acct-bad::after { background: var(--bad-ink); }
+
+/* Available: quieter, one action. */
+.cx-avail { position: relative; display: flex; align-self: start; align-items: center; gap: 12px; min-width: 0; min-height: 62px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.cx-avail-text { display: grid; flex: 1 1 0; min-width: 0; }
+.cx-avail-text strong { font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cx-avail-text span { line-height: 1.35; overflow-wrap: anywhere; }
+.cx-avail:hover { border-color: var(--line-strong); }
+.cx-avail-own { border-style: dashed; border-color: var(--line-strong); }
+.cx-avail .btn { gap: 4px; }
+
+/* A sign-in running inside the card or sheet that started it. */
+.cx-flow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--fill); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.cx-flow-done { display: flex; align-items: center; gap: 8px; background: var(--add); color: var(--ok-ink); }
+.cx-flow-done span { flex: 1 1 0; }
+.cx-flow-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cx-flow-actions a svg { margin-left: 4px; }
+.cx-paste.connector-paste { flex-direction: row; gap: 6px; }
+.cx-paste .field { flex: 1 1 0; width: 0; height: 30px; font-size: 12px; }
+.cx-pick { display: grid; gap: 6px; margin-top: 10px; }
+.cx-pick .cx-flow-actions { margin-top: 6px; }
+
+/* The connect card in a conversation: the approval card's family, with the service's face. */
+.connect { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: 12px; font-size: 13px; line-height: 1.45; }
+.connect-head { display: flex; align-items: center; gap: 12px; }
+.connect-title { display: grid; flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
+.connect-title strong { font-size: 14px; font-weight: 600; }
+.connect-where { display: flex; align-items: center; gap: 5px; }
+.connect-why { display: grid; gap: 1px; padding: 6px 12px; border-left: 2px solid var(--line-strong); overflow-wrap: anywhere; }
+.connect-why .muted { font-size: 11px; }
+.connect-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.connect-hint { margin-left: auto; }
+.connect .cx-flow { margin-top: 0; }
+.connect-line { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--muted); }
+.connect-ok { display: inline-flex; align-items: center; gap: 4px; color: var(--ok-ink); font-weight: 500; }
+
+/* Inside a card: a sheet at the side; from the bottom on a phone. */
+.cx-sheet-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: flex-end; background: var(--scrim); }
+.cx-sheet { display: flex; flex-direction: column; width: min(440px, 100%); height: 100%; background: var(--bg); box-shadow: -12px 0 40px rgba(0, 0, 0, .1); outline: 0; }
+.cx-sheet-head { display: flex; align-items: flex-start; gap: 14px; padding: 22px 16px 18px 22px; }
+.cx-sheet-title { flex: 1 1 0; min-width: 0; display: grid; gap: 2px; }
+.cx-sheet-title h2 { font-size: 19px; font-weight: 650; letter-spacing: -.015em; overflow-wrap: anywhere; }
+.cx-sheet-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+.cx-sheet-sec { display: grid; gap: 4px; padding: 16px 22px; border-top: 1px solid var(--line); }
+.cx-sheet-sec h3 { font-size: 12px; font-weight: 600; }
+.cx-sheet-sec > p { line-height: 1.5; }
+.cx-rows { list-style: none; margin: 6px 0 0; padding: 0; }
+.cx-row { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 6px 0; border-top: 1px solid var(--line); }
+.cx-row:first-child { border-top: 0; }
+.cx-row-mark { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 8px; background: var(--fill-strong); }
+.cx-row-name { display: grid; flex: 1 1 0; min-width: 0; line-height: 1.35; overflow-wrap: anywhere; }
+.cx-row-name strong { font-weight: 500; }
+.cx-row-state { white-space: nowrap; color: var(--muted); }
+.cx-row-connected { color: var(--ok-ink); }
+.cx-row-failed { color: var(--bad-ink); }
+.cx-sheet-foot { display: flex; align-items: center; gap: 8px; padding: 12px 22px; border-top: 1px solid var(--line); }
+.cx-own .field { font-family: inherit; }
+.cx-own-where { display: flex; align-items: center; gap: 8px; }
 @media (max-width: 700px) {
-  .connector-filters { gap: 0; }
-  .connector-filters .btn-text { padding: 0 8px; }
+  /* The bar above already names the page and has Check again. */
+  .cx-head { display: contents; }
+  .cx-head-text, .cx-head .cx-refresh { display: none; }
+  .cx-sheet-scroll { flex: 0 1 auto; }
+  .cx-chip { height: 40px; }
+  .cx-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  /* A row: the mark, the name over its line, the state at the end. */
+  .cx-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 12px; min-height: 0; padding: 12px; border-radius: 12px; }
+  .cx-top { display: contents; }
+  .cx-top .cx-tile { grid-row: 1 / span 2; }
+  .cx-top .cx-state { grid-column: 3; grid-row: 1 / span 2; }
+  .cx-name { grid-column: 2; grid-row: 1; margin: 0; font-size: 14px; }
+  .cx-desc { grid-column: 2; grid-row: 2; margin: 0; font-size: 12px; }
+  .cx-err, .cx-foot, .cx-flow, .cx-pick { grid-column: 1 / -1; }
+  .cx-foot { padding-top: 10px; }
+  .cx-open::after { border-radius: 12px; }
+  .cx-search { flex-basis: 100%; max-width: none; }
+  .cx-search .field { height: 40px; }
+  .cx-search svg { top: 13px; }
+  .cx-scope { flex-wrap: nowrap; overflow-x: auto; margin-inline: -12px; padding: 2px 12px; scrollbar-width: none; }
+  .cx-section-head p { display: none; }
+  .cx-sheet-backdrop { align-items: flex-end; }
+  .cx-sheet { width: 100%; height: auto; max-height: 88%; border-radius: 20px 20px 0 0; box-shadow: 0 -12px 40px rgba(0, 0, 0, .12); }
+  .cx-sheet-head { padding: 18px 12px 14px 16px; }
+  .cx-sheet-sec, .cx-sheet-foot { padding-inline: 16px; }
 }
-.connector-search.field { font-family: inherit; }
-.connectors-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px 0; }
-.connector-pagination { display: flex; align-items: center; gap: 8px; }
-.connectors-intro { margin: 0; line-height: 1.55; }
-.connectors-card { gap: 10px; padding: 14px 16px; }
 .connectors-card-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
-.connectors-note { line-height: 1.5; }
 .connector-list { list-style: none; margin: 0 -16px; padding: 0; border-top: 1px solid var(--line); }
 .connector { display: flex; flex-direction: column; gap: 6px; padding: 9px 16px; border-bottom: 1px solid var(--line); }
 .connector:last-child { border-bottom: 0; }
@@ -988,16 +1157,9 @@ body:has(.resizer.dragging) iframe, body:has(.resizer.dragging) .xterm { pointer
 .connector-dot-needs-auth { background: var(--warn); }
 .connector-dot-failed { background: var(--bad-ink); }
 .connector-dot-pending, .connector-dot-disabled { border: 1.5px solid var(--off); }
-.connector-error { padding-left: 15px; overflow-wrap: anywhere; }
-.connector-auth { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 12px; margin-left: 15px; border-radius: 10px; background: var(--fill); line-height: 1.5; }
-.connector-auth-done { color: var(--ok-ink); }
 .connector-paste { display: flex; flex-direction: column; gap: 6px; flex: 1 1 100%; }
 .connector-paste .row { flex-wrap: nowrap; }
 .connector-paste .field { height: 32px; font-size: 12px; }
-.connector-add { align-self: flex-start; gap: 4px; margin: 2px 0 0 -10px; color: var(--muted); }
-.connector-add-panel { margin-left: 0; }
-.connector-catalog { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; }
-.connector-name-field { flex: 0 0 140px; }
 .btn-small { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; font-size: 12px; text-decoration: none; color: inherit; white-space: nowrap; }
 a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 
@@ -1008,7 +1170,6 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .widget-note { display: flex; align-items: center; justify-content: center; padding: 12px; }
 .widget-status { padding: 6px 12px; border-top: 1px solid var(--line); }
 @media (prefers-reduced-motion: reduce) { .widget-frame { transition: none; } }
-@media (max-width: 700px) { .connector-scope { grid-template-columns: 1fr; } .connector-paste .row { flex-wrap: wrap; } .connector-auth { margin-left: 0; } }
 
 /* Narrow windows (phones): the sidebar is a drawer over the page, opened by
    the menu button first in each page's bar, so the page keeps the full width.
@@ -1523,43 +1684,21 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 }
 .connectors .connectors-inner { padding: 36px 40px 56px; }
 .connectors-mobile-header { display: none; }
-.connector-page-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 4px 12px; }
-.connector-page-head h1 { font-size: 24px; font-weight: 650; letter-spacing: -.02em; }
-.connector-page-head .connectors-intro { grid-column: 1 / -1; }
-.connector-scope { display: flex; align-items: end; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.connector-engine-filters { display: flex; gap: 6px; flex-wrap: wrap; }
-.connector-engine-filters button { height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 16px; }
-.connector-engine-filters button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
-.connector-host-select { display: grid; gap: 3px; }
-.connector-refresh { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
-.connector-refresh svg { flex: none; }
-.connector-accounts { display: grid; gap: 16px; }
-/* Header, rows and footer each draw their own line, so the card has no gap:
-   the old 10 px one left a framed empty band between them. */
-.connectors-card, .slack-card { padding: 0; gap: 0; }
-.connectors-card-head + .connector-list { border-top: 0; }
-.connectors-card > :is(.connector-filter-controls, .connector-pagination, .connectors-note) { margin-block: 10px; }
+/* Header, rows and footer each draw their own line, so the card has no gap. */
+.slack-card { padding: 0; gap: 0; }
 .connectors-card-head { align-items: center; gap: 10px 14px; padding: 14px 16px; background: var(--side); border-bottom: 1px solid var(--line); border-radius: 12px 12px 0 0; }
 .connectors-card-attention { border-color: var(--warn-border); }
 .connectors-card-attention .connectors-card-head { background: var(--warn-fill); }
 .connector-account-icon { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 8px; background: var(--fill-strong); color: var(--ink); }
 .connector-account-name { display: grid; gap: 2px; flex: 1 1 120px; min-width: 0; overflow-wrap: anywhere; }
 .connector-account-state { font-size: 12px; font-weight: 600; }
-.connectors-card > :is(.connector-filters, .connector-pagination, .connector-search, .connectors-note, .connectors-empty) { margin-inline: 16px; }
-.connector-filter-controls { display: grid; gap: 8px; padding-inline: 16px; }
-.connector-filter-controls .connector-search { min-width: 0; }
-.connector-filter-toggle { margin-left: auto; }
-:is(.connectors-card, .slack-card) .connector-list { margin: 0; }
-:is(.connectors-card, .slack-card) .connector { padding-block: 12px; }
+.slack-card .connector-list { margin: 0; }
+.slack-card .connector { padding-block: 12px; }
 .connector-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; padding: 6px 16px; border-top: 1px solid var(--line); }
 .connector-card-footer .connector-add { margin: 0; }
-.connector-add-step { display: grid; gap: 8px; }
-.connector-add-step p { margin: 0; }
-.connector-add-step .connector-catalog { display: grid; gap: 4px; }
-.connector-add-popover .popover-footer { justify-content: flex-end; }
 /* Messaging: the Slack connector, under the accounts. Its rows reuse the
    connector rows, so names, dots and controls line up with the cards above. */
-.connector-apps { display: grid; gap: 12px; margin-top: 28px; }
+.connector-apps { display: grid; gap: 12px; }
 .connector-section-head { display: grid; gap: 4px; }
 .connector-section-head h2 { font-size: 15px; font-weight: 600; }
 .connector-account-slack { background: var(--slack-fill); color: var(--slack-ink); font-size: 16px; }
@@ -1590,10 +1729,7 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
   .composer-setup { height: 40px; }
   .connectors .connectors-inner { padding: 16px 12px 32px; }
   .connectors-mobile-header { display: flex; }
-  .connector-page-head { display: block; }
-  .connector-page-head h1, .connector-page-head .connector-refresh { display: none; }
   .connector-card-footer { flex-wrap: wrap; }
-  .connector-engine-filters button { height: 40px; }
 }
 @media (max-width: 360px) {
   .session-toolbar { gap: 5px; }
@@ -1607,8 +1743,6 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
   .mobile-usage-trigger { display: flex; gap: 6px; height: 32px; padding-inline: 8px; margin-left: 0; border: 1px solid var(--line-strong); border-radius: 16px; font-size: 12px; font-weight: 600; }
   .usage-chip-track { width: 14px; height: 4px; border-radius: 4px; overflow: hidden; background: var(--fill-strong); }
   .usage-chip-track > span { display: block; height: 100%; background: var(--ink); border-radius: inherit; }
-  .connectors-mobile-header .connector-refresh { width: 32px; padding: 0; }
-  .connectors-mobile-header .connector-refresh > span { display: none; }
 }
 
 /* ---------- file view: a file an agent linked, opened in the workspace ---------- */

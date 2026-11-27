@@ -46,11 +46,11 @@ yv drive 'new' --viewport mobile --steps '[{"click":"role:button:Open sessions"}
 
 ### connector-host-and-refresh
 Viewports: both
-The connector host list uses an app menu. The refresh label and icon align.
+The connector host list uses an app menu, next to Check again (an icon button since the page became one card per service).
 
 ```sh
 yv api '{"op":"host.add","name":"TEST-edge host","kind":"direct","url":"ws://127.0.0.1:9/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-edge host"}]}'
-yv drive connectors --viewport desktop --steps '[{"expect":"role:heading:Connectors"},{"expect":"css:select","count":0},{"eval":"(() => { const b=document.querySelector('"'"'.connector-page-head .connector-refresh'"'"'); const i=b.querySelector('"'"'svg'"'"').getBoundingClientRect(), t=b.querySelector('"'"'span'"'"').getBoundingClientRect(); return Math.abs(i.top+i.height/2-t.top-t.height/2)<=1 && t.left-i.right>=4; })()","equals":true},{"click":"role:button:Connector host"},{"expect":"role:dialog:Connector host","inViewport":true},{"expect":"role:menuitemradio:TEST-edge host"},{"shot":"connector-host-menu"},{"click":"role:menuitemradio:TEST-edge host"},{"expect":"role:button:Connector host","text":"TEST-edge host"}]'
+yv drive connectors --viewport desktop --steps '[{"expect":"role:heading:Connectors"},{"expect":"css:select","count":0},{"expect":"role:button:Check again"},{"eval":"(() => { const h=document.querySelector('"'"'.cx-head [aria-label=\"Connector host\"]'"'"').getBoundingClientRect(), r=document.querySelector('"'"'.cx-head .cx-refresh'"'"').getBoundingClientRect(); return r.left>=h.right && Math.abs(r.top+r.height/2-h.top-h.height/2)<=2; })()","equals":true},{"click":"role:button:Connector host"},{"expect":"role:dialog:Connector host","inViewport":true},{"expect":"role:menuitemradio:TEST-edge host"},{"shot":"connector-host-menu"},{"click":"role:menuitemradio:TEST-edge host"},{"expect":"role:button:Connector host","text":"TEST-edge host"}]'
 yv drive connectors --viewport mobile --steps '[{"expect":"role:heading:Connectors"},{"expect":"css:select","count":0},{"click":"role:button:Connector host"},{"expect":"role:dialog:Connector host","inViewport":true},{"expect":"role:menuitemradio:TEST-edge host"},{"shot":"connector-host-menu"},{"click":"role:menuitemradio:TEST-edge host"},{"expect":"role:button:Connector host","text":"TEST-edge host"}]'
 ```
 
