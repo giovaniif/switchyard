@@ -3402,6 +3402,13 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
  *  session in a worktree yardd made can take its worktree with it. */
 function DeleteButton({ worktree, onConfirm }: { worktree: boolean; onConfirm(removeWorktree: boolean): void }) {
   const [armed, setArmed] = useState(false);
+  // The second click of a double click lands on the ask the first one just
+  // opened ("Delete and remove worktree", in a worktree session). It is not an
+  // answer: the ask stays up. A separate click, however quick, still answers.
+  const answer = (e: { detail: number }, removeWorktree?: boolean) => {
+    if (e.detail >= 2) return;
+    onConfirm(removeWorktree ?? false);
+  };
   useEffect(() => {
     if (!armed) return;
     const timer = setTimeout(() => setArmed(false), worktree ? 5000 : 3000);
@@ -3412,11 +3419,11 @@ function DeleteButton({ worktree, onConfirm }: { worktree: boolean; onConfirm(re
       <>
         {/* A phone's bar has room for both choices only with short labels,
             and only once its other controls step aside (bar-armed in styles.css). */}
-        <button className="btn-text bar-choice bar-armed" onClick={() => onConfirm(false)}>
+        <button className="btn-text bar-choice bar-armed" onClick={(e) => answer(e, false)}>
           <span className="label-wide">Delete session</span>
           <span className="label-narrow">Delete</span>
         </button>
-        <button className="btn-text bar-choice bar-armed" onClick={() => onConfirm(true)}>
+        <button className="btn-text bar-choice bar-armed" onClick={(e) => answer(e, true)}>
           <span className="label-wide">Delete and remove worktree</span>
           <span className="label-narrow">Delete + worktree</span>
         </button>
@@ -3427,7 +3434,7 @@ function DeleteButton({ worktree, onConfirm }: { worktree: boolean; onConfirm(re
     // The button keeps its one line beside the title. Armed, it is a bar-armed
     // choice too: on a phone the side controls step aside so the title shows
     // which session is about to go.
-    <button className={armed ? "btn-text bar-choice bar-armed" : "btn-text bar-choice"} onClick={() => (armed ? onConfirm() : setArmed(true))}>
+    <button className={armed ? "btn-text bar-choice bar-armed" : "btn-text bar-choice"} onClick={(e) => (armed ? answer(e) : setArmed(true))}>
       {armed ? "Delete session?" : "Delete"}
     </button>
   );
