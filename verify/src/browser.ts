@@ -497,9 +497,19 @@ async function runStep(page: Page, iso: Iso, step: Step, w: Watch, ctx: { dir: s
       if (n !== step.count) throw new Error(`expected ${step.count} visible ${JSON.stringify(step.expect)}, found ${n}`);
     }
     if (step.inViewport) {
-      const box = await loc.boundingBox();
+      // An anchored panel is placed after it first paints (and again after a
+      // resize), so one early box can sit off screen for a frame. Poll like
+      // "text" does; only where it settles counts.
       const vp = page.viewportSize()!;
-      if (!box || box.x < 0 || box.y < 0 || box.x + box.width > vp.width + 1 || box.y + box.height > vp.height + 1)
+      const inside = (b: Awaited<ReturnType<typeof loc.boundingBox>>) =>
+        !!b && b.x >= 0 && b.y >= 0 && b.x + b.width <= vp.width + 1 && b.y + b.height <= vp.height + 1;
+      const deadline = Date.now() + timeout;
+      let box = await loc.boundingBox();
+      while (!inside(box) && Date.now() < deadline) {
+        await page.waitForTimeout(100);
+        box = await loc.boundingBox();
+      }
+      if (!inside(box))
         throw new Error(`expected ${JSON.stringify(step.expect)} inside the ${vp.width}x${vp.height} viewport, box ${JSON.stringify(box)}`);
     }
     return;
