@@ -1,0 +1,30 @@
+$ ~/.local/bin/heavy cargo test -p yardd --test agents an_edit_made_while_a_hand_over_succeeds_says_where_the_agent_went -- --exact
+# exit 101 after 15037 ms at b24aeeba010818cdcb7a585144f854d17e427c96
+
+
+running 1 test
+test an_edit_made_while_a_hand_over_succeeds_says_where_the_agent_went ... FAILED
+
+failures:
+
+---- an_edit_made_while_a_hand_over_succeeds_says_where_the_agent_went stdout ----
+
+thread 'an_edit_made_while_a_hand_over_succeeds_says_where_the_agent_went' (1844314) panicked at crates/yardd/tests/agents.rs:995:5:
+assertion `left == right` failed
+  left: Err("no such agent")
+ right: Err("On-call moved to TEST-box while you were editing it, so your change was not saved. Edit it there.")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1844313-agents-moved-hub-1 for inspection
+kept /tmp/yardd-test-1844313-agents-moved-remote-0 for inspection
+
+
+failures:
+    an_edit_made_while_a_hand_over_succeeds_says_where_the_agent_went
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 33 filtered out; finished in 1.88s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/handover-followups/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 13.06s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+error: test failed, to rerun pass `-p yardd --test agents`

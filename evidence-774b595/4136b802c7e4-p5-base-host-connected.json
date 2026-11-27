@@ -1,0 +1,25 @@
+{
+  "command": "api",
+  "ok": true,
+  "sent": {
+    "op": "host.add",
+    "name": "TEST-box",
+    "kind": "direct",
+    "url": "ws://127.0.0.1:37323/ws"
+  },
+  "reply": {
+    "hosts": [
+      {
+        "id": "h1a21b25585d2",
+        "kind": "direct",
+        "name": "TEST-box",
+        "status": "connected",
+        "url": "ws://127.0.0.1:37323/ws"
+      }
+    ],
+    "op": "hosts"
+  },
+  "saved": {},
+  "received": 6,
+  "problems": []
+}

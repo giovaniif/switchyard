@@ -1,0 +1,27 @@
+$ ~/.local/bin/heavy cargo test -p yardd --test agents an_edit_waits_for_a_hand_over_s_answer_not_for_the_steps_after_it -- --exact
+# exit 101 after 17156 ms at b24aeeba010818cdcb7a585144f854d17e427c96
+
+
+running 1 test
+test an_edit_waits_for_a_hand_over_s_answer_not_for_the_steps_after_it ... FAILED
+
+failures:
+
+---- an_edit_waits_for_a_hand_over_s_answer_not_for_the_steps_after_it stdout ----
+
+thread 'an_edit_waits_for_a_hand_over_s_answer_not_for_the_steps_after_it' (1844606) panicked at crates/yardd/tests/agents.rs:1030:5:
+the edit waited 16.501287483s: Err("no such agent")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1844600-agents-owed-hub-1 for inspection
+kept /tmp/yardd-test-1844600-agents-owed-remote-0 for inspection
+
+
+failures:
+    an_edit_waits_for_a_hand_over_s_answer_not_for_the_steps_after_it
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 33 filtered out; finished in 16.85s
+
+
+    Finished `test` profile [unoptimized] target(s) in 0.21s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+error: test failed, to rerun pass `-p yardd --test agents`

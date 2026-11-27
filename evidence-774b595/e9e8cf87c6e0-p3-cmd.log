@@ -1,0 +1,29 @@
+$ ~/.local/bin/heavy cargo test -p yardd --test agents a_host_shows_connected_once_the_hub_knows_it_can_own_agents -- --exact
+# exit 101 after 624 ms at b24aeeba010818cdcb7a585144f854d17e427c96
+
+
+running 1 test
+test a_host_shows_connected_once_the_hub_knows_it_can_own_agents ... FAILED
+
+failures:
+
+---- a_host_shows_connected_once_the_hub_knows_it_can_own_agents stdout ----
+
+thread 'a_host_shows_connected_once_the_hub_knows_it_can_own_agents' (1846185) panicked at crates/yardd/tests/agents.rs:956:5:
+assertion `left == right` failed: {"id":"h1a21b24d56e2","kind":"direct","name":"TEST-box","status":"connected","url":"ws://127.0.0.1:38865/ws"}
+  left: Null
+ right: true
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1846184-agents-known-hub-1 for inspection
+kept /tmp/yardd-test-1846184-agents-known-remote-0 for inspection
+
+
+failures:
+    a_host_shows_connected_once_the_hub_knows_it_can_own_agents
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 33 filtered out; finished in 0.32s
+
+
+    Finished `test` profile [unoptimized] target(s) in 0.22s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+error: test failed, to rerun pass `-p yardd --test agents`

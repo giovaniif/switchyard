@@ -1,0 +1,30 @@
+$ ~/.local/bin/heavy cargo test -p yardd --test daemon a_page_s_first_op_reaches_a_connected_host_while_its_own_connection_opens -- --exact
+# exit 101 after 1471 ms at b24aeeba010818cdcb7a585144f854d17e427c96
+
+
+running 1 test
+test a_page_s_first_op_reaches_a_connected_host_while_its_own_connection_opens ... FAILED
+
+failures:
+
+---- a_page_s_first_op_reaches_a_connected_host_while_its_own_connection_opens stdout ----
+
+thread 'a_page_s_first_op_reaches_a_connected_host_while_its_own_connection_opens' (1846730) panicked at crates/yardd/tests/daemon.rs:1318:9:
+assertion `left == right` failed: page 0: {"for":"session.open","message":"this host is not connected","op":"error"}
+  left: String("error")
+ right: "history"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-1846729-hub-first-op-1 for inspection
+kept /tmp/yardd-test-1846729-remote-first-op-0 for inspection
+
+
+failures:
+    a_page_s_first_op_reaches_a_connected_host_while_its_own_connection_opens
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 95 filtered out; finished in 0.36s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/handover-followups/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 1.02s
+     Running tests/daemon.rs (target/debug/build/yardd/bc3e500ead7d3ac6/out/daemon-bc3e500ead7d3ac6)
+error: test failed, to rerun pass `-p yardd --test daemon`

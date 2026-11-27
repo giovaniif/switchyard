@@ -1,0 +1,341 @@
+{
+  "v": 1,
+  "claim": "Agent hand-overs and hosts: an edit that waited for a background hand-over the host accepted was answered 'no such agent' (and could wait 20 s per owed step); a page's first op to a connected host right after it (re)connected was refused 'this host is not connected'; a host showed connected before the hub knew it could own agents, so a move right then was refused as 'runs an older Switchyard'.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/handover-followups",
+  "base": "966697a94c03368e4ba6c878669c2fb8549fe70c",
+  "head": "774b595b30cac63b0732ab17809ab21d4992756c",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T03:54:49.456Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "test",
+      "at": "b24aeeba010818cdcb7a585144f854d17e427c96",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p1-cmd.log",
+          "sha256": "680ade533aedaf71def78a4092f69e13a6dc0d8b489e41af478ef27b871a3968"
+        }
+      ],
+      "addedAt": "2026-11-27T03:54:55.760Z",
+      "cmd": "~/.local/bin/heavy cargo test -p yardd --test agents an_edit_made_while_a_hand_over_succeeds_says_where_the_agent_went -- --exact",
+      "exit": 101
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "b24aeeba010818cdcb7a585144f854d17e427c96",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "c815e01ac220b1dccf3379dcec4a9c3daa69fb0d7ed57627446e00774dbddc48"
+        }
+      ],
+      "addedAt": "2026-11-27T03:55:10.853Z",
+      "cmd": "~/.local/bin/heavy cargo test -p yardd --test agents an_edit_waits_for_a_hand_over_s_answer_not_for_the_steps_after_it -- --exact",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "b24aeeba010818cdcb7a585144f854d17e427c96",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "e9e8cf87c6e086deea62823e04021025221a2ef07e4040aa7513a49f2ddfd525"
+        }
+      ],
+      "addedAt": "2026-11-27T03:55:28.062Z",
+      "cmd": "~/.local/bin/heavy cargo test -p yardd --test agents a_host_shows_connected_once_the_hub_knows_it_can_own_agents -- --exact",
+      "exit": 101
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "test",
+      "at": "b24aeeba010818cdcb7a585144f854d17e427c96",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "ab2c9a6b851646c0bd1d237f83b6c5d59adea321969356eff766d4a2c79072ec"
+        }
+      ],
+      "addedAt": "2026-11-27T03:55:28.738Z",
+      "cmd": "~/.local/bin/heavy cargo test -p yardd --test daemon a_page_s_first_op_reaches_a_connected_host_while_its_own_connection_opens -- --exact",
+      "exit": 101
+    },
+    {
+      "id": 5,
+      "ref": "base",
+      "kind": "repro",
+      "at": "b24aeeba010818cdcb7a585144f854d17e427c96",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-base-host-connected.json",
+          "sha256": "4136b802c7e4d589c0833118cd9cb4604321cabb9c3ecfc425b0b151d53fdbd0"
+        }
+      ],
+      "addedAt": "2026-11-27T03:56:33.000Z",
+      "text": "Running app at main's code (b24aeeb, isolated hub + isolated box): host.add's first 'hosts' broadcast shows TEST-box status connected with no ownAgents. The hub has not read the box's snapshot yet; agents::transfer refuses a move to a host whose ownAgents is unknown as 'runs an older Switchyard'.",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "base",
+      "kind": "repro",
+      "at": "b24aeeba010818cdcb7a585144f854d17e427c96",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-pr518-agents-bin-not-connected.txt",
+          "sha256": "ad7868d9286c7ded3c77ec689345779e0fb025399a85822e91b689640e362c3b"
+        }
+      ],
+      "addedAt": "2026-11-27T03:56:33.054Z",
+      "text": "The 'this host is not connected' flake from #510/#518: agents.rs a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely failed 1/6 in the whole agents binary under 8 CPU burners (RUST_TEST_THREADS=8) at #518's head, at the ask right after the hand-over (agents.rs:656). That message comes only from remote::Pipe::send with the pipe not open (up=false). Its kept sandboxes (/tmp/yardd-test-1015910-agents-migrate-{hub-15,remote-12}) show the test's client connected to the hub before the hand-over finished; the remote logged 5 connections (the test's, the hub's monitor, the adopt and settled requests, each its own socket in remote::request, and the window's pipe), so the pipe did open, but the log has no times to say when. The deterministic test (proof 4) shows the same state on demand: the hub shows the host connected while a page's own pipe is still opening, and the page's op is refused."
+    },
+    {
+      "id": 7,
+      "ref": "base",
+      "kind": "repro",
+      "at": "b24aeeba010818cdcb7a585144f854d17e427c96",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-base-agents-bin-1.txt",
+          "sha256": "19aeb4702d4d8a6026c3226203c69f4be5c68594976bfdb3cda3b2662dc12f0c"
+        },
+        {
+          "path": "p7-base-agents-bin-2.txt",
+          "sha256": "e8d58b9f5b475d830130aab5faf889142f9079acfc7b48c85829b76804501d19"
+        }
+      ],
+      "addedAt": "2026-11-27T03:56:33.103Z",
+      "text": "Whole agents binary at main's code (966697a plus a diagnostic eprintln, not committed), 8 burners in one heavy scope, RUST_TEST_THREADS=8, 2x10 runs: ~/.local/bin/heavy /tmp/hof/ev/loopbin.sh agents 10 8. The not-connected test passed 0/20 here (the race needs the pipe's handshake to lose to a whole hand-over). Another test failed 2/20: a_hand_over_tried_again_and_again_backs_up_once_and_is_listed_once, 'timed out waiting for the box owns it'. Its kept hub sandboxes have agents.json untouched and no backup: the move was refused before it began, which only the unknown-ownAgents branch of agents::transfer does (the host showed connected; see the hosts proof)."
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "fix",
+      "at": "774b595b30cac63b0732ab17809ab21d4992756c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-head-host-connected.json",
+          "sha256": "fe9df3d6d17ff500ca6f40426521fbb5da1ea4e6a9c8763901b5e2e4feb316dc"
+        }
+      ],
+      "addedAt": "2026-11-27T03:57:39.293Z",
+      "text": "Running app at head (isolated hub + isolated box, same steps as the base proof): the first 'hosts' broadcast that shows TEST-box connected carries ownAgents: true.",
+      "failedApi": []
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "fix",
+      "at": "774b595b30cac63b0732ab17809ab21d4992756c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-head-agents-bin-1.txt",
+          "sha256": "8cba7522089cb59323b499426c53c4d7fc611ea85dd40cf0ce2bcd3dda3a5e7c"
+        },
+        {
+          "path": "p9-head-agents-bin-2.txt",
+          "sha256": "1fb880dc4fefbeeabc8ec1b57d87e54a5dfe18c10b2eda30f548bc3c7063d0f7"
+        }
+      ],
+      "addedAt": "2026-11-27T03:57:39.340Z",
+      "text": "Whole agents binary at head, same load as base (8 burners, one heavy scope, RUST_TEST_THREADS=8): 0/20 (base 2/20, both a_hand_over_tried_again_and_again_backs_up_once_and_is_listed_once). Command: RUST_TEST_THREADS=8 ~/.local/bin/heavy /tmp/hof/ev/loopbin.sh agents 10 8, twice."
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "fix",
+      "at": "774b595b30cac63b0732ab17809ab21d4992756c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-head-first-op.txt",
+          "sha256": "5418bfd7946502aeab649f53fb422a4f7fec03f2d821b567cb0257b666dee170"
+        },
+        {
+          "path": "p10-head-owed.txt",
+          "sha256": "5fcc1fdfab396f7cbf364af468fac188a090bd4898e5e6a6823ae6d0c4d7ffe7"
+        }
+      ],
+      "addedAt": "2026-11-27T03:57:39.385Z",
+      "text": "The new regression tests under 8 burners at head: a_page_s_first_op_reaches_a_connected_host_while_its_own_connection_opens 0/15 (fails every time on main: proof 4), an_edit_waits_for_a_hand_over_s_answer_not_for_the_steps_after_it 0/10 (its 8 s bound held under load; main waits 16.5 s). Commands: ~/.local/bin/heavy /tmp/hof/ev/loop.sh daemon <test> 15 8 and loop.sh agents <test> 10 8."
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "test",
+      "at": "774b595b30cac63b0732ab17809ab21d4992756c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-cmd.log",
+          "sha256": "e4aa3a41f03521e82c7358785b6f5b905d316456c852dd59d930748ad2741040"
+        }
+      ],
+      "addedAt": "2026-11-27T03:57:39.429Z",
+      "cmd": "~/.local/bin/heavy cargo test -p yardd --test agents --test daemon",
+      "exit": 0
+    },
+    {
+      "id": 12,
+      "ref": "base",
+      "kind": "note",
+      "at": "774b595b30cac63b0732ab17809ab21d4992756c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p12-loop.sh",
+          "sha256": "eaa39ea73fdf4ab41e0a029ec6c2dfe009ef5ce8f659b4f74a7cd059dc651bb8"
+        },
+        {
+          "path": "p12-loopbin.sh",
+          "sha256": "d91b6d7fa56209603de3e1851ce39829c76010d6a415e86436195f93f5a04eb3"
+        }
+      ],
+      "addedAt": "2026-11-27T03:58:57.440Z",
+      "text": "Loop scripts behind every rate: loop.sh <target> <test> <runs> <burners> runs one test N times with B busy-loop CPU burners in the same heavy scope (capped at 6 CPUs); loopbin.sh does the same for a whole test binary and keeps each failing run's output. Each output's first line names the checkout it ran on."
+    },
+    {
+      "id": 13,
+      "ref": "head",
+      "kind": "regression",
+      "at": "774b595b30cac63b0732ab17809ab21d4992756c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p13-map-hosts.json",
+          "sha256": "2647a3d9fcb64764e57023d3b3db99775997764d7d5bae6d894ae01804f9916c"
+        }
+      ],
+      "addedAt": "2026-11-27T03:58:57.527Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/processes-say-the-host-is-offline",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    },
+    {
+      "id": 14,
+      "ref": "head",
+      "kind": "regression",
+      "at": "774b595b30cac63b0732ab17809ab21d4992756c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p14-map-agents.json",
+          "sha256": "620648f0ae22c0fac4e533730b3bebc65cdd933087ba8d38047fd39a62aaa01f"
+        }
+      ],
+      "addedAt": "2026-11-27T04:01:10.637Z",
+      "cmd": "verify/yv map run agents",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "agents/cards-show-the-users-agents",
+        "agents/cards-in-a-row-line-up",
+        "agents/agent-views-on-a-phone",
+        "agents/colours-line-up-under-the-faces",
+        "agents/at-mention-from-new-session-goes-to-the-agents-conversation",
+        "agents/at-mention-in-a-session-goes-to-the-agents-conversation",
+        "agents/one-conversation-and-the-agents-mark",
+        "agents/agents-message-each-other-with-badges",
+        "agents/an-agent-that-needs-you",
+        "agents/an-agents-own-memory-shows-in-the-form",
+        "agents/new-agent-sets-itself-up-in-its-conversation",
+        "agents/new-agent-on-a-phone",
+        "agents/a-working-agent-looks-busy",
+        "agents/edit-an-agent-in-the-form",
+        "agents/a-name-of-a-few-words-is-mentioned-by-its-handle",
+        "agents/face-name-and-what-it-is-for-change-in-place",
+        "agents/the-boxs-pickers-save-the-agent",
+        "agents/add-to-slack-walks-through-the-tokens",
+        "agents/switchys-address-lands-on-the-agents",
+        "agents/deleting-an-agent-deletes-its-conversation",
+        "agents/form-host-and-account-pickers",
+        "agents/a-mention-reaches-an-agent-on-a-remote-host",
+        "agents/a-remote-agents-conversation-on-a-phone",
+        "agents/a-hosts-agents-tools-act-on-its-host",
+        "agents/a-second-mac-lists-the-hosts-agents",
+        "agents/moving-an-agent-says-what-happens-to-its-conversation",
+        "agents/a-host-picked-in-the-box",
+        "agents/a-remote-agents-host-offline",
+        "agents/agents-in-the-sidebar"
+      ]
+    }
+  ]
+}
