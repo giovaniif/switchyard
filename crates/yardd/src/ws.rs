@@ -167,7 +167,7 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
                         // is away has nothing to clear yet: not an error to show.
                         if let Err(e) = sent {
                             if msg["op"] != "agent.seen" {
-                                let _ = direct.send(error_reply(&msg, &e));
+                                let _ = direct.send(remote::error_for(&host, &msg, &e));
                             }
                         }
                         continue;
@@ -245,6 +245,10 @@ fn send(app: &Arc<App>, msg: &Value) -> Result<()> {
 /// An op's failure. `ref` comes back when the op had one, so a client
 /// waiting on that one request (an upload) can tell it failed.
 pub(crate) fn error_reply(msg: &Value, e: &anyhow::Error) -> String {
+    error_value(msg, e).to_string()
+}
+
+pub(crate) fn error_value(msg: &Value, e: &anyhow::Error) -> Value {
     let mut reply = json!({ "op": "error", "message": format!("{e:#}"), "for": msg["op"] });
     // A hand-over refusal says which it is, so a hub never reads it from
     // the wording (`agents::Refusal`).
@@ -257,7 +261,7 @@ pub(crate) fn error_reply(msg: &Value, e: &anyhow::Error) -> String {
     if !msg["ref"].is_null() {
         reply["ref"] = msg["ref"].clone();
     }
-    reply.to_string()
+    reply
 }
 
 /// A question's answers (`session.approve`): question text to answer, text

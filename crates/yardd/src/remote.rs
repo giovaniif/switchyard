@@ -814,7 +814,7 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
     let shown = conn.clone();
     // Built outside the task, so a pipe dropped before its task first runs
     // (or while it writes) still answers what it was sent.
-    let mut pending = Pending { held: VecDeque::new(), rx, direct: direct.clone(), name: name.clone(), sent: HashMap::new(), writing: None, refs: 0, greeted: false };
+    let mut pending = Pending { held: VecDeque::new(), rx, direct: direct.clone(), host: host.clone(), name: name.clone(), sent: HashMap::new(), writing: None, refs: 0, greeted: false };
     let task = tokio::spawn(async move {
         let mut backoff = Backoff::new(Duration::from_secs(10));
         loop {
@@ -824,6 +824,9 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
                 let (mut sink, mut stream) = ws.split();
                 flag.store(true, Ordering::Relaxed);
                 pending.greeted = false;
+                // The op whose write failed, answered once the page knows
+                // the host is down (below).
+                let mut unwritten = None;
                 loop {
                     let op = match pending.held.pop_front() {
                         Some(op) => op,
@@ -849,7 +852,7 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
                     };
                     // Made now: the op goes out with the host's own ids, and
                     // its error must carry the page's.
-                    let refused = refusal(&op, NOT_CONNECTED);
+                    let refused = refusal(&host, &op, NOT_CONNECTED);
                     let awaited = pending.awaited(&op);
                     let mut out = outgoing(op);
                     if let Some((r, _)) = &awaited {
@@ -859,15 +862,19 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
                     pending.writing = awaited;
                     if sink.send(Message::Text(out.to_string())).await.is_err() {
                         pending.writing = None;
-                        if let Some(refused) = refused {
-                            let _ = direct.send(refused);
-                        }
+                        unwritten = refused;
                         break;
                     }
                     pending.wrote();
                 }
                 flag.store(false, Ordering::Relaxed);
+                // `host.down` first: a page shows an error where the host's
+                // state says it can be seen (a connector's card is hidden
+                // while its host is down).
                 let _ = direct.send(json!({ "op": "host.down", "hostId": host }).to_string());
+                if let Some(refused) = unwritten {
+                    let _ = direct.send(refused);
+                }
                 pending.lose_sent();
             }
             // Ops that waited for this try and still could not go: say so.
@@ -895,6 +902,8 @@ struct Pending {
     held: VecDeque<Value>,
     rx: mpsc::UnboundedReceiver<Value>,
     direct: mpsc::UnboundedSender<String>,
+    /// The host's id, which every error made here carries (`error_for`).
+    host: String,
     /// The host's name, for `lost`.
     name: String,
     /// Ops written on this connection that wait on the host's answer, by the
@@ -902,7 +911,8 @@ struct Pending {
     sent: HashMap<String, Awaited>,
     /// The op being written, if the page waits on its answer.
     writing: Option<(Value, Awaited)>,
-    /// The last `ref` the pipe gave an op (`awaited`).
+    /// Awaited ops so far: it orders them (`Awaited::seq`) and numbers the
+    /// pipe's own refs (`awaited`).
     refs: u64,
     /// The host sent this connection's first snapshot: another one is a
     /// resync (`heard`).
@@ -914,6 +924,9 @@ struct Awaited {
     /// The op's name and the page's own ids, which its error carries
     /// (`ws::error_reply`). Not the op itself: an upload is megabytes.
     stub: Value,
+    /// Its place among the ops this pipe wrote, so an answer that names no
+    /// op settles the oldest it could be for (`Pending::heard`).
+    seq: u64,
     /// Host news that answers it, for an op whose success has no `ref`.
     news: Option<News>,
 }
@@ -966,16 +979,16 @@ impl Pending {
             "mcp.remove" => Some(News::Connector { engine: text("engine"), name: text("server") }),
             _ => None,
         };
+        if op["ref"].is_null() && news.is_none() && kind != "session.create" {
+            return None;
+        }
+        self.refs += 1;
         let r = match &op["ref"] {
-            Value::Null if news.is_some() || kind == "session.create" => {
-                self.refs += 1;
-                json!(format!("{OWN_REF}{}", self.refs))
-            }
-            Value::Null => return None,
+            Value::Null => json!(format!("{OWN_REF}{}", self.refs)),
             r => r.clone(),
         };
         let stub = json!({ "op": kind, "ref": op["ref"], "sessionId": op["sessionId"] });
-        Some((r, Awaited { stub, news }))
+        Some((r, Awaited { stub, seq: self.refs, news }))
     }
 
     /// The op being written went out whole: it waits for its answer now.
@@ -998,6 +1011,16 @@ impl Pending {
                 if let Some(o) = msg.as_object_mut() {
                     o.remove("ref");
                 }
+            }
+        } else if msg["op"] == "created" {
+            // A host older than v0.18.0 answers `session.create` with
+            // `created` and no `ref`, whatever the op carried: the session
+            // was made, so the oldest create still waiting is answered. (A
+            // current host says `created` without one only for an import or
+            // a hand-over.)
+            let oldest = self.sent.iter().filter(|(_, a)| a.stub["op"] == "session.create").min_by_key(|(_, a)| a.seq).map(|(r, _)| r.clone());
+            if let Some(r) = oldest {
+                self.sent.remove(&r);
             }
         }
         if self.sent.is_empty() && msg["op"] != "snapshot" {
@@ -1029,7 +1052,7 @@ impl Pending {
     fn lose_sent(&mut self) {
         let why = anyhow::Error::msg(lost(&self.name));
         for awaited in self.writing.take().map(|(_, a)| a).into_iter().chain(self.sent.drain().map(|(_, a)| a)) {
-            let _ = self.direct.send(crate::ws::error_reply(&awaited.stub, &why));
+            let _ = self.direct.send(error_for(&self.host, &awaited.stub, &why));
         }
     }
 
@@ -1038,7 +1061,7 @@ impl Pending {
             self.held.push_back(op);
         }
         for op in self.held.drain(..) {
-            if let Some(refused) = refusal(&op, why) {
+            if let Some(refused) = refusal(&self.host, &op, why) {
                 let _ = self.direct.send(refused);
             }
         }
@@ -1057,8 +1080,18 @@ impl Drop for Pending {
 /// The error a page gets for an op that did not reach the host. A window
 /// opening an agent's conversation has nothing to clear: `agent.seen` stays
 /// silent, as when `Pipe::send` refuses it (ws.rs).
-fn refusal(op: &Value, why: &str) -> Option<String> {
-    (op["op"] != "agent.seen").then(|| crate::ws::error_reply(op, &anyhow::Error::msg(why.to_string())))
+fn refusal(host: &str, op: &Value, why: &str) -> Option<String> {
+    (op["op"] != "agent.seen").then(|| error_for(host, op, &anyhow::Error::msg(why.to_string())))
+}
+
+/// An error the hub itself makes for an op meant for `host`. It names the
+/// host as that host's own errors do (`rewrite`), so a page files it under
+/// the host it asked: a connector's card, say, is released by its host's
+/// error only.
+pub(crate) fn error_for(host: &str, op: &Value, why: &anyhow::Error) -> String {
+    let mut reply = crate::ws::error_value(op, why);
+    reply["hostId"] = json!(host);
+    reply.to_string()
 }
 
 /// The host's url to connect to. Ops cannot wait while there is none (an
