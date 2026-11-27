@@ -237,7 +237,13 @@ function ServerRow({ server: s, state, actions, host, engine, account }: { serve
             ) : (
               <button
                 className={`btn-text btn-small ${confirm ? "bad" : ""}`}
-                onClick={() => (confirm ? actions.mcpRemove(host, engine, account, s.name) : setConfirm(true))}
+                // Remove turns into Confirm in this same button, so a double
+                // click's second click (detail 2) lands on it: not the
+                // confirmation asked for. A separate click still removes.
+                onClick={(e) => {
+                  if (!confirm) setConfirm(true);
+                  else if (e.detail < 2) actions.mcpRemove(host, engine, account, s.name);
+                }}
                 onBlur={() => setConfirm(false)}
                 aria-label={confirm ? `Confirm removing ${name}` : `Remove ${name}`}
               >
