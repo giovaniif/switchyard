@@ -1,0 +1,1 @@
+{"scenario":"removed","hostId":"h1a21b5cfc512","sent":{"open":502,"rm":1003},"replies":[{"atMs":1004,"op":"error","ref":"open","message":"no such host","for":"session.open"}],"seen":["4:snapshot","1004:agents","1004:slack","1004:error","1657:host","4729:host"]}

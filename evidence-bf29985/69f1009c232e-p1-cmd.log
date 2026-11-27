@@ -1,0 +1,51 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd remote::tests
+# exit 101 after 22631 ms at 6ec052d573660b175a6ef2a501f6b6e1115097b3
+
+
+running 8 tests
+test remote::tests::a_snapshot_becomes_a_host_snapshot ... ok
+test remote::tests::a_hosts_agents_ops_go_there_with_its_own_ids_and_come_back_prefixed ... ok
+test remote::tests::an_op_a_pipe_still_holds_when_its_host_is_removed_gets_an_error ... FAILED
+test remote::tests::destinations_that_look_like_options_are_refused ... ok
+test remote::tests::every_op_a_failed_write_leaves_unsent_gets_an_error ... FAILED
+test remote::tests::ids_get_the_host_prefix_and_lose_it_on_the_way_back ... ok
+test remote::tests::terminal_ids_are_prefixed_inside_a_term_list ... ok
+test remote::tests::an_op_taken_as_an_ssh_tunnel_drops_is_answered_without_waiting_for_it ... FAILED
+
+failures:
+
+---- remote::tests::an_op_a_pipe_still_holds_when_its_host_is_removed_gets_an_error stdout ----
+
+thread 'remote::tests::an_op_a_pipe_still_holds_when_its_host_is_removed_gets_an_error' (2649972) panicked at crates/yardd/src/remote.rs:1326:9:
+assertion `left == right` failed: {}
+  left: None
+ right: Some("no such host")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- remote::tests::every_op_a_failed_write_leaves_unsent_gets_an_error stdout ----
+
+thread 'remote::tests::every_op_a_failed_write_leaves_unsent_gets_an_error' (2649975) panicked at crates/yardd/src/remote.rs:1350:13:
+assertion `left == right` failed: a answered: {"c": "this host is not connected", "b": "this host is not connected"}
+  left: None
+ right: Some("this host is not connected")
+
+---- remote::tests::an_op_taken_as_an_ssh_tunnel_drops_is_answered_without_waiting_for_it stdout ----
+
+thread 'remote::tests::an_op_taken_as_an_ssh_tunnel_drops_is_answered_without_waiting_for_it' (2649973) panicked at crates/yardd/src/remote.rs:1314:9:
+assertion `left == right` failed: answered within the connect bound: {}
+  left: None
+ right: Some("this host is not connected")
+
+
+failures:
+    remote::tests::an_op_a_pipe_still_holds_when_its_host_is_removed_gets_an_error
+    remote::tests::an_op_taken_as_an_ssh_tunnel_drops_is_answered_without_waiting_for_it
+    remote::tests::every_op_a_failed_write_leaves_unsent_gets_an_error
+
+test result: FAILED. 5 passed; 3 failed; 0 ignored; 0 measured; 114 filtered out; finished in 12.00s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/pipe-errors/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 10.55s
+     Running unittests src/main.rs (target/debug/build/yardd/7902cb21fd3fec33/out/yardd-7902cb21fd3fec33)
+error: test failed, to rerun pass `-p yardd --bin yardd`

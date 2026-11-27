@@ -1,0 +1,198 @@
+{
+  "v": 1,
+  "claim": "A window's op to a connected host could get no answer at all: an op its pipe took as an ssh tunnel dropped waited for the tunnel with no bound (and was dropped silently if the host was removed meanwhile); an op still held when the host was removed got nothing; and when a write to the host failed, the op being written (and any held op behind it) got no error, so the page waited on its ref forever.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/pipe-errors",
+  "base": "d62d0956c0322806ad9ff836f6eb6d0642fc7926",
+  "head": "bf29985d55743598e0963a339fda88d6ce1e02e1",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T04:57:04.202Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "test",
+      "at": "6ec052d573660b175a6ef2a501f6b6e1115097b3",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p1-cmd.log",
+          "sha256": "69f1009c232ecd328ecf30cf417635a94059ef71c651f8c753b082bf43438a27"
+        }
+      ],
+      "addedAt": "2026-11-27T04:57:04.297Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd remote::tests",
+      "exit": 101
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "6ec052d573660b175a6ef2a501f6b6e1115097b3",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-base-stall.json",
+          "sha256": "529bfbd2e1cc3565fee240f3ea603dcf0d7a19546d5101d29d2e62015abb38db"
+        }
+      ],
+      "addedAt": "2026-11-27T04:57:36.403Z",
+      "text": "Running app at base (6ec052d: main plus the new tests only), isolated hub + isolated box, the box added as a direct host behind a TCP proxy (run.sh): the hub's own connection passes; each later connection (a page's pipe) gets the WebSocket handshake through, then the proxy stops reading and resets it 0.5 s later. A raw page waits for its pipe's first host.down (506 ms), then sends a 24 MB attach.put (ref big) while the pipe waits out its backoff: the op is held, the reconnect flushes it, the write is reset (second host.down at 2752 ms). No reply with ref big in the 15 s that follow.",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "repro",
+      "at": "6ec052d573660b175a6ef2a501f6b6e1115097b3",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-base-removed.json",
+          "sha256": "647387ab8e62f8d34fe98935835b73840a98f56f96f5244bdd4d11ba902ba0ff"
+        }
+      ],
+      "addedAt": "2026-11-27T04:57:36.448Z",
+      "text": "Same setup at base, the proxy black-holing the page's pipe (accept, never answer, so it is still opening for up to 10 s). The page sends session.open (ref open) at 501 ms, accepted since the host shows connected, then host.remove at 1001 ms: the page drops the pipe, and the op gets no reply at all (4 s watched).",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "note",
+      "at": "6ec052d573660b175a6ef2a501f6b6e1115097b3",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-proxy.py",
+          "sha256": "38601f55c2a6c5f24f6e0b10f674cff42fe838209b3cae3b4922e4a09077e754"
+        },
+        {
+          "path": "p4-drive.ts",
+          "sha256": "c005c9331f8e8bda1924396a3090a8d90b74b42853440dba6ea3b8df19d6cf23"
+        },
+        {
+          "path": "p4-run.sh",
+          "sha256": "6bf960702b5ff4f4285840efe7dad66ef17f1cb218039f85f23466f1e75f50f3"
+        }
+      ],
+      "addedAt": "2026-11-27T04:57:36.495Z",
+      "text": "The scripts behind the running-app proofs (not committed): proxy.py (TCP proxy; connection 1 = the hub's own passes, later ones follow a mode file: pass, blackhole, stall), drive.ts (a raw page on the hub, bun), run.sh <repo> <hub port> <box port> <out> (one host entry and proxy per scenario)."
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "bf29985d55743598e0963a339fda88d6ce1e02e1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-head-stall.json",
+          "sha256": "2738e2b22e5f5c864be5ca918a49aeb45df4fed2c3c70d39045d018b05d6f022"
+        }
+      ],
+      "addedAt": "2026-11-27T04:57:43.341Z",
+      "text": "Running app at head (bf29985), same setup and steps as the base stall proof: the held 24 MB attach.put gets {op: error, ref: big, message: 'this host is not connected', for: attach.put} at 2781 ms, with the host.down for the reset write.",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "bf29985d55743598e0963a339fda88d6ce1e02e1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-head-removed.json",
+          "sha256": "6020a25201ceaac63c61e89e1ede0300a9697a23a0776a80af4c9b25675171a2"
+        }
+      ],
+      "addedAt": "2026-11-27T04:57:43.383Z",
+      "text": "Running app at head, same steps as the base removed-host proof: session.open (ref open) gets {op: error, ref: open, message: 'no such host'} at 1004 ms, 1 ms after host.remove.",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "note",
+      "at": "bf29985d55743598e0963a339fda88d6ce1e02e1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T04:57:43.426Z",
+      "text": "Not reproduced in the running app: the ssh-tunnel race (an op taken as the tunnel drops). yv's fake ssh is always unreachable, so no harness host has a tunnel that comes up and then drops. It is covered at the Pipe level by remote::tests::an_op_taken_as_an_ssh_tunnel_drops_is_answered_without_waiting_for_it (the state the race leaves: host shown connected, no url), which waits forever on main and gets the error at once at head."
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "test",
+      "at": "bf29985d55743598e0963a339fda88d6ce1e02e1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-cmd.log",
+          "sha256": "6e21d631f61f16ef91b4bd0192a1b250ce173c855b9765dfab105804643cc4f8"
+        }
+      ],
+      "addedAt": "2026-11-27T04:57:47.362Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd",
+      "exit": 0
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "regression",
+      "at": "bf29985d55743598e0963a339fda88d6ce1e02e1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-map-hosts.json",
+          "sha256": "ab30563c9bb5efde9f3d50f89247f15f3145a5c0a9bea852dd8093dc23554b4c"
+        }
+      ],
+      "addedAt": "2026-11-27T05:06:24.036Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/processes-say-the-host-is-offline",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    }
+  ]
+}
