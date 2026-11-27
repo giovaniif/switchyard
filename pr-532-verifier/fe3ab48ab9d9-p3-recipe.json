@@ -1,0 +1,22 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "logins",
+      "at": "2026-11-27T06:50:29.323Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "closing-a-login-cancels-it",
+          "status": "pass",
+          "ms": 9197
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

@@ -1,0 +1,126 @@
+{
+  "v": 1,
+  "claim": "Map PR: logins area had no recipe for login.cancel; adds closing-a-login-cancels-it (Close/Escape cancel a half-typed Claude Code login, the next Log in is fresh, no auth login child left under yardd).",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-verify-532-2026-11-7b8e",
+  "base": "15359ee7ff9e509169e793d3a5bfbf4f96222bf1",
+  "head": "4babf920594612ae72fb1724bfd3be49e1ec2aa1",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/features/logins.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T06:50:19.672Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "4babf920594612ae72fb1724bfd3be49e1ec2aa1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T06:50:19.716Z",
+      "text": "no-repro: map-only PR (verify/features/logins.md); there is no product bug to reproduce, only a new recipe."
+    },
+    {
+      "id": 2,
+      "ref": "head",
+      "kind": "note",
+      "at": "4babf920594612ae72fb1724bfd3be49e1ec2aa1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T06:50:19.756Z",
+      "text": "no-failing-test: no product code changes; the recipe's own negative control (leftover login makes its process check exit 1) is recorded as a head note."
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "4babf920594612ae72fb1724bfd3be49e1ec2aa1",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-recipe.json",
+          "sha256": "fe3ab48ab9d99a72ba448ae9b3a9a8fa96fd11ada18f62e713efd0bf521f64d0"
+        }
+      ],
+      "addedAt": "2026-11-27T06:50:29.367Z",
+      "failedApi": [],
+      "failingRecipes": [],
+      "passingRecipes": [
+        "logins/closing-a-login-cancels-it"
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "note",
+      "at": "4babf920594612ae72fb1724bfd3be49e1ec2aa1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "853682ad2993369e66c0764dce67e5688aca224b950f8ec57e37481c42b4966b"
+        }
+      ],
+      "addedAt": "2026-11-27T06:50:29.407Z",
+      "text": "Negative control: with the login dialog left open (no Close or Escape), the recipe's process check exits 1.",
+      "cmd": "bash /tmp/v532/leftover.sh /home/giovani/.yard/wt/switchyard/yard-loop-verify-532-2026-11-7b8e",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "4babf920594612ae72fb1724bfd3be49e1ec2aa1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "21616fd60405d4ae1f066ea6f866f59458f3f05eddbafd41586c412001bbdb2a"
+        }
+      ],
+      "addedAt": "2026-11-27T06:50:35.488Z",
+      "cmd": "verify/yv selftest",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "4babf920594612ae72fb1724bfd3be49e1ec2aa1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-logins.json",
+          "sha256": "0bca59427695b3aa5700d11036eac44d271da1b1a38b7f0588710864c9ced598"
+        }
+      ],
+      "addedAt": "2026-11-27T06:50:35.906Z",
+      "cmd": "verify/yv map run logins",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "logins/hosts-page-shows-logged-out",
+        "logins/usage-trigger-skips-signed-out-account",
+        "logins/new-session-log-in-fits",
+        "logins/closing-a-login-cancels-it",
+        "logins/codex-device-login",
+        "logins/claude-code-login",
+        "logins/grok-device-login",
+        "logins/gemini-check-login-says-still-logged-out",
+        "logins/opencode-api-key",
+        "logins/opencode-device-sign-in"
+      ]
+    }
+  ]
+}

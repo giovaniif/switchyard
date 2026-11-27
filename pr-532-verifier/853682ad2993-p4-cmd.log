@@ -1,0 +1,8 @@
+$ bash /tmp/v532/leftover.sh /home/giovani/.yard/wt/switchyard/yard-loop-verify-532-2026-11-7b8e
+# exit 0 after 6037 ms at 4babf920594612ae72fb1724bfd3be49e1ec2aa1
+
+{"ok":true}
+3534948 /bin/sh /home/giovani/.yard/wt/switchyard/yard-loop-verify-532-2026-11-7b8e/crates/yardd/tests/fake-codex/claude auth login
+3534948
+recipe process check exit with a leftover login: 1 (want 1)
+
