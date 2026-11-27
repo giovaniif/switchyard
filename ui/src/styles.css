@@ -1014,9 +1014,10 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
   .bar { gap: 8px; padding: 8px 16px 8px 12px; }
   /* The title keeps more of the bar than the branch beside it. */
   .bar code { flex-shrink: 4; }
-  /* The two delete choices need most of a phone's bar. For the few seconds
-     they are armed, the branch, PR link and side controls step aside so both
-     stay on screen; the title and Stop remain. */
+  /* A delete ask (the two worktree choices, or the single "Delete
+     session?") needs most of a phone's bar. For the few seconds it is armed,
+     the branch, PR link and side controls step aside so it stays on screen
+     beside a readable title; the title and Stop remain. */
   .bar:has(.bar-armed) > :is(code, .session-pr-link, .session-account, .bar-host, .mobile-setup-button, .workspace-toggle) { display: none; }
   .app > .resizer { display: none; }
   .sidebar {
