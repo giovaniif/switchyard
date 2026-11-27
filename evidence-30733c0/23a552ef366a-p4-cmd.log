@@ -1,0 +1,40 @@
+$ verify/yv map run slack --recipe double-click-on-disconnect-only-asks
+# exit 1 after 16261 ms at c3aec883b72c1fee4f9591cd64b9185e7e4fc315
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "slack",
+      "at": "2026-11-27T07:18:29.039Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "double-click-on-disconnect-only-asks",
+          "status": "fail",
+          "ms": 15584,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 3 {\"expect\":\"role:button:Confirm removing TEST-Doubler\"}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-3590/.verify/drives/2026-11-27T07-18-14-021Z/fail-desktop-step3.png and the aria snapshot"
+            }
+          ],
+          "tail": "\"Remove fake-oauth\\\": Remove\\n    - listitem:\\n      - text: GitHub ChatGPT app Needs sign-in\\n      - link \\\"Connect on ChatGPT\\\":\\n        - /url: https://chatgpt.com/apps/github\\n    - listitem:\\n      - text: chart config.toml widgets 3 tools Connected\\n      - button \\\"Remove chart\\\": Remove\\n  - text: 1 connected · 2 need sign-in\\n  - button \\\"Filter tools\\\"\\n  - button \\\"Add connector\\\"\\n- heading \\\"Messaging\\\" [level=2]\\n- paragraph: Your own Slack, and who can talk to your agents there.\\n- region \\\"Slack\\\":\\n  - strong: Slack\\n  - text: As @test-owner in TEST-workspace\\n  - status: Connected\\n  - list:\\n    - listitem: Direct messages all of them, new ones too\\n    - listitem:\\n      - text: Channels only the ones you import\\n      - button \\\"Choose channels\\\"\\n  - list:\\n    - listitem:\\n      - text: TEST-Owner UOWNER Can request tool use\\n      - button \\\"Remove TEST-Owner\\\": Remove\\n  - text: xoxp-…TEST · xapp-…TEST\\n  - button \\\"Disconnect your Slack\\\": Disconnect\"\n      },\n      \"captures\": [],\n      \"notes\": [\n        {\n          \"step\": 2,\n          \"eval\": \"(async () => { const b = [...document.querySelectorAll(\\\"button\\\")].find((x) => x.getAttribute(\\\"aria-label\\\") === \\\"Remove TEST-Doubler\\\"); b.scrollIntoView({ block: \\\"center\\\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\\\"mousedown\\\", \\\"mouseup\\\", \\\"click\\\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\\\"button\\\"); const label = second ? second.getAttribute(\\\"aria-label\\\") : \\\"none\\\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \\\"second click hit: \\\" + label; })()\",\n          \"value\": \"second click hit: Confirm removing TEST-Doubler\"\n        }\n      ],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 3 {\\\"expect\\\":\\\"role:button:Confirm removing TEST-Doubler\\\"}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-3590/.verify/drives/2026-11-27T07-18-14-021Z/fail-desktop-step3.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "slack/double-click-on-disconnect-only-asks",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

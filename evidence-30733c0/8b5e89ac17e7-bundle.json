@@ -1,0 +1,252 @@
+{
+  "v": 1,
+  "claim": "Connectors > Slack: a double click on Disconnect (the owner's own Slack) or on a trusted person's Remove answered its own ask: the second click landed on the Confirm the first click made, so his Slack app was deleted, or the person lost tool use, with no real confirmation",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-3590",
+  "base": "3fe83c5f34f899a57f89a05d42e80d41c41c3f87",
+  "head": "30733c0896802f29276373053f9d0e1185dbc221",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/SlackCard.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/slack.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T07:18:12.596Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "c3aec883b72c1fee4f9591cd64b9185e7e4fc315",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "8d75dfca86bc88c2c37ed716b31f5fda156092433faca152518239106f330075"
+        },
+        {
+          "path": "p1-before-desktop.png",
+          "sha256": "357d13b97275b2cbd599d1f1a7697d7620451f7448b4386880a0308b56fd0b26"
+        },
+        {
+          "path": "p1-after-double-click-remove-desktop.png",
+          "sha256": "f99662b5ec9b644efdc61399d39e676eb0589a7c0306f4b732d3c943e2ac6712"
+        },
+        {
+          "path": "p1-after-double-click-disconnect-desktop.png",
+          "sha256": "73c5877d8e911379743443fd6cc3e92527be93d6b219ac10c440f9a2491da0f8"
+        }
+      ],
+      "addedAt": "2026-11-27T07:18:12.636Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "c3aec883b72c1fee4f9591cd64b9185e7e4fc315",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "a361eefa21ba079071ffd971f1107e254791739367e82eb7c993df49a77c97be"
+        },
+        {
+          "path": "p2-before-mobile.png",
+          "sha256": "e9ced33230483f2ba5eb88c2f5109c17482305846402c1f1b46e0f1e97db61a5"
+        },
+        {
+          "path": "p2-after-double-click-remove-mobile.png",
+          "sha256": "1ac5a977c2517370896737dc8117b5ce16e083b5eb4379c2ee5009fe13d4f78b"
+        },
+        {
+          "path": "p2-after-double-click-disconnect-mobile.png",
+          "sha256": "14d00b2bc7fe76d3b8f0a403f59c1b35487f70814a8498f71951fff09dc23b4f"
+        }
+      ],
+      "addedAt": "2026-11-27T07:18:12.690Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "note",
+      "at": "c3aec883b72c1fee4f9591cd64b9185e7e4fc315",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T07:18:12.738Z",
+      "text": "Base repro, both viewports: the second click of the double click hit Confirm removing TEST-Doubler (the person lost tool use) and then Confirm disconnecting your Slack (the card went to Not connected and his app was deleted)."
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "test",
+      "at": "c3aec883b72c1fee4f9591cd64b9185e7e4fc315",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "23a552ef366a4a9bde952f68a41c411bf356349dc3cfc51f91a8bd228a5f7b71"
+        }
+      ],
+      "addedAt": "2026-11-27T07:18:12.782Z",
+      "cmd": "verify/yv map run slack --recipe double-click-on-disconnect-only-asks",
+      "exit": 1
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "30733c0896802f29276373053f9d0e1185dbc221",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "1d589b682033257791d4c7d10fb1048ef60901240b2f4b89c16d20f1d7dfa076"
+        },
+        {
+          "path": "p5-double-click-asks-desktop.png",
+          "sha256": "711cf348f4adb4771d5905295cac26e47024f08cd9066ab5071ab5f958ac9b15"
+        }
+      ],
+      "addedAt": "2026-11-27T07:18:51.234Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "30733c0896802f29276373053f9d0e1185dbc221",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p6-drive.json",
+          "sha256": "599cb26b114d8533a51ede0438077302df93c829cdcfe41049b27b451e909f78"
+        },
+        {
+          "path": "p6-double-click-asks-mobile.png",
+          "sha256": "aa642150cd118a7083c053ac0ba6ecba5d103d9d6d00452f58fd7f78d819820f"
+        }
+      ],
+      "addedAt": "2026-11-27T07:19:00.299Z",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "note",
+      "at": "30733c0896802f29276373053f9d0e1185dbc221",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T07:19:11.834Z",
+      "text": "Mobile: the Disconnect double click's second click lands on Confirm only when the grown label 'Confirm: forget it and delete its app' still covers the first click's point. In this head drive it did not (hit: none), so Disconnect's head proof is the desktop drive; at mobile the drive proves the person's Remove (second click hit Confirm removing TEST-Doubler; the person stays)."
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "test",
+      "at": "30733c0896802f29276373053f9d0e1185dbc221",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-cmd.log",
+          "sha256": "6a7efe6e55e96ed63ea1ea75d58a9c83e3c9ddcddbd2ff097029e108f52ab04b"
+        }
+      ],
+      "addedAt": "2026-11-27T07:19:11.875Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "test",
+      "at": "30733c0896802f29276373053f9d0e1185dbc221",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-cmd.log",
+          "sha256": "6343d3f9c0ed278c68407613aa0ab449d3a2d7af99afde15f7212de367e54d0e"
+        }
+      ],
+      "addedAt": "2026-11-27T07:19:12.354Z",
+      "cmd": "verify/yv map run slack --recipe double-click-on-disconnect-only-asks",
+      "exit": 0
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "design",
+      "at": "30733c0896802f29276373053f9d0e1185dbc221",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-design.json",
+          "sha256": "d300543b70a28f13ae1d732036debc5f669d77768a6a2692a315bf60df785483"
+        }
+      ],
+      "addedAt": "2026-11-27T07:19:31.198Z",
+      "cmd": "verify/yv design-check --base 3fe83c5f34f8",
+      "exit": 0
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "regression",
+      "at": "30733c0896802f29276373053f9d0e1185dbc221",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-map-slack.json",
+          "sha256": "c8a02290e7c91fb76fd8487433570c986792f7321f4d3885ae2a52f03f6c2c9d"
+        }
+      ],
+      "addedAt": "2026-11-27T07:19:31.281Z",
+      "cmd": "verify/yv map run slack",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "slack/not-connected",
+        "slack/an-agents-own-slack-app",
+        "slack/allow-from-an-agents-app",
+        "slack/answer-in-the-slack-thread",
+        "slack/connect-your-slack",
+        "slack/tokens-stay-in-yardd",
+        "slack/your-direct-messages",
+        "slack/reply-react-and-read",
+        "slack/someone-new-writes",
+        "slack/import-a-channel",
+        "slack/call-an-agent-from-slack",
+        "slack/call-an-agent-on-another-host",
+        "slack/pick-an-agent-with-the-keys",
+        "slack/one-icon-per-picture",
+        "slack/one-token-with-a-public-address",
+        "slack/a-watched-channel",
+        "slack/double-click-on-disconnect-only-asks"
+      ]
+    }
+  ]
+}
