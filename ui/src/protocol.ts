@@ -237,10 +237,6 @@ export interface SlackAgentApp {
   syncError?: string | null;
   /** Which picture of the agent Slack has as its icon (`iconKey` in slack.ts); empty: none yet. */
   iconKey?: string;
-  /** The only people its Slack answers may @mention, chosen by the owner. */
-  mentions?: { id: string; name: string }[];
-  /** Channels whose new top-level messages and alerts reach the agent as data, chosen by the owner. */
-  watched?: { id: string; name: string }[];
   /** When ready: `connecting`, `connected` or `error` (Socket Mode); `events` until Slack's first event over HTTP. */
   state?: "connecting" | "connected" | "error" | "events";
   error?: string | null;

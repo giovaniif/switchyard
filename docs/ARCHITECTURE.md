@@ -1044,8 +1044,8 @@ the composer and session view in `App.tsx`.
     last 24 hours. Never just the newest thread: an agent juggling two
     tickets would post one's news in the other's thread. `channel` alone
     picks the turn's thread if it is there, else its newest thread there.
-    Posts are mrkdwn with the app's mention list (`to_mrkdwn_with`), so the
-    people the owner chose can be tagged and nobody else. An agent without an app, or with one not installed
+    Posts are mrkdwn (`to_mrkdwn`), so any person can be tagged but a channel
+    ping (`<!channel>`) never can. An agent without an app, or with one not installed
     yet, is refused and told how to get one. A thread routed through the
     retired shared bot in a channel is allowed, and if the agent's app is not in
     that channel Slack's `not_in_channel` is said plainly. Links keep `app`
@@ -1401,7 +1401,8 @@ its engine framing and one arm in `origins::reply`.
   answered it ends: completed, the final answer is posted in the thread
   (`thread_ts` = the message's thread or its own ts), Markdown turned into
   mrkdwn (bold, italics, strikes, links, headings, bullets; `&`, `<`, `>`
-  escaped everywhere so an answer can never mention `<!channel>` or a user;
+  escaped, except a person's `<@U…>`/`<@W…>` which stays a real mention, so
+  an answer can never ping `<!channel>` or a user group;
   code kept, fences without a language), split at 3,500 bytes between lines
   with code blocks closed and reopened, and :white_check_mark:; failed,
   "Reviewer could not finish: <error>" and :x:; stopped, "Reviewer was
@@ -1427,9 +1428,9 @@ its engine framing and one arm in `origins::reply`.
   connection run from there, so a server agent answers in Slack while every
   Mac sleeps. Set up from any window: the steps route to the agent's host
   like its other ops, with that host's workspaces. A move or a hand-over
-  carries the whole record, its watched channels and mention list included
-  (see Agents). Its dialog (`SlackSetup.tsx`) opens from Add to Slack in the
-  agent's header, from its start page, and from its request card.
+  carries the whole record (see Agents). Its dialog (`SlackSetup.tsx`) opens
+  from Add to Slack in the agent's header, from its start page, and from its
+  request card.
   - **Token.** The owner pastes a Slack App Configuration *Refresh* Token
     (`xoxe-`), once per workspace (`slack.grant`; with `agentId` it also
     makes that agent's app). A pasted Access Token (`xoxe.xoxp-`) is told
@@ -1523,31 +1524,28 @@ its engine framing and one arm in `origins::reply`.
   - **Watched channels** (owner request: On-call, Domain Triage and
     Firefighter only reacted when @mentioned, and every Datadog, PostHog or
     Sentry alert has a `bot_id`, so it was dropped). Design approved by the
-    owner: a top-level message or alert in a watched channel starts a turn,
-    batched so an alert storm is one turn; the text reaches the agent as
+    owner: a top-level message or alert in a channel the app is in starts a
+    turn, batched so an alert storm is one turn; the text reaches the agent as
     data, not instructions (these agents have shell access); triage runs
     read-only, and anything that acts needs the owner's go-ahead.
-    - **The list** lives on the agent's app record (`AgentApp::watched`,
-      `{ id, name }`, next to `mentions`, in `slack.json`), at most 20, set
-      only by the owner in the agent's Slack dialog (`slack.app.watch {
-      agentId, channel, name? }`, a `C…`/`G…` id; the name typed, else
-      `conversations.info`; `slack.app.unwatch { agentId, channel }`, which
-      also drops a batch waiting). The agent has no tool for it, and its
-      setup line (`current_setup`) names the channels and says only the user
-      changes them. The app must be in the channel (it already subscribes to
-      `message.channels`/`message.groups`).
+    - **Every channel it is in.** There is no list: adding the app to a
+      channel is adding that channel to what it watches. Slack only sends the
+      app messages for the channels it was added to (it subscribes to
+      `message.channels`/`message.groups`), so a message's arrival is the
+      membership. The agent has no tool to change this, and its setup line
+      (`current_setup`) says it watches the channels it is added to.
     - **Routing** (`watch`, first thing in `on_event` for an agent's own
-      app): a `message` in a watched channel that is top level (no
-      `thread_ts`, or its own), with no subtype, `bot_message` or
-      `file_share`, from a person or an integration. Ignored: Switchyard's
-      own bots (every agent app's bot, by user id, bot id
+      app): a `message` in a channel it is in, top level (no `thread_ts`, or
+      its own), with no subtype, `bot_message` or `file_share`, from a person
+      or an integration. A direct message is not a watch. Ignored:
+      Switchyard's own bots (every agent app's bot, by user id, bot id
       from `auth.test`, or app id), edits, deletions, joins, and thread
       replies, which keep the follow-up rules. A person's @mention of the
-      agent there is a request and goes the mention path. A watched notice is automatic triage the owner
-      configured, and the text arrives as data. The words are the
-      text, else an integration's attachments (pretext, author, title, its
-      link, text, fields) or, with neither, its blocks; Slack markup read as
-      text; at most 3,000 bytes each.
+      agent there is a request and goes the mention path. A watched notice is
+      automatic triage the owner configured, and the text arrives as data. The
+      words are the text, else an integration's attachments (pretext, author,
+      title, its link, text, fields) or, with neither, its blocks; Slack
+      markup read as text; at most 3,000 bytes each.
     - **Batching** (`collect`, `flush_watched`): per agent and channel for 30
       s from the first message (`YARD_SLACK_WATCH_MS` in tests), then one
       turn. The same text (whitespace aside) again in the window is counted
@@ -1626,23 +1624,23 @@ its engine framing and one arm in `origins::reply`.
   (refused without an app and with no thread yet; the only recent thread
   by default and one named by `#name` and `thread_ts`, posted by the agent's
   own bot; a turn from a second Slack thread posting in its own thread, a
-  Switchyard turn with two recent threads refused until it names one, the
-  app's mention list kept in a post; another agent's thread, a channel it was not asked in and a
-  made-up `thread_ts` refused with its threads listed; an agent without an
-  app refused in its own thread), and watched channels (an unwatched
-  channel quiet; a person not on the allowlist, an alert in attachments, its
+  Switchyard turn with two recent threads refused until it names one, a
+  person tagged in a post and a channel ping kept out; another agent's thread,
+  a channel it was not asked in and a made-up `thread_ts` refused with its
+  threads listed; an agent without an app refused in its own thread), and
+  watched channels (a person not on the allowlist, an alert in attachments, its
   repeat and another integration's blocks as one read-only turn on a
   full-access agent, with the frame, three tags and an escaped attempt to
   close one; Switchyard's own bots, an edit and a thread reply ignored; the
   answer in the first thread only; the owner's reply in an alert's thread and
   an @mention there as normal turns; an integration's thread reply ignored;
   a repeat within minutes dropped; the seventh turn in an hour held with a
-  note; unwatch; and in a watched turn `slack_reply` posting in the alert's
+  note; and in a watched turn `slack_reply` posting in the alert's
   thread, `remember` and `update_setup` refused, and `message_agent` to a
   Claude agent with full access making her turn Plan, `turn permission=plan`
   on the sidecar, her answer back read-only, her next owner turn full
-  again), and an agent's own app moving with it to another host, watched
-  channels and all, and answering from there with the hub stopped. The fake
+  again), and an agent's own app moving with it to another host and
+  answering from there with the hub stopped. The fake
   knows
   `tooling.tokens.rotate`, `apps.manifest.create`/`update`/`delete`,
   `apps.icon.set` (multipart), `oauth.v2.access`, a second bot @agent, signed
