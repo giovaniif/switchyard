@@ -1249,13 +1249,22 @@ its engine framing and one arm in `origins::reply`.
   beside the session store's writer): `slack_conversations` (team, id, kind
   `im`/`mpim`/`channel`/`group`, name, the DM's other person, newest
   top-level ts, his read mark, `synced`, `complete` = nothing older in
-  Slack), `slack_messages` (team, channel, ts, thread_ts, user, a bot's name,
+  Slack, `favorite` = his star, kept here and not Slack's own),
+  `slack_messages` (team, channel, ts, thread_ts, user, a bot's name,
   Slack's text as sent, subtype, edited, deleted, reply count, reactions as
-  `[{name, users}]`, file names), `slack_users` (names). ts are compared as
-  text (ten-digit seconds).
+  `[{name, users}]`, files as name, MIME type and their page in Slack, an
+  app's own picture, and `attachments`: an alert's card or a link's
+  preview, words only (`color` a hex or Slack's three names, `pretext`,
+  `author`, `title`, `titleLink`, `text`, `fields`, `footer`; at most ten,
+  no images)), `slack_users` (name, picture address, whether an app,
+  whether gone). A picture address is kept only when https. ts are compared
+  as text (ten-digit seconds). A database from before attachments were kept
+  loads every conversation's 60 days again, once.
   - **Sync** when his connection says hello the first time in a process, and
     after a connection that dropped or failed, not after Slack's routine
     `disconnect` refresh (which would refetch every DM every few hours):
+    `users.list` first (everyone's name and picture in a few calls, at most
+    5000 people: who he can mention), then
     `users.conversations types=im,mpim` (deleted users left out); for each,
     one not loaded gets 60 days (`conversations.history oldest`, every page)
     and Slack's read mark (`conversations.info last_read`, only when it had
@@ -1263,6 +1272,18 @@ its engine framing and one arm in `origins::reply`.
     up from its newest ts. One at a time (the client waits out 429s twice).
     Internal apps are not under Slack's 2025 history limits for distributed
     apps.
+  - **How it goes** is said as it happens: `slack.inbox.sync { sync }`, and
+    `slackSync` in the snapshot (`running`, `done` of `total` conversations,
+    `current` by name, `error`, `channels` whose first load runs, `first`,
+    `seen`). `first`: most of the conversations load for the first time,
+    the import he watches and not a catch-up. Then the Connectors page
+    opens a dialog (what comes, how far it is, then how many conversations
+    are in the sidebar, with Choose channels), the sidebar's Slack section
+    shows a bar from the start, and the card's Direct messages row counts.
+    Closing the dialog is `slack.inbox.sync.seen`, for every window (kept in
+    memory only); the import goes on. A sync that failed says why on the
+    card with Try again (`slack.inbox.sync.retry`), not only at the
+    connection's next hello.
   - **Channels** (phase 4): the card's Channels row lists the channels he is
     in (`slack.inbox.channels`: `users.conversations
     types=public_channel,private_channel`, imported first), each with an
@@ -1292,7 +1313,15 @@ its engine framing and one arm in `origins::reply`.
     (`chat.postMessage` with his user token; `&`, `<`, `>` escaped so typed
     text is never markup; Slack's answer is stored and broadcast at once, and
     his own message reads everything before it); `slack.inbox.react { ts,
-    name, add }`. **Calling an agent from his reply box**: `send` takes
+    name, add }`; `slack.inbox.favorite { team, channel, on }`;
+    `slack.inbox.people` (the workspace's people, apps and those who left
+    aside). `send` also takes `people` (user ids, at most 20): each one's
+    `@Name`, where it stands whole as he picked it, becomes a real
+    `<@U…>` mention (longer names first); and a link written
+    `[label](https://…)` becomes Slack's `<url|label>` (http and https
+    only). Both run on the escaped text, so nothing else he types is
+    markup. Messages and pages carry `faces` (pictures by user id) beside
+    `users`. **Calling an agent from his reply box**: `send` takes
     `mentions` (agent ids, at most 10); each one with its own app ready in
     this workspace has its `@handle`, written as a word in any case, made a real
     `<@bot_user>` mention, so its app answers there in a place session of
@@ -1307,17 +1336,37 @@ its engine framing and one arm in `origins::reply`.
     sends none). A host the hub cannot reach still has its agent offered
     and called: the mention goes through Slack to the app on that host,
     not through the hub. Disconnecting his Slack forgets his inbox.
-  - **The page**: the sidebar's Slack section (before Agents): his
-    conversations newest first, the first 8 plus any unread or open one, an
-    unread count, Show all. `#/slack/<team>/<channel>` (yv route
+  - **The page**: the sidebar's Slack section (before Agents): favorites
+    first (a star), then his conversations newest first, the first 8 plus
+    any unread or open one, an unread count, Show all. Its options button
+    filters (all, unread only, favorites only: a filter keeps the open
+    conversation too) and sorts (most recent, A to Z), kept per browser
+    (`yard.slack.list`; `sidebarConversations` in `slackInbox.ts`). Every
+    sidebar section (Pinned, Sessions, Slack, Agents) folds from its
+    heading (`SectionToggle`, kept per browser in `yard.sidebar.collapsed`);
+    folded, the heading carries a count and what waits (the approval or
+    working dot, Slack's unread count). `#/slack/<team>/<channel>` (yv route
     `slack:<name>`): messages grouped by author (five minutes) and day,
     Slack's markup parsed into React elements (`slackText.ts`: bold,
     italics, strikes, code, code blocks, quotes, http/https/mailto links
     only, mentions by name, a few emoji drawn), edited and deleted marks,
     reactions (his highlighted, a click toggles), "N replies", Load older,
-    a thread pane (the whole screen on a phone), each message's actions
-    floating at its top right on hover or a tap, and a reply box that sends
-    as him. Opening it reads it.
+    a thread pane beside the conversation under a bar level with its own
+    (resizable, `yard.slack.thread.w`; the whole screen on a phone), each
+    message's actions floating at its top right on hover or a tap, and a
+    reply box that sends as him. Drawn as Slack draws it: a day is one line
+    with its date in a pill, each author has their picture (an `<img>`
+    from Slack's own address, no referrer; initials when there is none or
+    it fails), an attachment is a card with its coloured bar, and a file is
+    a chip that opens its page in Slack (the file itself is not fetched:
+    his app has no `files:read`). The reply box has a formatting bar that
+    writes Slack's marks (bold, italics, strike, code, a code block, a
+    quote, lists; Ctrl/Cmd+B and I), a link form, and on `@` offers agents
+    and then people (`suggestMentions`, `mentionedPeople`). The star in the
+    header is the favorite. Opening it reads it. Not built: sending files,
+    images or videos, and showing them inline (they need `files:write` and
+    `files:read` on his app, so a new approval in Slack, and a way for the
+    page to load Slack's private files through yardd).
 - **Transport: Socket Mode** for his app and agents' apps (unless a public
   address is set, below). The server is tailnet-only, so Slack cannot call
   it by default. The app-level token (`xapp-`, scope `connections:write`)

@@ -134,6 +134,18 @@ yv api '{"op":"session.rename","sessionId":"{{sid_echo}}","title":"TEST-say hell
 yv api '{"op":"session.rename","sessionId":"{{sid_think}}","title":"[think] TEST-plan the refactor"}' --wait '{"op":"session","session":{"id":"{{sid_think}}","title":"[think] TEST-plan the refactor"}}'
 ```
 
+### fold-a-section
+Viewports: both
+Every list in the sidebar folds from its heading: Sessions here (Pinned,
+Slack and Agents alike). Folded, the heading shows how many it holds and
+the dot of a session that waits for approval, and it stays folded after a
+reload. A click opens it again.
+
+```sh
+yv drive new --viewport desktop --steps '[{"expect":{"css":".section-toggle","hasText":"Sessions"}},{"click":{"css":".section-toggle","hasText":"Sessions"}},{"expect":{"css":".session-row","hasText":"TEST-say hello"},"count":0},{"expect":{"css":".section-toggle[aria-expanded=false]"},"text":"Sessions"},{"eval":"/^Sessions\\d+$/.test(document.querySelector(\".section-toggle[aria-expanded=false]\").textContent)","equals":true},{"shot":"folded"},{"reload":true},{"expect":{"css":".session-row","hasText":"TEST-say hello"},"count":0},{"click":{"css":".section-toggle","hasText":"Sessions"}},{"expect":{"css":".session-row","hasText":"TEST-say hello"}}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"click":{"css":".section-toggle","hasText":"Sessions"}},{"expect":{"css":".session-row","hasText":"TEST-say hello"},"count":0},{"shot":"folded"},{"click":{"css":".section-toggle","hasText":"Sessions"}},{"expect":{"css":".session-row","hasText":"TEST-say hello"}}]'
+```
+
 ### pin-and-unpin
 Pin moves the row under "Pinned"; the daemon stores it.
 
