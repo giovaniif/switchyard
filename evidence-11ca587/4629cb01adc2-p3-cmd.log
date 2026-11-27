@@ -1,0 +1,45 @@
+$ verify/yv map run accounts --recipe double-click-on-remove-account-only-asks
+# exit 1 after 32791 ms at b5225b3066a42e8bf9c6d7b4cd8617c6a2b6547e
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "accounts",
+      "at": "2026-11-27T04:30:55.570Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "double-click-on-remove-account-only-asks",
+          "status": "fail",
+          "ms": 26046,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 3 {\"expect\":{\"css\":\".account-row\",\"hasText\":\"TEST-dbl-acct\"}}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-9674/.verify/drives/2026-11-27T04-30-29-820Z/fail-mobile-step3.png and the aria snapshot"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 1 {\"expect\":\"role:button:Remove TEST-dbl-acct\"}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-9674/.verify/drives/2026-11-27T04-30-29-820Z/fail-desktop-step1.png and the aria snapshot"
+            }
+          ],
+          "tail": "m: Turn on Tailscale (or your private network) on the iPhone.\\n    - listitem: Enter the HTTPS address you open this host at on your phone.\\n  - text: Address the phone can reach\\n  - textbox \\\"Address the phone can reach\\\":\\n    - /placeholder: https://your-host.ts.net\\n  - paragraph:\\n    - text: None of your hosts lists one yet. It is the address in the host's\\n    - code: YARD_ALLOW_ORIGIN\\n    - text: \\\", such as its Tailscale name.\\\"\\n- button \\\"Select iso-host\\\" [pressed]:\\n  - strong: iso-host\\n  - text: This machine Healthy CPU\\n  - strong: 7%\\n  - text: Memory\\n  - strong: 13.0 GB\\n  - text: Disk\\n  - strong: 163 GB\\n- region \\\"iso-host details\\\":\\n  - heading \\\"iso-host\\\" [level=2]\\n  - text: Healthy\\n  - tablist \\\"Host details\\\":\\n    - tab \\\"Sessions · 2\\\"\\n    - tab \\\"Engine logins\\\" [selected]\\n    - tab \\\"System\\\"\\n  - tabpanel \\\"Engine logins\\\":\\n    - text: Claude Code logged in as me@example.com\\n    - button \\\"Add Claude Code account\\\": Add account\\n    - text: Codex logged in as me@example.com\\n    - button \\\"Add Codex account\\\": Add account\\n    - text: \\\"OpenCode providers: opencode\\\"\\n    - button \\\"Add provider\\\"\\n    - button \\\"Add OpenCode account\\\": Add account\\n    - text: Grok logged in as default@grok.example\\n    - button \\\"Add Grok account\\\": Add account\\n    - text: Gemini logged in\\n    - button \\\"Add Gemini account\\\": Add account\\n    - button \\\"View subscription usage →\\\"\\n- button \\\"Run sessions on another machine Add a server or desktop you reach over SSH.\\\":\\n  - strong: Run sessions on another machine\\n  - text: Add a server or desktop you reach over SSH.\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 3 {\\\"expect\\\":{\\\"css\\\":\\\".account-row\\\",\\\"hasText\\\":\\\"TEST-dbl-acct\\\"}}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-9674/.verify/drives/2026-11-27T04-30-29-820Z/fail-mobile-step3.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 1 {\\\"expect\\\":\\\"role:button:Remove TEST-dbl-acct\\\"}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-9674/.verify/drives/2026-11-27T04-30-29-820Z/fail-desktop-step1.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "accounts/double-click-on-remove-account-only-asks",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

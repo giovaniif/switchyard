@@ -1,0 +1,32 @@
+$ (cd ui && bun test) && verify/yv map run accounts --recipe double-click-on-remove-account-only-asks
+# exit 0 after 15054 ms at 11ca58713bfa97463b3c7cca68a19958edb41773
+
+bun test v1.4.4 (38afee6c8)
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "accounts",
+      "at": "2026-11-27T04:31:10.744Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "double-click-on-remove-account-only-asks",
+          "status": "pass",
+          "ms": 8492
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
+
+ 536 pass
+ 0 fail
+ 5134 expect() calls
+Ran 536 tests across 39 files. [361.00ms]

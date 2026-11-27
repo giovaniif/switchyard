@@ -1,0 +1,183 @@
+{
+  "v": 1,
+  "claim": "Engine logins: a double click on an account's Remove deleted the account and its login without the ask. The ask ('Click again to remove') is the same button, so the double click's second click answered it. Now that second click (detail 2) is ignored; a separate second click still removes.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-9674",
+  "base": "eacc79d5398b8ce714ebf9d7e066945d3b17de32",
+  "head": "11ca58713bfa97463b3c7cca68a19958edb41773",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/accounts.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T04:30:22.626Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "b5225b3066a42e8bf9c6d7b4cd8617c6a2b6547e",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "bfa561fd8ccff965223d39896ef8f697e11546bb5e8141219e394be9ee7cdf22"
+        },
+        {
+          "path": "p1-fail-mobile-step3.png",
+          "sha256": "1fe5a3e4c66e12d5450f7f36e5b4e7b957128864f4d5143300ddd6b689548314"
+        }
+      ],
+      "addedAt": "2026-11-27T04:30:22.676Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "b5225b3066a42e8bf9c6d7b4cd8617c6a2b6547e",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p2-drive.json",
+          "sha256": "81ae8acca33c134e0dec4a4fc66de798355803712c0b2476d9702ec5d8009d6f"
+        },
+        {
+          "path": "p2-fail-desktop-step3.png",
+          "sha256": "90ead72ec80aa967fb2670f9bd741b974889b5df09d807f1b3c9f370a455b528"
+        }
+      ],
+      "addedAt": "2026-11-27T04:30:22.730Z",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "b5225b3066a42e8bf9c6d7b4cd8617c6a2b6547e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "4629cb01adc2103b4293b550007045cb24dc2e739cbeca56535777980ab1c80f"
+        }
+      ],
+      "addedAt": "2026-11-27T04:30:22.783Z",
+      "cmd": "verify/yv map run accounts --recipe double-click-on-remove-account-only-asks",
+      "exit": 1
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "11ca58713bfa97463b3c7cca68a19958edb41773",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "cf30569e4626b6e0679795f2ae92caab9a6cc83f718cd1ce2a954341e064738b"
+        },
+        {
+          "path": "p4-double-click-remove-account-mobile.png",
+          "sha256": "b2255a35d877c7c2c9132cd1844943b719cdf4caf196f2b38b0260b88f13d98d"
+        },
+        {
+          "path": "p4-double-click-remove-account-desktop.png",
+          "sha256": "d134a0bf3536a81d7d93ea9c2e1d0b1b0f89cad96fefba07f47a55bc28a655f9"
+        }
+      ],
+      "addedAt": "2026-11-27T04:30:55.642Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "11ca58713bfa97463b3c7cca68a19958edb41773",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "57724c427688e88a0038394568feb0729ac369f9c45d616da71db667bf2a4ba0"
+        }
+      ],
+      "addedAt": "2026-11-27T04:30:55.693Z",
+      "cmd": "(cd ui && bun test) && verify/yv map run accounts --recipe double-click-on-remove-account-only-asks",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "11ca58713bfa97463b3c7cca68a19958edb41773",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "d890a49b2837e8e7b9fc02b91dd67e5b254104abc77a250dfa8defcfee0a5d37"
+        }
+      ],
+      "addedAt": "2026-11-27T04:31:10.793Z",
+      "cmd": "verify/yv design-check --base eacc79d5398b",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "regression",
+      "at": "11ca58713bfa97463b3c7cca68a19958edb41773",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-map-accounts.json",
+          "sha256": "da1356feac34875a9521c5e1915903eeca4a2dab326cf78bf003c7d26892a828"
+        }
+      ],
+      "addedAt": "2026-11-27T04:31:10.884Z",
+      "cmd": "verify/yv map run accounts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "accounts/add-account",
+        "accounts/empty-name-add-looks-disabled",
+        "accounts/refused-add-account-keeps-the-form",
+        "accounts/log-in-account",
+        "accounts/pick-account-desktop",
+        "accounts/pick-account-mobile",
+        "accounts/default-has-no-account-row-without-a-choice",
+        "accounts/pick-other-engine-account-switches-engine",
+        "accounts/remove-refused-while-in-use",
+        "accounts/refusal-names-the-sessions-archived-too",
+        "accounts/remove-account",
+        "accounts/double-click-on-remove-account-only-asks",
+        "accounts/add-account-stays-at-the-right",
+        "accounts/install-command-stays-at-the-right",
+        "accounts/account-chip-shows-the-whole-name",
+        "accounts/account-chip-chevron-keeps-its-size",
+        "accounts/long-account-name-fits-the-setup-sheet",
+        "accounts/long-account-name-wraps-in-the-login-banner",
+        "accounts/refusal-with-a-long-word-keeps-dismiss-on-screen",
+        "accounts/long-account-name-keeps-its-state-under-the-name"
+      ]
+    }
+  ]
+}

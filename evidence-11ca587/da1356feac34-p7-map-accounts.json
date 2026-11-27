@@ -1,0 +1,117 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "accounts",
+      "at": "2026-11-27T04:33:08.310Z",
+      "counts": {
+        "pass": 20
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "add-account",
+          "status": "pass",
+          "ms": 4462
+        },
+        {
+          "label": "empty-name-add-looks-disabled",
+          "status": "pass",
+          "ms": 2514
+        },
+        {
+          "label": "refused-add-account-keeps-the-form",
+          "status": "pass",
+          "ms": 5643
+        },
+        {
+          "label": "log-in-account",
+          "status": "pass",
+          "ms": 3667
+        },
+        {
+          "label": "pick-account-desktop",
+          "status": "pass",
+          "ms": 5557
+        },
+        {
+          "label": "pick-account-mobile",
+          "status": "pass",
+          "ms": 6036
+        },
+        {
+          "label": "default-has-no-account-row-without-a-choice",
+          "status": "pass",
+          "ms": 2078
+        },
+        {
+          "label": "pick-other-engine-account-switches-engine",
+          "status": "pass",
+          "ms": 11094
+        },
+        {
+          "label": "remove-refused-while-in-use",
+          "status": "pass",
+          "ms": 2744
+        },
+        {
+          "label": "refusal-names-the-sessions-archived-too",
+          "status": "pass",
+          "ms": 7101
+        },
+        {
+          "label": "remove-account",
+          "status": "pass",
+          "ms": 4432
+        },
+        {
+          "label": "double-click-on-remove-account-only-asks",
+          "status": "pass",
+          "ms": 8777
+        },
+        {
+          "label": "add-account-stays-at-the-right",
+          "status": "pass",
+          "ms": 4919
+        },
+        {
+          "label": "install-command-stays-at-the-right",
+          "status": "pass",
+          "ms": 12379
+        },
+        {
+          "label": "account-chip-shows-the-whole-name",
+          "status": "pass",
+          "ms": 5928
+        },
+        {
+          "label": "account-chip-chevron-keeps-its-size",
+          "status": "pass",
+          "ms": 5938
+        },
+        {
+          "label": "long-account-name-fits-the-setup-sheet",
+          "status": "pass",
+          "ms": 5946
+        },
+        {
+          "label": "long-account-name-wraps-in-the-login-banner",
+          "status": "pass",
+          "ms": 5503
+        },
+        {
+          "label": "refusal-with-a-long-word-keeps-dismiss-on-screen",
+          "status": "pass",
+          "ms": 6501
+        },
+        {
+          "label": "long-account-name-keeps-its-state-under-the-name",
+          "status": "pass",
+          "ms": 5280
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
