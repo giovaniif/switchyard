@@ -500,13 +500,9 @@ async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>, host: String, ag
         };
         match connect(&url).await {
             Ok(ws) => {
-                set(&app, &conn, |c| {
-                    c.status = "connected";
-                    c.error = None;
-                    c.no_daemon = false;
-                });
+                // Shown connected once its snapshot is read (`serve_host`).
                 backoff.reset();
-                serve_host(&app, ws, &host, &agents).await;
+                serve_host(&app, ws, &host, &conn, &agents).await;
                 set(&app, &conn, |c| {
                     c.status = "error";
                     c.error = Some("Connection lost. Retrying.".into());
@@ -533,6 +529,7 @@ async fn serve_host(
     app: &Arc<App>,
     ws: tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
     host: &str,
+    conn: &watch::Sender<Conn>,
     agents: &Arc<Mutex<HostAgents>>,
 ) {
     let (mut sink, mut stream) = ws.split();
@@ -547,6 +544,20 @@ async fn serve_host(
                 Some(Ok(Message::Text(text))) => {
                     if text.contains("\"op\":\"snapshot\"") || text.contains("\"op\":\"agents\"") || text.contains("\"op\":\"slack\"") {
                         if let Ok(msg) = serde_json::from_str::<Value>(&text) {
+                            if msg["op"] == "snapshot" {
+                                // Connected from here on: the hub now knows
+                                // what the host is (whether it owns agents),
+                                // so nothing acting on a connected host meets
+                                // one it has not heard yet. `hear_agents` tells
+                                // the windows (and starts the hand-overs).
+                                conn.send_if_modified(|c| {
+                                    let before = c.clone();
+                                    c.status = "connected";
+                                    c.error = None;
+                                    c.no_daemon = false;
+                                    *c != before
+                                });
+                            }
                             hear_agents(app, host, agents, &msg);
                         }
                         continue;
@@ -751,6 +762,9 @@ async fn run_ssh(app: &App, conn: &watch::Sender<Conn>, destination: &str, remot
 pub struct Pipe {
     tx: mpsc::UnboundedSender<Value>,
     up: Arc<AtomicBool>,
+    /// The hub's own connection to the host (`monitor`), which the host's
+    /// row shows.
+    conn: watch::Receiver<Conn>,
     task: JoinHandle<()>,
 }
 
@@ -761,14 +775,20 @@ impl Drop for Pipe {
 }
 
 impl Pipe {
-    /// Forward an op to the host, or say why it cannot go.
+    /// Forward an op to the host, or say why it cannot go. While the host
+    /// shows connected, an op waits for this client's own connection to
+    /// open: a page asks right after it connects (a reload, a phone coming
+    /// back), and after the host comes back this connection may still be
+    /// waiting to try again. If it cannot open, the op fails then (`pipe`).
     pub fn send(&self, msg: Value) -> Result<()> {
-        if !self.up.load(Ordering::Relaxed) {
-            bail!("this host is not connected");
+        if !self.up.load(Ordering::Relaxed) && self.conn.borrow().status != "connected" {
+            bail!("{NOT_CONNECTED}");
         }
-        self.tx.send(outgoing(msg)).ok().context("this host is not connected")
+        self.tx.send(msg).ok().context(NOT_CONNECTED)
     }
 }
+
+const NOT_CONNECTED: &str = "this host is not connected";
 
 /// Open (and keep reopening) a client's connection to a host. Everything the
 /// host sends goes to `direct`, with ids rewritten.
@@ -778,6 +798,7 @@ pub fn pipe(app: &Arc<App>, host_id: &str, direct: mpsc::UnboundedSender<String>
     let up = Arc::new(AtomicBool::new(false));
     let host = host_id.to_string();
     let flag = up.clone();
+    let shown = conn.clone();
     if conn.borrow().status != "connected" {
         if let Some(mut snapshot) = last.lock().unwrap().clone() {
             // Its stats are stale; the host's row says it is offline instead.
@@ -788,6 +809,8 @@ pub fn pipe(app: &Arc<App>, host_id: &str, direct: mpsc::UnboundedSender<String>
     }
     let task = tokio::spawn(async move {
         let mut backoff = Backoff::new(Duration::from_secs(10));
+        // Ops sent while it waited to try again: they go first once it opens.
+        let mut held: Vec<Value> = Vec::new();
         loop {
             let url = match conn.wait_for(|c| c.url.is_some()).await {
                 Ok(c) => c.url.clone().unwrap_or_default(),
@@ -797,33 +820,56 @@ pub fn pipe(app: &Arc<App>, host_id: &str, direct: mpsc::UnboundedSender<String>
                 backoff.reset();
                 let (mut sink, mut stream) = ws.split();
                 flag.store(true, Ordering::Relaxed);
+                let mut first = std::mem::take(&mut held).into_iter();
                 loop {
-                    tokio::select! {
-                        incoming = stream.next() => match incoming {
-                            Some(Ok(Message::Text(text))) => {
-                                if let Some(out) = rewrite(&host, &name, &text) {
-                                    remember(&last, &out);
-                                    if direct.send(out.to_string()).is_err() { return; }
+                    let op = match first.next() {
+                        Some(op) => Some(op),
+                        None => tokio::select! {
+                            incoming = stream.next() => match incoming {
+                                Some(Ok(Message::Text(text))) => {
+                                    if let Some(out) = rewrite(&host, &name, &text) {
+                                        remember(&last, &out);
+                                        if direct.send(out.to_string()).is_err() { return; }
+                                    }
+                                    continue;
                                 }
-                            }
-                            Some(Ok(_)) => {}
-                            _ => break,
+                                Some(Ok(_)) => continue,
+                                _ => break,
+                            },
+                            op = rx.recv() => match op {
+                                Some(op) => Some(op),
+                                None => return,
+                            },
                         },
-                        op = rx.recv() => match op {
-                            Some(op) => {
-                                if sink.send(Message::Text(op.to_string())).await.is_err() { break; }
-                            }
-                            None => return,
-                        },
+                    };
+                    if let Some(op) = op {
+                        if sink.send(Message::Text(outgoing(op).to_string())).await.is_err() { break; }
                     }
                 }
                 flag.store(false, Ordering::Relaxed);
                 let _ = direct.send(json!({ "op": "host.down", "hostId": host }).to_string());
             }
-            backoff.wait().await;
+            // Ops that waited for this try and still could not go: say so.
+            while let Ok(op) = rx.try_recv() {
+                held.push(op);
+            }
+            for op in held.drain(..) {
+                if op["op"] != "agent.seen" {
+                    let _ = direct.send(crate::ws::error_reply(&op, &anyhow::anyhow!(NOT_CONNECTED)));
+                }
+            }
+            // An op sent meanwhile means the host shows connected (`Pipe::
+            // send`): try again now rather than after the backoff.
+            tokio::select! {
+                _ = backoff.wait() => {}
+                op = rx.recv() => match op {
+                    Some(op) => held.push(op),
+                    None => return,
+                },
+            }
         }
     });
-    Some(Pipe { tx, up, task })
+    Some(Pipe { tx, up, conn: shown, task })
 }
 
 /// Which host an op is for, when it is not for this yardd.

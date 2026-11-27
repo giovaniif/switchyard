@@ -939,6 +939,101 @@ async fn an_edit_made_while_a_refused_hand_over_is_tried_again_waits_for_the_ans
 }
 
 #[tokio::test]
+async fn a_host_shows_connected_once_the_hub_knows_it_can_own_agents() {
+    // The hub showed a host connected as soon as its socket opened, before it
+    // had read the host's snapshot, which says the host owns agents. A move
+    // made in between was refused as "runs an older Switchyard".
+    let remote_sb = Sandbox::new("agents-known-remote");
+    let remote = remote_sb.start();
+    let hub_sb = Sandbox::new("agents-known-hub");
+    let hub = hub_sb.start_with(NO_SLACK);
+    let mut c = hub.client().await;
+    ready(&mut c).await;
+    let agent = save(&mut c, json!({ "name": "Pager", "engine": "codex", "model": MODEL, "effort": EFFORT })).await.unwrap();
+    c.send(json!({ "op": "host.add", "name": "TEST-box", "kind": "direct", "url": remote.url() })).await;
+    let hosts = c.wait_for("the host shown connected", |m| m["op"] == "hosts" && m["hosts"].as_array().is_some_and(|h| h.iter().any(|h| h["name"] == "TEST-box" && h["status"] == "connected"))).await;
+    let shown = hosts["hosts"].as_array().unwrap().iter().find(|h| h["name"] == "TEST-box").unwrap().clone();
+    assert_eq!(shown["ownAgents"], true, "{shown}");
+    let moved = save(&mut c, json!({ "id": agent["id"], "host": shown["id"] })).await;
+    assert!(moved.is_ok(), "{moved:?}");
+    eventually("the box owns it", || saved_agents(&remote_sb).iter().any(|a| a["id"] == agent["id"])).await;
+}
+
+/// `agent.delete` from a window, answered with `agent.deleted` or an error.
+async fn delete(c: &mut Client, id: &str) -> Result<(), String> {
+    let from = c.mark();
+    let r = format!("delete-{from}");
+    c.send(json!({ "op": "agent.delete", "id": id, "ref": r })).await;
+    let reply = c.wait_after(from, "agent.delete reply", |m| m["ref"] == r.as_str()).await;
+    match reply["op"].as_str() {
+        Some("agent.deleted") => Ok(()),
+        _ => Err(reply["message"].as_str().unwrap_or("").to_string()),
+    }
+}
+
+#[tokio::test]
+async fn an_edit_made_while_a_hand_over_succeeds_says_where_the_agent_went() {
+    // Nothing runs on the host, so the try it waits for succeeds: the record
+    // is gone when the edit goes on. It must say where the agent went and
+    // that the change was not kept, not "no such agent".
+    let remote_sb = Sandbox::new("agents-moved-remote");
+    let remote = remote_sb.start_with(&[("YARD_TEST_SLOW_OP", "agent.adopt:1500")]);
+    let mut r = remote.client().await;
+    ready(&mut r).await;
+    let hub_id = "0123456789abcdef0123456789abcdef";
+    save_hosted(&mut r, json!({ "id": "g-oncall", "name": "On-call", "handle": "On-call", "engine": "codex", "model": MODEL, "effort": EFFORT, "memory": "TEST-before", "createdAt": 1, "updatedAt": 1, "hub": hub_id })).await;
+    let chat = ask_hosted(&mut r, "g-oncall", "TEST-before the update").await;
+    r.wait_turn_done(&chat, 0).await;
+
+    let host = "hTEST4m";
+    let hub_sb = Sandbox::new("agents-moved-hub");
+    seed_old_hub(&hub_sb, &remote, host, &chat);
+    let hub = hub_sb.start_with(NO_SLACK);
+    let mut c = hub.client().await;
+    eventually("a try waiting for the host's answer", || saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-oncall" && a["leaving"].as_str().is_some_and(|l| !l.is_empty()))).await;
+    let saved = save(&mut c, json!({ "id": "g-oncall", "memory": "TEST-mid-move" })).await;
+    assert_eq!(saved, Err("On-call moved to TEST-box while you were editing it, so your change was not saved. Edit it there.".to_string()));
+    // A window that still lists it here (a stale page) hears the same.
+    assert_eq!(delete(&mut c, "g-oncall").await, Err("On-call moved to TEST-box while you were deleting it, so it was not deleted. Delete it there.".to_string()));
+    // The host has it as it was, untouched by either.
+    let own = saved_agents(&remote_sb).into_iter().find(|a| a["id"] == "g-oncall").unwrap();
+    assert!(own["hosted"].is_null() && own["memory"] == "TEST-the pager is loud", "{own}");
+    // A name no agent ever had is still just unknown.
+    assert_eq!(delete(&mut c, "g-TEST-never").await, Err("no such agent".to_string()));
+}
+
+#[tokio::test]
+async fn an_edit_waits_for_a_hand_over_s_answer_not_for_the_steps_after_it() {
+    // The host takes the agent after 1.5 s, then never answers `agent.settled`,
+    // the step owed after the hub lets go. An edit that came during the try
+    // gets its answer once the host's answer is in, not after that step
+    // times out.
+    let remote_sb = Sandbox::new("agents-owed-remote");
+    let remote = remote_sb.start_with(&[("YARD_TEST_SLOW_OP", "agent.adopt:1500"), ("YARD_TEST_DROP_REPLY", "agent.settled")]);
+    let mut r = remote.client().await;
+    ready(&mut r).await;
+    let hub_id = "0123456789abcdef0123456789abcdef";
+    save_hosted(&mut r, json!({ "id": "g-oncall", "name": "On-call", "handle": "On-call", "engine": "codex", "model": MODEL, "effort": EFFORT, "createdAt": 1, "updatedAt": 1, "hub": hub_id })).await;
+    let chat = ask_hosted(&mut r, "g-oncall", "TEST-before the update").await;
+    r.wait_turn_done(&chat, 0).await;
+
+    let host = "hTEST4o";
+    let hub_sb = Sandbox::new("agents-owed-hub");
+    seed_old_hub(&hub_sb, &remote, host, &chat);
+    let hub = hub_sb.start_with(&[("YARD_SLACK_API", "http://127.0.0.1:9/api/"), ("YARD_REQUEST_TIMEOUT_MS", "15000")]);
+    let mut c = hub.client().await;
+    eventually("a try waiting for the host's answer", || saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-oncall" && a["leaving"].as_str().is_some_and(|l| !l.is_empty()))).await;
+    let sent = std::time::Instant::now();
+    let saved = save(&mut c, json!({ "id": "g-oncall", "memory": "TEST-mid-move" })).await;
+    let waited = sent.elapsed();
+    // At most the adopt's 1.5 s plus scheduling; the owed step alone holds 15 s.
+    assert!(waited < std::time::Duration::from_secs(8), "the edit waited {waited:?}: {saved:?}");
+    assert!(saved.as_ref().is_err_and(|e| e.starts_with("On-call moved to TEST-box")), "{saved:?}");
+    // The owed step is still owed, and tried again.
+    assert!(std::fs::read_to_string(hub_sb.data().join("agents-pending.json")).unwrap().contains("agent.settled"));
+}
+
+#[tokio::test]
 async fn a_refusal_is_told_by_its_code_never_by_the_agents_name() {
     // An agent whose name reads like another refusal ("… was deleted on …"),
     // refused because its host's copy is mid-turn.

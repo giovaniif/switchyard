@@ -1279,6 +1279,59 @@ async fn a_hub_runs_sessions_on_a_direct_host() {
 }
 
 #[tokio::test]
+async fn a_page_s_first_op_reaches_a_connected_host_while_its_own_connection_opens() {
+    // Every page gets its own connection from the hub to each host, opened
+    // when the page connects. A page that asks right away (a reload, a phone
+    // coming back, with a remote conversation open) must not be told the
+    // host is not connected while the hub shows it connected.
+    use futures_util::{SinkExt, StreamExt};
+    let remote_sb = Sandbox::new("remote-first-op");
+    let remote = remote_sb.start();
+    let hub_sb = Sandbox::new("hub-first-op");
+    let hub = hub_sb.start();
+    let mut c = hub.client().await;
+    c.send(json!({ "op": "host.add", "name": "box", "kind": "direct", "url": remote.url() })).await;
+    let hosts = c
+        .wait_for("the direct host to connect", |m| {
+            m["op"] == "hosts" && m["hosts"].as_array().is_some_and(|h| h.iter().any(|h| h["status"] == "connected"))
+        })
+        .await;
+    let host = hosts["hosts"][0]["id"].as_str().unwrap().to_string();
+    c.wait_for("the host's snapshot", |m| m["op"] == "host.snapshot" && m["hostId"] == host).await;
+    let sid = c.create(&remote_sb.folder("proj"), "hello remote", json!({ "host": host })).await;
+    assert_eq!(c.wait_turn_done(&sid, 0).await["status"], "completed");
+
+    for n in 0..3 {
+        // The page's first op, sent before it has read anything.
+        let (mut ws, _) = tokio_tungstenite::connect_async(hub.url()).await.unwrap();
+        ws.send(tokio_tungstenite::tungstenite::Message::Text(json!({ "op": "session.open", "sessionId": sid }).to_string())).await.unwrap();
+        let deadline = tokio::time::Instant::now() + WAIT;
+        let answer = loop {
+            let next = tokio::time::timeout_at(deadline, ws.next()).await.expect("an answer").unwrap().unwrap();
+            if let tokio_tungstenite::tungstenite::Message::Text(t) = next {
+                let v: Value = serde_json::from_str(&t).unwrap();
+                if (v["op"] == "history" && v["sessionId"] == sid.as_str()) || v["op"] == "error" {
+                    break v;
+                }
+            }
+        };
+        assert_eq!(answer["op"], "history", "page {n}: {answer}");
+        assert!(answer["events"].as_array().is_some_and(|e| !e.is_empty()), "page {n}: {answer}");
+    }
+
+    // A host that is down still says so at once.
+    remote.stop();
+    c.wait_for("the host to go offline", |m| {
+        m["op"] == "hosts" && m["hosts"].as_array().is_some_and(|h| h.iter().any(|h| h["status"] != "connected"))
+    })
+    .await;
+    let mut late = hub.client().await;
+    let from = late.mark();
+    late.send(json!({ "op": "session.open", "sessionId": sid })).await;
+    assert_eq!(late.wait_error(from, "session.open").await, "this host is not connected");
+}
+
+#[tokio::test]
 async fn a_page_opened_while_a_host_is_down_still_lists_its_sessions() {
     let remote_sb = Sandbox::new("remote-down");
     let remote = remote_sb.start();
