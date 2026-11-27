@@ -1,0 +1,26 @@
+$ verify/yv map run automations --recipe run-now-stays-put-after-the-first-run
+# exit 0 after 17460 ms at 4daffdea1e131c3b9d2e1be6fb8fce8d4402745c
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "automations",
+      "at": "2026-11-27T11:30:25.127Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "run-now-stays-put-after-the-first-run",
+          "status": "pass",
+          "ms": 8328
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+

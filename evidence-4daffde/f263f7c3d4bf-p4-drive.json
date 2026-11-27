@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "4daffdea1e131c3b9d2e1be6fb8fce8d4402745c",
+    "short": "4daffde",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T11:30:15.875Z"
+  },
+  "dir": ".verify/evidence/docs-footer-order-head",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 1553,
+      "steps": 4,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/docs-footer-order-head/footer-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 2,
+          "eval": "[...document.querySelectorAll(\".automation[aria-label=\\\"TEST-Docs order\\\"] .automation-foot > button\")].map((b) => b.getAttribute(\"aria-label\").split(\":\")[0]).join(\", \")",
+          "value": "Runs, Run now, Edit"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

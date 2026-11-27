@@ -1,0 +1,78 @@
+{
+  "v": 1,
+  "claim": "docs/ARCHITECTURE.md still lists the automation card footer as Run now, Runs, Edit after #541 put Runs first",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-16a4",
+  "base": "006e40d2c664e2855fe3fb5d80159359953a09c2",
+  "head": "4daffdea1e131c3b9d2e1be6fb8fce8d4402745c",
+  "changed": [
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T11:30:07.545Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "4daffdea1e131c3b9d2e1be6fb8fce8d4402745c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T11:30:07.587Z",
+      "text": "no-repro: docs-only; the old order is in docs/ARCHITECTURE.md line 232 on origin/main, the app order changed in #541 (006e40d)"
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "4daffdea1e131c3b9d2e1be6fb8fce8d4402745c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T11:30:07.629Z",
+      "text": "no-failing-test: docs-only change, no behaviour to test"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "test",
+      "at": "4daffdea1e131c3b9d2e1be6fb8fce8d4402745c",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "a7fd6feead22a88f8a3baeb6270a6a3e1fccfe3f1f37bc490fd4a390c96e97ea"
+        }
+      ],
+      "addedAt": "2026-11-27T11:30:07.671Z",
+      "cmd": "verify/yv map run automations --recipe run-now-stays-put-after-the-first-run",
+      "exit": 0
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "4daffdea1e131c3b9d2e1be6fb8fce8d4402745c",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "f263f7c3d4bf8303892a81b995de885956299f265f79a76da0c3cfc9c9e586c8"
+        },
+        {
+          "path": "p4-footer-desktop.png",
+          "sha256": "9b26d1440d4abac5f921f6f5e5b9257117870897c9a39abf334a2ad72b70eb80"
+        }
+      ],
+      "addedAt": "2026-11-27T11:30:34.764Z",
+      "failedApi": []
+    }
+  ]
+}
