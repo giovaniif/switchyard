@@ -163,6 +163,9 @@ pub enum Backend {
         turn: Option<u64>,
         /// Model, effort and permission last set on the agent's session.
         applied: Option<(String, String, String)>,
+        /// The `mcpServers` it was opened with: when they change (a connector
+        /// signed in or removed, an agent's list edited) it is reopened.
+        servers: Value,
     },
 }
 
@@ -223,6 +226,8 @@ pub struct App {
     pub logins: crate::login::Logins,
     /// Connectors processes and replies owed by sidecars (see mcp.rs).
     pub mcp: crate::mcp::Connectors,
+    /// Connectors Switchyard signs in to itself, for the ACP engines (see held.rs).
+    pub held: crate::held::Held,
     pub mobile: crate::mobile::Mobile,
     /// Slack: the connection, its settings and posts owed to threads.
     pub slack: crate::slack::Slack,
@@ -297,6 +302,7 @@ impl App {
             automations: crate::automations::Automations::load(crate::store::data_dir()),
             logins: crate::login::Logins::default(),
             mcp: crate::mcp::Connectors::default(),
+            held: crate::held::Held::load(crate::store::data_dir()),
             mobile: crate::mobile::Mobile::load(crate::store::data_dir()),
             slack: crate::slack::Slack::load(crate::store::data_dir()),
             tools: crate::agent_tools::Tools::default(),

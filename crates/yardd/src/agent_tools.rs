@@ -213,7 +213,7 @@ impl Tools {
 }
 
 /// 32 random bytes as hex, from the kernel.
-fn random_key() -> String {
+pub(crate) fn random_key() -> String {
     let mut bytes = [0u8; 32];
     let read = std::fs::File::open("/dev/urandom").and_then(|mut f| std::io::Read::read_exact(&mut f, &mut bytes));
     if read.is_err() {
@@ -269,8 +269,13 @@ impl Launch {
 
     /// ACP's `McpServerStdio`.
     pub fn acp(&self) -> Value {
+        self.acp_named(SERVER)
+    }
+
+    /// The same for another server (a held connector's bridge, see `held`).
+    pub fn acp_named(&self, name: &str) -> Value {
         let env: Vec<Value> = self.env.iter().map(|(k, v)| json!({ "name": k, "value": v })).collect();
-        json!({ "name": SERVER, "command": self.command, "args": self.args, "env": env })
+        json!({ "name": name, "command": self.command, "args": self.args, "env": env })
     }
 
     fn env_map(&self) -> Value {
@@ -748,7 +753,7 @@ pub async fn serve_stdio() -> Result<()> {
                 "serverInfo": { "name": SERVER, "version": env!("CARGO_PKG_VERSION") },
             } }),
             "ping" => json!({ "result": {} }),
-            "tools/list" | "tools/call" => match post(&url, &key, &json!({ "method": method, "params": msg["params"] })).await {
+            "tools/list" | "tools/call" => match post(&url, &key, &json!({ "method": method, "params": msg["params"] }), Duration::from_secs(60)).await {
                 Ok(result) => json!({ "result": result }),
                 // A model reads a failed call; it cannot read a protocol error.
                 Err(e) if method == "tools/call" => {
@@ -768,10 +773,10 @@ pub async fn serve_stdio() -> Result<()> {
     Ok(())
 }
 
-/// One JSON POST to yardd over loopback: plain HTTP/1.1, so the server mode
-/// needs no HTTP client.
-async fn post(url: &str, key: &str, body: &Value) -> Result<Value> {
-    let rest = url.strip_prefix("http://").context("YARD_TOOLS_URL must be an http:// address")?;
+/// One JSON POST to yardd over loopback: plain HTTP/1.1, so the server modes
+/// (this one and `held`'s bridge) need no HTTP client.
+pub(crate) async fn post(url: &str, key: &str, body: &Value, wait: Duration) -> Result<Value> {
+    let rest = url.strip_prefix("http://").context("yardd's address must be an http:// address")?;
     let (host, path) = match rest.split_once('/') {
         Some((h, p)) => (h, format!("/{p}")),
         None => (rest, "/".to_string()),
@@ -788,7 +793,7 @@ async fn post(url: &str, key: &str, body: &Value) -> Result<Value> {
         stream.read_to_end(&mut raw).await?;
         anyhow::Ok(raw)
     };
-    let raw = tokio::time::timeout(Duration::from_secs(60), exchange).await.map_err(|_| anyhow::anyhow!("no answer within 60 s"))??;
+    let raw = tokio::time::timeout(wait, exchange).await.map_err(|_| anyhow::anyhow!("no answer within {} s", wait.as_secs()))??;
     let text = String::from_utf8_lossy(&raw);
     let (head, rest) = text.split_once("\r\n\r\n").context("a malformed answer")?;
     let status = head.split_whitespace().nth(1).unwrap_or("");

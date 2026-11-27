@@ -5,7 +5,8 @@
 //! connectors included), `None` (a record saved before the field, or pushed by
 //! a yardd that drops it) is every server the account has except
 //! `DENIED_BY_DEFAULT`. Any other session is not scoped. Switchyard's own
-//! agent tools are never affected.
+//! agent tools are never affected. For the ACP engines the scope applies to
+//! the connectors Switchyard holds (`held`), not to the engine's own config.
 
 use anyhow::{bail, Result};
 

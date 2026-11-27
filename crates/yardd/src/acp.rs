@@ -450,7 +450,7 @@ impl Client {
         }
     }
 
-    fn attach(&self, app: &Arc<App>, sid: &str, acp_sid: &str, answer: &Value) {
+    fn attach(&self, app: &Arc<App>, sid: &str, acp_sid: &str, answer: &Value, servers: Value) {
         self.sessions.lock().unwrap().insert(acp_sid.to_string(), sid.to_string());
         self.options.lock().unwrap().insert(acp_sid.to_string(), json!({ "configOptions": answer["configOptions"], "modes": answer["modes"] }));
         if self.engine == "gemini" && self.account == crate::accounts::DEFAULT {
@@ -458,7 +458,7 @@ impl Client {
         }
         app.set_engine_ref(sid, acp_sid);
         if let Some(s) = app.sessions.lock().unwrap().get_mut(sid) {
-            s.backend = Backend::Acp { session_id: acp_sid.to_string(), epoch: self.epoch, turn: None, applied: None };
+            s.backend = Backend::Acp { session_id: acp_sid.to_string(), epoch: self.epoch, turn: None, applied: None, servers };
         }
     }
 
@@ -709,17 +709,26 @@ pub fn restart_when_idle(app: &App, engine: &str, account: &str) {
 /// The agent for a session's account, with the session attached to it:
 /// resumed when it was made by an earlier process (a yardd restart, or an
 /// agent that exited), or created when it never got as far as the agent.
+/// A session whose MCP servers changed since it was opened is reopened with
+/// the new list, between turns: the agent starts servers only then.
 async fn attached(app: &Arc<App>, sid: &str) -> Result<(Arc<Client>, String)> {
     let meta = app.meta(sid).context("no such session")?;
     let c = client(app, &meta.engine, &meta.account).await?;
-    let (current, saved) = {
+    let servers = mcp_servers(app, sid);
+    let caps = c.info.lock().unwrap()["agentCapabilities"].clone();
+    let resumes = !caps["sessionCapabilities"]["resume"].is_null();
+    let loads = caps["loadSession"].as_bool() == Some(true);
+    let (live, current, saved) = {
         let map = app.sessions.lock().unwrap();
         let s = map.get(sid).context("no such session")?;
-        let current = match &s.backend {
-            Backend::Acp { session_id, epoch, .. } if *epoch == c.epoch => Some(session_id.clone()),
-            _ => None,
-        };
-        (current, s.engine_ref.clone())
+        match &s.backend {
+            Backend::Acp { session_id, epoch, turn, servers: had, .. } if *epoch == c.epoch => {
+                // An agent that cannot reopen a session keeps what it has.
+                let keep = *had == servers || turn.is_some() || !(resumes || loads);
+                (true, keep.then(|| session_id.clone()), s.engine_ref.clone())
+            }
+            _ => (false, None, s.engine_ref.clone()),
+        }
     };
     if let Some(acp_sid) = current {
         return Ok((c, acp_sid));
@@ -729,11 +738,10 @@ async fn attached(app: &Arc<App>, sid: &str) -> Result<(Arc<Client>, String)> {
         let acp_sid = app.sessions.lock().unwrap().get(sid).and_then(|s| s.engine_ref.clone()).context("no session")?;
         return Ok((c, acp_sid));
     };
-    let caps = c.info.lock().unwrap()["agentCapabilities"].clone();
-    let params = json!({ "sessionId": acp_sid, "cwd": meta.cwd, "mcpServers": mcp_servers(app, sid) });
-    let answer = if !caps["sessionCapabilities"]["resume"].is_null() {
-        c.request("session/resume", params).await?
-    } else if caps["loadSession"].as_bool() == Some(true) {
+    let params = json!({ "sessionId": acp_sid, "cwd": meta.cwd, "mcpServers": servers });
+    let answer = if resumes {
+        c.request("session/resume", params).await
+    } else if loads {
         // Map the session first, so its replayed history can be told apart and dropped.
         c.sessions.lock().unwrap().insert(acp_sid.clone(), sid.to_string());
         c.streams.lock().unwrap().entry(sid.to_string()).or_default().loading = true;
@@ -741,18 +749,36 @@ async fn attached(app: &Arc<App>, sid: &str) -> Result<(Arc<Client>, String)> {
         if let Some(s) = c.streams.lock().unwrap().get_mut(sid) {
             s.loading = false;
         }
-        answer?
+        answer
     } else {
         bail!("{} cannot reopen an earlier session", crate::engines::name(&meta.engine));
     };
-    c.attach(app, sid, &acp_sid, &answer);
+    let answer = match answer {
+        Ok(answer) => answer,
+        // The agent still has the session and only refused the new list: a
+        // connector change must not break a conversation that works. It
+        // goes on with the servers it has, and is not asked again.
+        Err(e) if live => {
+            eprintln!("yardd: {} kept {sid}'s MCP servers: {e:#}", meta.engine);
+            if let Some(Backend::Acp { servers: had, .. }) = app.sessions.lock().unwrap().get_mut(sid).map(|s| &mut s.backend) {
+                *had = servers;
+            }
+            return Ok((c, acp_sid));
+        }
+        Err(e) => return Err(e),
+    };
+    c.attach(app, sid, &acp_sid, &answer, servers);
     Ok((c, acp_sid))
 }
 
 /// The MCP servers a session opens with: Switchyard's tools for an agent's
-/// conversation, none otherwise (the agent loads the user's own config).
+/// conversation, and a bridge to each connector Switchyard holds that the
+/// session may use (`held::launches`). The agent loads the user's own
+/// config besides.
 fn mcp_servers(app: &App, sid: &str) -> Value {
-    json!(crate::agent_tools::launch(app, sid).map(|l| vec![l.acp()]).unwrap_or_default())
+    let mut servers: Vec<Value> = crate::agent_tools::launch(app, sid).map(|l| l.acp()).into_iter().collect();
+    servers.extend(crate::held::launches(app, sid));
+    json!(servers)
 }
 
 /// One of Switchyard's own tools, from an ACP tool call.
@@ -763,9 +789,10 @@ fn own_tool(call: &Value) -> Option<&'static str> {
 pub async fn create(app: &Arc<App>, sid: &str) -> Result<()> {
     let meta = app.meta(sid).context("no such session")?;
     let c = client(app, &meta.engine, &meta.account).await?;
-    let answer = c.request("session/new", json!({ "cwd": meta.cwd, "mcpServers": mcp_servers(app, sid) })).await?;
+    let servers = mcp_servers(app, sid);
+    let answer = c.request("session/new", json!({ "cwd": meta.cwd, "mcpServers": servers })).await?;
     let acp_sid = answer["sessionId"].as_str().context("session/new returned no session id")?.to_string();
-    c.attach(app, sid, &acp_sid, &answer);
+    c.attach(app, sid, &acp_sid, &answer, servers);
     Ok(())
 }
 

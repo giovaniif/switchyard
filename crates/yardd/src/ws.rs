@@ -958,6 +958,7 @@ pub async fn delete_session(app: &Arc<App>, sid: &str, meta: &crate::state::Meta
     }
     pty::close_session(app, sid);
     app.tools.forget(sid);
+    app.held.forget(sid);
     app.remove_session(sid);
 }
 

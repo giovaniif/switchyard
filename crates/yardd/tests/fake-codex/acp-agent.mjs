@@ -257,12 +257,14 @@ export function runAgent({ engine, state, account, loggedIn }) {
         save();
         keepTools(sid, p.mcpServers);
         log(`mcpServers ${(p.mcpServers ?? []).map((s) => s.name).join(",")}`);
+        log(`servers session/new ${JSON.stringify(p.mcpServers ?? [])}`);
         return write({ id: msg.id, result: { sessionId: sid, ...opened(sid) } });
       }
       case "session/resume":
       case "session/load": {
         if (!sessions.has(p.sessionId)) return write({ id: msg.id, error: { code: -32002, message: `Session not found: ${p.sessionId}` } });
         keepTools(p.sessionId, p.mcpServers);
+        log(`servers ${msg.method} ${JSON.stringify(p.mcpServers ?? [])}`);
         if (msg.method === "session/load") {
           update(p.sessionId, { sessionUpdate: "user_message_chunk", content: { type: "text", text: "old prompt" } });
           update(p.sessionId, { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "old answer" } });

@@ -21,8 +21,10 @@
 //!   { engine, account?, server }` takes one out. Both broadcast `mcp.change
 //!   { engine, account, name, state: "done" | "failed", error? }` and a fresh list.
 //!
-//! yardd never sees a token: the CLIs run their own OAuth flows and keep the
-//! tokens where they always do.
+//! For Claude and Codex yardd never sees a token: the CLIs run their own
+//! OAuth flows and keep the tokens where they always do. The ACP engines
+//! have no sign-in to drive, so their connectors are held by Switchyard
+//! itself (`held.rs`): the same ops with `engine: "switchyard"`, no account.
 
 use std::{
     collections::HashMap,
@@ -129,8 +131,12 @@ fn str_field<'a>(msg: &'a Value, key: &str) -> Result<&'a str> {
 pub async fn handle(app: &Arc<App>, msg: &Value) -> Result<()> {
     let op = msg["op"].as_str().unwrap_or("");
     let engine = str_field(msg, "engine")?.to_string();
+    // The connectors Switchyard holds itself are one set per host: no account.
+    if engine == crate::held::ENGINE {
+        return crate::held::handle(app, msg).await;
+    }
     if engine != "claude" && engine != "codex" {
-        bail!("Connectors are listed for Claude and Codex; {engine} keeps its own MCP setup");
+        bail!("Unknown engine for connectors: {engine}");
     }
     let account = account_of(msg).to_string();
     app.accounts.check(&engine, &account)?;
@@ -302,7 +308,7 @@ async fn status(app: &Arc<App>, engine: &str, account: &str) -> Result<Vec<Value
     Ok(rows)
 }
 
-fn clip(s: &str, max: usize) -> String {
+pub(crate) fn clip(s: &str, max: usize) -> String {
     if s.chars().count() <= max {
         return s.to_string();
     }
@@ -366,7 +372,7 @@ fn codex_app_row(a: &Value) -> Value {
     row
 }
 
-fn auth_state(app: &App, engine: &str, account: &str, server: &str, mut state: Value) {
+pub(crate) fn auth_state(app: &App, engine: &str, account: &str, server: &str, mut state: Value) {
     state["op"] = json!("mcp.auth");
     state["engine"] = json!(engine);
     state["account"] = json!(account);
