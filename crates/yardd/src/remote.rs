@@ -500,13 +500,9 @@ async fn monitor(app: Arc<App>, conn: Arc<watch::Sender<Conn>>, host: String, ag
         };
         match connect(&url).await {
             Ok(ws) => {
-                set(&app, &conn, |c| {
-                    c.status = "connected";
-                    c.error = None;
-                    c.no_daemon = false;
-                });
+                // Shown connected once its snapshot is read (`serve_host`).
                 backoff.reset();
-                serve_host(&app, ws, &host, &agents).await;
+                serve_host(&app, ws, &host, &conn, &agents).await;
                 set(&app, &conn, |c| {
                     c.status = "error";
                     c.error = Some("Connection lost. Retrying.".into());
@@ -533,6 +529,7 @@ async fn serve_host(
     app: &Arc<App>,
     ws: tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
     host: &str,
+    conn: &watch::Sender<Conn>,
     agents: &Arc<Mutex<HostAgents>>,
 ) {
     let (mut sink, mut stream) = ws.split();
@@ -547,6 +544,20 @@ async fn serve_host(
                 Some(Ok(Message::Text(text))) => {
                     if text.contains("\"op\":\"snapshot\"") || text.contains("\"op\":\"agents\"") || text.contains("\"op\":\"slack\"") {
                         if let Ok(msg) = serde_json::from_str::<Value>(&text) {
+                            if msg["op"] == "snapshot" {
+                                // Connected from here on: the hub now knows
+                                // what the host is (whether it owns agents),
+                                // so nothing acting on a connected host meets
+                                // one it has not heard yet. `hear_agents` tells
+                                // the windows (and starts the hand-overs).
+                                conn.send_if_modified(|c| {
+                                    let before = c.clone();
+                                    c.status = "connected";
+                                    c.error = None;
+                                    c.no_daemon = false;
+                                    *c != before
+                                });
+                            }
                             hear_agents(app, host, agents, &msg);
                         }
                         continue;
