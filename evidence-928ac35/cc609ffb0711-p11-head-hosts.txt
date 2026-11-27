@@ -1,0 +1,8 @@
+# ~/.local/bin/heavy /tmp/ft/maploop.sh hosts processes-say-the-host-is-offline 6 14   (on head 928ac35)
+run 1: ok
+run 2: ok
+run 3: ok
+run 4: ok
+run 5: ok
+run 6: ok
+failures: 0/6 (busy=14, load 5.71 8.16 7.41)

@@ -1,0 +1,29 @@
+$ ~/.local/bin/heavy cargo test -p yardd --test daemon messages_sent_in_a_row_reach_the_agent_in_the_order_sent -- --exact
+# exit 101 after 11390 ms at e690077a9c4d466d23aa3bf62260f6d283e4b8e1
+
+
+running 1 test
+test messages_sent_in_a_row_reach_the_agent_in_the_order_sent ... FAILED
+
+failures:
+
+---- messages_sent_in_a_row_reach_the_agent_in_the_order_sent stdout ----
+
+thread 'messages_sent_in_a_row_reach_the_agent_in_the_order_sent' (4137535) panicked at crates/yardd/tests/daemon.rs:523:5:
+assertion `left == right` failed
+  left: ["TEST-hi", "TEST-two", "TEST-one"]
+ right: ["TEST-hi", "TEST-one", "TEST-two"]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-4137534-send-order-0 for inspection
+
+
+failures:
+    messages_sent_in_a_row_reach_the_agent_in_the_order_sent
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 93 filtered out; finished in 0.20s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/flaky-tests/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 11.07s
+     Running tests/daemon.rs (target/debug/build/yardd/bc3e500ead7d3ac6/out/daemon-bc3e500ead7d3ac6)
+error: test failed, to rerun pass `-p yardd --test daemon`

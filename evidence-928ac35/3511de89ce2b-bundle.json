@@ -1,0 +1,273 @@
+{
+  "v": 1,
+  "claim": "Messages and session settings a window sends in a row could apply out of order (the agent read two queued messages swapped; a group cleared right after it was set stayed set), and a Codex turn that ended before yardd read its turn/start answer kept its idle thread loaded forever. Under load these surfaced as flaky daemon tests; the hosts recipe processes-say-the-host-is-offline also failed under load on a fixed 8 s timer.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/flaky-tests",
+  "base": "8db35626f6731b334069d8239f8552ce8bc49a3b",
+  "head": "928ac3510fc1b46c02d1748bde6b01de4a3ec020",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/codex.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/sessions.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/common/mod.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/daemon.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/codex"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/release.rs"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/hosts.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T01:02:15.396Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "test",
+      "at": "e690077a9c4d466d23aa3bf62260f6d283e4b8e1",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p1-cmd.log",
+          "sha256": "b918de0cb664b005f8d16045265ebb023b598fac2b820b51b89e948b42b99d75"
+        }
+      ],
+      "addedAt": "2026-11-27T01:02:18.508Z",
+      "cmd": "~/.local/bin/heavy cargo test -p yardd --test daemon messages_sent_in_a_row_reach_the_agent_in_the_order_sent -- --exact",
+      "exit": 101
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "fb37ce7f9d3934521ab2f89dea695f257d392e97",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "0708c42f2ee19a5492cf62759ae7956f49f041a8430d6beb67c10b6d82ad8039"
+        }
+      ],
+      "addedAt": "2026-11-27T01:02:33.427Z",
+      "cmd": "~/.local/bin/heavy cargo test -p yardd --test release a_turn_over_before_its_start_was_answered_still_lets_the_thread_go -- --exact",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "a8fe390141a239fd45f2d1f4683bf47bbf6e6ddd",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "40fcd91b642742b61cbb51236a8b523e9d118fa1979f07dc401ecd5ca603700c"
+        }
+      ],
+      "addedAt": "2026-11-27T01:02:52.786Z",
+      "cmd": "~/.local/bin/heavy cargo test -p yardd --test daemon session_settings_sent_in_a_row_apply_in_the_order_sent -- --exact",
+      "exit": 101
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "repro",
+      "at": "8db35626f6731b334069d8239f8552ce8bc49a3b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-base-queued.txt",
+          "sha256": "1fb59033885a3f3278888b457c849b66b8607499498d5cc734f5fd3bc9272540"
+        }
+      ],
+      "addedAt": "2026-11-27T01:05:45.961Z"
+    },
+    {
+      "id": 5,
+      "ref": "base",
+      "kind": "repro",
+      "at": "8db35626f6731b334069d8239f8552ce8bc49a3b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-base-release-first.txt",
+          "sha256": "1f7300e24885106472e27f43e9faa5ae8800791c511b4f5b1d77b622a4569182"
+        }
+      ],
+      "addedAt": "2026-11-27T01:05:46.005Z"
+    },
+    {
+      "id": 6,
+      "ref": "base",
+      "kind": "repro",
+      "at": "8db35626f6731b334069d8239f8552ce8bc49a3b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-base-hosts.txt",
+          "sha256": "54f67225f03dbd24dc9e8cad1c06bd45071519d47acce65921659f7ff1ced943"
+        }
+      ],
+      "addedAt": "2026-11-27T01:05:46.050Z"
+    },
+    {
+      "id": 7,
+      "ref": "base",
+      "kind": "note",
+      "at": "8db35626f6731b334069d8239f8552ce8bc49a3b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T01:05:46.094Z",
+      "text": "Loop scripts used for every rate: /tmp/ft/ev/loop.sh (one test, N runs, B busy-loop CPU burners inside the same heavy scope capped at 6 CPUs), loopbin.sh (whole test binary), maploop.sh (one map recipe). base-release-first ran on c697899, whose codex.rs and release.rs equal main; two later base runs of the same loop at main passed 0/20 and 0/20 (the race needs yardd's reader to get ahead of the task awaiting turn/start, which the burners only sometimes cause), so the deterministic regression test is the real proof."
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "fix",
+      "at": "928ac3510fc1b46c02d1748bde6b01de4a3ec020",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-head-queued.txt",
+          "sha256": "ee613f4521898ce14932cdd49ec55b6921606b22473749e6ee9ad0382fa96ba4"
+        }
+      ],
+      "addedAt": "2026-11-27T01:08:10.504Z"
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "fix",
+      "at": "928ac3510fc1b46c02d1748bde6b01de4a3ec020",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-head-release.txt",
+          "sha256": "4ead54aae4bfd1efa1fcd3fb48c03170b3575c28c1cc7fa9766f7fe6d1563e41"
+        }
+      ],
+      "addedAt": "2026-11-27T01:08:10.541Z"
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "fix",
+      "at": "928ac3510fc1b46c02d1748bde6b01de4a3ec020",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-head-daemon.txt",
+          "sha256": "3e85897b9a94dbe868676069ed7bf36ada09831be3ff9b2cd313c720bd363e8b"
+        }
+      ],
+      "addedAt": "2026-11-27T01:08:10.581Z"
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "fix",
+      "at": "928ac3510fc1b46c02d1748bde6b01de4a3ec020",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-head-hosts.txt",
+          "sha256": "cc609ffb0711e7cc2b20bf5550ea9aa155b40c9e65c032d989fca9d1fe68abae"
+        }
+      ],
+      "addedAt": "2026-11-27T01:08:10.619Z"
+    },
+    {
+      "id": 12,
+      "ref": "head",
+      "kind": "test",
+      "at": "928ac3510fc1b46c02d1748bde6b01de4a3ec020",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p12-cmd.log",
+          "sha256": "d108758d70028e2e341f1e8ec55f3ab586bc013c06d1a1947c50ec1e67f066ce"
+        }
+      ],
+      "addedAt": "2026-11-27T01:08:10.659Z",
+      "cmd": "~/.local/bin/heavy cargo test -p yardd --test daemon --test release",
+      "exit": 0
+    },
+    {
+      "id": 13,
+      "ref": "head",
+      "kind": "regression",
+      "at": "928ac3510fc1b46c02d1748bde6b01de4a3ec020",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p13-map-hosts.json",
+          "sha256": "b2eac88b56b2bddbdc470ef5ae46b39d92d387250d9270615bd3eb80a7d13dac"
+        }
+      ],
+      "addedAt": "2026-11-27T01:09:19.972Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/processes-say-the-host-is-offline",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    }
+  ]
+}

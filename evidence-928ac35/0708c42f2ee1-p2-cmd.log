@@ -1,0 +1,27 @@
+$ ~/.local/bin/heavy cargo test -p yardd --test release a_turn_over_before_its_start_was_answered_still_lets_the_thread_go -- --exact
+# exit 101 after 19292 ms at fb37ce7f9d3934521ab2f89dea695f257d392e97
+
+
+running 1 test
+test a_turn_over_before_its_start_was_answered_still_lets_the_thread_go ... FAILED
+
+failures:
+
+---- a_turn_over_before_its_start_was_answered_still_lets_the_thread_go stdout ----
+
+thread 'a_turn_over_before_its_start_was_answered_still_lets_the_thread_go' (4139820) panicked at crates/yardd/tests/release.rs:14:9:
+timed out waiting for the idle thread to be unsubscribed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-4139819-release-instant-0 for inspection
+
+
+failures:
+    a_turn_over_before_its_start_was_answered_still_lets_the_thread_go
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 10 filtered out; finished in 10.22s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/flaky-tests/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 8.96s
+     Running tests/release.rs (target/debug/build/yardd/0b506b7daac5aed6/out/release-0b506b7daac5aed6)
+error: test failed, to rerun pass `-p yardd --test release`

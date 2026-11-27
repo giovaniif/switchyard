@@ -1,0 +1,20 @@
+# RUST_TEST_THREADS=8 ~/.local/bin/heavy /tmp/ft/loopbin.sh release 15 8
+# run on c697899 (main + the message-ordering fix only; codex.rs and release.rs identical to main 8db3562)
+run 2: FAILED
+thread 'an_idle_codex_thread_is_released_and_resumed_by_the_next_turn' (3257229) panicked at crates/yardd/tests/release.rs:14:9:
+timed out waiting for the idle thread to be unsubscribed
+test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.48s
+run 9: FAILED
+thread 'agents_and_automations_get_only_their_connectors_on_codex' (3275879) panicked at crates/yardd/tests/release.rs:14:9:
+timed out waiting for the agent's thread to be released
+test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.18s
+failures: 2/15 (busy=8, RUST_TEST_THREADS=8, load 8.19 5.22 3.40)
+# the failed run's fake codex.log (/tmp/yardd-test-3257221-release-codex-7/fake/codex.log): the turn ran, no unsubscribe ever followed
+start pid=3257374 args=app-server -c features.default_mode_request_user_input=true home=
+req initialize
+req model/list
+req thread/start sandbox=workspace-write
+loaded=1
+req account/rateLimits/read
+req turn/start thread-3257374-1 approval=on-request sandboxPolicy=workspaceWrite
+exit pid=3257374

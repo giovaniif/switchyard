@@ -1,0 +1,124 @@
+$ ~/.local/bin/heavy cargo test -p yardd --test daemon --test release
+# exit 0 after 66857 ms at 928ac3510fc1b46c02d1748bde6b01de4a3ec020
+
+
+running 95 tests
+test a_claude_question_takes_the_owners_answers ... ok
+test a_claude_session_runs_under_its_accounts_config_dir ... ok
+test a_claude_session_whose_sidecar_died_takes_the_next_message ... ok
+test a_claude_turn_keeps_the_windows_it_did_not_report ... ok
+test a_codex_question_takes_the_owners_answers ... ok
+test a_background_subagent_keeps_its_session_marked_working ... ok
+test a_failing_worktree_setup_makes_no_session ... ok
+test a_file_change_carries_its_diff_with_relative_paths ... ok
+test a_codex_session_runs_on_its_accounts_own_app_server ... ok
+test a_folder_outside_a_repository_runs_in_place ... ok
+test a_hub_routes_automations_to_the_host_that_runs_them ... ok
+test a_hub_runs_sessions_on_a_direct_host ... ok
+test a_long_first_line_is_titled_at_a_word_with_an_ellipsis ... ok
+test a_manual_automation_never_fires_on_its_own ... ok
+test a_message_sent_mid_turn_is_folded_into_the_claude_turn ... ok
+test a_message_to_a_session_whose_folder_is_gone_says_so ... ok
+test a_missed_run_outside_the_window_creates_no_session_but_run_now_does ... ok
+test a_new_client_gets_its_snapshot_before_any_broadcast ... ok
+test a_message_sent_mid_turn_is_steered_into_the_codex_turn ... ok
+test a_plain_turn_streams_then_completes ... ok
+test a_page_opened_while_a_host_is_down_still_lists_its_sessions ... ok
+test a_queued_message_can_be_taken_back_to_edit ... ok
+test a_run_is_skipped_when_engine_usage_is_above_the_limit ... ok
+test a_run_can_carry_its_own_prompt_and_title ... ok
+test a_run_is_skipped_while_the_previous_one_is_still_going ... ok
+test a_session_says_when_and_how_its_last_turn_ended ... ok
+test a_session_whose_folder_is_gone_says_so ... ok
+test a_runs_finish_time_stays_put_when_it_is_pinned_later ... ok
+test a_window_cannot_ask_for_an_agents_hand_over ... ok
+test accounts_are_per_host_through_the_hub ... ok
+test allow_origin_takes_a_list ... ok
+test an_account_is_added_logged_in_and_removed_without_touching_default ... ok
+test a_too_large_upload_is_refused_and_the_socket_survives ... ok
+test an_error_turn_reports_and_fails ... ok
+test an_answered_approval_is_logged_before_the_engine_moves_on ... ok
+test approval_deny_declines_the_command ... ok
+test approval_allow_runs_the_command ... ok
+test attachments_reach_codex_as_a_local_image_and_a_path ... ok
+test automation_window_survives_partial_edits_and_null_clears_it ... ok
+test automations_are_saved_listed_edited_and_deleted ... ok
+test branches_of_a_missing_folder_say_it_is_missing ... ok
+test claude_code_sessions_are_listed_and_imported_with_their_history ... ok
+test claude_usage_survives_a_restart ... ok
+test codex_reasoning_streams_as_thinking ... ok
+test codex_speed_is_used_for_new_turns_and_survives_restarts ... ok
+test codex_subagent_activity_keeps_one_agent_and_its_report ... ok
+test codex_usage_keeps_the_full_resets_and_every_limit ... ok
+test delete_removes_a_session_across_a_restart ... ok
+test deleting_a_session_does_not_ask_its_terminal_pane_to_reload ... ok
+test engines_log_in_from_the_app ... ok
+test folders_are_listed_for_the_picker ... ok
+test forced_pressure_queues_until_start_now ... ok
+test foreign_origins_are_refused ... ok
+test handoff_can_change_the_account_or_model_without_changing_engines ... ok
+test handoff_keeps_the_sidebar_group ... ok
+test handoff_to_the_same_target_or_mid_turn_is_refused ... ok
+test install_sets_up_yardd_on_an_ssh_host ... ok
+test messages_after_the_last_step_go_together_as_the_next_turn ... ok
+test messages_queued_during_an_approval_reach_the_agent_after_it ... ok
+test messages_sent_in_a_row_reach_the_agent_in_the_order_sent ... ok
+test notify_needs_a_title_and_only_takes_web_links ... ok
+test notify_reaches_every_connected_window ... ok
+test one_writer_per_folder ... ok
+test permission_modes_reach_codex_and_switch_mid_session ... ok
+test pr_get_names_a_local_base_for_a_review_in_a_repo_without_a_remote ... ok
+test attachments_land_on_the_remote_host_through_the_hub ... ok
+test pr_get_says_when_the_folder_is_a_repository_it_cannot_read_a_pr_for ... ok
+test removing_a_codex_account_stops_its_app_server ... ok
+test removing_a_dirty_worktree_is_refused ... ok
+test removing_an_account_in_use_names_its_sessions ... ok
+test renaming_a_session_updates_other_clients_and_survives_restart ... ok
+test resizing_an_exited_terminal_is_not_an_error ... ok
+test run_now_starts_a_worktree_session_that_is_archived_when_it_ends ... ok
+test session_procs_for_an_unknown_session_is_an_error ... ok
+test resuming_a_thread_the_engine_lost_fails_the_turn ... ok
+test session_procs_goes_through_the_hub ... ok
+test session_settings_sent_in_a_row_apply_in_the_order_sent ... ok
+test sessions_are_grouped_across_restarts ... ok
+test sessions_are_pinned_and_archived_across_restarts ... ok
+test sessions_survive_a_restart_and_resume_their_thread ... ok
+test snapshot_has_its_shape_and_the_fake_models ... ok
+test session_procs_lists_what_a_session_is_running ... ok
+test stop_hands_queued_messages_back ... ok
+test stop_ends_a_codex_turn_that_ignores_the_interrupt ... ok
+test terminal_keystrokes_reach_the_shell_in_order ... ok
+test terminal_runs_commands_and_replays_its_scrollback ... ok
+test the_codex_sandbox_can_be_set ... ok
+test stop_kills_a_claude_sidecar_that_ignores_the_interrupt ... ok
+test the_page_is_sent_so_a_web_view_rechecks_it ... ok
+test the_local_host_carries_its_configured_name ... ok
+test the_snapshot_names_this_machine_before_its_first_stats_sample ... ok
+test two_imports_of_one_claude_code_session_at_once_make_one_session ... ok
+test upload_names_are_sanitized ... ok
+test worktree_branches_and_a_session_from_a_base ... ok
+test the_scheduler_fires_a_missed_run_once_and_automations_survive_a_restart ... ok
+
+test result: ok. 95 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 43.32s
+
+
+running 11 tests
+test a_claude_session_with_a_process_left_running_keeps_its_sidecar ... ok
+test a_claude_session_waiting_on_a_wakeup_or_a_cron_job_keeps_its_sidecar ... ok
+test a_dead_app_server_is_replaced_and_its_sessions_resume ... ok
+test a_claude_session_with_subagents_at_work_keeps_its_sidecar ... ok
+test a_turn_over_before_its_start_was_answered_still_lets_the_thread_go ... ok
+test agents_and_automations_get_only_their_connectors_on_codex ... ok
+test a_session_waiting_on_an_approval_keeps_its_thread ... ok
+test an_idle_codex_thread_is_released_and_resumed_by_the_next_turn ... ok
+test claude_sessions_carry_their_connector_scope ... ok
+test existing_agents_keep_a_missing_list_but_firefighter_gets_metabase_by_name ... ok
+test an_idle_claude_sidecar_is_stopped_and_the_next_message_resumes ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.78s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/flaky-tests/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 1.66s
+     Running tests/daemon.rs (target/debug/build/yardd/bc3e500ead7d3ac6/out/daemon-bc3e500ead7d3ac6)
+     Running tests/release.rs (target/debug/build/yardd/0b506b7daac5aed6/out/release-0b506b7daac5aed6)

@@ -1,0 +1,27 @@
+$ ~/.local/bin/heavy cargo test -p yardd --test daemon session_settings_sent_in_a_row_apply_in_the_order_sent -- --exact
+# exit 101 after 8515 ms at a8fe390141a239fd45f2d1f4683bf47bbf6e6ddd
+
+
+running 1 test
+test session_settings_sent_in_a_row_apply_in_the_order_sent ... FAILED
+
+failures:
+
+---- session_settings_sent_in_a_row_apply_in_the_order_sent stdout ----
+
+thread 'session_settings_sent_in_a_row_apply_in_the_order_sent' (4142189) panicked at crates/yardd/tests/daemon.rs:555:5:
+{"op":"session","session":{"account":"default","archived":false,"automation":null,"branch":null,"createdAt":1795741381135,"cwd":"/tmp/yardd-test-4142188-update-order-0/work/proj","effort":"low","engine":"codex","group":"TEST-release","host":"local","id":"s1a21a86f20f1","lastTurn":"completed","model":"fake-fast","parent":null,"pending":[],"permission":"ask","pinned":true,"repo":null,"status":"idle","title":"TEST-hi","turnEndedAt":1795741381151,"updatedAt":1795741381177}}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-4142188-update-order-0 for inspection
+
+
+failures:
+    session_settings_sent_in_a_row_apply_in_the_order_sent
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.20s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/flaky-tests/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 8.22s
+     Running tests/daemon.rs (target/debug/build/yardd/bc3e500ead7d3ac6/out/daemon-bc3e500ead7d3ac6)
+error: test failed, to rerun pass `-p yardd --test daemon`
