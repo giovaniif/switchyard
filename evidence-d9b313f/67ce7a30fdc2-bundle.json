@@ -1,0 +1,100 @@
+{
+  "v": 1,
+  "claim": "yv drive's inViewport measured an anchored panel once, a frame before it settled, so dropdowns/composer-options-fit flaked on main; it should wait until the panel settles inside the viewport and still fail one that never fits",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-d160",
+  "base": "e550a93811df3fd7bf9dc65a18bca709a6e93db6",
+  "head": "d9b313faa27905e4ffc95906582c14f457a6dd6b",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/src/browser.ts"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T01:25:07.551Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "e550a93811df3fd7bf9dc65a18bca709a6e93db6",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "332c885cc4586e7cc90c66111827af31a209ca70a4fc6c4ed7ff23f199bbe0f3"
+        },
+        {
+          "path": "p1-fail-desktop-step1.png",
+          "sha256": "1e909cd34d83768c2ddc32cc24ac8dc296eb517931c15934090341cf18721242"
+        }
+      ],
+      "addedAt": "2026-11-27T01:25:15.847Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "e550a93811df3fd7bf9dc65a18bca709a6e93db6",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T01:25:15.896Z",
+      "text": "no-failing-test: verify/src has no browser-step test harness (runStep is internal); the base repro is this drive at origin/main, where inViewport fails a panel that moves in after 500 ms, as dropdowns/composer-options-fit failed at 320x568 in the patrol run of 2026-11-27 01:19 UTC and passed on a re-run"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "d9b313faa27905e4ffc95906582c14f457a6dd6b",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "971e1e41aeece2a3be86e3c38376885a6334e001b6d67acea74d9f2883d8bc6d"
+        },
+        {
+          "path": "p3-late-panel-desktop.png",
+          "sha256": "dede5effb771344e0ce38724400077ae50f34a3f40bbd15036ff87f31a43ec7b"
+        }
+      ],
+      "addedAt": "2026-11-27T01:25:24.495Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "note",
+      "at": "d9b313faa27905e4ffc95906582c14f457a6dd6b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T01:25:24.538Z",
+      "text": "negative: an element that never enters the viewport still fails inViewport at head after its timeout (checked by hand with timeout 1500: box y 2000, step failed)"
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "d9b313faa27905e4ffc95906582c14f457a6dd6b",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "d6c61c7ba63d4bc4f825adc242241a45d3ac8b93582fe59c1f78c6a6ddd0dac9"
+        }
+      ],
+      "addedAt": "2026-11-27T01:25:24.577Z",
+      "cmd": "verify/yv selftest && verify/yv map run dropdowns",
+      "exit": 0
+    }
+  ]
+}

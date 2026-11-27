@@ -1,0 +1,57 @@
+$ verify/yv selftest && verify/yv map run dropdowns
+# exit 0 after 43252 ms at d9b313faa27905e4ffc95906582c14f457a6dd6b
+
+{
+  "command": "selftest",
+  "ok": true,
+  "unit": {
+    "exit": 0,
+    "pass": 55,
+    "fail": 0
+  },
+  "smoke": null,
+  "problems": []
+}
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "dropdowns",
+      "at": "2026-11-27T01:26:07.826Z",
+      "counts": {
+        "pass": 5
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "composer-options-fit",
+          "status": "pass",
+          "ms": 8240
+        },
+        {
+          "label": "workspace-tab-spacing",
+          "status": "pass",
+          "ms": 10342
+        },
+        {
+          "label": "custom-schedule-options",
+          "status": "pass",
+          "ms": 7468
+        },
+        {
+          "label": "connector-host-and-refresh",
+          "status": "pass",
+          "ms": 6368
+        },
+        {
+          "label": "handover-nests-the-new-session",
+          "status": "pass",
+          "ms": 9540
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
