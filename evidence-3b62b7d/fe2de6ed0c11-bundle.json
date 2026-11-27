@@ -1,0 +1,87 @@
+{
+  "v": 1,
+  "claim": "connectors-list, focused-search-and-status and large-catalog-stays-bounded failed on main: their css:.connector counts also caught the Slack card's li.connector rows in the Messaging section; the app is right, the recipes counted page-wide",
+  "repo": "/home/giovani/.yard/wt/switchyard/pr-514",
+  "base": "0dc6c28d2059b900bb7a8060c3347062891bc375",
+  "head": "3b62b7d58ac225b00b859fbff7931e9c61721810",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/features/connectors.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T02:03:47.423Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "3b62b7d58ac225b00b859fbff7931e9c61721810",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T02:03:47.463Z",
+      "text": "no-repro: map-only; on main e550a93 the three recipes failed with 'expected 1 visible css:.connector, found 2' (patrol run 2026-11-27 01:32 UTC), the second match being the Slack card's li.connector. Rebased onto 0dc6c28."
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "3b62b7d58ac225b00b859fbff7931e9c61721810",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T02:03:47.501Z",
+      "text": "no-failing-test: the recipe is the test"
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "3b62b7d58ac225b00b859fbff7931e9c61721810",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-pr514-map-clean.json",
+          "sha256": "f33e80607e07d98906682eecebfd352db63ac09a5130efb9c2aedb9af133d202"
+        }
+      ],
+      "addedAt": "2026-11-27T02:03:47.539Z",
+      "failedApi": [],
+      "failingRecipes": [],
+      "passingRecipes": [
+        "connectors/connectors-list",
+        "connectors/focused-search-and-status",
+        "connectors/filters-stay-on-one-row",
+        "connectors/retry-a-failed-server",
+        "connectors/claude-sign-in",
+        "connectors/codex-sign-in-pasted",
+        "connectors/add-linear",
+        "connectors/codex-chart",
+        "connectors/claude-chart",
+        "connectors/large-catalog-stays-bounded",
+        "connectors/disabled-button-looks-disabled",
+        "connectors/rows-meet-header-and-footer"
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "3b62b7d58ac225b00b859fbff7931e9c61721810",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "7762bbb8e2d8d51b206bc6be6af819074fef7ef36ce7401aae12749a33cdaec6"
+        }
+      ],
+      "addedAt": "2026-11-27T02:03:47.583Z",
+      "cmd": "verify/yv map run connectors --recipe connectors-list && verify/yv map run connectors --recipe focused-search-and-status && verify/yv map run connectors --recipe large-catalog-stays-bounded",
+      "exit": 0
+    }
+  ]
+}
