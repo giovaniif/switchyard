@@ -103,6 +103,20 @@ yv api '{"op":"host.add","name":"TEST-gone","kind":"ssh","destination":"test@gon
 yv drive 'hosts' --viewport desktop --steps '[{"click":"role:button:Select TEST-gone"},{"click":"role:tab:System"},{"click":"role:button:Remove host"},{"expect":"css:.host-foot","text":"Its sessions keep running there."},{"click":"role:button:Click again to remove"},{"expect":"role:button:Select TEST-gone","count":0},{"reload":true},{"expect":"role:button:Select TEST-gone","count":0}]'
 ```
 
+### double-click-on-remove-host-only-asks
+Viewports: both
+A double click on Remove host leaves "Click again to remove" up and keeps the
+host. The ask takes the button's own place, so the second click of a double
+click lands on it; it used to answer it and the host went at once (#522, like
+#519 for a session's Delete). The eval sends what a browser sends for a double
+click: two mousedown, mouseup, click runs at the same point, the second with
+`detail: 2`. A separate second click still removes (`remove-host` above).
+
+```sh
+yv api '{"op":"host.add","name":"TEST-dbl-host","kind":"ssh","destination":"test@dbl-host.invalid"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-dbl-host"}]}'
+yv drive 'hosts' --steps '[{"click": "role:button:Select TEST-dbl-host"}, {"click": "role:tab:System"}, {"expect": "role:button:Remove host"}, {"eval": "(async () => { const b = [...document.querySelectorAll(\".host-foot button\")].find((x) => x.textContent.trim() === \"Remove host\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()"}, {"expect": "role:button:Select TEST-dbl-host"}, {"expect": "role:button:Click again to remove"}, {"shot": "double-click-remove-host"}, {"reload": true}, {"expect": "role:button:Select TEST-dbl-host"}]'
+```
+
 ### refused-add-keeps-the-form
 Viewports: desktop
 A value yardd refuses (remote port 99999) shows the error and keeps the form
@@ -200,14 +214,17 @@ fail), and a tab first opened offline said "Loading…" forever. Uses its own
 remote so the area's TEST-remote stays up. While the host is up the tab lists
 the shell of the terminal the workspace opens by default (terminal-first,
 #290), so it is a live table, not "Nothing is running", that must go away.
+The host goes down once the drive has seen that table (its `procs-up` shot),
+not after a fixed time: under load the browser alone took longer than that.
 
 ```sh
 gone_port="$(yv iso up --name map-hosts-gone --host-name TEST-gone | jq -r .iso.port)"
 gone_work="$(yv var get work --iso map-hosts-gone | jq -er .value)"
 yv api '{"op":"host.add","name":"TEST-gone","kind":"direct","url":"ws://127.0.0.1:'"$gone_port"'/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-gone","status":"connected"}]}' --save gone_id='hosts[name=TEST-gone].id'
 yv api '{"op":"session.create","host":"{{gone_id}}","engine":"codex","model":"fake-fast","effort":"low","cwd":"'"$gone_work"'","text":"TEST-procs on a host that goes"}' --wait '{"op":"created"}' --save gone_sid=sessionId
-(sleep 8; yv iso down --name map-hosts-gone >/dev/null) &
-yv drive 'session:{{gone_sid}}' --viewport desktop --allow-errors --steps '[{"expect":"css:.thread","text":"Echo: TEST-procs on a host that goes","timeout":15000},{"click":"role:button:Processes"},{"expect":"css:.proc-table","timeout":10000},{"expect":"css:.bar-host","text":"offline","timeout":20000},{"expect":{"role":"region","name":"Workspace"},"text":"Processes are available when this host reconnects.","timeout":5000},{"expect":"css:.proc-table","count":0},{"shot":"procs-offline"}]'
+gone_shots="$(mktemp -d)"
+(for _ in $(seq 600); do [ -e "$gone_shots/procs-up-desktop.png" ] && break; sleep 0.1; done; yv iso down --name map-hosts-gone >/dev/null) &
+yv drive 'session:{{gone_sid}}' --viewport desktop --allow-errors --out "$gone_shots" --steps '[{"expect":"css:.thread","text":"Echo: TEST-procs on a host that goes","timeout":15000},{"click":"role:button:Processes"},{"expect":"css:.proc-table","timeout":10000},{"shot":"procs-up"},{"expect":"css:.bar-host","text":"offline","timeout":20000},{"expect":{"role":"region","name":"Workspace"},"text":"Processes are available when this host reconnects.","timeout":5000},{"expect":"css:.proc-table","count":0},{"shot":"procs-offline"}]'
 wait
 ```
 

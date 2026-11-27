@@ -22,6 +22,9 @@ struct Limits {
     min_free: u64,
     /// `YARD_FORCE_PRESSURE=1`, for testing the queue.
     forced: bool,
+    /// For tests only (`YARD_TEST_IGNORE_LOAD=1`): the load of a busy test
+    /// machine queues no session; the queue tests force pressure instead.
+    ignore_load: bool,
 }
 
 fn gb_env(key: &str, default: f64) -> u64 {
@@ -101,6 +104,7 @@ impl Default for Guard {
             limits: Limits {
                 min_free: gb_env("YARD_MIN_FREE_GB", 2.0),
                 forced: std::env::var("YARD_FORCE_PRESSURE").is_ok_and(|v| v == "1"),
+                ignore_load: std::env::var("YARD_TEST_IGNORE_LOAD").is_ok_and(|v| v == "1"),
             },
             inner: Mutex::default(),
         }
@@ -286,7 +290,7 @@ pub fn sample(app: &Arc<App>, sys: &System, load: f64, cores: usize, mem_free: u
     let limits = &guard.limits;
 
     let mut reasons = Vec::new();
-    if load > cores as f64 {
+    if load > cores as f64 && !limits.ignore_load {
         reasons.push(format!("load {load:.1} is above {cores} cores"));
     }
     if mem_free < limits.min_free {

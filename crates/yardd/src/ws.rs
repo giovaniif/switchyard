@@ -99,6 +99,24 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
         });
     }
 
+    // A session's messages and settings apply one after another, in the
+    // order sent, for the same reason: two sent in a row could be queued
+    // swapped (the agent reads them out of order), or a group cleared right
+    // after it was set could end up set. None of them waits on anything; the
+    // turn a message opens runs on in its own task (`send`).
+    let (ordered, mut ordered_rx) = mpsc::unbounded_channel::<Value>();
+    {
+        let app = app.clone();
+        let direct = direct.clone();
+        tokio::spawn(async move {
+            while let Some(msg) = ordered_rx.recv().await {
+                if let Err(e) = in_order(&app, &direct, &msg) {
+                    let _ = direct.send(error_reply(&msg, &e));
+                }
+            }
+        });
+    }
+
     // Set once this client says it is a phone's app: it shows as connected
     // until the socket closes.
     let mut phone: Option<String> = None;
@@ -169,6 +187,10 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
                         let _ = keys.send(msg);
                         continue;
                     }
+                    if msg["op"].as_str().is_some_and(|op| IN_ORDER.contains(&op)) {
+                        let _ = ordered.send(msg);
+                        continue;
+                    }
                     let app = app.clone();
                     let direct = direct.clone();
                     tokio::spawn(async move {
@@ -190,9 +212,39 @@ async fn client(socket: WebSocket, app: Arc<App>, browser: bool) {
     }
 }
 
+/// Ops that run one after another per client (see `client`), in `in_order`,
+/// which cannot wait on anything: the next one waits for each.
+const IN_ORDER: [&str; 8] = [
+    "session.send",
+    "session.unqueue",
+    "session.steer",
+    "session.setModel",
+    "session.setServiceTier",
+    "session.setPermission",
+    "session.rename",
+    "session.update",
+];
+
+/// A window's message, put in its place at once (`sessions::take_message`);
+/// the turn it opens runs in its own task, so the next op need not wait.
+fn send(app: &Arc<App>, msg: &Value) -> Result<()> {
+    let sid = str_field(msg, "sessionId")?;
+    let text = msg["text"].as_str().unwrap_or("").trim();
+    let files = attachments::resolve(&msg["attachments"])?;
+    if text.is_empty() && files.is_empty() {
+        bail!("the message is empty");
+    }
+    let next = sessions::take_message(app, sid, text, &files, None)?;
+    if !matches!(next, sessions::Taken::Done) {
+        let (app, sid) = (app.clone(), sid.to_string());
+        tokio::spawn(async move { sessions::follow_up(&app, &sid, next).await });
+    }
+    Ok(())
+}
+
 /// An op's failure. `ref` comes back when the op had one, so a client
 /// waiting on that one request (an upload) can tell it failed.
-fn error_reply(msg: &Value, e: &anyhow::Error) -> String {
+pub(crate) fn error_reply(msg: &Value, e: &anyhow::Error) -> String {
     let mut reply = json!({ "op": "error", "message": format!("{e:#}"), "for": msg["op"] });
     // A hand-over refusal says which it is, so a hub never reads it from
     // the wording (`agents::Refusal`).
@@ -406,9 +458,7 @@ pub async fn create_session(
 }
 
 async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value) -> Result<()> {
-    if msg["sessionId"].as_str().is_some_and(crate::private::internal) {
-        bail!("that engine thread is private to yardd");
-    }
+    not_private(msg)?;
     if crate::slack::is_access_approval(msg) {
         return crate::slack::approve_access(app, msg).await;
     }
@@ -570,131 +620,7 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
             let sid = str_field(msg, "sessionId")?;
             let _ = direct.send(app.history(sid).to_string());
         }
-        "session.send" => {
-            let sid = str_field(msg, "sessionId")?;
-            let text = msg["text"].as_str().unwrap_or("").trim();
-            let files = attachments::resolve(&msg["attachments"])?;
-            if text.is_empty() && files.is_empty() {
-                bail!("the message is empty");
-            }
-            sessions::send_message(app, sid, text, &files, None).await?;
-        }
-        // Taken back to edit (or dropped): the asking window gets it, if it
-        // had not reached the agent yet.
-        "session.unqueue" => {
-            let sid = str_field(msg, "sessionId")?;
-            let item = app.take_queued(sid, str_field(msg, "id")?, false);
-            if let Some(item) = item.filter(|_| msg["drop"] != true) {
-                let _ = direct.send(
-                    json!({ "op": "queue.returned", "sessionId": sid, "id": item["id"], "text": item["text"], "attachments": item["attachments"] }).to_string(),
-                );
-            }
-        }
-        "session.steer" => {
-            let sid = str_field(msg, "sessionId")?;
-            let id = str_field(msg, "id")?;
-            app.meta(sid).context("no such session")?;
-            app.steer_queued(sid, id);
-        }
-        "session.setModel" => {
-            let sid = str_field(msg, "sessionId")?;
-            let model = str_field(msg, "model")?;
-            let effort = str_field(msg, "effort")?;
-            let meta = app.meta(sid).context("no such session")?;
-            let clear_tier = meta.service_tier.as_deref().is_some_and(|tier| !codex::supports_service_tier(app, model, tier));
-            // A queued Claude session has no sidecar yet; it starts on the new model.
-            if meta.engine == "claude" && meta.model != model && meta.status != "queued" {
-                claude::set_model(app, sid, model)?;
-            }
-            app.update_meta(sid, |m| {
-                m.model = model.to_string();
-                m.effort = effort.to_string();
-                if clear_tier {
-                    m.service_tier = None;
-                }
-            });
-        }
-        "session.setServiceTier" => {
-            let sid = str_field(msg, "sessionId")?;
-            let tier = str_field(msg, "serviceTier")?;
-            let meta = app.meta(sid).context("no such session")?;
-            check_service_tier(app, &meta.engine, &meta.model, tier)?;
-            app.update_meta(sid, |m| {
-                if m.model == meta.model {
-                    m.service_tier = Some(tier.to_string());
-                }
-            });
-        }
-        "session.setPermission" => {
-            let sid = str_field(msg, "sessionId")?;
-            let permission = str_field(msg, "permission")?;
-            if !PERMISSIONS.contains(&permission) {
-                bail!("unknown permission mode {permission}");
-            }
-            let meta = app.meta(sid).context("no such session")?;
-            if permission != "plan" && crate::private::restricted(app, sid) {
-                bail!("The host agent only reads: its chats stay in Plan only.");
-            }
-            // Codex and the ACP engines take the mode with their next turn (yardd
-            // answers an ACP engine's later questions by the new mode at once); a
-            // running Claude sidecar switches now, a queued one starts in it.
-            if meta.engine == "claude" && meta.status != "queued" {
-                claude::set_permission(app, sid, permission)?;
-            }
-            app.update_meta(sid, |m| m.permission = permission.to_string());
-        }
-        "session.rename" => {
-            let sid = str_field(msg, "sessionId")?;
-            let title = str_field(msg, "title")?.trim();
-            if title.is_empty()
-                || title.chars().count() > SESSION_TITLE_LIMIT
-                || title.chars().any(|c| c.is_control() || matches!(c, '\u{2028}' | '\u{2029}'))
-            {
-                bail!("Enter a session name on one line with 1 to {SESSION_TITLE_LIMIT} characters.");
-            }
-            // A typed title is the user's: never replaced by a generated one (see `naming`).
-            if !app.update_meta(sid, |m| {
-                m.title = title.to_string();
-                m.title_source = Some("user".into());
-            }) {
-                bail!("no such session");
-            }
-            if !msg["ref"].is_null() {
-                let _ = direct.send(json!({ "op": "session.renamed", "ref": msg["ref"] }).to_string());
-            }
-        }
-        // Sidebar housekeeping.
-        "session.update" => {
-            let sid = str_field(msg, "sessionId")?;
-            app.meta(sid).context("no such session")?;
-            let pinned = msg["pinned"].as_bool();
-            let archived = msg["archived"].as_bool();
-            // A name sets the group; null or a blank name clears it; absent leaves it.
-            let group = match &msg["group"] {
-                Value::String(g) => Some(Some(g.trim().chars().take(60).collect::<String>()).filter(|g| !g.is_empty())),
-                Value::Null if msg.get("group").is_some() => Some(None),
-                _ => None,
-            };
-            app.update_meta(sid, |m| {
-                if let Some(g) = group {
-                    m.group = g;
-                }
-                if let Some(p) = pinned {
-                    m.pinned = p;
-                    // Pinning an archived run brings it back to the list.
-                    if p {
-                        m.archived = false;
-                    }
-                }
-                if let Some(a) = archived {
-                    m.archived = a;
-                    // An archived session leaves the pinned list too.
-                    if a {
-                        m.pinned = false;
-                    }
-                }
-            });
-        }
+        op if IN_ORDER.contains(&op) => in_order(app, direct, msg)?,
         "session.interrupt" => {
             let sid = str_field(msg, "sessionId")?;
             if app.meta(sid).is_some_and(|m| m.slack_access.is_some()) {
@@ -839,6 +765,141 @@ async fn handle(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Va
         "notify" => {
             let windows = notify(app, msg)?;
             let _ = direct.send(json!({ "op": "notify.sent", "windows": windows }).to_string());
+        }
+        other => bail!("unknown op `{other}`"),
+    }
+    Ok(())
+}
+
+fn not_private(msg: &Value) -> Result<()> {
+    if msg["sessionId"].as_str().is_some_and(crate::private::internal) {
+        bail!("that engine thread is private to yardd");
+    }
+    Ok(())
+}
+
+/// The ops in `IN_ORDER`, which a window's worker runs one after another.
+/// Not async, so none of them can wait on anything: an await added here
+/// does not compile, rather than holding back every later op of the window.
+fn in_order(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value) -> Result<()> {
+    not_private(msg)?;
+    match msg["op"].as_str().unwrap_or("") {
+        "session.send" => send(app, msg)?,
+        // Taken back to edit (or dropped): the asking window gets it, if it
+        // had not reached the agent yet.
+        "session.unqueue" => {
+            let sid = str_field(msg, "sessionId")?;
+            let item = app.take_queued(sid, str_field(msg, "id")?, false);
+            if let Some(item) = item.filter(|_| msg["drop"] != true) {
+                let _ = direct.send(
+                    json!({ "op": "queue.returned", "sessionId": sid, "id": item["id"], "text": item["text"], "attachments": item["attachments"] }).to_string(),
+                );
+            }
+        }
+        "session.steer" => {
+            let sid = str_field(msg, "sessionId")?;
+            let id = str_field(msg, "id")?;
+            app.meta(sid).context("no such session")?;
+            app.steer_queued(sid, id);
+        }
+        "session.setModel" => {
+            let sid = str_field(msg, "sessionId")?;
+            let model = str_field(msg, "model")?;
+            let effort = str_field(msg, "effort")?;
+            let meta = app.meta(sid).context("no such session")?;
+            let clear_tier = meta.service_tier.as_deref().is_some_and(|tier| !codex::supports_service_tier(app, model, tier));
+            // A queued Claude session has no sidecar yet; it starts on the new model.
+            if meta.engine == "claude" && meta.model != model && meta.status != "queued" {
+                claude::set_model(app, sid, model)?;
+            }
+            app.update_meta(sid, |m| {
+                m.model = model.to_string();
+                m.effort = effort.to_string();
+                if clear_tier {
+                    m.service_tier = None;
+                }
+            });
+        }
+        "session.setServiceTier" => {
+            let sid = str_field(msg, "sessionId")?;
+            let tier = str_field(msg, "serviceTier")?;
+            let meta = app.meta(sid).context("no such session")?;
+            check_service_tier(app, &meta.engine, &meta.model, tier)?;
+            app.update_meta(sid, |m| {
+                if m.model == meta.model {
+                    m.service_tier = Some(tier.to_string());
+                }
+            });
+        }
+        "session.setPermission" => {
+            let sid = str_field(msg, "sessionId")?;
+            let permission = str_field(msg, "permission")?;
+            if !PERMISSIONS.contains(&permission) {
+                bail!("unknown permission mode {permission}");
+            }
+            let meta = app.meta(sid).context("no such session")?;
+            if permission != "plan" && crate::private::restricted(app, sid) {
+                bail!("The host agent only reads: its chats stay in Plan only.");
+            }
+            // Codex and the ACP engines take the mode with their next turn (yardd
+            // answers an ACP engine's later questions by the new mode at once); a
+            // running Claude sidecar switches now, a queued one starts in it.
+            if meta.engine == "claude" && meta.status != "queued" {
+                claude::set_permission(app, sid, permission)?;
+            }
+            app.update_meta(sid, |m| m.permission = permission.to_string());
+        }
+        "session.rename" => {
+            let sid = str_field(msg, "sessionId")?;
+            let title = str_field(msg, "title")?.trim();
+            if title.is_empty()
+                || title.chars().count() > SESSION_TITLE_LIMIT
+                || title.chars().any(|c| c.is_control() || matches!(c, '\u{2028}' | '\u{2029}'))
+            {
+                bail!("Enter a session name on one line with 1 to {SESSION_TITLE_LIMIT} characters.");
+            }
+            // A typed title is the user's: never replaced by a generated one (see `naming`).
+            if !app.update_meta(sid, |m| {
+                m.title = title.to_string();
+                m.title_source = Some("user".into());
+            }) {
+                bail!("no such session");
+            }
+            if !msg["ref"].is_null() {
+                let _ = direct.send(json!({ "op": "session.renamed", "ref": msg["ref"] }).to_string());
+            }
+        }
+        // Sidebar housekeeping.
+        "session.update" => {
+            let sid = str_field(msg, "sessionId")?;
+            app.meta(sid).context("no such session")?;
+            let pinned = msg["pinned"].as_bool();
+            let archived = msg["archived"].as_bool();
+            // A name sets the group; null or a blank name clears it; absent leaves it.
+            let group = match &msg["group"] {
+                Value::String(g) => Some(Some(g.trim().chars().take(60).collect::<String>()).filter(|g| !g.is_empty())),
+                Value::Null if msg.get("group").is_some() => Some(None),
+                _ => None,
+            };
+            app.update_meta(sid, |m| {
+                if let Some(g) = group {
+                    m.group = g;
+                }
+                if let Some(p) = pinned {
+                    m.pinned = p;
+                    // Pinning an archived run brings it back to the list.
+                    if p {
+                        m.archived = false;
+                    }
+                }
+                if let Some(a) = archived {
+                    m.archived = a;
+                    // An archived session leaves the pinned list too.
+                    if a {
+                        m.pinned = false;
+                    }
+                }
+            });
         }
         other => bail!("unknown op `{other}`"),
     }

@@ -58,7 +58,13 @@ export function SlackCard({ state, actions }: { state: State; actions: Actions }
           <span className="slack-footer-actions">
             <button
               className={`btn-text btn-small ${confirm ? "bad" : ""}`}
-              onClick={() => (confirm ? actions.slackApp("slack.me.remove", {}) : setConfirm(true))}
+              // Disconnect turns into Confirm in this same button, so a double
+              // click's second click (detail 2) lands on it: not the
+              // confirmation asked for. A separate click still disconnects.
+              onClick={(e) => {
+                if (!confirm) setConfirm(true);
+                else if (e.detail < 2) actions.slackApp("slack.me.remove", {});
+              }}
               onBlur={() => setConfirm(false)}
               aria-label={confirm ? "Confirm disconnecting your Slack" : "Disconnect your Slack"}
             >
@@ -166,7 +172,11 @@ function AllowedRow({ person, onRemove }: { person: { id: string; name: string }
           <span className="connector-status">Can request tool use</span>
           <button
             className={`btn-text btn-small ${confirm ? "bad" : ""}`}
-            onClick={() => (confirm ? onRemove() : setConfirm(true))}
+            // As with Disconnect: a double click's second click only asks.
+            onClick={(e) => {
+              if (!confirm) setConfirm(true);
+              else if (e.detail < 2) onRemove();
+            }}
             onBlur={() => setConfirm(false)}
             aria-label={confirm ? `Confirm removing ${person.name}` : `Remove ${person.name}`}
           >

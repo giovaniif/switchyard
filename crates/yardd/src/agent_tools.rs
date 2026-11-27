@@ -554,7 +554,7 @@ async fn run(app: &Arc<App>, caller: &Caller, tool: &str, args: &Value) -> Resul
                 .into())
         }
         "remember" | "set_memory" => {
-            let memory = crate::agents::edit_memory(app, &me.id, sid, &arg("text"), tool == "remember")?;
+            let memory = crate::agents::edit_memory(app, &me.id, sid, &arg("text"), tool == "remember").await?;
             let text = if memory.is_empty() { "Your memory is now empty.".into() } else { format!("Saved. Your memory now:\n{memory}") };
             Ok(Done { text, needs_you: None, memory: Some(memory) })
         }

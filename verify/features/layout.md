@@ -171,6 +171,43 @@ yv drive 'session:{{long_title}}' --viewport mobile --steps '[{"click":{"role":"
 yv state --expect '{"sessions":[{"id":"{{long_title}}"}]}'
 ```
 
+### mobile-delete-ask-keeps-the-title
+Viewports: mobile
+At 390 px the single "Delete session?" ask of a session without its own
+worktree steps the side controls aside like the worktree choices do (#312),
+so the title stays whole and you see which session you are deleting (#516:
+it shrank to "TES…" while iPhone and Workspace kept their room). When the ask
+lapses they come back, and nothing was deleted. It works in the plain
+folder: a turn still going in `{{repo}}` (from the recipe above) would
+refuse a second session there.
+
+```sh
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-remove the old one"}' --wait '{"op":"event","event":{"type":"turn_completed"}}' --save delete_ask=sessionId
+yv drive 'session:{{delete_ask}}' --viewport mobile --steps '[{"click":{"role":"button","name":"Delete","exact":true}},{"expect":"role:button:Delete session?"},{"expect":"role:button:Workspace","visible":false},{"expect":"role:button:Set up iPhone app","visible":false},{"eval":"(() => { const h = document.querySelector(\".main header.bar h1\"); const bar = document.querySelector(\".main header.bar\").getBoundingClientRect(); return h.scrollWidth <= h.clientWidth && document.documentElement.scrollWidth <= Math.round(bar.right); })()","equals":true},{"shot":"delete-ask-title"},{"expect":"role:button:Workspace","timeout":6000},{"expect":{"role":"button","name":"Delete","exact":true}}]'
+yv state --expect '{"sessions":[{"id":"{{delete_ask}}"}]}'
+```
+
+### double-click-on-delete-only-asks
+A double click on Delete leaves the ask up and deletes nothing. The first
+click arms "Delete session?" (or, in its own worktree, "Delete session" and
+"Delete and remove worktree"); the second lands where the pointer is, on the
+ask it just opened. It used to answer it: a double click deleted the session,
+and in a worktree session it hit "Delete and remove worktree" (#519). The
+eval sends what a browser sends for a double click: two mousedown, mouseup,
+click runs at the same point, the second with `detail: 2`, a task apart so
+React has drawn the ask in between. A separate click on the ask (`detail` 1),
+however soon, is an answer: `worktrees/delete-removes-clean-worktree` clicks
+the choice right away and must still delete.
+
+```sh
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{plain}}","text":"TEST-keep me after a double click"}' --wait '{"op":"event","event":{"type":"turn_completed"}}' --save dbl_plain=sessionId
+yv drive 'session:{{dbl_plain}}' --steps '[{"expect": {"role": "button", "name": "Delete", "exact": true}}, {"eval": "(async () => { const b = [...document.querySelectorAll(\".main header.bar button\")].find((x) => x.textContent.trim() === \"Delete\"); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()"}, {"expect": {"css": ".main header.bar .bar-armed"}}, {"shot": "double-click-delete"}]'
+yv state --expect '{"sessions":[{"id":"{{dbl_plain}}"}]}'
+yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{repo}}","worktree":true,"text":"TEST-keep my worktree after a double click"}' --wait '{"op":"event","event":{"type":"turn_completed"}}' --save dbl_wt=sessionId
+yv drive 'session:{{dbl_wt}}' --steps '[{"expect": {"role": "button", "name": "Delete", "exact": true}}, {"eval": "(async () => { const b = [...document.querySelectorAll(\".main header.bar button\")].find((x) => x.textContent.trim() === \"Delete\"); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()"}, {"expect": {"css": ".main header.bar .bar-armed"}}, {"shot": "double-click-delete"}]'
+yv state --expect '{"sessions":[{"id":"{{dbl_wt}}"}]}'
+```
+
 ### send-stays-at-the-right
 At 390 px the reply box's tools (attach, dictate, voice mode, model, permission)
 fill the row, so Send moves to a second line. It stays at the right edge of

@@ -107,6 +107,9 @@ h1, h2, h3, p { margin: 0; }
 .brand.btn-text { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: auto; padding: 18px 18px 10px; border-radius: 0; color: var(--ink); text-align: left; }
 .sidebar-heading .brand { flex: 1 1 auto; min-width: 0; padding-right: 4px; }
 .brand kbd { color: var(--muted); font: 11px/1.5 var(--mono); font-weight: 400; }
+/* A touch phone has no key to press. Gated on input, not platform: an iPad with
+   a keyboard still has Cmd-K (and usually a pointer that can hover). */
+@media (hover: none) and (pointer: coarse) { .brand kbd { display: none; } }
 .sidebar-top { padding: 0 8px 8px; }
 .sidebar-bottom { padding: 8px; border-top: 1px solid var(--line); }
 .session-list { flex: 1 1 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 2px; padding: 4px 8px; }
@@ -239,6 +242,8 @@ h1, h2, h3, p { margin: 0; }
 .tool { display: flex; flex-direction: column; gap: 6px; margin: -8px 0; }
 .tool-row { display: flex; align-items: center; gap: 8px; max-width: 100%; padding: 3px 0; border: 0; background: transparent; color: var(--muted); text-align: left; }
 .tool-row code { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The ellipsized text gives way, never the step's label or its state ("· not answered"). */
+.tool-row .tool-label, .tool-row > .muted, .tool-row > .bad { flex: none; white-space: nowrap; }
 .tool-chevron { display: flex; transition: transform 0.1s; }
 .tool-chevron.open { transform: rotate(90deg); }
 .tool-chevron.hidden { visibility: hidden; }
@@ -739,6 +744,12 @@ button.quote-card-number:hover { background: var(--info); color: var(--bg); }
 .navigation-title, .navigation-detail { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .navigation-empty { padding: 16px 8px; }
 .navigation-footer { display: flex; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.navigation-cancel { display: none; }
+/* Arrows, Enter and Esc mean nothing without a keyboard; same input gate as .brand kbd. */
+@media (hover: none) and (pointer: coarse) {
+  .navigation-footer, .navigation-esc { display: none; }
+  .navigation-cancel { display: inline; }
+}
 .login-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 .login-steps a:not(.btn-primary) { color: inherit; overflow-wrap: anywhere; }
 .login-open { display: inline-flex; align-items: center; text-decoration: none; }
@@ -1012,9 +1023,10 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
   .bar { gap: 8px; padding: 8px 16px 8px 12px; }
   /* The title keeps more of the bar than the branch beside it. */
   .bar code { flex-shrink: 4; }
-  /* The two delete choices need most of a phone's bar. For the few seconds
-     they are armed, the branch, PR link and side controls step aside so both
-     stay on screen; the title and Stop remain. */
+  /* A delete ask (the two worktree choices, or the single "Delete
+     session?") needs most of a phone's bar. For the few seconds it is armed,
+     the branch, PR link and side controls step aside so it stays on screen
+     beside a readable title; the title and Stop remain. */
   .bar:has(.bar-armed) > :is(code, .session-pr-link, .session-account, .bar-host, .mobile-setup-button, .workspace-toggle) { display: none; }
   .app > .resizer { display: none; }
   .sidebar {

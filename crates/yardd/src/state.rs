@@ -144,6 +144,9 @@ pub enum Backend {
     Codex {
         thread_id: String,
         turn_id: Option<String>,
+        /// The last turn the app-server said completed, so the answer to its
+        /// turn/start, read after that, does not make it run again.
+        ended: Option<String>,
     },
     Claude {
         tx: mpsc::UnboundedSender<String>,
@@ -230,6 +233,8 @@ pub struct App {
     replies_rx: Mutex<Option<mpsc::UnboundedReceiver<crate::origins::Owed>>>,
     /// Wakes the idle-engine sweep early (see `release`).
     pub release_now: tokio::sync::Notify,
+    /// Held while a turn is failed from outside its engine (`fail_open_turn`).
+    failing: Mutex<()>,
     next: AtomicU64,
 }
 
@@ -290,6 +295,7 @@ impl App {
             replies,
             replies_rx: Mutex::new(Some(replies_rx)),
             release_now: tokio::sync::Notify::new(),
+            failing: Mutex::new(()),
             next: AtomicU64::new(1),
         }
     }
@@ -319,16 +325,55 @@ impl App {
         let _ = self.replies.send(owed);
     }
 
+    /// End the session's open turn with an error, unless it already ended.
+    /// Two places may fail the same turn at once: a Claude sidecar that dies
+    /// as its turn's message is sent fails the send, and its exit closes out
+    /// the turn too. Each looked, saw it open, and ended it, so the turn ended
+    /// twice, the second time after it was over: in the next turn's place.
+    pub fn fail_open_turn(&self, sid: &str, message: &str) -> bool {
+        let _one = self.failing.lock().unwrap();
+        if !self.meta(sid).is_some_and(|m| m.status != "idle") {
+            return false;
+        }
+        self.emit(sid, json!({ "type": "error", "message": message }));
+        self.emit(sid, json!({ "type": "turn_completed", "status": "failed" }));
+        true
+    }
+
     /// Queue a message sent while a turn runs. `origin`: where it came from,
     /// when the owner did not type it (see `origins`).
     pub fn queue_message(&self, sid: &str, text: &str, attachments: &[Value], origin: Option<&Value>) -> String {
-        let id = self.id("q");
-        let mut item = json!({ "id": id, "text": text, "attachments": attachments, "at": now_ms() });
+        let item = self.queue_item(text, attachments, origin);
+        let id = item["id"].as_str().unwrap_or_default().to_string();
+        self.update_meta(sid, |m| m.pending.push(item));
+        id
+    }
+
+    /// Queue a message only while the session's status is one of `busy`,
+    /// looked at under the same lock as the push. Looked at first and pushed
+    /// after, a turn that ended in between found nothing queued to send on,
+    /// and the message waited in an idle session for whatever came next.
+    /// False if the session was not busy: nothing was queued.
+    pub fn queue_while(&self, sid: &str, busy: &[&str], text: &str, attachments: &[Value], origin: Option<&Value>) -> bool {
+        let item = self.queue_item(text, attachments, origin);
+        let mut map = self.sessions.lock().unwrap();
+        let Some(s) = map.get_mut(sid) else { return false };
+        if !busy.contains(&s.meta.status.as_str()) {
+            return false;
+        }
+        s.meta.pending.push(item);
+        s.meta.updated_at = now_ms();
+        self.store.meta(&s.meta);
+        self.broadcast(json!({ "op": "session", "session": s.meta }));
+        true
+    }
+
+    fn queue_item(&self, text: &str, attachments: &[Value], origin: Option<&Value>) -> Value {
+        let mut item = json!({ "id": self.id("q"), "text": text, "attachments": attachments, "at": now_ms() });
         if let Some(origin) = origin {
             item["origin"] = origin.clone();
         }
-        self.update_meta(sid, |m| m.pending.push(item));
-        id
+        item
     }
 
     /// Take one queued message back, if it has not reached the agent yet.

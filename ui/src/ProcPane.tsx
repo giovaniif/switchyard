@@ -85,7 +85,11 @@ function ProcLine(props: { row: ProcRow; depth: number; offers: ReturnType<typeo
   }, [armed]);
   // A finished request changes what is offered; an old arming must not carry over.
   useEffect(() => setArmed(null), [offers.stop, offers.force]);
-  const fire = (signal: KillSignal, tree: boolean) => {
+  // The second click of a double click lands on the ask the first one just
+  // put in the x's place ("Stop?", "Force kill?"). It is not an answer: the
+  // ask stays up. A separate click, however quick, still answers.
+  const fire = (e: { detail: number }, signal: KillSignal, tree: boolean) => {
+    if (e.detail >= 2) return;
     setArmed(null);
     onKill(signal, tree);
   };
@@ -113,11 +117,11 @@ function ProcLine(props: { row: ProcRow; depth: number; offers: ReturnType<typeo
         <td className="num">{duration(row.ageSecs * 1000)}</td>
         <td className="proc-act">
           {choices ? null : armed === "stop" && offers.stop ? (
-            <button className="btn-text danger" aria-label={`Confirm stop process ${label}`} onClick={() => fire("term", false)}>
+            <button className="btn-text danger" aria-label={`Confirm stop process ${label}`} onClick={(e) => fire(e, "term", false)}>
               Stop?
             </button>
           ) : armed === "force" && offers.force ? (
-            <button className="btn-text danger" aria-label={`Confirm force kill process ${label}`} onClick={() => fire("kill", offers.forceTree)}>
+            <button className="btn-text danger" aria-label={`Confirm force kill process ${label}`} onClick={(e) => fire(e, "kill", offers.forceTree)}>
               Force kill?
             </button>
           ) : offers.force ? (
@@ -135,10 +139,10 @@ function ProcLine(props: { row: ProcRow; depth: number; offers: ReturnType<typeo
         <tr className="proc-choices">
           <td />
           <td colSpan={5}>
-            <button className="btn-text danger" aria-label={`Confirm stop process ${label}`} onClick={() => fire("term", false)}>
+            <button className="btn-text danger" aria-label={`Confirm stop process ${label}`} onClick={(e) => fire(e, "term", false)}>
               Stop
             </button>
-            <button className="btn-text danger" aria-label={`Stop process ${label} with its children`} onClick={() => fire("term", true)}>
+            <button className="btn-text danger" aria-label={`Stop process ${label} with its children`} onClick={(e) => fire(e, "term", true)}>
               Stop with children
             </button>
           </td>

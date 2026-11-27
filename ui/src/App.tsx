@@ -3402,6 +3402,13 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
  *  session in a worktree yardd made can take its worktree with it. */
 function DeleteButton({ worktree, onConfirm }: { worktree: boolean; onConfirm(removeWorktree: boolean): void }) {
   const [armed, setArmed] = useState(false);
+  // The second click of a double click lands on the ask the first one just
+  // opened ("Delete and remove worktree", in a worktree session). It is not an
+  // answer: the ask stays up. A separate click, however quick, still answers.
+  const answer = (e: { detail: number }, removeWorktree?: boolean) => {
+    if (e.detail >= 2) return;
+    onConfirm(removeWorktree ?? false);
+  };
   useEffect(() => {
     if (!armed) return;
     const timer = setTimeout(() => setArmed(false), worktree ? 5000 : 3000);
@@ -3412,11 +3419,11 @@ function DeleteButton({ worktree, onConfirm }: { worktree: boolean; onConfirm(re
       <>
         {/* A phone's bar has room for both choices only with short labels,
             and only once its other controls step aside (bar-armed in styles.css). */}
-        <button className="btn-text bar-choice bar-armed" onClick={() => onConfirm(false)}>
+        <button className="btn-text bar-choice bar-armed" onClick={(e) => answer(e, false)}>
           <span className="label-wide">Delete session</span>
           <span className="label-narrow">Delete</span>
         </button>
-        <button className="btn-text bar-choice bar-armed" onClick={() => onConfirm(true)}>
+        <button className="btn-text bar-choice bar-armed" onClick={(e) => answer(e, true)}>
           <span className="label-wide">Delete and remove worktree</span>
           <span className="label-narrow">Delete + worktree</span>
         </button>
@@ -3424,8 +3431,10 @@ function DeleteButton({ worktree, onConfirm }: { worktree: boolean; onConfirm(re
     );
   }
   return (
-    // The title ellipsizes; the button keeps its one line beside it.
-    <button className="btn-text bar-choice" onClick={() => (armed ? onConfirm() : setArmed(true))}>
+    // The button keeps its one line beside the title. Armed, it is a bar-armed
+    // choice too: on a phone the side controls step aside so the title shows
+    // which session is about to go.
+    <button className={armed ? "btn-text bar-choice bar-armed" : "btn-text bar-choice"} onClick={(e) => (armed ? answer(e) : setArmed(true))}>
       {armed ? "Delete session?" : "Delete"}
     </button>
   );
@@ -3742,7 +3751,7 @@ function WorkEntry({ entry }: { entry: WorkItem }) {
           </span>
           {/* Engines title a command "Ran" and an edit "Edited" from the start;
               while its approval is open or after a denial it never happened. */}
-          <span>{toolLabel(entry)}</span>
+          <span className="tool-label">{toolLabel(entry)}</span>
           {entry.detail && <code>{entry.detail}</code>}
           {entry.state === "running" && entry.asked !== "waiting" && <span className="pulse" aria-label="running" />}
           {entry.asked === "waiting" && toolLabel(entry) === entry.title && <span className="muted">· waiting</span>}
@@ -5149,8 +5158,11 @@ function AccountRow({ account, state: st, onLogin, onRemove }: { account: Accoun
             aria-label={`Remove ${account.name}`}
             title="Deletes the account's login on this host"
             // Disarm on the confirming click: if yardd refuses, the row should
-            // not keep offering a click that will be refused again.
-            onClick={() => {
+            // not keep offering a click that will be refused again. A double
+            // click's second click (detail 2) lands on the ask in this same
+            // button: it is not the second click asked for.
+            onClick={(e) => {
+              if (armed && e.detail >= 2) return;
               setArmed(!armed);
               if (armed) onRemove();
             }}
@@ -5234,7 +5246,9 @@ function RemoveHost({ onConfirm, onUpdate }: { onConfirm(): void; onUpdate?(): v
   }, [armed]);
   return (
     <div className="host-foot">
-      <button className="btn-text" onClick={() => (armed ? onConfirm() : setArmed(true))}>
+      {/* The ask takes this button's place, so a double click's second click
+          (detail 2) lands on it: that is not the second click asked for. */}
+      <button className="btn-text" onClick={(e) => (!armed ? setArmed(true) : e.detail < 2 && onConfirm())}>
         {armed ? "Click again to remove" : "Remove host"}
       </button>
       {armed && <span className="muted small">Its sessions keep running there.</span>}

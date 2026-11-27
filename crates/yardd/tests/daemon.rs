@@ -500,6 +500,61 @@ async fn messages_queued_during_an_approval_reach_the_agent_after_it() {
     assert!(pending_texts(&c, &sid).is_empty());
 }
 
+// The owner's messages reach the agent in the order he sent them, however
+// fast they came. One worker thread makes the daemon run ops it read
+// together in a fixed order, so one that hands each op to its own task
+// swaps them every time instead of now and then under load.
+#[tokio::test]
+async fn messages_sent_in_a_row_reach_the_agent_in_the_order_sent() {
+    let sb = Sandbox::new("send-order");
+    let d = sb.start_with(&[("TOKIO_WORKER_THREADS", "1")]);
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "TEST-hi", json!({})).await;
+    c.wait_turn_done(&sid, 0).await;
+    c.wait_status(&sid, "idle").await;
+    let send = |text: &str| json!({ "op": "session.send", "sessionId": sid, "text": text });
+
+    // To an idle session: the first starts the turn, the second waits for it.
+    let seq = c.next_seq(&sid);
+    c.send_burst(&[send("TEST-one"), send("TEST-two")]).await;
+    let done = c.wait_turn_done(&sid, seq).await;
+    c.wait_turn_done(&sid, done["seq"].as_u64().unwrap() + 1).await;
+    c.wait_status(&sid, "idle").await;
+    assert_eq!(user_texts(&c, &sid), ["TEST-hi", "TEST-one", "TEST-two"]);
+
+    // Behind an approval: queued as sent.
+    let seq = c.next_seq(&sid);
+    c.send(send("[cmd] TEST-run it")).await;
+    c.wait_event(&sid, "approval_request", seq).await;
+    c.wait_status(&sid, "needs_approval").await;
+    let queued = ["TEST-a", "TEST-b", "TEST-c", "TEST-d"];
+    c.send_burst(&queued.map(send)).await;
+    c.wait_for("four queued messages", |m| m["op"] == "session" && m["session"]["pending"].as_array().is_some_and(|p| p.len() == 4)).await;
+    assert_eq!(pending_texts(&c, &sid), queued);
+}
+
+// A session's settings too: a group set and then cleared stays cleared
+// (seen as sessions_are_grouped_across_restarts failing under load).
+#[tokio::test]
+async fn session_settings_sent_in_a_row_apply_in_the_order_sent() {
+    let sb = Sandbox::new("update-order");
+    let d = sb.start_with(&[("TOKIO_WORKER_THREADS", "1")]);
+    let mut c = d.client().await;
+    let sid = c.create(&sb.folder("proj"), "TEST-hi", json!({})).await;
+    c.wait_turn_done(&sid, 0).await;
+    let update = |change: Value| {
+        let mut op = json!({ "op": "session.update", "sessionId": sid });
+        op.as_object_mut().unwrap().extend(change.as_object().unwrap().clone());
+        op
+    };
+    c.send_burst(&[update(json!({ "group": "TEST-release" })), update(json!({ "group": null }))]).await;
+    c.wait_for("the group cleared", |m| m["op"] == "session" && m["session"]["id"] == sid && m["session"]["group"].is_null()).await;
+    // Sent after, so its answer shows where both left the session.
+    c.send(update(json!({ "pinned": true }))).await;
+    let pinned = c.wait_for("pinned", |m| m["op"] == "session" && m["session"]["id"] == sid && m["session"]["pinned"] == true).await;
+    assert!(pinned["session"]["group"].is_null(), "{pinned}");
+}
+
 #[tokio::test]
 async fn a_session_says_when_and_how_its_last_turn_ended() {
     let sb = Sandbox::new("turn-end");
@@ -1224,6 +1279,59 @@ async fn a_hub_runs_sessions_on_a_direct_host() {
 }
 
 #[tokio::test]
+async fn a_page_s_first_op_reaches_a_connected_host_while_its_own_connection_opens() {
+    // Every page gets its own connection from the hub to each host, opened
+    // when the page connects. A page that asks right away (a reload, a phone
+    // coming back, with a remote conversation open) must not be told the
+    // host is not connected while the hub shows it connected.
+    use futures_util::{SinkExt, StreamExt};
+    let remote_sb = Sandbox::new("remote-first-op");
+    let remote = remote_sb.start();
+    let hub_sb = Sandbox::new("hub-first-op");
+    let hub = hub_sb.start();
+    let mut c = hub.client().await;
+    c.send(json!({ "op": "host.add", "name": "box", "kind": "direct", "url": remote.url() })).await;
+    let hosts = c
+        .wait_for("the direct host to connect", |m| {
+            m["op"] == "hosts" && m["hosts"].as_array().is_some_and(|h| h.iter().any(|h| h["status"] == "connected"))
+        })
+        .await;
+    let host = hosts["hosts"][0]["id"].as_str().unwrap().to_string();
+    c.wait_for("the host's snapshot", |m| m["op"] == "host.snapshot" && m["hostId"] == host).await;
+    let sid = c.create(&remote_sb.folder("proj"), "hello remote", json!({ "host": host })).await;
+    assert_eq!(c.wait_turn_done(&sid, 0).await["status"], "completed");
+
+    for n in 0..3 {
+        // The page's first op, sent before it has read anything.
+        let (mut ws, _) = tokio_tungstenite::connect_async(hub.url()).await.unwrap();
+        ws.send(tokio_tungstenite::tungstenite::Message::Text(json!({ "op": "session.open", "sessionId": sid }).to_string())).await.unwrap();
+        let deadline = tokio::time::Instant::now() + WAIT;
+        let answer = loop {
+            let next = tokio::time::timeout_at(deadline, ws.next()).await.expect("an answer").unwrap().unwrap();
+            if let tokio_tungstenite::tungstenite::Message::Text(t) = next {
+                let v: Value = serde_json::from_str(&t).unwrap();
+                if (v["op"] == "history" && v["sessionId"] == sid.as_str()) || v["op"] == "error" {
+                    break v;
+                }
+            }
+        };
+        assert_eq!(answer["op"], "history", "page {n}: {answer}");
+        assert!(answer["events"].as_array().is_some_and(|e| !e.is_empty()), "page {n}: {answer}");
+    }
+
+    // A host that is down still says so at once.
+    remote.stop();
+    c.wait_for("the host to go offline", |m| {
+        m["op"] == "hosts" && m["hosts"].as_array().is_some_and(|h| h.iter().any(|h| h["status"] != "connected"))
+    })
+    .await;
+    let mut late = hub.client().await;
+    let from = late.mark();
+    late.send(json!({ "op": "session.open", "sessionId": sid })).await;
+    assert_eq!(late.wait_error(from, "session.open").await, "this host is not connected");
+}
+
+#[tokio::test]
 async fn a_page_opened_while_a_host_is_down_still_lists_its_sessions() {
     let remote_sb = Sandbox::new("remote-down");
     let remote = remote_sb.start();
@@ -1598,6 +1706,34 @@ async fn engines_log_in_from_the_app() {
     c.wait_after(mark, "claude login done", |m| m["op"] == "login" && m["engine"] == "claude" && m["state"] == "done").await;
     let after = c.wait_after(mark, "claude logged in", |m| m["op"] == "engines" && m["engines"]["claude"]["loggedIn"] == true).await;
     assert_eq!(after["engines"]["claude"]["account"], "me@example.com");
+}
+
+// A closed tab never sends `login.cancel`, so a Claude login nobody finishes
+// would keep `claude auth login` running under yardd until it stops.
+#[tokio::test]
+async fn an_abandoned_claude_login_is_stopped() {
+    let sb = Sandbox::new("login-abandoned");
+    let d = sb.start_with(&[("YARD_CLAUDE_LOGIN_TIMEOUT_MS", "1500")]);
+    let mut c = d.client().await;
+
+    let mark = c.log.len();
+    c.send(json!({ "op": "login.start", "engine": "claude" })).await;
+    c.wait_after(mark, "claude link", |m| m["op"] == "login" && m["engine"] == "claude" && m["state"] == "url").await;
+    let pid = claude_log(&sb)
+        .lines()
+        .find(|l| l.contains("args=auth login"))
+        .and_then(|l| l.split_whitespace().find_map(|w| w.strip_prefix("pid=")).map(str::to_string))
+        .expect("the login was logged");
+
+    // No code comes: the login gives up on its own and says why.
+    let failed = c.wait_after(mark, "the login timing out", |m| m["op"] == "login" && m["engine"] == "claude" && m["state"] == "failed").await;
+    assert!(failed["error"].as_str().unwrap().contains("Start again"), "{failed}");
+    assert!(!std::path::Path::new(&format!("/proc/{pid}")).exists(), "`claude auth login` (pid {pid}) is still running");
+
+    // A code after that finds no login, rather than a stale prompt.
+    c.send(json!({ "op": "login.code", "engine": "claude", "code": "good-code" })).await;
+    let refused = c.wait_after(mark, "the late code refused", |m| m["op"] == "error").await;
+    assert!(refused["message"].as_str().unwrap().contains("no Claude login is running"), "{refused}");
 }
 
 #[tokio::test]

@@ -60,7 +60,7 @@ export function NavigationPalette({ state, onPick, onClose }: { state: State; on
             value={query}
             onChange={(e) => { setQuery(e.target.value); setActive(null); }}
           />
-          <button type="button" className="btn-text" aria-label="Close" onClick={onClose}>Esc</button>
+          <button type="button" className="btn-text" aria-label="Close" onClick={onClose}><span className="navigation-esc">Esc</span><span className="navigation-cancel">Cancel</span></button>
         </header>
         <div id={listId} className="navigation-results" role="listbox" aria-label="Sessions and pages">
           {rows.map((entry, i) => (

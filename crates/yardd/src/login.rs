@@ -25,6 +25,14 @@ struct ClaudeLogin {
     id: u64,
     writer: Box<dyn Write + Send>,
     killer: Box<dyn ChildKiller + Send + Sync>,
+    timed_out: bool,
+}
+
+/// How long a Claude login waits for its code. A closed tab never sends
+/// `login.cancel`, and ending a login when its window's socket drops would
+/// break a phone that leaves the app for the sign-in page, so it ends on time.
+fn claude_login_timeout() -> Duration {
+    Duration::from_millis(std::env::var("YARD_CLAUDE_LOGIN_TIMEOUT_MS").ok().and_then(|v| v.parse().ok()).unwrap_or(15 * 60 * 1000))
 }
 
 /// Logins in progress are per account: Default and an added one can run at once.
@@ -199,8 +207,19 @@ fn start_claude(app: &Arc<App>, account: &str) -> Result<()> {
     let mut reader = pair.master.try_clone_reader()?;
     let writer = pair.master.take_writer()?;
     let id = app.logins.next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    app.logins.claude.lock().unwrap().insert(account.to_string(), ClaudeLogin { id, writer, killer: child.clone_killer() });
+    app.logins.claude.lock().unwrap().insert(account.to_string(), ClaudeLogin { id, writer, killer: child.clone_killer(), timed_out: false });
     report(app, "claude", account, "starting", json!({}));
+    {
+        let app = app.clone();
+        let account = account.to_string();
+        tokio::spawn(async move {
+            tokio::time::sleep(claude_login_timeout()).await;
+            if let Some(login) = app.logins.claude.lock().unwrap().get_mut(&account).filter(|l| l.id == id) {
+                login.timed_out = true;
+                let _ = login.killer.kill();
+            }
+        });
+    }
 
     let app = app.clone();
     let account = account.to_string();
@@ -229,24 +248,25 @@ fn start_claude(app: &Arc<App>, account: &str) -> Result<()> {
             }
         }
         let ok = child.wait().map(|s| s.success()).unwrap_or(false);
-        let current = {
+        let timed_out = {
             let mut slot = app.logins.claude.lock().unwrap();
             if slot.get(&account).map(|l| l.id) == Some(id) {
-                slot.remove(&account);
-                true
+                slot.remove(&account).map(|l| l.timed_out)
             } else {
-                false
+                None
             }
         };
-        if !current {
+        let Some(timed_out) = timed_out else {
             return; // replaced or cancelled
-        }
+        };
         let logged_in = ok && !text.contains("Invalid code");
         if logged_in {
             report(&app, "claude", &account, "done", json!({}));
             restart_idle_claude(&app, &account);
         } else {
-            let error = if text.contains("Invalid code") {
+            let error = if timed_out {
+                "The sign-in waited too long for its code. Start again.".to_string()
+            } else if text.contains("Invalid code") {
                 "That code was not accepted. Start again and paste the whole code.".to_string()
             } else {
                 last_line(&text).unwrap_or_else(|| "The login did not finish.".into())
