@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "route": "session:s1a21b074f646",
+  "build": {
+    "sha": "7c55510b208609fc54f878c4e4da826241d261a9",
+    "short": "7c55510",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T03:22:27.156Z"
+  },
+  "dir": ".verify/evidence/double-click-delete-head-deliberate",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 4272,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/double-click-delete-head-deliberate/deliberate-delete-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

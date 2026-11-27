@@ -1,0 +1,26 @@
+$ verify/yv map run layout --recipe double-click-on-delete-only-asks
+# exit 0 after 16974 ms at 7c55510b208609fc54f878c4e4da826241d261a9
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "layout",
+      "at": "2026-11-27T03:23:45.015Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "double-click-on-delete-only-asks",
+          "status": "pass",
+          "ms": 16121
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+

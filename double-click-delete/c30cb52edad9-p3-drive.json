@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "route": "session:s1a21b069a861",
+  "build": {
+    "sha": "7c55510b208609fc54f878c4e4da826241d261a9",
+    "short": "7c55510",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T03:22:27.156Z"
+  },
+  "dir": ".verify/evidence/double-click-delete-head-plain",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 10159,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/double-click-delete-head-plain/ask-still-up-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/double-click-delete-head-plain/ask-lapsed-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 1,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\".main header.bar button\")].find((x) => x.textContent.trim() === \"Delete\"); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; b.click(); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && second.click(); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Delete session?"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 9496,
+      "steps": 7,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/double-click-delete-head-plain/ask-still-up-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/double-click-delete-head-plain/ask-lapsed-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 1,
+          "eval": "(async () => { const b = [...document.querySelectorAll(\".main header.bar button\")].find((x) => x.textContent.trim() === \"Delete\"); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; b.click(); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && second.click(); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()",
+          "value": "second click hit: Delete session?"
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
