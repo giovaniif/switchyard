@@ -1,0 +1,40 @@
+$ verify/yv map run navigation --recipe palette-keyboard-hints-only-with-a-keyboard
+# exit 1 after 16088 ms at 2fd1e5eae2c119a3e37e0e5b16f5e53c54f2a5fd
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "navigation",
+      "at": "2026-11-27T10:18:42.399Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "palette-keyboard-hints-only-with-a-keyboard",
+          "status": "fail",
+          "ms": 15193,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 3 {\"expect\":\"css:.navigation-footer\",\"visible\":false}: expected \"css:.navigation-footer\" to be absent or hidden",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-98a0/.verify/drives/2026-11-27T10-18-29-658Z/fail-mobile-step3.png and the aria snapshot"
+            }
+          ],
+          "tail": "heading \\\"New session\\\" [level=2]\\n  - button \\\"Subscription usage\\\": 47%\\n  - button \\\"Connectors\\\"\\n  - button \\\"Set up iPhone app\\\"\\n- heading \\\"What should we work on?\\\" [level=1]\\n- textbox \\\"Message\\\":\\n  - /placeholder: Describe the task\\n- button \\\"Attach files\\\"\\n- button \\\"Dictate\\\"\\n- button \\\"Voice mode\\\"\\n- 'button \\\"Session setup: Opus 5.5, Default, High, Ask first\\\"': Opus 5.5 · High\\n- button \\\"Send\\\" [disabled]\\n- button \\\"iso-host\\\"\\n- button \\\"work\\\"\\n- text: Works in the folder itself\\n- dialog \\\"Go to session or page\\\":\\n  - banner:\\n    - combobox \\\"Search sessions and pages\\\" [expanded]\\n    - button \\\"Close\\\": Esc\\n  - listbox \\\"Sessions and pages\\\":\\n    - option \\\"[cmd] TEST-run the migration Codex · iso-host · TEST-demo-app · yard/cmd-test-run-the-migration-528b\\\" [selected]\\n    - option \\\"TEST-hello from Claude Claude · iso-host · TEST-demo-app · yard/test-hello-from-claude-4c29\\\"\\n    - option \\\"[edit] TEST-fix the greeting Codex · iso-host · TEST-demo-app · yard/edit-test-fix-the-greeting-4767\\\"\\n    - option \\\"TEST-say hello Codex · iso-host · TEST-demo-app · yard/test-say-hello-42b5\\\"\\n    - option \\\"[think] TEST-plan the refactor Codex · iso-host · TEST-demo-app · yard/think-test-plan-the-refactor-3df3\\\"\\n    - option \\\"[fail] TEST-failing turn Codex · iso-host · TEST-demo-app · yard/fail-test-failing-turn-3931\\\"\\n    - option \\\"New session Start a conversation\\\"\\n    - 'option \\\"Agents Your named agents: @mention them anywhere, or in Slack\\\"'\\n    - option \\\"Automations Scheduled work and runs\\\"\\n    - option \\\"Connectors MCP servers and connections\\\"\\n    - option \\\"Settings Notifications and sidebar\\\"\\n    - option \\\"Hosts Local and remote machines\\\"\\n    - option \\\"Subscriptions Accounts and usage across hosts\\\"\\n    - option \\\"Sessions Active and archived conversations\\\"\\n    - option \\\"Import Claude Code sessions\\\"\\n  - contentinfo: ↑ ↓ to navigate Enter to open\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 3 {\\\"expect\\\":\\\"css:.navigation-footer\\\",\\\"visible\\\":false}: expected \\\"css:.navigation-footer\\\" to be absent or hidden\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-98a0/.verify/drives/2026-11-27T10-18-29-658Z/fail-mobile-step3.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "navigation/palette-keyboard-hints-only-with-a-keyboard",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+

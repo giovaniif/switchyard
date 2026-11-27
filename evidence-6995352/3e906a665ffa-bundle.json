@@ -1,0 +1,159 @@
+{
+  "v": 1,
+  "claim": "On a touch phone the Go to palette showed '↑ ↓ to navigate, Enter to open' and an 'Esc' close button: keys a phone does not have",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-98a0",
+  "base": "370506dfd9f0a6684afe98f41d811010784e944f",
+  "head": "6995352b461258a6f249dfabf8461a7bf038f239",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/NavigationPalette.tsx"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/navigation.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T10:18:15.969Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "2fd1e5eae2c119a3e37e0e5b16f5e53c54f2a5fd",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "bec5eb636d38fdf96c33121cb1b9866db4e466bd9f31647f13bad4bc6025d672"
+        },
+        {
+          "path": "p1-palette-base-mobile.png",
+          "sha256": "9a92c3e8fa3943fd0753e8b3803db18ea4b871e44e852c7f8204e9cf0bcb84a5"
+        }
+      ],
+      "addedAt": "2026-11-27T10:18:26.269Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "2fd1e5eae2c119a3e37e0e5b16f5e53c54f2a5fd",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "8d31a8e7cd8bbfc895d5dae25fefabb57b910878cce2159152a1e3aabacee2f6"
+        }
+      ],
+      "addedAt": "2026-11-27T10:18:26.315Z",
+      "cmd": "verify/yv map run navigation --recipe palette-keyboard-hints-only-with-a-keyboard",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "6995352b461258a6f249dfabf8461a7bf038f239",
+      "dirty": false,
+      "viewports": [
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "4dcbfab50c8ab94f4c6e1387150edd90a7a73508fc0c670d08813fcacb352b48"
+        },
+        {
+          "path": "p3-palette-head-mobile.png",
+          "sha256": "3b97300ce003c1987ddf822858852c2ba6a5a0c2fad8ca29c8aefd88a2226b33"
+        }
+      ],
+      "addedAt": "2026-11-27T10:18:54.552Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "6995352b461258a6f249dfabf8461a7bf038f239",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "a7df9005b86b1d55cddb85d62cbe1904e1a19fd5a9f7fdf72540fe030af61986"
+        },
+        {
+          "path": "p4-palette-head-desktop.png",
+          "sha256": "0420941e359fcedbc78d16e31b6c65c759e3cd38de5e904feadcf869df3bc67c"
+        }
+      ],
+      "addedAt": "2026-11-27T10:18:54.593Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "6995352b461258a6f249dfabf8461a7bf038f239",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "4043f7889e6c925dea5fce39e3b9507734308efdd7188c6161de5adeb6185876"
+        }
+      ],
+      "addedAt": "2026-11-27T10:18:54.635Z",
+      "cmd": "verify/yv map run navigation",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "6995352b461258a6f249dfabf8461a7bf038f239",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "f7af1bfcbc96063d554a9c0b5356f0087f35b68a19f536da09d4a1e3ca27f249"
+        }
+      ],
+      "addedAt": "2026-11-27T10:20:19.151Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "6995352b461258a6f249dfabf8461a7bf038f239",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "a775361e0f483a8f27284a7a7215e971e1dc0f3d2c3bb441d00c878e60fc1158"
+        }
+      ],
+      "addedAt": "2026-11-27T10:20:19.633Z",
+      "cmd": "verify/yv design-check --base 370506dfd9f0",
+      "exit": 0
+    }
+  ]
+}

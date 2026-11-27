@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "2fd1e5eae2c119a3e37e0e5b16f5e53c54f2a5fd",
+    "short": "2fd1e5e",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T10:18:23.118Z"
+  },
+  "dir": ".verify/evidence/palette-touch-hints-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2331,
+      "steps": 5,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/palette-touch-hints-base/palette-base-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
