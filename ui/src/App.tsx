@@ -5158,8 +5158,11 @@ function AccountRow({ account, state: st, onLogin, onRemove }: { account: Accoun
             aria-label={`Remove ${account.name}`}
             title="Deletes the account's login on this host"
             // Disarm on the confirming click: if yardd refuses, the row should
-            // not keep offering a click that will be refused again.
-            onClick={() => {
+            // not keep offering a click that will be refused again. A double
+            // click's second click (detail 2) lands on the ask in this same
+            // button: it is not the second click asked for.
+            onClick={(e) => {
+              if (armed && e.detail >= 2) return;
               setArmed(!armed);
               if (armed) onRemove();
             }}

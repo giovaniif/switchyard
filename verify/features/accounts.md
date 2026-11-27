@@ -142,6 +142,21 @@ done
 yv drive hosts --viewport desktop --steps '[{"click":"role:tab:Engine logins"},{"click":"role:button:Remove TEST-Work"},{"click":"role:button:Remove TEST-Work"},{"expect":{"css":".account-row","hasText":"TEST-Work"},"visible":false},{"expect":{"css":".engine-row","hasText":"Claude Code"},"text":"logged in as me@example.com"},{"shot":"account-removed"}]'
 ```
 
+### double-click-on-remove-account-only-asks
+Viewports: both
+A double click on an account's Remove leaves "Click again to remove" up and
+keeps the account (and its login). The ask is the same button, so the second
+click of a double click lands on it; it used to answer it and the account was
+deleted at once (#524, like #522 for Remove host). The eval sends what a
+browser sends for a double click: two mousedown, mouseup, click runs at the
+same point, the second with `detail: 2`. A separate second click still
+removes (`remove-account`).
+
+```sh
+yv api '{"op":"account.add","engine":"codex","name":"TEST-dbl-acct"}' --wait '{"op":"accounts"}'
+yv drive hosts --steps '[{"click": "role:tab:Engine logins"}, {"expect": "role:button:Remove TEST-dbl-acct"}, {"eval": "(async () => { const b = [...document.querySelectorAll(\".account-remove\")].find((x) => x.getAttribute(\"aria-label\") === \"Remove TEST-dbl-acct\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.textContent.trim() : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 800)); return \"second click hit: \" + label; })()"}, {"expect": {"css": ".account-row", "hasText": "TEST-dbl-acct"}}, {"expect": "role:button:Remove TEST-dbl-acct", "text": "Click again to remove"}, {"shot": "double-click-remove-account"}, {"reload": true}, {"click": "role:tab:Engine logins"}, {"expect": {"css": ".account-row", "hasText": "TEST-dbl-acct"}}]'
+```
+
 ### add-account-stays-at-the-right
 Viewports: both
 Desktop actions align at the right; on mobile the whole action group moves under the login identity, with no overflow.
