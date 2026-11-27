@@ -1075,9 +1075,10 @@ fn rewrite_stats(host: &str, name: &str, stats: &mut Value) {
     }
 }
 
-/// A pressure episode's sessions are on that host.
+/// A pressure episode's sessions are on that host. Read with `get_mut`:
+/// indexing would turn a calm host's `episode: null` into an object.
 fn rewrite_episode(host: &str, ep: &mut Value) {
-    if let Some(list) = ep["top"]["sessions"].as_array_mut() {
+    if let Some(list) = ep.get_mut("top").and_then(|t| t.get_mut("sessions")).and_then(Value::as_array_mut) {
         for s in list {
             prefix(host, s, "id");
         }
@@ -1288,6 +1289,9 @@ mod tests {
         assert_eq!(page["episodes"][0]["top"]["sessions"][0]["id"], "h1~s1");
         assert_eq!(route(&json!({ "op": "host.pressure", "host": "h1" })).as_deref(), Some("h1"));
         assert_eq!(route(&json!({ "op": "host.pressure" })), None);
+        // A calm host stays calm through the hub.
+        let calm: Value = serde_json::from_str(&rewrite_incoming("h1", "box", r#"{"op":"host","host":{"id":"local","episode":null,"episodes":[]}}"#).unwrap()).unwrap();
+        assert!(calm["host"]["episode"].is_null(), "{calm}");
     }
 
     #[test]

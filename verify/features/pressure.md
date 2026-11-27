@@ -26,6 +26,8 @@ yv api '{"op":"session.create","engine":"codex","model":"fake-fast","effort":"lo
 
 ```sh
 kill "$(v stray)" 2>/dev/null || true
+# A recipe that fails stops before its own teardown.
+yv iso down --name map-pressure-remote
 yv iso down
 ```
 
@@ -92,6 +94,25 @@ yv var set stray "$!"
 printf '{"load":140,"swapUsed":0,"swapTotal":0,"procs":{"%s":{"cpu":2400,"mem":4294967296}}}' "$(v stray)" > "$(v readings)"
 yv drive hosts --steps '[{"expect":"css:.pressure-banner","text":"mostly sleep, pid"},{"expect":{"css":".pressure-banner button","hasText":"Open"},"count":0},{"click":"role:tab:System"},{"expect":{"css":".pressure-episode","hasText":"Now"},"text":"not a session"},{"eval":"(() => { document.querySelector(\".pressure-history\").scrollIntoView({ block: \"start\" }); return true; })()","equals":true},{"shot":"stray"}]'
 printf '{"load":0,"swapUsed":0,"swapTotal":0}' > "$(v readings)"
+```
+
+### a-remote-hosts-own-episodes
+Viewports: both
+Each yardd records its own. A remote host overloaded: the hub's banner names
+it and its session, and that host's System tab lists the episode with the
+session linking to its conversation through the hub.
+
+```sh
+yv var set remote_port "$(yv iso up --name map-pressure-remote --host-name TEST-remote --env YARD_TEST_PRESSURE_CALM_SECS=1 | jq -r .iso.port)"
+yv var set remote_readings "$(yv var get readings --iso map-pressure-remote | jq -er .value)"
+yv var set remote_work "$(yv var get work --iso map-pressure-remote | jq -er .value)"
+yv api '{"op":"host.add","name":"TEST-remote","kind":"direct","url":"ws://127.0.0.1:{{remote_port}}/ws"}' --wait '{"op":"hosts","hosts":[{"name":"TEST-remote","status":"connected"}]}' --save remote_id='hosts[name=TEST-remote].id'
+yv api '{"op":"session.create","host":"{{remote_id}}","engine":"codex","model":"fake-fast","effort":"low","cwd":"{{remote_work}}","text":"[slow] TEST-remote hog"}' --wait '{"op":"created"}' --save rsid=sessionId
+printf '{"load":99,"swapUsed":0,"swapTotal":0,"sessions":{"%s":{"cpu":600,"mem":5368709120}}}' "$(v rsid | sed 's/.*~//')" > "$(v remote_readings)"
+yv drive hosts --steps '[{"expect":"css:.pressure-banner","text":"TEST-remote is overloaded · load 99 · mostly [slow] TEST-remote hog (6.0 cores, 5.0 GB)"},{"click":"role:button:Select TEST-remote"},{"click":"role:tab:System"},{"expect":{"css":".pressure-episode","hasText":"Now"},"text":"[slow] TEST-remote hog"},{"eval":"(() => { document.querySelector(\".pressure-history\").scrollIntoView({ block: \"start\" }); return true; })()","equals":true},{"shot":"remote"},{"click":{"css":".pressure-session","hasText":"[slow] TEST-remote hog"}},{"expect":"css:.thread","text":"[slow] TEST-remote hog"}]'
+printf '{"load":0,"swapUsed":0,"swapTotal":0}' > "$(v remote_readings)"
+yv api '{"op":"host.remove","hostId":"{{remote_id}}"}' --wait '{"op":"hosts"}'
+yv iso down --name map-pressure-remote
 ```
 
 ## Gotchas
