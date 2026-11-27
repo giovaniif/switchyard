@@ -1,0 +1,90 @@
+{
+  "v": 1,
+  "claim": "Feature map Gotchas pointed at the wrong selector: processes named .workspace-open as the Workspace button (a click on it times out), and thread did not warn that role:button:Edit matches the seeded [edit] sidebar row by substring.",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-26-0b58",
+  "base": "d8600ec84584dffea410aef20fd57f83ab62abfa",
+  "head": "0f463d66d04c2a55455f217a9c5b404e1ac56cd8",
+  "changed": [
+    {
+      "status": "M",
+      "path": "verify/features/processes.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/thread.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T00:29:47.401Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "note",
+      "at": "0f463d66d04c2a55455f217a9c5b404e1ac56cd8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T00:29:47.443Z",
+      "text": "no-repro: map-only change (two Gotcha lines in verify/features/processes.md and thread.md); no product behaviour changes. During patrol 2026-11-27, a mobile drive with {\"click\":\"css:.workspace-open\"} timed out after 10 s, and role:button:Edit opened [edit] TEST-fix the greeting instead of the queued message's Edit. Rebased onto origin/main after #507 landed."
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "note",
+      "at": "0f463d66d04c2a55455f217a9c5b404e1ac56cd8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T00:29:47.482Z",
+      "text": "no-failing-test: the recipe is the test; no recipe changed, only Gotchas. The head runs the processes and thread areas that the Gotchas describe."
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "0f463d66d04c2a55455f217a9c5b404e1ac56cd8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-patrol-map-processes3.json",
+          "sha256": "1f8aa50e2a1464116c90dabbc35b9d699c09a3b36741e7b18423310e3116131d"
+        }
+      ],
+      "addedAt": "2026-11-27T00:31:10.450Z",
+      "failedApi": [],
+      "failingRecipes": [],
+      "passingRecipes": [
+        "processes/lists-the-process-tree",
+        "processes/nothing-running",
+        "processes/terminal-shell-is-listed",
+        "processes/stop-a-terminal-command",
+        "processes/force-kill-what-ignores-sigterm",
+        "processes/stop-with-children",
+        "processes/stop-with-children-fits-the-pane",
+        "processes/agent-offers-no-stop",
+        "processes/refused-outside-the-session",
+        "processes/listed-from-the-workspace-sheet",
+        "processes/full-command-on-tap"
+      ]
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "0f463d66d04c2a55455f217a9c5b404e1ac56cd8",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "0b5a06bc815bbef278ae0242156252b5cc5d118803b128252aa02b12c12c02da"
+        }
+      ],
+      "addedAt": "2026-11-27T00:31:10.487Z",
+      "cmd": "verify/yv map run processes --recipe listed-from-the-workspace-sheet && verify/yv map run thread --recipe edit-a-queued-message",
+      "exit": 0
+    }
+  ]
+}

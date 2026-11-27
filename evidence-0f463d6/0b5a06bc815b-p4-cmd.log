@@ -1,0 +1,48 @@
+$ verify/yv map run processes --recipe listed-from-the-workspace-sheet && verify/yv map run thread --recipe edit-a-queued-message
+# exit 0 after 23422 ms at 0f463d66d04c2a55455f217a9c5b404e1ac56cd8
+
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "processes",
+      "at": "2026-11-27T00:31:25.021Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "listed-from-the-workspace-sheet",
+          "status": "pass",
+          "ms": 13704
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "thread",
+      "at": "2026-11-27T00:31:33.906Z",
+      "counts": {
+        "pass": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "edit-a-queued-message",
+          "status": "pass",
+          "ms": 8031
+        }
+      ]
+    }
+  ],
+  "problems": []
+}
+
