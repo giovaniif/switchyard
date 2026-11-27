@@ -1,0 +1,307 @@
+{
+  "v": 1,
+  "claim": "A double click on a session's Delete deletes it at once (and, in a worktree session, removes the worktree): the second click lands on the 'Delete session?' ask the first one opened",
+  "repo": "/home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-fe6e",
+  "base": "966697a94c03368e4ba6c878669c2fb8549fe70c",
+  "head": "6c4938d608b35ed0c7964c85086d462186c91505",
+  "changed": [
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/layout.md"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T03:30:21.382Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "958a64ba99fec25a4131825bc164449a88082e2f",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "5d2ca62af3ef6796dd47f81e384232d0b57712e4c40192ee8223499d968d4e7b"
+        },
+        {
+          "path": "p1-base-deleted-desktop.png",
+          "sha256": "fe720b92c8b500a979e10da1ca9257b2de37bb6499d9149bd59be379c54d44e1"
+        },
+        {
+          "path": "p1-2-base-deleted-desktop.png",
+          "sha256": "fe720b92c8b500a979e10da1ca9257b2de37bb6499d9149bd59be379c54d44e1"
+        }
+      ],
+      "addedAt": "2026-11-27T03:30:43.570Z",
+      "text": "Desktop, session in a plain folder, at the test-only commit: one double click on Delete (second click a task later at the same point) hit 'Delete session?' and the page fell back to New session.",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "958a64ba99fec25a4131825bc164449a88082e2f",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "9b3c5d4afec781abfeddd163f562a299a37d7f60a8688e8b883716daff9f7045"
+        }
+      ],
+      "addedAt": "2026-11-27T03:30:43.620Z",
+      "cmd": "verify/yv map run layout --recipe double-click-on-delete-only-asks",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "6c4938d608b35ed0c7964c85086d462186c91505",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "c6b6153182241cf47c4c5b5228e02dba5ecd1e098529d71234c2241073f9220d"
+        },
+        {
+          "path": "p3-ask-still-up-mobile.png",
+          "sha256": "95601835da2dde1c082a8e5768860a3a3ba9a97944beb95a5cc2fe0a29d2a7df"
+        },
+        {
+          "path": "p3-ask-lapsed-mobile.png",
+          "sha256": "b79423399b2f320d5cb5d4c1e44b2cfd30a1d664068972c5e7b6cdc56814c120"
+        },
+        {
+          "path": "p3-ask-still-up-desktop.png",
+          "sha256": "30e18e8dca7917292760323b4cf98451b3ad9093e8b2a39503cd87e0d2805820"
+        },
+        {
+          "path": "p3-ask-lapsed-desktop.png",
+          "sha256": "fb698aa7403fbeffdf7dd6dd517961d86918b07e9edf8624ce8ec3021a8e4739"
+        },
+        {
+          "path": "p3-2-ask-still-up-mobile.png",
+          "sha256": "95601835da2dde1c082a8e5768860a3a3ba9a97944beb95a5cc2fe0a29d2a7df"
+        },
+        {
+          "path": "p3-2-drive.json",
+          "sha256": "976594322941bea55d68ec7d04e275e524d3a7f08c845705660f2ced7e6cda71"
+        },
+        {
+          "path": "p3-3-ask-still-up-mobile.png",
+          "sha256": "4b4107cda41985e701b4bbd2c612f1195c1812c404ce09254bdda31d4d9659d2"
+        },
+        {
+          "path": "p3-2-ask-lapsed-mobile.png",
+          "sha256": "dfa54ef3364214a350e347098a6f7d8536e4ed2885ef4c2318f1f600c172e459"
+        },
+        {
+          "path": "p3-2-ask-still-up-desktop.png",
+          "sha256": "12b64edb2ff869eeecf4010418424b8bea4d6782502780c24d9d432fabe0749f"
+        },
+        {
+          "path": "p3-2-ask-lapsed-desktop.png",
+          "sha256": "b875369a7a9df574287df8a9f9a5b816147f40c2c815b8d883ece9c39ee60178"
+        },
+        {
+          "path": "p3-4-ask-still-up-mobile.png",
+          "sha256": "4b4107cda41985e701b4bbd2c612f1195c1812c404ce09254bdda31d4d9659d2"
+        }
+      ],
+      "addedAt": "2026-11-27T03:31:56.217Z",
+      "text": "mobile: a double click on Delete left the ask up (plain: 'Delete session?'; worktree: the second click hit 'Delete and remove worktree' and was ignored), the ask lapsed back to Delete, and yv state still lists both sessions.",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "6c4938d608b35ed0c7964c85086d462186c91505",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "c6b6153182241cf47c4c5b5228e02dba5ecd1e098529d71234c2241073f9220d"
+        },
+        {
+          "path": "p4-ask-still-up-mobile.png",
+          "sha256": "95601835da2dde1c082a8e5768860a3a3ba9a97944beb95a5cc2fe0a29d2a7df"
+        },
+        {
+          "path": "p4-ask-lapsed-mobile.png",
+          "sha256": "b79423399b2f320d5cb5d4c1e44b2cfd30a1d664068972c5e7b6cdc56814c120"
+        },
+        {
+          "path": "p4-ask-still-up-desktop.png",
+          "sha256": "30e18e8dca7917292760323b4cf98451b3ad9093e8b2a39503cd87e0d2805820"
+        },
+        {
+          "path": "p4-ask-lapsed-desktop.png",
+          "sha256": "fb698aa7403fbeffdf7dd6dd517961d86918b07e9edf8624ce8ec3021a8e4739"
+        },
+        {
+          "path": "p4-2-ask-still-up-desktop.png",
+          "sha256": "30e18e8dca7917292760323b4cf98451b3ad9093e8b2a39503cd87e0d2805820"
+        },
+        {
+          "path": "p4-2-drive.json",
+          "sha256": "976594322941bea55d68ec7d04e275e524d3a7f08c845705660f2ced7e6cda71"
+        },
+        {
+          "path": "p4-2-ask-still-up-mobile.png",
+          "sha256": "4b4107cda41985e701b4bbd2c612f1195c1812c404ce09254bdda31d4d9659d2"
+        },
+        {
+          "path": "p4-2-ask-lapsed-mobile.png",
+          "sha256": "dfa54ef3364214a350e347098a6f7d8536e4ed2885ef4c2318f1f600c172e459"
+        },
+        {
+          "path": "p4-3-ask-still-up-desktop.png",
+          "sha256": "12b64edb2ff869eeecf4010418424b8bea4d6782502780c24d9d432fabe0749f"
+        },
+        {
+          "path": "p4-2-ask-lapsed-desktop.png",
+          "sha256": "b875369a7a9df574287df8a9f9a5b816147f40c2c815b8d883ece9c39ee60178"
+        },
+        {
+          "path": "p4-4-ask-still-up-desktop.png",
+          "sha256": "12b64edb2ff869eeecf4010418424b8bea4d6782502780c24d9d432fabe0749f"
+        }
+      ],
+      "addedAt": "2026-11-27T03:31:56.271Z",
+      "text": "desktop: a double click on Delete left the ask up (plain: 'Delete session?'; worktree: the second click hit 'Delete and remove worktree' and was ignored), the ask lapsed back to Delete, and yv state still lists both sessions.",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "6c4938d608b35ed0c7964c85086d462186c91505",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "121f726ee32edbd6771a5193eb15acd07831256ffbc946411b74d102b8ef4035"
+        },
+        {
+          "path": "p5-deliberate-delete-desktop.png",
+          "sha256": "a5b9b0174d619d54eb4f1e870dd63e821aaf44fab3f3a6c052ac7b4722a4032c"
+        },
+        {
+          "path": "p5-2-deliberate-delete-desktop.png",
+          "sha256": "a5b9b0174d619d54eb4f1e870dd63e821aaf44fab3f3a6c052ac7b4722a4032c"
+        }
+      ],
+      "addedAt": "2026-11-27T03:31:56.325Z",
+      "text": "Unchanged: Delete, a pause (700 ms), then 'Delete session?' deletes the session.",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "design",
+      "at": "6c4938d608b35ed0c7964c85086d462186c91505",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-design.json",
+          "sha256": "03e27dcc47fe5cc72a766c19d737efa31bb71478a32903ca322239dce393dfa6"
+        }
+      ],
+      "addedAt": "2026-11-27T03:31:56.372Z",
+      "cmd": "verify/yv design-check --base 966697a94c03",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "test",
+      "at": "6c4938d608b35ed0c7964c85086d462186c91505",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-cmd.log",
+          "sha256": "ca0a3f22b23b5422279118aa37039fe042c579605b03b209410dc0359a0374d8"
+        }
+      ],
+      "addedAt": "2026-11-27T03:31:56.466Z",
+      "cmd": "verify/yv map run layout --recipe double-click-on-delete-only-asks",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "test",
+      "at": "6c4938d608b35ed0c7964c85086d462186c91505",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-cmd.log",
+          "sha256": "77fcd5e5bcd09f80c0ed1a9fd1e751ae0b99a55de5105b3ec0ec5a2ffe343573"
+        }
+      ],
+      "addedAt": "2026-11-27T03:32:13.671Z",
+      "cmd": "cd ui && bun test",
+      "exit": 0
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "regression",
+      "at": "6c4938d608b35ed0c7964c85086d462186c91505",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-map-layout.json",
+          "sha256": "c40d14fc3fa02c8da6aec56a7847423bcd18ee266d178c8e0dd371c38e328ad1"
+        }
+      ],
+      "addedAt": "2026-11-27T03:32:14.183Z",
+      "cmd": "verify/yv map run layout",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "layout/desktop-three-columns",
+        "layout/narrow-hides-pane",
+        "layout/desktop-sidebars-collapse-independently",
+        "layout/mobile-panels-have-close-controls",
+        "layout/mobile-main-column-usable",
+        "layout/mobile-hosts-page",
+        "layout/mobile-drawer-opens-and-closes",
+        "layout/mobile-menu-on-every-page",
+        "layout/mobile-delete-confirm-fits-the-bar",
+        "layout/mobile-delete-confirm-fits-the-bar-without-worktree",
+        "layout/mobile-delete-ask-keeps-the-title",
+        "layout/double-click-on-delete-only-asks",
+        "layout/send-stays-at-the-right",
+        "layout/new-session-send-shares-controls-row",
+        "layout/desktop-sidebar-is-a-column",
+        "layout/workspace-tabs-fit-minimum-width"
+      ]
+    }
+  ]
+}

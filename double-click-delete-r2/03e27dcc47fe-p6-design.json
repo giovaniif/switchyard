@@ -1,0 +1,26 @@
+{
+  "command": "design-check",
+  "ok": true,
+  "base": "966697a94c03368e4ba6c878669c2fb8549fe70c",
+  "ui": true,
+  "touched": [
+    {
+      "status": "M",
+      "paths": [
+        "ui/src/App.tsx"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "rule": "raw-button",
+      "severity": "warn",
+      "file": "ui/src/App.tsx",
+      "line": 3446,
+      "text": "<button className={armed ? \"btn-text bar-choice bar-armed\" : \"btn-text bar-choice\"} onClick={() => (armed ? answer() : arm())}>",
+      "hint": "give it a design-system button class: btn, btn-text, btn-icon, btn-primary, btn-quiet"
+    }
+  ],
+  "problems": [],
+  "hint": "screenshot the reference screen next to your after-shots, and cover empty, loading, error and long-text states at both viewports"
+}
