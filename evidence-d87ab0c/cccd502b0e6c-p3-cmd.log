@@ -1,0 +1,27 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test pressure full_swap_on_a_calm_host
+# exit 101 after 8105 ms at 605ad4754277246b7c7669bf240a8e9b8ddc762f
+
+
+running 1 test
+test full_swap_on_a_calm_host_opens_no_episode_and_holds_none_open ... FAILED
+
+failures:
+
+---- full_swap_on_a_calm_host_opens_no_episode_and_holds_none_open stdout ----
+
+thread 'full_swap_on_a_calm_host_opens_no_episode_and_holds_none_open' (3660118) panicked at crates/yardd/tests/pressure.rs:177:9:
+swap full, host calm: {"cores":28,"cpu":2.9127371311187744,"cpuHistory":[2.9127371311187744],"diskTotal":500235124736,"diskUsed":171474034688,"episode":{"end":null,"id":"1795798005220","lastSeen":1795798005220,"notified":true,"peak":{"cores":28,"load":1.3,"memTotal":25089974272,"memUsed":14352556032,"swapTotal":4293918720,"swapUsed":4276092928},"reasons":["swap"],"start":1795798005220,"top":{"at":1795798005220,"load":1.3,"memUsed":14352556032,"procs":[{"cmd":"immich","cpuCores":0.0,"memBytes":441204736,"name":"immich","pid":6876},{"cmd":"/home/giovani/.local/bin/claude --output-format stream-json --verbose --input-format stream-json --effort=medium --model=claude-opus-5-5 --permission-prompt-tool=stdio --permission-mode=bypassPermissi","cpuCores":0.0,"memBytes":409784320,"name":"claude","pid":3060503},{"cmd":"/home/giovani/.local/bin/claude --output-format stream-json --verbose --input-format stream-json --effort=high --model=claude-opus-5-5 --permission-prompt-tool=stdio --resume=f38edfe5-0dea-45c0-9f9f-6","cpuCores":0.0,"memBytes":389754880,"name":"claude","pid":2382718}],"score":0.78890238818291,"sessions":[],"swapUsed":4276092928}},"episodes":[],"id":"local","limits":{"forced":false,"minFreeBytes":2147483648},"load":1.3,"memTotal":25089974272,"memUsed":14352556032,"name":"giovani","pressure":null,"queued":[],"sessions":[],"stalled":[],"swapTotal":4293918720,"swapUsed":4276092928}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-3660117-pressure-swap-0 for inspection
+
+
+failures:
+    full_swap_on_a_calm_host_opens_no_episode_and_holds_none_open
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 4 filtered out; finished in 3.30s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/pressure-history/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 4.74s
+     Running tests/pressure.rs (target/debug/build/yardd/99c70c84c2edcb34/out/pressure-99c70c84c2edcb34)
+error: test failed, to rerun pass `-p yardd --test pressure`

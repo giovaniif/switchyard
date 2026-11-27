@@ -1,0 +1,294 @@
+{
+  "v": 1,
+  "claim": "When the host is overloaded nothing records it or tells the owner: the load hit ~140 on 28 threads with swap full for over an hour, nobody could say afterwards what caused it, and a session's turn sat silent for 49 minutes. Under pressure there is no banner, no stalled-turn note and no history of episodes.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/pressure-history",
+  "base": "dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2",
+  "head": "d87ab0c989eca3c2db31e612328a902d72f04c69",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/guard.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/hosts.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/naming.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/yardd/src/pressure.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack/places.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/common/mod.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/yardd/tests/pressure.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/PressurePanel.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/pressure.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/pressure.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/README.md"
+    },
+    {
+      "status": "A",
+      "path": "verify/features/pressure.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/src/iso.ts"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T14:44:00.488Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "b4b9b1318bd3232d228f4ad259b2d5f86475afb5",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "bf0fe8ae367841effc2ce6d474fb81baa3cffa9a4a3e4977193a946458efc475"
+        },
+        {
+          "path": "p1-no-banner-mobile.png",
+          "sha256": "b95b8b66870bf885595c287b05a304439ec2a8b16a7e4a892cab17e4c73ca1e2"
+        },
+        {
+          "path": "p1-no-history-mobile.png",
+          "sha256": "c450a51240084f2e37f6c039a865df6acc2df0999a8e40cedfc5331ec26cfe60"
+        },
+        {
+          "path": "p1-no-banner-desktop.png",
+          "sha256": "fbc49c1d8c440434ad90f7c7d5c3372b2511cccd344f64cde03ae78cee425e92"
+        },
+        {
+          "path": "p1-no-history-desktop.png",
+          "sha256": "d17aa78b675d5fd683e5366e95bde7d3822d283a98d6ee1614c4039f5d5a5701"
+        }
+      ],
+      "addedAt": "2026-11-27T14:48:44.928Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "b4b9b1318bd3232d228f4ad259b2d5f86475afb5",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "a3366a81c08bbd4c5f0225b835a909889a326c65c1d702fbb7ff433cf0c9b3b2"
+        }
+      ],
+      "addedAt": "2026-11-27T14:51:07.589Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test pressure && (cd ui && bun test src/pressure.test.ts)",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "test",
+      "at": "605ad4754277246b7c7669bf240a8e9b8ddc762f",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-cmd.log",
+          "sha256": "cccd502b0e6c932174f0513fce963d3ed55952d93df8e95f000eafcf38beac57"
+        }
+      ],
+      "addedAt": "2026-11-27T16:46:37.215Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test pressure full_swap_on_a_calm_host",
+      "exit": 101
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "fix",
+      "at": "d87ab0c989eca3c2db31e612328a902d72f04c69",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p4-drive.json",
+          "sha256": "72440556078f2da1d33ccc961ff85fd12988a1be6d6792551a69bd1516fb2e22"
+        },
+        {
+          "path": "p4-swap-full-calm-mobile.png",
+          "sha256": "6ad5d46a07f9513716bf79245ee2deed694f5951e47f738bf8116627ac947080"
+        },
+        {
+          "path": "p4-swap-full-calm-desktop.png",
+          "sha256": "6d85cd9820982f2180e563af639e798aefa46530fcbc22bf3eeffe7988be7db0"
+        }
+      ],
+      "addedAt": "2026-11-27T16:47:36.918Z",
+      "failedApi": []
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "d87ab0c989eca3c2db31e612328a902d72f04c69",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "85765c1b763235f9bacea866a9b695022f13fb182e47c7dacf97f9d8f8254252"
+        },
+        {
+          "path": "p5-banner-and-stalled-mobile.png",
+          "sha256": "c8c6a37cf49a3a956eba5b39e8add21e761f282ca07dfb6d19147468a7df32e7"
+        },
+        {
+          "path": "p5-history-mobile.png",
+          "sha256": "ac8c2de1acb072d0c4376fd3f0cb23c43dde038e7ab1272af2efd49c30f0696d"
+        },
+        {
+          "path": "p5-banner-and-stalled-desktop.png",
+          "sha256": "5209c50839fde53de3db0b401350497f428f559feedb928b9af20564488519cc"
+        },
+        {
+          "path": "p5-history-desktop.png",
+          "sha256": "563e4d4c782323c35182cd5778d436fdd8c8a489e6d37b06222891e0cee6ab96"
+        }
+      ],
+      "addedAt": "2026-11-27T16:47:36.961Z",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "test",
+      "at": "d87ab0c989eca3c2db31e612328a902d72f04c69",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "0a9eaf542e888b0073cdfa334e9aa3de12fbffc45293f372db73d36530e094b7"
+        }
+      ],
+      "addedAt": "2026-11-27T16:47:37.005Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "design",
+      "at": "d87ab0c989eca3c2db31e612328a902d72f04c69",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-design.json",
+          "sha256": "2883a04c9b3bbfae6409f2d3b20c90f5172d141d1a8e84de06cd4552e6303692"
+        }
+      ],
+      "addedAt": "2026-11-27T16:51:28.997Z",
+      "cmd": "verify/yv design-check --base dd8cbb5b1c4e",
+      "exit": 0
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "regression",
+      "at": "d87ab0c989eca3c2db31e612328a902d72f04c69",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-map-pressure.json",
+          "sha256": "8c82683a983139327ec8b676e96ef6b14dfe459e5ecac67f177e60d15adb93f3"
+        }
+      ],
+      "addedAt": "2026-11-27T16:51:29.087Z",
+      "cmd": "verify/yv map run pressure",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "pressure/quiet-when-calm",
+        "pressure/full-swap-on-a-calm-host",
+        "pressure/banner-names-the-worst-session",
+        "pressure/stalled-turn-note",
+        "pressure/stop-from-the-banner",
+        "pressure/history-on-the-system-tab",
+        "pressure/a-stray-process-is-named",
+        "pressure/a-remote-hosts-own-episodes"
+      ]
+    }
+  ]
+}

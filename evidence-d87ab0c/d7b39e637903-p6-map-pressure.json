@@ -1,0 +1,52 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "pressure",
+      "at": "2026-11-27T15:00:15.700Z",
+      "counts": {
+        "pass": 7
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "quiet-when-calm",
+          "status": "pass",
+          "ms": 13229
+        },
+        {
+          "label": "banner-names-the-worst-session",
+          "status": "pass",
+          "ms": 8401
+        },
+        {
+          "label": "stalled-turn-note",
+          "status": "pass",
+          "ms": 6481
+        },
+        {
+          "label": "stop-from-the-banner",
+          "status": "pass",
+          "ms": 10270
+        },
+        {
+          "label": "history-on-the-system-tab",
+          "status": "pass",
+          "ms": 9069
+        },
+        {
+          "label": "a-stray-process-is-named",
+          "status": "pass",
+          "ms": 4302
+        },
+        {
+          "label": "a-remote-hosts-own-episodes",
+          "status": "pass",
+          "ms": 12105
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

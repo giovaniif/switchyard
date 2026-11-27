@@ -1,0 +1,66 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --test pressure && (cd ui && bun test src/pressure.test.ts)
+# exit 101 after 24197 ms at b4b9b1318bd3232d228f4ad259b2d5f86475afb5
+
+
+running 4 tests
+test an_episode_records_the_top_session_and_a_stray_process_closes_and_survives_a_restart ... FAILED
+test a_running_turn_quiet_under_pressure_is_listed_as_stalled_until_it_moves ... FAILED
+test an_open_episode_is_closed_by_a_restart_rather_than_lost ... FAILED
+test forced_pressure_opens_an_episode ... FAILED
+
+failures:
+
+---- an_episode_records_the_top_session_and_a_stray_process_closes_and_survives_a_restart stdout ----
+
+thread 'an_episode_records_the_top_session_and_a_stray_process_closes_and_survives_a_restart' (2846882) panicked at crates/yardd/tests/pressure.rs:79:5:
+assertion `left == right` failed: nothing recorded yet
+  left: Null
+ right: Array []
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-2846880-pressure-1 for inspection
+
+---- a_running_turn_quiet_under_pressure_is_listed_as_stalled_until_it_moves stdout ----
+
+thread 'a_running_turn_quiet_under_pressure_is_listed_as_stalled_until_it_moves' (2846881) panicked at crates/yardd/tests/pressure.rs:197:5:
+assertion `left == right` failed: {"cores":28,"cpu":4.633942604064941,"cpuHistory":[4.633942604064941],"diskTotal":500235124736,"diskUsed":171396907008,"id":"local","limits":{"forced":false,"minFreeBytes":0},"load":2.14,"memTotal":25089974272,"memUsed":9817882624,"name":"giovani","pressure":null,"queued":[],"sessions":[]}
+  left: Null
+ right: Array []
+kept /tmp/yardd-test-2846880-pressure-stall-0 for inspection
+
+---- an_open_episode_is_closed_by_a_restart_rather_than_lost stdout ----
+
+thread 'an_open_episode_is_closed_by_a_restart_rather_than_lost' (2847236) panicked at crates/yardd/tests/common/mod.rs:438:27:
+timed out after 20s waiting for an open episode; last messages:
+{"accounts":[],"agents":[],"automations":[],"home":"/tmp/yardd-test-2846880-pressure-crash-2/home","host":null,"hostName":"giovani","hosts":[],"mobile":{"configured":false,"devices":[],"live":[],"origins":[],"testFlightUrl":"https://testflight.apple.com/join/BygX29JY"},"models":{"claude":[{"defaultE
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"op":"usage","usage":{"codex":{"byLimitId":{"codex":{"limitId":"codex","primary":{"resetsAt":1795798901,"usedPercent":12,"windowDurationMins":300},"secondary":{"resetsAt":1796064701,"usedPercent":34,"windowDurationMins":10080}},"codex_spark":{"limitId":"codex_spark","limitName":"TEST-Spark","primar
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+kept /tmp/yardd-test-2846880-pressure-crash-2 for inspection
+
+---- forced_pressure_opens_an_episode stdout ----
+
+thread 'forced_pressure_opens_an_episode' (2847249) panicked at crates/yardd/tests/common/mod.rs:438:27:
+timed out after 20s waiting for an open episode; last messages:
+{"accounts":[],"agents":[],"automations":[],"home":"/tmp/yardd-test-2846880-pressure-forced-3/home","host":null,"hostName":"giovani","hosts":[],"mobile":{"configured":false,"devices":[],"live":[],"origins":[],"testFlightUrl":"https://testflight.apple.com/join/BygX29JY"},"models":{"claude":[{"default
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"op":"usage","usage":{"codex":{"byLimitId":{"codex":{"limitId":"codex","primary":{"resetsAt":1795798901,"usedPercent":12,"windowDurationMins":300},"secondary":{"resetsAt":1796064701,"usedPercent":34,"windowDurationMins":10080}},"codex_spark":{"limitId":"codex_spark","limitName":"TEST-Spark","primar
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+{"models":{"claude":[{"defaultEffort":"high","efforts":["low","medium","high","xhigh","max"],"id":"claude-opus-5-5","name":"Opus 5.5"},{"defaultEffort":"medium","efforts":["low","medium","high","xhigh","max"],"id":"claude-sonnet-5-5","name":"Sonnet 5.5"},{"defaultEffort":"medium","efforts":["low","m
+kept /tmp/yardd-test-2846880-pressure-forced-3 for inspection
+
+
+failures:
+    a_running_turn_quiet_under_pressure_is_listed_as_stalled_until_it_moves
+    an_episode_records_the_top_session_and_a_stray_process_closes_and_survives_a_restart
+    an_open_episode_is_closed_by_a_restart_rather_than_lost
+    forced_pressure_opens_an_episode
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.47s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/pressure-history/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 0.67s
+     Running tests/pressure.rs (target/debug/build/yardd/99c70c84c2edcb34/out/pressure-99c70c84c2edcb34)
+error: test failed, to rerun pass `-p yardd --test pressure`
