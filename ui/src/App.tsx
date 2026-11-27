@@ -5136,26 +5136,29 @@ function AccountRow({ account, state: st, onLogin, onRemove }: { account: Accoun
       <span className={`dot ${ready ? "host-dot-ok" : "host-dot-busy"}`} aria-hidden="true" />
       <span className="account-name">{account.name}</span>
       <span className="muted small">{st ? stateText(st) : "checking…"}</span>
-      {st?.installed && (st.loggedIn !== true || addsProviders(account.engine)) && onLogin && (
-        <button className="btn engine-login" aria-label={`Log in ${account.name}`} onClick={onLogin}>
-          {addsProviders(account.engine) && st.loggedIn === true ? "Add provider" : "Log in"}
-        </button>
-      )}
-      {onRemove && (
-        <button
-          className="btn-text account-remove"
-          aria-label={`Remove ${account.name}`}
-          title="Deletes the account's login on this host"
-          // Disarm on the confirming click: if yardd refuses, the row should
-          // not keep offering a click that will be refused again.
-          onClick={() => {
-            setArmed(!armed);
-            if (armed) onRemove();
-          }}
-        >
-          {armed ? "Click again to remove" : "Remove"}
-        </button>
-      )}
+      {/* One group, like the engine row's: on a narrow row it goes under the state, after the dot, not back to the row's start. */}
+      <span className="account-actions">
+        {st?.installed && (st.loggedIn !== true || addsProviders(account.engine)) && onLogin && (
+          <button className="btn engine-login" aria-label={`Log in ${account.name}`} onClick={onLogin}>
+            {addsProviders(account.engine) && st.loggedIn === true ? "Add provider" : "Log in"}
+          </button>
+        )}
+        {onRemove && (
+          <button
+            className="btn-text account-remove"
+            aria-label={`Remove ${account.name}`}
+            title="Deletes the account's login on this host"
+            // Disarm on the confirming click: if yardd refuses, the row should
+            // not keep offering a click that will be refused again.
+            onClick={() => {
+              setArmed(!armed);
+              if (armed) onRemove();
+            }}
+          >
+            {armed ? "Click again to remove" : "Remove"}
+          </button>
+        )}
+      </span>
     </div>
   );
 }
