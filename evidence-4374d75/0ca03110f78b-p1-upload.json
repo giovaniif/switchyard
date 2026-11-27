@@ -1,0 +1,28 @@
+{
+ "op": {
+  "op": "attach.put",
+  "host": "h1a21d51b65d1",
+  "name": "TEST-note.txt",
+  "mime": "text/plain",
+  "data": "aGVsbG8gZnJvbSB0aGUgaHVi",
+  "ref": "up"
+ },
+ "answers": 0,
+ "seen": [
+  {
+   "at": 5,
+   "sent": "attach.put",
+   "ref": "up"
+  },
+  {
+   "at": 1008,
+   "hostId": "h1a21d51b65d1",
+   "op": "host.down"
+  },
+  {
+   "at": 2043,
+   "hostId": "h1a21d51b65d1",
+   "op": "host.snapshot"
+  }
+ ]
+}

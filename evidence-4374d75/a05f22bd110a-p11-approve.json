@@ -1,0 +1,33 @@
+{
+ "op": {
+  "op": "session.approve",
+  "sessionId": "h1a21dc2b2ae1~s1a21dc2ae43c",
+  "requestId": "codex-1000",
+  "decision": "accept"
+ },
+ "answers": 1,
+ "seen": [
+  {
+   "at": 5,
+   "sent": "session.approve",
+   "ref": null
+  },
+  {
+   "at": 1009,
+   "hostId": "h1a21dc2b2ae1",
+   "op": "host.down"
+  },
+  {
+   "at": 1049,
+   "for": "session.approve",
+   "hostId": "h1a21dc2b2ae1",
+   "message": "Lost the connection to TEST-box before it answered. This may have gone through; check once it's back.",
+   "op": "error"
+  },
+  {
+   "at": 2018,
+   "hostId": "h1a21dc2b2ae1",
+   "op": "host.snapshot"
+  }
+ ]
+}

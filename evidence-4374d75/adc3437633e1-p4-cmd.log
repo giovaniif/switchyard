@@ -1,0 +1,73 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd remote::tests
+# exit 101 after 17243 ms at 4e77b97aade53e3c274f0be5ecacdcad4e48eded
+
+
+running 14 tests
+test remote::tests::a_host_that_resyncs_its_page_settles_what_its_news_would_have ... FAILED
+test remote::tests::a_hosts_agents_ops_go_there_with_its_own_ids_and_come_back_prefixed ... ok
+test remote::tests::a_snapshot_becomes_a_host_snapshot ... ok
+test remote::tests::an_op_a_pipe_still_holds_when_its_host_is_removed_gets_an_error ... ok
+test remote::tests::an_op_being_written_when_its_pipe_is_dropped_gets_one_answer ... FAILED
+test remote::tests::an_op_taken_as_an_ssh_tunnel_drops_is_answered_without_waiting_for_it ... ok
+test remote::tests::an_op_the_host_took_gets_one_answer_when_its_pipe_is_dropped ... FAILED
+test remote::tests::a_healthy_host_answers_every_op_once_and_in_order ... ok
+test remote::tests::destinations_that_look_like_options_are_refused ... ok
+test remote::tests::an_op_the_host_took_gets_one_answer_when_the_connection_drops_before_its_reply ... FAILED
+test remote::tests::ids_get_the_host_prefix_and_lose_it_on_the_way_back ... ok
+test remote::tests::every_op_a_failed_write_leaves_unsent_gets_an_error ... ok
+test remote::tests::terminal_ids_are_prefixed_inside_a_term_list ... ok
+test remote::tests::ops_a_page_waits_on_without_a_ref_get_one_answer_too ... FAILED
+
+failures:
+
+---- remote::tests::a_host_that_resyncs_its_page_settles_what_its_news_would_have stdout ----
+
+thread 'remote::tests::a_host_that_resyncs_its_page_settles_what_its_news_would_have' (2478766) panicked at crates/yardd/src/remote.rs:1608:9:
+assertion `left == right` failed: [Object {"hostId": String("h"), "op": String("host.down")}]
+  left: 0
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- remote::tests::an_op_being_written_when_its_pipe_is_dropped_gets_one_answer stdout ----
+
+thread 'remote::tests::an_op_being_written_when_its_pipe_is_dropped_gets_one_answer' (2478849) panicked at crates/yardd/src/remote.rs:1537:9:
+assertion `left == right` failed: []
+  left: 0
+ right: 1
+
+---- remote::tests::an_op_the_host_took_gets_one_answer_when_its_pipe_is_dropped stdout ----
+
+thread 'remote::tests::an_op_the_host_took_gets_one_answer_when_its_pipe_is_dropped' (2478939) panicked at crates/yardd/src/remote.rs:1514:9:
+assertion `left == right` failed: []
+  left: 0
+ right: 1
+
+---- remote::tests::an_op_the_host_took_gets_one_answer_when_the_connection_drops_before_its_reply stdout ----
+
+thread 'remote::tests::an_op_the_host_took_gets_one_answer_when_the_connection_drops_before_its_reply' (2478940) panicked at crates/yardd/src/remote.rs:1490:9:
+assertion `left == right` failed: one answer each: [Object {"event": Null, "events": Null, "op": String("session.renamed"), "ref": String("a")}, Object {"hostId": String("h"), "op": String("host.down")}]
+  left: (1, 0)
+ right: (1, 1)
+
+---- remote::tests::ops_a_page_waits_on_without_a_ref_get_one_answer_too stdout ----
+
+thread 'remote::tests::ops_a_page_waits_on_without_a_ref_get_one_answer_too' (2479080) panicked at crates/yardd/src/remote.rs:1580:9:
+assertion `left == right` failed: one error for each op left unanswered: [Object {"accounts": Null, "automations": Null, "home": Null, "host": Null, "hostId": String("h"), "mobile": Null, "models": Null, "op": String("host.snapshot"), "sessions": Array [], "usage": Null, "workspace": Null}, Object {"event": Null, "events": Null, "op": String("created"), "sessionId": String("h~s9")}, Object {"event": Object {"decision": String("accept"), "requestId": String("r1"), "type": String("approval_resolved")}, "events": Null, "op": String("event"), "seq": Number(3), "sessionId": String("h~s1")}, Object {"account": String("default"), "engine": String("claude"), "hostId": String("h"), "name": String("one"), "op": String("mcp.change"), "state": String("done")}, Object {"hostId": String("h"), "op": String("host.down")}]
+  left: []
+ right: ["mcp.add", "session.approve", "session.create"]
+
+
+failures:
+    remote::tests::a_host_that_resyncs_its_page_settles_what_its_news_would_have
+    remote::tests::an_op_being_written_when_its_pipe_is_dropped_gets_one_answer
+    remote::tests::an_op_the_host_took_gets_one_answer_when_its_pipe_is_dropped
+    remote::tests::an_op_the_host_took_gets_one_answer_when_the_connection_drops_before_its_reply
+    remote::tests::ops_a_page_waits_on_without_a_ref_get_one_answer_too
+
+test result: FAILED. 9 passed; 5 failed; 0 ignored; 0 measured; 114 filtered out; finished in 5.48s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/pipe-tracking/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 11.69s
+     Running unittests src/main.rs (target/debug/build/yardd/7902cb21fd3fec33/out/yardd-7902cb21fd3fec33)
+error: test failed, to rerun pass `-p yardd --bin yardd`

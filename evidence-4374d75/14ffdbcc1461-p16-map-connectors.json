@@ -1,0 +1,88 @@
+{
+  "command": "map run",
+  "ok": true,
+  "records": [
+    {
+      "area": "connectors",
+      "at": "2026-11-27T16:15:08.862Z",
+      "counts": {
+        "pass": 13,
+        "manual": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "connectors-list",
+          "status": "pass",
+          "ms": 7364
+        },
+        {
+          "label": "focused-search-and-status",
+          "status": "pass",
+          "ms": 6907
+        },
+        {
+          "label": "filters-stay-on-one-row",
+          "status": "pass",
+          "ms": 5459
+        },
+        {
+          "label": "retry-a-failed-server",
+          "status": "pass",
+          "ms": 10688
+        },
+        {
+          "label": "claude-sign-in",
+          "status": "pass",
+          "ms": 8480
+        },
+        {
+          "label": "codex-sign-in-pasted",
+          "status": "pass",
+          "ms": 5395
+        },
+        {
+          "label": "add-linear",
+          "status": "pass",
+          "ms": 9125
+        },
+        {
+          "label": "double-click-on-remove-only-asks",
+          "status": "pass",
+          "ms": 15390
+        },
+        {
+          "label": "codex-chart",
+          "status": "pass",
+          "ms": 8301
+        },
+        {
+          "label": "claude-chart",
+          "status": "pass",
+          "ms": 8168
+        },
+        {
+          "label": "widget-calls-and-sandbox",
+          "status": "manual",
+          "why": "`yv drive` cannot reach inside a frame"
+        },
+        {
+          "label": "large-catalog-stays-bounded",
+          "status": "pass",
+          "ms": 8094
+        },
+        {
+          "label": "disabled-button-looks-disabled",
+          "status": "pass",
+          "ms": 6342
+        },
+        {
+          "label": "rows-meet-header-and-footer",
+          "status": "pass",
+          "ms": 6321
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

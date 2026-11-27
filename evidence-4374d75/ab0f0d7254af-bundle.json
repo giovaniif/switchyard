@@ -1,0 +1,472 @@
+{
+  "v": 1,
+  "claim": "An op a window sent through its pipe to a host, written in full, got no answer at all when the connection dropped (or the host was removed, or the pipe was dropped mid-write) before the host's reply: an upload never finished, a new session's Send stayed pending, an approval looked pending, a connector stayed 'adding'.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/pipe-tracking",
+  "base": "dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2",
+  "head": "4374d75dd16baaedb05c19ecb1f8f5343e1d7603",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T14:02:32.537Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "4e77b97aade53e3c274f0be5ecacdcad4e48eded",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p1-upload.json",
+          "sha256": "0ca03110f78b377643c2b07802fbb8f5067234e2410b36beb672013de67302f5"
+        },
+        {
+          "path": "p1-proxy.log",
+          "sha256": "f0fdf9b444eeee38d4a86103ea831fcf6827861061fd903011c03ed38e85f88d"
+        }
+      ],
+      "addedAt": "2026-11-27T14:04:19.401Z",
+      "text": "Running app at base (4e77b97: main plus the new tests only): isolated hub + isolated box, the box added to the hub as a direct host behind a TCP proxy (run.sh, proxy.py). A raw page on the hub (page.ts) sends attach.put (ref up) to the box. The proxy forwards the op whole to the box, drops everything the box sends after it (its attach.stored reply), and closes the connection 1 s later. The page gets host.down at 1008 ms and the pipe's reconnect (host.snapshot at 2043 ms), but no answer with ref up in the 8 s watched: an upload that never finishes (the UI waits 5 min).",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "4e77b97aade53e3c274f0be5ecacdcad4e48eded",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-approve.json",
+          "sha256": "b5175691d317dbfad6290ad9d2349f468c66abf594f1c6d13907a807a05bb815"
+        },
+        {
+          "path": "p2-box-after.json",
+          "sha256": "c4dcf5948229b1560783612ad5786b651ad458aba999c0f893caee97ab0b1e46"
+        }
+      ],
+      "addedAt": "2026-11-27T14:04:19.444Z",
+      "text": "Same setup at base, the box's seeded session waiting for approval (scripted Codex [cmd], requestId codex-1000). The page sends session.approve (no ref; the UI's approval card waits for the event or an error) through its pipe; the proxy drops the box's answer and closes. The page gets host.down and nothing for the approval in 8 s, while the box did resolve it (box-after.json: approval_resolved accept). Scripts: run.sh, proxy.py, page.ts in /tmp/pipe-ev/base (attached to this proof's note below).",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "note",
+      "at": "4e77b97aade53e3c274f0be5ecacdcad4e48eded",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-run.sh",
+          "sha256": "9c7a4b94285975c35bca5edb3a33fafafa97d480b0b7d4d3238a575218af3383"
+        },
+        {
+          "path": "p3-proxy.py",
+          "sha256": "527cf9dcd7333e384d6cde9fc0cf4126e5341713285c150be95f2f18e5c8ee6a"
+        },
+        {
+          "path": "p3-page.ts",
+          "sha256": "db5f033b65fb067af7b556a0c36ba8092dd00c5dfe856544f2288c6af2d7b5ca"
+        }
+      ],
+      "addedAt": "2026-11-27T14:04:19.488Z",
+      "text": "The scripts behind the running-app proofs (not committed): run.sh <checkout> <hub port> <box port> <box sid> <requestId> <out> adds the box behind proxy.py and runs page.ts twice (an upload with a ref, an approval without one), arming the proxy's one-shot swallow mode before each page connects."
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "test",
+      "at": "4e77b97aade53e3c274f0be5ecacdcad4e48eded",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "adc3437633e1b76c61c234c5984f50f51e71d12fc1bfdfba704db19538eeca6d"
+        }
+      ],
+      "addedAt": "2026-11-27T14:04:24.616Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd remote::tests",
+      "exit": 101
+    },
+    {
+      "id": 5,
+      "ref": "base",
+      "kind": "repro",
+      "at": "43be01746f4e5d2194af3a56033700d48277ae43",
+      "dirty": false,
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p5-drive.json",
+          "sha256": "bab51bd16ca349a3d0e2ea6ba5f4d80a6a00a10c1ff3ae6773561667496a71be"
+        },
+        {
+          "path": "p5-add-lost-desktop.png",
+          "sha256": "d107de2113943f0d330a25a8d30f9c3a5d4278decac526261bae6c2b2c533f3d"
+        },
+        {
+          "path": "p5-remove-lost-desktop.png",
+          "sha256": "7e097248f85531d2d14645946525504d67de2598d8b04aff83a38b8e7f7f0b2c"
+        },
+        {
+          "path": "p5-2-drive.json",
+          "sha256": "fa200959a18e2ebe29f4c724ec8201fea1f32937520cc6796a3aa5fb5afc78b4"
+        },
+        {
+          "path": "p5-add-lost-mobile.png",
+          "sha256": "c39213b77034b1d1884955d04d824b200407aadf070894c58eb0b06c1aeab815"
+        },
+        {
+          "path": "p5-remove-lost-mobile.png",
+          "sha256": "3322ce091e807b7c241a156d4cdf4bb0aaac96ce01a2ce767e199579b045a746"
+        },
+        {
+          "path": "p5-2-proxy.log",
+          "sha256": "5944504119123407df89f85c6df7ecdddd9cdcf768c91347c1e5b57f12030850"
+        },
+        {
+          "path": "p5-proxy.py",
+          "sha256": "195e20eeb7a45f3eb5b255c4160b80e23f38c2fa771e0619e085c8231411a2e1"
+        },
+        {
+          "path": "p5-setup.sh",
+          "sha256": "0f04868a6a9263391852aa4f14c4f5473efdb6e263843ac80ea3ae52b92a46a0"
+        },
+        {
+          "path": "p5-drive.sh",
+          "sha256": "2139e231a8f1e3e4d57ae2b86dba6aebe601712ec14bd542ced3a482b53b451f"
+        }
+      ],
+      "addedAt": "2026-11-27T16:04:44.689Z",
+      "text": "Connectors in the running app at 43be017 (the verified head 90d3267 plus the new tests only): isolated hub + isolated box, the box added as direct host TEST-vbox behind proxy.py, which forwards the page's mcp.add / mcp.remove frame whole, drops what the box sends after it and closes 1 s later (setup.sh, drive.sh). Connectors page, host TEST-vbox, Claude card. Add connector > Linear > Connect: the dialog closes when the host goes down and nothing is shown once it is back (add-lost), though the page did get the pipe's error (failedApi: for mcp.add, no hostId). Check again lists Linear (the box had added it); Remove > Confirm: 8 s after the host is back the row still reads Removing… and no error is shown (remove-lost).",
+      "failedApi": [
+        "mcp.add: Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back.",
+        "mcp.remove: Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back.",
+        "mcp.add: Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back.",
+        "mcp.remove: Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back."
+      ]
+    },
+    {
+      "id": 6,
+      "ref": "base",
+      "kind": "test",
+      "at": "43be01746f4e5d2194af3a56033700d48277ae43",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-cmd.log",
+          "sha256": "d2f56b4ecea9218e4831db790137e55faf0d3bac739574ef765d0fd5a28de829"
+        }
+      ],
+      "addedAt": "2026-11-27T16:04:44.739Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd remote::tests",
+      "exit": 101
+    },
+    {
+      "id": 7,
+      "ref": "base",
+      "kind": "test",
+      "at": "43be01746f4e5d2194af3a56033700d48277ae43",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-cmd.log",
+          "sha256": "77b8dd4cdd885f278ff2cb5d729ae485b9fa5e70798793bd657a0afbeac9e719"
+        }
+      ],
+      "addedAt": "2026-11-27T16:04:59.467Z",
+      "cmd": "cd ui && bun test src/store.test.ts",
+      "exit": 1
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "fix",
+      "at": "4374d75dd16baaedb05c19ecb1f8f5343e1d7603",
+      "dirty": false,
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p8-drive.json",
+          "sha256": "246259ee146d0ecc64c2b0ded9464e44546f9e68ac4ef5da7a4c9f2ae84c4b5c"
+        },
+        {
+          "path": "p8-add-lost-host-down-desktop.png",
+          "sha256": "e04253e2a4260783ec8705a08a5fd3dea2191ba60db45d08e252444198fb4fed"
+        },
+        {
+          "path": "p8-add-lost-desktop.png",
+          "sha256": "c6f19be912c84250a30f27f43f9e2aac53cb7ae7e5f3ea48713652a433c0cd03"
+        },
+        {
+          "path": "p8-remove-lost-desktop.png",
+          "sha256": "08d5bede530ea2b2b912e933ed4654b95148f9690750109f5577f0872e977cea"
+        },
+        {
+          "path": "p8-checked-again-desktop.png",
+          "sha256": "5df2bb8af2302bd69dfe39d2a439df4a1d2e4fe1baab0a48947648897f27aa3c"
+        },
+        {
+          "path": "p8-2-drive.json",
+          "sha256": "323e8a304ac8f4849aba14d58be266296ba66d8bf91d010e21ca15272d8104e4"
+        },
+        {
+          "path": "p8-add-lost-host-down-mobile.png",
+          "sha256": "2906dfddbe33fd5c23e0642d7d6ffd251c36dbdae9a64a6ff7238d48dd087bf0"
+        },
+        {
+          "path": "p8-add-lost-mobile.png",
+          "sha256": "ca8678162b2a34111a7a2ea7ec7f461f6da56e2508560c790ec37822d4d6161d"
+        },
+        {
+          "path": "p8-remove-lost-mobile.png",
+          "sha256": "34559a194a0f6f9cb188ce3c2021f736cbff6dc6d249ab914e4590c31c4af3e1"
+        },
+        {
+          "path": "p8-checked-again-mobile.png",
+          "sha256": "c39213b77034b1d1884955d04d824b200407aadf070894c58eb0b06c1aeab815"
+        },
+        {
+          "path": "p8-proxy.log",
+          "sha256": "1c04abdcc0639ebbb27f45455ba7cb374ddd5277c31f2d85807d7f66398132b8"
+        },
+        {
+          "path": "p8-2-proxy.py",
+          "sha256": "195e20eeb7a45f3eb5b255c4160b80e23f38c2fa771e0619e085c8231411a2e1"
+        },
+        {
+          "path": "p8-setup.sh",
+          "sha256": "0f04868a6a9263391852aa4f14c4f5473efdb6e263843ac80ea3ae52b92a46a0"
+        },
+        {
+          "path": "p8-drive.sh",
+          "sha256": "2139e231a8f1e3e4d57ae2b86dba6aebe601712ec14bd542ced3a482b53b451f"
+        }
+      ],
+      "addedAt": "2026-11-27T16:07:40.064Z",
+      "text": "Connectors in the running app at head, same setup and clicks as the base connector repro, at both viewports. Add connector > Linear > Connect, the answer lost: the banner says 'Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back.' while the host shows offline (add-lost-host-down) and after it is back (add-lost). Dismiss, Check again lists Linear (the box had added it); Remove > Confirm, the answer lost: the banner says it, and once the host is back the row has its Remove button again with the error under it, no 'Removing…' (remove-lost). Check again then shows Linear gone: the box had removed it (checked-again). The page's errors now carry hostId.",
+      "failedApi": [
+        "mcp.add: Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back.",
+        "mcp.remove: Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back.",
+        "mcp.add: Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back.",
+        "mcp.remove: Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back."
+      ]
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "note",
+      "at": "4374d75dd16baaedb05c19ecb1f8f5343e1d7603",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T16:07:40.120Z",
+      "text": "expected-api: mcp.add: the proof is the pipe's 'Lost the connection' error for an Add whose answer the proxy dropped; base gets the same error (without hostId) and shows it nowhere"
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "note",
+      "at": "4374d75dd16baaedb05c19ecb1f8f5343e1d7603",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T16:07:40.159Z",
+      "text": "expected-api: mcp.remove: same, for the Remove whose answer the proxy dropped"
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "fix",
+      "at": "4374d75dd16baaedb05c19ecb1f8f5343e1d7603",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-upload.json",
+          "sha256": "4b1461840d84e33e69df3a3cd0c31b034fae2e721fff7adb06bde788b9a82930"
+        },
+        {
+          "path": "p11-approve.json",
+          "sha256": "a05f22bd110a250a354b5b53902a8ff947a7db6e0b508d555131f36f6fa5b311"
+        },
+        {
+          "path": "p11-box-after.json",
+          "sha256": "c4dcf5948229b1560783612ad5786b651ad458aba999c0f893caee97ab0b1e46"
+        },
+        {
+          "path": "p11-proxy.log",
+          "sha256": "4bc7bb33a78021176e98c4eeb0c2a15ebad1cfe70d1c2d726020c326aba9b6ae"
+        }
+      ],
+      "addedAt": "2026-11-27T16:07:40.198Z",
+      "text": "The earlier raw-page proofs again at this head (run.sh, proxy.py, page.ts as in the base note): attach.put with ref up and session.approve without a ref, each forwarded whole, its answer dropped, the connection closed 1 s later. Each gets host.down and then one 'Lost the connection to TEST-box…' error (the upload's with ref up, the approval's with no ref), now with hostId; the box did resolve the approval (box-after.json).",
+      "failedApi": []
+    },
+    {
+      "id": 12,
+      "ref": "head",
+      "kind": "fix",
+      "at": "4374d75dd16baaedb05c19ecb1f8f5343e1d7603",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p12-upload.json",
+          "sha256": "fbb077d71f3a71fa98d1f26ece4a554c3c31008bb6e2dacc2f034b6c394b6b37"
+        },
+        {
+          "path": "p12-create.json",
+          "sha256": "a7c01b0ccfffa72084f2b29dac2d172127ede0d507a2e1fba3c85653bb8d6ed9"
+        },
+        {
+          "path": "p12-healthy.sh",
+          "sha256": "102e0a11f16bcd387bc28f9d95e98e57a05392f2b7b1794516c5447a062c4f2a"
+        }
+      ],
+      "addedAt": "2026-11-27T16:07:40.238Z",
+      "text": "Healthy path at this head (healthy.sh: the box added again with no proxy): attach.put (ref up2) gets attach.stored with its ref and no error; session.create sent without a ref gets created with no ref and no error.",
+      "failedApi": []
+    },
+    {
+      "id": 13,
+      "ref": "head",
+      "kind": "test",
+      "at": "4374d75dd16baaedb05c19ecb1f8f5343e1d7603",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p13-cmd.log",
+          "sha256": "5e0356b75d54089ae02059d7186fd55660c6839d32a6f4dd7fe308f553de175b"
+        }
+      ],
+      "addedAt": "2026-11-27T16:07:40.277Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 14,
+      "ref": "head",
+      "kind": "design",
+      "at": "4374d75dd16baaedb05c19ecb1f8f5343e1d7603",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p14-design.json",
+          "sha256": "8f9a3255a58815e6cbde1b74b2a27ddab2e628540a63bcaa74e3d02768d8fee9"
+        }
+      ],
+      "addedAt": "2026-11-27T16:10:59.087Z",
+      "cmd": "verify/yv design-check --base dd8cbb5b1c4e",
+      "exit": 0
+    },
+    {
+      "id": 15,
+      "ref": "head",
+      "kind": "regression",
+      "at": "4374d75dd16baaedb05c19ecb1f8f5343e1d7603",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p15-map-hosts.json",
+          "sha256": "177d60cd8e14eb1dd267a1da7874f1a03c5c28830cea4ef617a76367b6342f0d"
+        }
+      ],
+      "addedAt": "2026-11-27T16:10:59.166Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/double-click-on-remove-host-only-asks",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/processes-say-the-host-is-offline",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    },
+    {
+      "id": 16,
+      "ref": "head",
+      "kind": "regression",
+      "at": "4374d75dd16baaedb05c19ecb1f8f5343e1d7603",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p16-map-connectors.json",
+          "sha256": "14ffdbcc14611a63364a1d439cabd6b5dea9c824fea99002ba710d3b2f35d1cc"
+        }
+      ],
+      "addedAt": "2026-11-27T16:13:21.725Z",
+      "cmd": "verify/yv map run connectors",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "connectors/connectors-list",
+        "connectors/focused-search-and-status",
+        "connectors/filters-stay-on-one-row",
+        "connectors/retry-a-failed-server",
+        "connectors/claude-sign-in",
+        "connectors/codex-sign-in-pasted",
+        "connectors/add-linear",
+        "connectors/double-click-on-remove-only-asks",
+        "connectors/codex-chart",
+        "connectors/claude-chart",
+        "connectors/large-catalog-stays-bounded",
+        "connectors/disabled-button-looks-disabled",
+        "connectors/rows-meet-header-and-footer"
+      ]
+    }
+  ]
+}

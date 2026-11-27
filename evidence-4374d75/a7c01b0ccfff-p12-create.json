@@ -1,0 +1,42 @@
+{
+ "op": {
+  "op": "session.create",
+  "host": "h1a21dc303262",
+  "engine": "codex",
+  "model": "gpt-5.6-luna",
+  "effort": "low",
+  "cwd": "/tmp/yv-box-3312974-mwz6clx9/data/wt/TEST-demo-app/yard-cmd-test-run-the-migration-e2eb",
+  "text": "TEST healthy create",
+  "permission": "ask"
+ },
+ "answers": 0,
+ "seen": [
+  {
+   "at": 4,
+   "sent": "session.create",
+   "ref": null
+  },
+  {
+   "at": 4,
+   "hostId": "h1a21dc2b2ae1",
+   "op": "host.snapshot"
+  },
+  {
+   "at": 45,
+   "hostId": "h1a21dc2b2ae1",
+   "op": "host.down"
+  },
+  {
+   "at": 46,
+   "hostId": "h1a21dc303262",
+   "op": "host.snapshot"
+  },
+  {
+   "at": 51,
+   "event": null,
+   "events": null,
+   "op": "created",
+   "sessionId": "h1a21dc303262~s1a21dc31c4ef"
+  }
+ ]
+}

@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "route": "connectors",
+  "build": {
+    "sha": "43be01746f4e5d2194af3a56033700d48277ae43",
+    "short": "43be017",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T15:30:30.064Z"
+  },
+  "dir": "/tmp/pipe-ev2/base/mobile",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 21764,
+      "steps": 25,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": "/tmp/pipe-ev2/base/mobile/add-lost-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": "/tmp/pipe-ev2/base/mobile/remove-lost-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "mcp.add",
+          "message": "Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back."
+        },
+        {
+          "op": "error",
+          "for": "mcp.remove",
+          "message": "Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back."
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

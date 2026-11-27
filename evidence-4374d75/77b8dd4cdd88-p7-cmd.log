@@ -1,0 +1,26 @@
+$ cd ui && bun test src/store.test.ts
+# exit 1 after 28 ms at 43be01746f4e5d2194af3a56033700d48277ae43
+
+bun test v1.4.4 (38afee6c8)
+
+
+src/store.test.ts:
+383 |     // The connection dropped: the cards are hidden and the Add dialog went
+384 |     // with them, so the banner says it; the row still does once it is back.
+385 |     const lost = "Lost the connection to box before it answered. This may have gone through; check once it's back.";
+386 |     s = server(up(), { op: "host.down", hostId: "h1" });
+387 |     s = server(s, { op: "error", for: "mcp.add", hostId: "h1", message: lost });
+388 |     expect(s.error).toBe(lost);
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "Lost the connection to box before it answered. This may have gone through; check once it's back."
+Received: null
+
+      at <anonymous> (/home/giovani/www/better-than-claude-code/.claude/worktrees/pipe-tracking/ui/src/store.test.ts:388:21)
+(fail) connectors > a remote host's connector error frees its own cards; one that comes while it is down shows in the banner [0.97ms]
+
+ 30 pass
+ 1 fail
+ 101 expect() calls
+Ran 31 tests across 1 file. [23.00ms]

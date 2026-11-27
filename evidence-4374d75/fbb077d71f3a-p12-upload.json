@@ -1,0 +1,39 @@
+{
+ "op": {
+  "op": "attach.put",
+  "host": "h1a21dc303262",
+  "name": "TEST-ok.txt",
+  "mime": "text/plain",
+  "data": "aGVsbG8=",
+  "ref": "up2"
+ },
+ "answers": 1,
+ "seen": [
+  {
+   "at": 5,
+   "sent": "attach.put",
+   "ref": "up2"
+  },
+  {
+   "at": 6,
+   "hostId": "h1a21dc2b2ae1",
+   "op": "host.snapshot"
+  },
+  {
+   "at": 46,
+   "hostId": "h1a21dc2b2ae1",
+   "op": "host.down"
+  },
+  {
+   "at": 46,
+   "hostId": "h1a21dc303262",
+   "op": "host.snapshot"
+  },
+  {
+   "at": 50,
+   "hostId": "h1a21dc303262",
+   "op": "attach.stored",
+   "ref": "up2"
+  }
+ ]
+}

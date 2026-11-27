@@ -1,0 +1,35 @@
+{
+ "op": {
+  "op": "attach.put",
+  "host": "h1a21d52f5551",
+  "name": "TEST-note.txt",
+  "mime": "text/plain",
+  "data": "aGVsbG8gZnJvbSB0aGUgaHVi",
+  "ref": "up"
+ },
+ "answers": 1,
+ "seen": [
+  {
+   "at": 4,
+   "sent": "attach.put",
+   "ref": "up"
+  },
+  {
+   "at": 1008,
+   "hostId": "h1a21d52f5551",
+   "op": "host.down"
+  },
+  {
+   "at": 1048,
+   "for": "attach.put",
+   "message": "Lost the connection to TEST-box before it answered. This may have gone through; check once it's back.",
+   "op": "error",
+   "ref": "up"
+  },
+  {
+   "at": 2019,
+   "hostId": "h1a21d52f5551",
+   "op": "host.snapshot"
+  }
+ ]
+}

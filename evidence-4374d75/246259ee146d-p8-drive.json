@@ -1,0 +1,72 @@
+{
+  "ok": true,
+  "route": "connectors",
+  "build": {
+    "sha": "4374d75dd16baaedb05c19ecb1f8f5343e1d7603",
+    "short": "4374d75",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T16:05:12.136Z"
+  },
+  "dir": "/tmp/pipe-ev2/head/desktop",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 12792,
+      "steps": 30,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": "/tmp/pipe-ev2/head/desktop/add-lost-host-down-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": "/tmp/pipe-ev2/head/desktop/add-lost-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": "/tmp/pipe-ev2/head/desktop/remove-lost-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": "/tmp/pipe-ev2/head/desktop/checked-again-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [
+        {
+          "op": "error",
+          "for": "mcp.add",
+          "message": "Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back."
+        },
+        {
+          "op": "error",
+          "for": "mcp.remove",
+          "message": "Lost the connection to TEST-vbox before it answered. This may have gone through; check once it's back."
+        }
+      ],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

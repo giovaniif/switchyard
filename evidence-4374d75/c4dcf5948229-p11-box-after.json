@@ -1,0 +1,1 @@
+{"box_approval_events": [{"type": "approval_request", "requestId": "codex-1000"}, {"type": "approval_resolved", "requestId": "codex-1000", "decision": "accept"}]}

@@ -1,0 +1,28 @@
+1795793430.944 conn 1 open
+1795793430.945 conn 2 open
+1795793434.376 conn 3 open
+1795793435.388 conn 4 open
+1795795293.405 conn 1 open
+1795795371.699 conn 2 open
+1795795374.599 conn 2 forwarded mcp.add whole (126 bytes); dropping the box's answer, closing in 1 s
+1795795374.607 conn 2 dropped 90 bytes from the box
+1795795374.670 conn 2 dropped 685 bytes from the box
+1795795375.599 conn 2 closed by proxy
+1795795376.602 conn 3 open
+1795795381.530 conn 3 forwarded mcp.remove whole (96 bytes); dropping the box's answer, closing in 1 s
+1795795381.539 conn 3 dropped 90 bytes from the box
+1795795381.599 conn 3 dropped 572 bytes from the box
+1795795382.531 conn 3 closed by proxy
+1795795383.533 conn 4 open
+1795795395.395 conn 5 open
+1795795399.231 conn 5 forwarded mcp.add whole (126 bytes); dropping the box's answer, closing in 1 s
+1795795399.323 conn 5 dropped 11895 bytes from the box
+1795795399.323 conn 5 dropped 90 bytes from the box
+1795795399.387 conn 5 dropped 685 bytes from the box
+1795795400.232 conn 5 closed by proxy
+1795795401.235 conn 6 open
+1795795406.414 conn 6 forwarded mcp.remove whole (96 bytes); dropping the box's answer, closing in 1 s
+1795795406.423 conn 6 dropped 90 bytes from the box
+1795795406.485 conn 6 dropped 572 bytes from the box
+1795795407.415 conn 6 closed by proxy
+1795795408.417 conn 7 open

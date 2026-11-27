@@ -1,0 +1,49 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd remote::tests
+# exit 101 after 14678 ms at 43be01746f4e5d2194af3a56033700d48277ae43
+
+
+running 16 tests
+test remote::tests::a_host_from_before_v0_18_is_not_reported_lost_for_the_sessions_it_made ... FAILED
+test remote::tests::a_host_that_resyncs_its_page_settles_what_its_news_would_have ... ok
+test remote::tests::a_hosts_agents_ops_go_there_with_its_own_ids_and_come_back_prefixed ... ok
+test remote::tests::a_snapshot_becomes_a_host_snapshot ... ok
+test remote::tests::an_op_a_pipe_still_holds_when_its_host_is_removed_gets_an_error ... ok
+test remote::tests::a_healthy_host_answers_every_op_once_and_in_order ... ok
+test remote::tests::an_op_taken_as_an_ssh_tunnel_drops_is_answered_without_waiting_for_it ... ok
+test remote::tests::an_op_the_host_took_gets_one_answer_when_its_pipe_is_dropped ... ok
+test remote::tests::an_op_being_written_when_its_pipe_is_dropped_gets_one_answer ... ok
+test remote::tests::destinations_that_look_like_options_are_refused ... ok
+test remote::tests::an_op_the_host_took_gets_one_answer_when_the_connection_drops_before_its_reply ... ok
+test remote::tests::ids_get_the_host_prefix_and_lose_it_on_the_way_back ... ok
+test remote::tests::every_op_a_failed_write_leaves_unsent_gets_an_error ... ok
+test remote::tests::terminal_ids_are_prefixed_inside_a_term_list ... ok
+test remote::tests::the_pipe_s_own_errors_name_their_host_and_come_after_it_went_down ... FAILED
+test remote::tests::ops_a_page_waits_on_without_a_ref_get_one_answer_too ... ok
+
+failures:
+
+---- remote::tests::a_host_from_before_v0_18_is_not_reported_lost_for_the_sessions_it_made stdout ----
+
+thread 'remote::tests::a_host_from_before_v0_18_is_not_reported_lost_for_the_sessions_it_made' (3296822) panicked at crates/yardd/src/remote.rs:1826:9:
+no error: [Object {"accounts": Null, "automations": Null, "home": Null, "host": Null, "hostId": String("h"), "mobile": Null, "models": Null, "op": String("host.snapshot"), "sessions": Array [], "usage": Null, "workspace": Null}, Object {"event": Null, "events": Null, "op": String("created"), "sessionId": String("h~s8")}, Object {"event": Null, "events": Null, "op": String("created"), "sessionId": String("h~s9")}, Object {"hostId": String("h"), "op": String("host.down")}, Object {"for": String("session.create"), "message": String("Lost the connection to box before it answered. This may have gone through; check once it's back."), "op": String("error")}, Object {"for": String("session.create"), "message": String("Lost the connection to box before it answered. This may have gone through; check once it's back."), "op": String("error"), "ref": String("m1")}]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- remote::tests::the_pipe_s_own_errors_name_their_host_and_come_after_it_went_down stdout ----
+
+thread 'remote::tests::the_pipe_s_own_errors_name_their_host_and_come_after_it_went_down' (3297225) panicked at crates/yardd/src/remote.rs:1783:13:
+assertion `left == right` failed: {"for":"session.open","message":"Lost the connection to box before it answered. This may have gone through; check once it's back.","op":"error","ref":"a"}
+  left: Null
+ right: "h"
+
+
+failures:
+    remote::tests::a_host_from_before_v0_18_is_not_reported_lost_for_the_sessions_it_made
+    remote::tests::the_pipe_s_own_errors_name_their_host_and_come_after_it_went_down
+
+test result: FAILED. 14 passed; 2 failed; 0 ignored; 0 measured; 114 filtered out; finished in 5.92s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/pipe-tracking/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 8.69s
+     Running unittests src/main.rs (target/debug/build/yardd/7902cb21fd3fec33/out/yardd-7902cb21fd3fec33)
+error: test failed, to rerun pass `-p yardd --bin yardd`
