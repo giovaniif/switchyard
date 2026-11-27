@@ -684,7 +684,7 @@ function OwnServer({ accounts, taken, onAdd, onClose }: { accounts: ConnectorAcc
   const [url, setUrl] = useState("");
   const [where, setWhere] = useState(accounts[0] ? accountKey(accounts[0]) : "");
   const account = accounts.find((a) => accountKey(a) === where) ?? accounts[0];
-  const problem = name || url ? (newServerProblem(name.trim(), url.trim()) ?? (taken.some((s) => s.entries.some((e) => accountKey(e.account) === where && e.server.name.toLowerCase() === name.trim().toLowerCase())) ? "That account already has a connector with this name." : null)) : null;
+  const problem = name || url ? (newServerProblem(name.trim(), url.trim(), account?.engine === "switchyard") ?? (taken.some((s) => s.entries.some((e) => accountKey(e.account) === where && e.server.name.toLowerCase() === name.trim().toLowerCase())) ? "That account already has a connector with this name." : null)) : null;
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form

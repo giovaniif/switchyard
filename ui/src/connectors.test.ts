@@ -40,6 +40,11 @@ test("an added server is a plain name and https address", () => {
   expect(newServerProblem("-x", "https://a.example")).toContain("Name");
   expect(newServerProblem("ok", "http://a.example")).toContain("https");
   expect(newServerProblem("ok", "https://a.example/a b")).toContain("https");
+  // A server on the host itself, for the connectors Switchyard holds.
+  expect(newServerProblem("ok", "http://127.0.0.1:8080/mcp")).toContain("https");
+  expect(newServerProblem("ok", "http://127.0.0.1:8080/mcp", true)).toBeNull();
+  expect(newServerProblem("ok", "http://10.0.0.5:8080/mcp", true)).toContain("https");
+  expect(newServerProblem("Switchyard", "https://a.example")).toContain("taken");
   expect(removable(s("x", "connected", { source: "user" }))).toBe(true);
   expect(removable(s("x", "connected", { source: "plugin" }))).toBe(false);
   expect(removable(s("x", "connected", { source: "switchyard" }))).toBe(true);

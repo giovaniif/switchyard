@@ -109,9 +109,13 @@ const originOf = (url: string) => {
   }
 };
 
-/** The same rules yardd applies: a config key and a plain https address. */
-export function newServerProblem(name: string, url: string): string | null {
+/** The same rules yardd applies: a config key and a plain https address.
+ *  `local`: a server on the host itself may be plain http with its port,
+ *  which only the connectors Switchyard holds take. */
+export function newServerProblem(name: string, url: string, local = false): string | null {
   if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/.test(name)) return "Name it with letters, digits, - or _ (up to 40).";
+  if (name.toLowerCase() === "switchyard") return "That name is taken by Switchyard's own tools.";
+  if (local && /^http:\/\/(127\.0\.0\.1|localhost|\[::1\]):\d+([/?#]\S*)?$/.test(url) && url.length <= 300) return null;
   if (!/^https:\/\/[A-Za-z0-9.:-]+([/?#]\S*)?$/.test(url) || url.length > 300) return "The address must be a full https:// URL.";
   return null;
 }
