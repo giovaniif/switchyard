@@ -1,0 +1,14 @@
+1795788305.758 conn 1 mode=pass
+1795788305.759 conn 2 mode=pass
+1795788309.171 conn 3 mode=swallow
+1795788309.173 conn 3 op forwarded (113 bytes); swallowing the box's answer
+1795788309.174 conn 3 swallowed 6719 bytes from the box
+1795788309.215 conn 3 swallowed 209 bytes from the box
+1795788310.174 conn 3 closed by proxy
+1795788311.177 conn 4 mode=pass
+1795788318.188 conn 5 mode=swallow
+1795788318.190 conn 5 op forwarded (124 bytes); swallowing the box's answer
+1795788318.192 conn 5 swallowed 6776 bytes from the box
+1795788318.233 conn 5 swallowed 1854 bytes from the box
+1795788319.190 conn 5 closed by proxy
+1795788320.193 conn 6 mode=pass

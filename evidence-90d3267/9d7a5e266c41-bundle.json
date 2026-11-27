@@ -1,0 +1,257 @@
+{
+  "v": 1,
+  "claim": "An op a window sent through its pipe to a host, written in full, got no answer at all when the connection dropped (or the host was removed, or the pipe was dropped mid-write) before the host's reply: an upload never finished, a new session's Send stayed pending, an approval looked pending, a connector stayed 'adding'.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/pipe-tracking",
+  "base": "dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2",
+  "head": "90d32676d35a9ea9adf91af015b58ea4a0ab38ba",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T14:02:32.537Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "4e77b97aade53e3c274f0be5ecacdcad4e48eded",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p1-upload.json",
+          "sha256": "0ca03110f78b377643c2b07802fbb8f5067234e2410b36beb672013de67302f5"
+        },
+        {
+          "path": "p1-proxy.log",
+          "sha256": "f0fdf9b444eeee38d4a86103ea831fcf6827861061fd903011c03ed38e85f88d"
+        }
+      ],
+      "addedAt": "2026-11-27T14:04:19.401Z",
+      "text": "Running app at base (4e77b97: main plus the new tests only): isolated hub + isolated box, the box added to the hub as a direct host behind a TCP proxy (run.sh, proxy.py). A raw page on the hub (page.ts) sends attach.put (ref up) to the box. The proxy forwards the op whole to the box, drops everything the box sends after it (its attach.stored reply), and closes the connection 1 s later. The page gets host.down at 1008 ms and the pipe's reconnect (host.snapshot at 2043 ms), but no answer with ref up in the 8 s watched: an upload that never finishes (the UI waits 5 min).",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "4e77b97aade53e3c274f0be5ecacdcad4e48eded",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-approve.json",
+          "sha256": "b5175691d317dbfad6290ad9d2349f468c66abf594f1c6d13907a807a05bb815"
+        },
+        {
+          "path": "p2-box-after.json",
+          "sha256": "c4dcf5948229b1560783612ad5786b651ad458aba999c0f893caee97ab0b1e46"
+        }
+      ],
+      "addedAt": "2026-11-27T14:04:19.444Z",
+      "text": "Same setup at base, the box's seeded session waiting for approval (scripted Codex [cmd], requestId codex-1000). The page sends session.approve (no ref; the UI's approval card waits for the event or an error) through its pipe; the proxy drops the box's answer and closes. The page gets host.down and nothing for the approval in 8 s, while the box did resolve it (box-after.json: approval_resolved accept). Scripts: run.sh, proxy.py, page.ts in /tmp/pipe-ev/base (attached to this proof's note below).",
+      "failedApi": []
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "note",
+      "at": "4e77b97aade53e3c274f0be5ecacdcad4e48eded",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-run.sh",
+          "sha256": "9c7a4b94285975c35bca5edb3a33fafafa97d480b0b7d4d3238a575218af3383"
+        },
+        {
+          "path": "p3-proxy.py",
+          "sha256": "527cf9dcd7333e384d6cde9fc0cf4126e5341713285c150be95f2f18e5c8ee6a"
+        },
+        {
+          "path": "p3-page.ts",
+          "sha256": "db5f033b65fb067af7b556a0c36ba8092dd00c5dfe856544f2288c6af2d7b5ca"
+        }
+      ],
+      "addedAt": "2026-11-27T14:04:19.488Z",
+      "text": "The scripts behind the running-app proofs (not committed): run.sh <checkout> <hub port> <box port> <box sid> <requestId> <out> adds the box behind proxy.py and runs page.ts twice (an upload with a ref, an approval without one), arming the proxy's one-shot swallow mode before each page connects."
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "test",
+      "at": "4e77b97aade53e3c274f0be5ecacdcad4e48eded",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "adc3437633e1b76c61c234c5984f50f51e71d12fc1bfdfba704db19538eeca6d"
+        }
+      ],
+      "addedAt": "2026-11-27T14:04:24.616Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd remote::tests",
+      "exit": 101
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "fix",
+      "at": "90d32676d35a9ea9adf91af015b58ea4a0ab38ba",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-upload.json",
+          "sha256": "a82918d8d36830272563e08dbef1fe54e518c1a4529f3490164b4edca18f13dd"
+        },
+        {
+          "path": "p5-proxy.log",
+          "sha256": "e1dcf974aa0d05a3275d4ca8369a8f2ce48505123f2ba55016c2bdcc1641f4bf"
+        }
+      ],
+      "addedAt": "2026-11-27T14:06:06.686Z",
+      "text": "Running app at head (90d3267), same setup and steps as the base upload proof: the page gets host.down at 1008 ms and then {op: error, ref: up, for: attach.put, message: \"Lost the connection to TEST-box before it answered. This may have gone through; check once it's back.\"} at 1048 ms, once, then the pipe's reconnect.",
+      "failedApi": []
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "fix",
+      "at": "90d32676d35a9ea9adf91af015b58ea4a0ab38ba",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-approve.json",
+          "sha256": "42f3f75a12db444c1e0967ca2d34b68e1c3650feb0c35bade5e393692cf116f9"
+        },
+        {
+          "path": "p6-box-after.json",
+          "sha256": "c4dcf5948229b1560783612ad5786b651ad458aba999c0f893caee97ab0b1e46"
+        }
+      ],
+      "addedAt": "2026-11-27T14:06:06.728Z",
+      "text": "Running app at head, same steps as the base approval proof: the page gets one {op: error, for: session.approve, message: Lost the connection to TEST-box ...} with no ref (the pipe sent the op with a ref of its own, yardd-pipe~1, which the page never sees), so the UI's card gets its buttons back. The box did resolve the approval (box-after.json), which is why the words claim neither way.",
+      "failedApi": []
+    },
+    {
+      "id": 7,
+      "ref": "head",
+      "kind": "fix",
+      "at": "90d32676d35a9ea9adf91af015b58ea4a0ab38ba",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-upload.json",
+          "sha256": "aab543b6b204a60141dbbdefc2b93703d21d2a3326bf661640a011545a9eeff2"
+        },
+        {
+          "path": "p7-create.json",
+          "sha256": "c709682c55a20a5ba0f1f3de8e9144336ccda648328566b7f344cb86b83bc268"
+        },
+        {
+          "path": "p7-healthy.sh",
+          "sha256": "102e0a11f16bcd387bc28f9d95e98e57a05392f2b7b1794516c5447a062c4f2a"
+        }
+      ],
+      "addedAt": "2026-11-27T14:06:06.769Z",
+      "text": "Healthy path in the running app at head (healthy.sh: the same box added again with no proxy): attach.put (ref up2) gets its attach.stored with ref up2 and no error; session.create sent without a ref gets {op: created, sessionId: <host>~<sid>} with no ref (the pipe's own ref is taken off the box's answer) and no error. The host.down in both files is the proxied TEST-box from run.sh, whose proxy had been stopped.",
+      "failedApi": []
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "note",
+      "at": "90d32676d35a9ea9adf91af015b58ea4a0ab38ba",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-run.sh",
+          "sha256": "9c7a4b94285975c35bca5edb3a33fafafa97d480b0b7d4d3238a575218af3383"
+        },
+        {
+          "path": "p8-proxy.py",
+          "sha256": "527cf9dcd7333e384d6cde9fc0cf4126e5341713285c150be95f2f18e5c8ee6a"
+        },
+        {
+          "path": "p8-page.ts",
+          "sha256": "12e2bab0f4b3e0f9e3c7c084308fbade5186da715b06efd83e4e92d0ba55197a"
+        },
+        {
+          "path": "p8-healthy.sh",
+          "sha256": "102e0a11f16bcd387bc28f9d95e98e57a05392f2b7b1794516c5447a062c4f2a"
+        }
+      ],
+      "addedAt": "2026-11-27T14:06:06.810Z",
+      "text": "Head copies of the scripts. page.ts at head also records created messages (for healthy.sh); otherwise the same as the base copies."
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "test",
+      "at": "90d32676d35a9ea9adf91af015b58ea4a0ab38ba",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-cmd.log",
+          "sha256": "e6f2a4d8c985111b9804a13f3ac43d5958f598a4a0cc29edab637a647ace66aa"
+        }
+      ],
+      "addedAt": "2026-11-27T14:06:11.834Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd",
+      "exit": 0
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "regression",
+      "at": "90d32676d35a9ea9adf91af015b58ea4a0ab38ba",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-map-hosts.json",
+          "sha256": "3144bc0c36f932ce6db64fb471603244553f5d2df8394167e2b8777bb3154070"
+        }
+      ],
+      "addedAt": "2026-11-27T14:09:55.092Z",
+      "cmd": "verify/yv map run hosts",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "hosts/hosts-page",
+        "hosts/empty-state-tile",
+        "hosts/sessions-list-collapsed",
+        "hosts/add-direct-host",
+        "hosts/remote-session",
+        "hosts/hosts-grid",
+        "hosts/selecting-a-host-shows-its-details",
+        "hosts/ssh-host-unreachable",
+        "hosts/remove-host",
+        "hosts/double-click-on-remove-host-only-asks",
+        "hosts/refused-add-keeps-the-form",
+        "hosts/local-name-right-after-start",
+        "hosts/no-memory-limit-says-load-only",
+        "hosts/ip-destination-keeps-the-whole-address",
+        "hosts/long-name-fits-the-add-button",
+        "hosts/long-derived-name-asks-for-a-shorter-one",
+        "hosts/engine-status-keeps-cards-aligned",
+        "hosts/processes-say-the-host-is-offline",
+        "hosts/new-session-says-the-remembered-host-is-offline",
+        "hosts/sessions-stay-listed-while-their-host-is-down",
+        "hosts/subscriptions-sign-in-opens-the-accounts-host"
+      ]
+    }
+  ]
+}

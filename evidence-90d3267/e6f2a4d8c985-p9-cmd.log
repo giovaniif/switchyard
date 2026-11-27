@@ -1,0 +1,443 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd
+# exit 0 after 213572 ms at 90d32676d35a9ea9adf91af015b58ea4a0ab38ba
+
+
+running 128 tests
+test accounts::tests::in_use_shortens_a_long_title ... ok
+test accounts::tests::in_use_names_three_sessions_then_counts_the_rest ... ok
+test acp::tests::a_patch_keeps_two_lines_of_context ... ok
+test acp::tests::answers_pick_the_offered_option_or_cancel ... ok
+test acp::tests::the_permission_mode_answers_what_it_covers ... ok
+test acp::tests::tool_calls_read_like_the_other_engines ... ok
+test agent_tools::tests::a_chunked_body_is_joined ... ok
+test agent_tools::tests::calls_read_as_steps ... ok
+test agent_tools::tests::one_key_per_conversation_and_none_after_it_goes ... ok
+test agent_tools::tests::the_hourly_cap_refuses_until_the_oldest_use_leaves ... ok
+test agents::tests::a_handle_reads_as_one_mention_made_from_the_name ... ok
+test agents::tests::a_refusal_keeps_its_code_through_context_and_a_plain_error_has_none ... ok
+test agents::tests::earlier_exchanges_leave_out_the_current_question_and_steered_text ... ok
+test agents::tests::agents_from_before_handles_keep_their_name_as_handle ... ok
+test agents::tests::names_are_display_text_trimmed_and_visible ... ok
+test agents::tests::the_preamble_carries_the_notes_then_the_message ... ok
+test attachments::tests::inline_image_types_must_match_the_bytes ... ok
+test agents::tests::unknown_fields_round_trip_and_known_ones_never_land_with_them ... ok
+test attachments::tests::names_are_one_safe_path_component ... ok
+test attachments::tests::the_prompt_lists_attachment_paths ... ok
+test automations::tests::a_codex_window_counts_by_its_length ... ok
+test automations::tests::a_manual_schedule_has_no_next_run ... ok
+test automations::tests::claude_limits_read_the_sidecars_windows ... ok
+test automations::tests::daily_is_the_next_time_strictly_after_now ... ok
+test automations::tests::engines_without_limits_never_skip_on_usage ... ok
+test automations::tests::a_backlog_fires_once_and_moves_past_now ... ok
+test automations::tests::grok_limits_read_its_credit_allowance ... ok
+test automations::tests::intervals_count_from_the_given_moment ... ok
+test automations::tests::friday_owns_its_saturday_morning_and_ninety_minutes_stay_aligned ... ok
+test automations::tests::schedules_are_validated ... ok
+test automations::tests::the_time_zone_decides_what_9_30_means ... ok
+test automations::tests::usage_limits_read_each_engines_figures ... ok
+test automations::tests::weekly_waits_for_its_day ... ok
+test automations::tests::missed_window_runs_fire_once_inside_but_only_reschedule_outside ... ok
+test automations::tests::windows_align_slots_inside_and_outside_and_exclude_the_end ... ok
+test automations::tests::windows_validate_times_days_and_schedule ... ok
+
+running 1 test
+test automations::tests::window_dst_uses_local_gap_and_fold_policy ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 127 filtered out; finished in 0.00s
+
+test automations::tests::window_dst_uses_local_gap_and_fold_policy ... ok
+test codex::restricted_config_tests::optional_config_is_omitted_without_changing_values_or_enabling_tools ... ok
+test engines::tests::every_engine_has_a_name ... ok
+test files::tests::every_dialect_finds_the_file ... ok
+test files::tests::missing_files_folders_and_remote_urls_are_refused ... ok
+test files::tests::positions_are_cut_only_from_the_end ... ok
+test claude::tests::an_answer_is_logged_before_the_sidecar_reads_it ... ok
+test git::tests::keeps_the_last_non_empty_lines ... ok
+test git::tests::a_subfolder_session_lists_every_file_from_the_repository_root ... ok
+test git::tests::new_files_show_their_lines_in_the_diff ... ok
+test git::tests::numstat_names_a_rename_by_its_old_and_new_path ... ok
+test grok::tests::models_and_efforts_come_from_initialize ... ok
+test grok::tests::the_device_link_and_code_come_out_of_the_cli_output ... ok
+test grok::tests::the_login_line_says_who_is_signed_in ... ok
+test guard::tests::a_listed_process_is_signalled_alone_unless_its_tree_is_asked_for ... ok
+test guard::tests::an_agent_shell_is_work_and_an_mcp_server_is_not ... ok
+test guard::tests::refuses_what_is_not_the_sessions_to_kill ... ok
+test handoff::tests::handoff_brief_keeps_task_recent_turns_and_cap ... ok
+test handoff::tests::handoff_brief_names_attached_files ... ok
+test handoff::tests::handoff_brief_reports_pending_approval_and_short_log ... ok
+test import::tests::an_import_keeps_the_model_the_session_last_used ... ok
+test import::tests::an_unknown_or_missing_model_falls_back_to_the_first ... ok
+test login::tests::finds_the_sign_in_link_in_the_cli_output ... ok
+test mcp::tests::added_servers_are_a_plain_name_and_https_address ... ok
+test mcp::tests::codex_statuses_map_to_the_shared_shape ... ok
+test mcp::tests::only_loopback_redirects_are_replayed ... ok
+test mobile::tests::only_https_addresses_a_phone_can_reach_are_offered ... ok
+test mobile::tests::the_public_beta_is_offered_unless_replaced_or_turned_off ... ok
+test naming::tests::answers_become_plain_short_titles ... ok
+test naming::tests::luna_comes_first_then_haiku_when_listed ... ok
+test naming::tests::only_prompt_and_generated_titles_are_replaced ... ok
+test naming::tests::the_transcript_keeps_the_task_and_the_latest_messages ... ok
+test opencode::tests::a_sign_in_works_from_the_app_when_its_prompts_have_defaults ... ok
+test opencode::tests::chunked_bodies_are_joined ... ok
+test opencode::tests::device_codes_are_found_in_instructions ... ok
+test opencode::tests::providers_are_offered_connected_and_popular_first ... ok
+test opencode::tests::verbose_models_become_picker_models ... ok
+test origins::tests::a_missing_answer_says_why ... ok
+test origins::tests::a_turn_owes_its_last_answer_or_its_error ... ok
+test origins::tests::a_watched_notice_is_data_and_makes_its_turn_read_only ... ok
+test origins::tests::hops_grow_from_the_longest_chain_answered ... ok
+test origins::tests::the_engine_reads_who_a_message_is_from ... ok
+test pr::tests::a_pr_link_is_reduced_to_its_canonical_url ... ok
+test pr::tests::anything_else_is_refused ... ok
+test pr::tests::the_peek_counts_checks_and_names_the_failing_ones ... ok
+test git::tests::non_ascii_paths_come_out_as_written ... ok
+test remote::tests::a_host_that_resyncs_its_page_settles_what_its_news_would_have ... ok
+test remote::tests::a_hosts_agents_ops_go_there_with_its_own_ids_and_come_back_prefixed ... ok
+test remote::tests::a_snapshot_becomes_a_host_snapshot ... ok
+test remote::tests::an_op_a_pipe_still_holds_when_its_host_is_removed_gets_an_error ... ok
+test remote::tests::an_op_being_written_when_its_pipe_is_dropped_gets_one_answer ... ok
+test remote::tests::an_op_taken_as_an_ssh_tunnel_drops_is_answered_without_waiting_for_it ... ok
+test remote::tests::an_op_the_host_took_gets_one_answer_when_its_pipe_is_dropped ... ok
+test remote::tests::a_healthy_host_answers_every_op_once_and_in_order ... ok
+test remote::tests::destinations_that_look_like_options_are_refused ... ok
+test remote::tests::an_op_the_host_took_gets_one_answer_when_the_connection_drops_before_its_reply ... ok
+test remote::tests::ids_get_the_host_prefix_and_lose_it_on_the_way_back ... ok
+test remote::tests::every_op_a_failed_write_leaves_unsent_gets_an_error ... ok
+test remote::tests::terminal_ids_are_prefixed_inside_a_term_list ... ok
+test scope::tests::a_missing_list_denies_metabase_and_a_list_is_exact ... ok
+test scope::tests::firefighter_gets_an_explicit_list_with_metabase ... ok
+test scope::tests::firefighter_keeps_every_server_until_it_has_a_list ... ok
+test scope::tests::lists_are_cleaned ... ok
+test slack::inbox::tests::an_agents_handle_becomes_a_mention_only_as_a_word ... ok
+test slack::inbox::tests::mentions_are_user_ids_only ... ok
+test slack::inbox::tests::messages_are_kept_edited_deleted_and_counted_in_threads ... ok
+test slack::inbox::tests::the_reply_box_and_yardd_agree_on_what_calls_an_agent ... ok
+test slack::tests::a_bot_handle_is_the_name_as_slack_would_make_it ... ok
+test slack::tests::a_hosts_apps_and_places_are_listed_under_its_prefixed_ids ... ok
+test slack::tests::a_watched_message_reads_its_alert_and_cannot_break_its_frame ... ok
+test slack::tests::an_agents_app_travels_whole_with_fields_this_build_does_not_know ... ok
+test slack::tests::an_icon_is_a_png_slack_takes ... ok
+test slack::tests::long_answers_are_split_between_lines_and_code_blocks_reopened ... ok
+test slack::tests::markdown_becomes_slack_mrkdwn_safely ... ok
+test slack::tests::only_the_owners_chosen_people_can_be_mentioned ... ok
+test slack::tests::slack_reply_posts_in_this_turns_thread_not_the_newest ... ok
+test slack::tests::slack_signatures_are_checked_with_the_secret_within_five_minutes ... ok
+test slack::tests::the_app_name_keeps_the_readable_name_within_35_characters ... ok
+test slack::tests::the_bots_mention_is_dropped_and_slack_markup_read_as_text ... ok
+test slack::tests::the_install_comes_back_to_a_listed_https_address_only ... ok
+test slack::tests::tokens_show_only_their_kind_and_end ... ok
+test sweep::tests::only_the_pr_whose_head_is_the_worktree_counts ... ok
+test tests::bind_list ... ok
+test tests::the_page_is_rechecked_and_hashed_assets_are_kept ... ok
+test usage::tests::a_turn_keeps_the_windows_it_did_not_mention ... ok
+test usage::tests::codex_keeps_its_full_resets_and_other_limits ... ok
+test usage::tests::grok_billing_becomes_one_window_with_its_reset ... ok
+test widgets::tests::a_codex_call_reports_its_text_and_failure ... ok
+test widgets::tests::ids_cannot_leave_the_folder ... ok
+test widgets::tests::widget_visibility_defaults_to_both ... ok
+test ws::tests::allow_origin_is_a_trimmed_comma_list ... ok
+test remote::tests::ops_a_page_waits_on_without_a_ref_get_one_answer_too ... ok
+
+test result: ok. 128 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.54s
+
+
+running 23 tests
+test a_failed_grok_login_says_why ... ok
+test an_added_grok_account_logs_in_on_its_own ... ok
+test an_opencode_agent_that_dies_fails_the_turn_and_the_next_one_resumes ... ok
+test an_added_opencode_account_has_its_own_logins_and_sessions ... ok
+test an_opencode_turn_streams_then_completes_and_follows_up ... ok
+test an_opencode_session_resumes_after_a_restart ... ok
+test gemini_accepts_edits_and_hands_off_with_the_conversation ... ok
+test gemini_discovers_models_streams_and_switches_models_without_config_options ... ok
+test gemini_logged_out_offers_terminal_login_and_added_accounts_stay_separate ... ok
+test gemini_permissions_stop_and_reload_use_its_native_protocol ... ok
+test grok_follows_the_permission_mode_with_its_own_modes ... ok
+test grok_lists_models_logs_in_with_a_device_code_and_runs_a_turn ... ok
+test messages_sent_during_an_opencode_turn_are_the_next_turn ... ok
+test opencode_asks_before_a_command_and_takes_the_answer ... ok
+test opencode_edits_show_their_diff_and_follow_the_permission_mode ... ok
+test opencode_lists_its_models_and_reports_its_providers ... ok
+test grok_reports_its_credit_allowance_and_when_it_resets ... ok
+test opencode_takes_the_model_and_effort_from_the_session ... ok
+test opencode_thinking_streams_as_reasoning ... ok
+test opencode_providers_log_in_from_the_app ... ok
+test stop_ends_an_opencode_turn_even_when_it_does_not_listen ... ok
+test output_of_a_turn_ended_after_stop_that_arrives_later_is_dropped ... ok
+test text_of_a_turn_ended_after_stop_does_not_run_into_the_next_answer ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 22.13s
+
+
+running 13 tests
+test a_claude_agent_edits_its_own_memory ... ok
+test a_failed_or_stopped_answer_still_reaches_the_sender ... ok
+test a_kept_agents_tools_act_on_the_hub_while_its_host_is_older ... ok
+test a_message_to_another_agent_comes_back_as_its_answer ... ok
+test a_new_agent_sets_itself_up_with_its_tool ... ok
+test an_agent_on_a_host_uses_its_tools_there_and_agents_reach_each_other_across_hosts ... ok
+test an_agent_reaches_the_owner_a_few_times_an_hour_and_is_marked_until_seen ... ok
+test an_agent_with_a_spaced_name_is_messaged_by_its_handle_or_its_name ... ok
+test an_opencode_agent_calls_its_tools_without_asking ... ok
+test chains_stop_at_three_hops_and_an_agent_cannot_message_itself ... ok
+test the_owners_own_sessions_get_no_tools ... ok
+test the_tools_endpoint_answers_only_a_key_it_made ... ok
+test a_hosted_agent_gets_tools_only_from_a_hub_that_answers_them ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.04s
+
+
+running 34 tests
+test a_display_name_gets_a_mention_handle_that_stays_while_it_fits ... ok
+test a_hand_over_that_cannot_be_saved_says_so_and_keeps_nothing ... ok
+test a_fresh_context_continues_the_same_conversation ... ok
+test a_hand_over_tried_again_and_again_backs_up_once_and_is_listed_once ... ok
+test a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile ... ok
+test a_host_does_not_let_go_mid_turn ... ok
+test a_host_shows_connected_once_the_hub_knows_it_can_own_agents ... ok
+test a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why ... ok
+test a_host_takes_an_agent_with_its_slack_app_or_not_at_all ... ok
+test a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely ... ok
+test a_host_too_old_to_own_agents_keeps_running_the_hubs_copy ... ok
+test a_message_to_a_kept_record_its_host_took_reaches_the_host_s_own ... ok
+test a_move_whose_export_answer_is_lost_leaves_nothing_leaving ... ok
+test a_move_between_hosts_whose_adopt_answer_is_lost_still_has_one_owner ... ok
+test a_new_account_in_edit_continues_the_conversation_in_a_fresh_context ... ok
+test a_second_hub_sees_the_hosts_agents_and_can_ask_edit_and_delete_them ... ok
+test a_window_cannot_send_a_hand_over_to_a_host_through_the_hub ... ok
+test an_agent_belongs_to_the_host_it_runs_on_and_the_hub_lists_it ... ok
+test a_refusal_is_told_by_its_code_never_by_the_agents_name ... ok
+test an_agent_deleted_on_its_host_after_a_lost_adopt_answer_stays_deleted ... ok
+test an_agent_leaving_by_one_hand_over_is_not_exported_by_another ... ok
+test an_agent_deleted_on_its_host_mid_hand_over_stays_deleted ... ok
+test an_agent_moves_between_hosts_and_its_next_conversation_starts_where_the_last_ended ... ok
+test an_agents_first_turn_carries_its_preamble_and_every_message_goes_to_its_one_conversation ... ok
+test an_agent_moved_back_before_its_old_host_let_go_is_never_lost ... ok
+test an_agents_slack_app_moves_between_hosts_whole_and_once ... ok
+test an_edit_made_while_a_hand_over_succeeds_says_where_the_agent_went ... ok
+test an_edit_waits_for_a_hand_over_s_answer_not_for_the_steps_after_it ... ok
+test an_edit_made_while_a_refused_hand_over_is_tried_again_waits_for_the_answer ... ok
+test fields_this_build_does_not_know_survive_saves_and_hand_overs ... ok
+test an_owed_release_from_another_hand_over_never_drops_an_agent ... ok
+test pressure_queues_a_new_chat_until_start_anyway ... ok
+test sending_an_agent_again_is_the_same_hand_over_or_refused ... ok
+test the_retired_host_agent_leaves_with_its_conversation ... ok
+
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.62s
+
+
+running 6 tests
+test a_codex_chart_is_kept_served_and_can_load_more_after_a_restart ... ok
+test claude_connectors_sign_in_and_running_sessions_dial_again ... ok
+test codex_servers_are_listed_and_a_pasted_redirect_signs_one_in ... ok
+test every_claude_account_has_its_limits_without_running_a_turn ... ok
+test linear_is_added_to_each_engine_signed_in_and_removed ... ok
+test a_claude_chart_calls_back_through_the_sidecar_even_after_a_restart ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.35s
+
+
+running 97 tests
+test a_claude_question_takes_the_owners_answers ... ok
+test a_claude_session_runs_under_its_accounts_config_dir ... ok
+test a_claude_session_whose_sidecar_died_takes_the_next_message ... ok
+test a_claude_turn_keeps_the_windows_it_did_not_report ... ok
+test a_codex_question_takes_the_owners_answers ... ok
+test a_background_subagent_keeps_its_session_marked_working ... ok
+test a_failing_worktree_setup_makes_no_session ... ok
+test a_file_change_carries_its_diff_with_relative_paths ... ok
+test a_codex_session_runs_on_its_accounts_own_app_server ... ok
+test a_folder_outside_a_repository_runs_in_place ... ok
+test a_hub_routes_automations_to_the_host_that_runs_them ... ok
+test a_hub_runs_sessions_on_a_direct_host ... ok
+test a_long_first_line_is_titled_at_a_word_with_an_ellipsis ... ok
+test a_manual_automation_never_fires_on_its_own ... ok
+test a_message_sent_mid_turn_is_folded_into_the_claude_turn ... ok
+test a_message_to_a_session_whose_folder_is_gone_says_so ... ok
+test a_missed_run_outside_the_window_creates_no_session_but_run_now_does ... ok
+test a_new_client_gets_its_snapshot_before_any_broadcast ... ok
+test a_message_sent_mid_turn_is_steered_into_the_codex_turn ... ok
+test a_page_opened_while_a_host_is_down_still_lists_its_sessions ... ok
+test a_page_s_first_op_reaches_a_connected_host_while_its_own_connection_opens ... ok
+test a_plain_turn_streams_then_completes ... ok
+test a_queued_message_can_be_taken_back_to_edit ... ok
+test a_run_is_skipped_when_engine_usage_is_above_the_limit ... ok
+test a_run_can_carry_its_own_prompt_and_title ... ok
+test a_run_is_skipped_while_the_previous_one_is_still_going ... ok
+test a_session_says_when_and_how_its_last_turn_ended ... ok
+test a_session_whose_folder_is_gone_says_so ... ok
+test a_runs_finish_time_stays_put_when_it_is_pinned_later ... ok
+test a_window_cannot_ask_for_an_agents_hand_over ... ok
+test accounts_are_per_host_through_the_hub ... ok
+test allow_origin_takes_a_list ... ok
+test a_too_large_upload_is_refused_and_the_socket_survives ... ok
+test an_abandoned_claude_login_is_stopped ... ok
+test an_account_is_added_logged_in_and_removed_without_touching_default ... ok
+test an_error_turn_reports_and_fails ... ok
+test approval_allow_runs_the_command ... ok
+test an_answered_approval_is_logged_before_the_engine_moves_on ... ok
+test approval_deny_declines_the_command ... ok
+test attachments_reach_codex_as_a_local_image_and_a_path ... ok
+test automation_window_survives_partial_edits_and_null_clears_it ... ok
+test automations_are_saved_listed_edited_and_deleted ... ok
+test branches_of_a_missing_folder_say_it_is_missing ... ok
+test claude_code_sessions_are_listed_and_imported_with_their_history ... ok
+test claude_usage_survives_a_restart ... ok
+test codex_reasoning_streams_as_thinking ... ok
+test codex_speed_is_used_for_new_turns_and_survives_restarts ... ok
+test codex_subagent_activity_keeps_one_agent_and_its_report ... ok
+test codex_usage_keeps_the_full_resets_and_every_limit ... ok
+test delete_removes_a_session_across_a_restart ... ok
+test deleting_a_session_does_not_ask_its_terminal_pane_to_reload ... ok
+test engines_log_in_from_the_app ... ok
+test folders_are_listed_for_the_picker ... ok
+test forced_pressure_queues_until_start_now ... ok
+test foreign_origins_are_refused ... ok
+test handoff_can_change_the_account_or_model_without_changing_engines ... ok
+test handoff_keeps_the_sidebar_group ... ok
+test handoff_to_the_same_target_or_mid_turn_is_refused ... ok
+test install_sets_up_yardd_on_an_ssh_host ... ok
+test messages_after_the_last_step_go_together_as_the_next_turn ... ok
+test messages_queued_during_an_approval_reach_the_agent_after_it ... ok
+test messages_sent_in_a_row_reach_the_agent_in_the_order_sent ... ok
+test notify_needs_a_title_and_only_takes_web_links ... ok
+test notify_reaches_every_connected_window ... ok
+test one_writer_per_folder ... ok
+test permission_modes_reach_codex_and_switch_mid_session ... ok
+test attachments_land_on_the_remote_host_through_the_hub ... ok
+test pr_get_says_when_the_folder_is_a_repository_it_cannot_read_a_pr_for ... ok
+test pr_get_names_a_local_base_for_a_review_in_a_repo_without_a_remote ... ok
+test removing_a_codex_account_stops_its_app_server ... ok
+test removing_a_dirty_worktree_is_refused ... ok
+test removing_an_account_in_use_names_its_sessions ... ok
+test resizing_an_exited_terminal_is_not_an_error ... ok
+test renaming_a_session_updates_other_clients_and_survives_restart ... ok
+test run_now_starts_a_worktree_session_that_is_archived_when_it_ends ... ok
+test resuming_a_thread_the_engine_lost_fails_the_turn ... ok
+test session_procs_for_an_unknown_session_is_an_error ... ok
+test session_procs_goes_through_the_hub ... ok
+test session_settings_sent_in_a_row_apply_in_the_order_sent ... ok
+test sessions_are_grouped_across_restarts ... ok
+test sessions_are_pinned_and_archived_across_restarts ... ok
+test sessions_survive_a_restart_and_resume_their_thread ... ok
+test snapshot_has_its_shape_and_the_fake_models ... ok
+test session_procs_lists_what_a_session_is_running ... ok
+test stop_hands_queued_messages_back ... ok
+test stop_ends_a_codex_turn_that_ignores_the_interrupt ... ok
+test terminal_keystrokes_reach_the_shell_in_order ... ok
+test terminal_runs_commands_and_replays_its_scrollback ... ok
+test the_codex_sandbox_can_be_set ... ok
+test stop_kills_a_claude_sidecar_that_ignores_the_interrupt ... ok
+test the_page_is_sent_so_a_web_view_rechecks_it ... ok
+test the_local_host_carries_its_configured_name ... ok
+test the_snapshot_names_this_machine_before_its_first_stats_sample ... ok
+test two_imports_of_one_claude_code_session_at_once_make_one_session ... ok
+test upload_names_are_sanitized ... ok
+test worktree_branches_and_a_session_from_a_base ... ok
+test the_scheduler_fires_a_missed_run_once_and_automations_survive_a_restart ... ok
+
+test result: ok. 97 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 44.02s
+
+
+running 6 tests
+test refuses_a_pid_that_is_not_the_sessions ... ok
+test a_process_that_ignores_sigterm_is_still_running_until_force_killed ... ok
+test session_kill_goes_through_the_hub ... ok
+test stopping_a_command_in_the_sessions_terminal_ends_it ... ok
+test stopping_with_children_ends_the_whole_subtree ... ok
+test the_agents_own_process_is_refused_and_its_commands_are_not ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.24s
+
+
+running 1 test
+test a_phone_connection_updates_other_clients_and_survives_restart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+
+running 7 tests
+test a_session_is_named_from_its_task_while_its_first_turn_runs ... ok
+test a_session_is_named_again_after_its_first_and_third_turns ... ok
+test codex_nullable_config_does_not_break_the_restricted_thread ... ok
+test haiku_names_the_session_when_codex_fails ... ok
+test a_title_typed_by_the_user_is_never_replaced ... ok
+test with_no_naming_model_the_title_stays ... ok
+test naming_can_be_turned_off ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.10s
+
+
+running 2 tests
+test a_remote_session_peeks_with_its_own_hosts_gh ... ok
+test a_pr_link_peeks_once_per_url_and_refuses_anything_else ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.45s
+
+
+running 11 tests
+test a_claude_session_with_a_process_left_running_keeps_its_sidecar ... ok
+test a_claude_session_waiting_on_a_wakeup_or_a_cron_job_keeps_its_sidecar ... ok
+test a_dead_app_server_is_replaced_and_its_sessions_resume ... ok
+test a_claude_session_with_subagents_at_work_keeps_its_sidecar ... ok
+test a_turn_over_before_its_start_was_answered_still_lets_the_thread_go ... ok
+test agents_and_automations_get_only_their_connectors_on_codex ... ok
+test a_session_waiting_on_an_approval_keeps_its_thread ... ok
+test an_idle_codex_thread_is_released_and_resumed_by_the_next_turn ... ok
+test claude_sessions_carry_their_connector_scope ... ok
+test existing_agents_keep_a_missing_list_but_firefighter_gets_metabase_by_name ... ok
+test an_idle_claude_sidecar_is_stopped_and_the_next_message_resumes ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.80s
+
+
+running 22 tests
+test a_moved_agents_slack_places_and_approvals_stay_on_the_host_they_were_made_on ... ok
+test a_watched_turn_cannot_change_the_agents_setup_or_pass_its_access_on ... ok
+test an_agent_called_in_another_case_still_hears_it ... ok
+test an_agent_gets_a_slack_app_of_its_own_from_a_configuration_token ... ok
+test an_agent_posts_later_only_in_slack_threads_routed_to_it_as_its_own_app ... ok
+test an_agents_app_takes_human_messages_and_answers_in_the_thread ... ok
+test an_agents_own_slack_app_moves_with_it_and_answers_from_its_host_while_the_hub_sleeps ... ok
+test an_agents_slack_app_follows_its_name_and_icon_and_says_when_it_cannot ... ok
+test an_app_being_handed_over_is_not_deleted_in_slack_until_its_old_host_let_go ... ok
+test claude_guests_use_a_fresh_tool_less_sidecar_and_can_ask_for_access ... ok
+test codex_guest_requests_wait_for_the_owner_and_each_decision_is_applied_once ... ok
+test slack_places_are_distinct_and_history_is_framed_as_data ... ok
+test slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_the_thread ... ok
+test the_owner_calls_agents_here_and_on_a_remote_host_from_his_reply_box ... ok
+test the_owner_calls_an_agent_from_his_reply_box_with_a_real_mention ... ok
+test a_watched_channel_reaches_its_agent_as_read_only_data_one_turn_per_batch ... ok
+test the_owner_connects_his_own_slack_and_it_comes_back_after_a_disconnect_a_drop_or_a_restart ... ok
+test the_owner_imports_the_channels_he_picks_and_only_those ... ok
+test the_owner_replies_reacts_and_reads_from_switchyard_as_himself ... ok
+test the_owners_direct_messages_come_into_switchyard_new_ones_too ... ok
+test with_a_public_address_an_agents_app_needs_only_the_configuration_token ... ok
+test without_an_https_address_the_owner_pastes_his_user_token ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 22.93s
+
+
+running 3 tests
+test a_merged_worktree_is_removed_and_nothing_else ... ok
+test a_worktree_with_a_running_session_or_process_stays ... ok
+test an_archived_worktree_with_nothing_of_its_own_is_removed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.54s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/pipe-tracking/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 27.50s
+     Running unittests src/main.rs (target/debug/build/yardd/7902cb21fd3fec33/out/yardd-7902cb21fd3fec33)
+     Running tests/acp.rs (target/debug/build/yardd/dfaa4ce3d714b03a/out/acp-dfaa4ce3d714b03a)
+     Running tests/agent_tools.rs (target/debug/build/yardd/d33e5673a723149a/out/agent_tools-d33e5673a723149a)
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+     Running tests/connectors.rs (target/debug/build/yardd/f1ba8e22b2f7123a/out/connectors-f1ba8e22b2f7123a)
+     Running tests/daemon.rs (target/debug/build/yardd/bc3e500ead7d3ac6/out/daemon-bc3e500ead7d3ac6)
+     Running tests/kill.rs (target/debug/build/yardd/e050743992927e42/out/kill-e050743992927e42)
+     Running tests/mobile.rs (target/debug/build/yardd/deccdb60fdb0f97f/out/mobile-deccdb60fdb0f97f)
+     Running tests/naming.rs (target/debug/build/yardd/e01b72832ccf11ff/out/naming-e01b72832ccf11ff)
+     Running tests/pr_peek.rs (target/debug/build/yardd/1d4062e8c397eed0/out/pr_peek-1d4062e8c397eed0)
+     Running tests/release.rs (target/debug/build/yardd/0b506b7daac5aed6/out/release-0b506b7daac5aed6)
+     Running tests/slack.rs (target/debug/build/yardd/7070339f5020f7ad/out/slack-7070339f5020f7ad)
+     Running tests/sweep.rs (target/debug/build/yardd/9bce8077123a747e/out/sweep-9bce8077123a747e)

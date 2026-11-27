@@ -1,0 +1,26 @@
+{
+ "op": {
+  "op": "session.approve",
+  "sessionId": "h1a21d51b65d1~s1a21d5145e9c",
+  "requestId": "codex-1000",
+  "decision": "accept"
+ },
+ "answers": 0,
+ "seen": [
+  {
+   "at": 5,
+   "sent": "session.approve",
+   "ref": null
+  },
+  {
+   "at": 1008,
+   "hostId": "h1a21d51b65d1",
+   "op": "host.down"
+  },
+  {
+   "at": 2018,
+   "hostId": "h1a21d51b65d1",
+   "op": "host.snapshot"
+  }
+ ]
+}
