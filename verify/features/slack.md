@@ -445,6 +445,29 @@ yv drive agents --viewport mobile --steps '[{"click":"css:.agent-card[aria-label
 yv api '{"op":"slack.app.remove","agentId":"{{oncall}}","ref":"rm"}' --wait '{"op":"slack"}'
 ```
 
+### double-click-on-disconnect-only-asks
+Viewports: both
+A double click on Disconnect (the owner's own Slack) or on a trusted person's
+Remove leaves the ask up and changes nothing. Each turns into its Confirm in
+the same button, so the second click of a double click lands on it; it used
+to answer it, and his Slack app was deleted or the person lost tool use at
+once (like #519 for a session's Delete, #530 for a connector's Remove). The
+eval sends what a browser sends for a double click: two mousedown, mouseup,
+click runs at the same point, the second with `detail: 2`. A separate click
+on Confirm still removes the person and disconnects. Each viewport connects
+first and trusts a person of its own (earlier recipes trust UOWNER
+under its ID), so the recipe runs alone too; it comes last, as it disconnects.
+
+```sh
+for vp in desktop mobile; do
+yv api '{"op":"slack.grant","token":"xoxe-1-TEST-refresh","me":true,"ref":"grant-'"$vp"'"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.userToken","token":"xoxp-you-TEST","ref":"user-'"$vp"'"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.me.appToken","token":"xapp-1-you-TEST","ref":"app-'"$vp"'"}' --wait '{"op":"slack"}'
+yv api '{"op":"slack.allow","user":"U0TESTDBL","name":"TEST-Doubler","ref":"allow-'"$vp"'"}' --wait '{"op":"slack"}'
+yv drive connectors --viewport "$vp" --steps '[{"expect": {"css": ".slack-card"}, "text": "As @test-owner in TEST-workspace"}, {"expect": {"css": ".slack-card .connector", "hasText": "TEST-Doubler"}, "text": "Can request tool use"}, {"eval": "(async () => { const b = [...document.querySelectorAll(\"button\")].find((x) => x.getAttribute(\"aria-label\") === \"Remove TEST-Doubler\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.getAttribute(\"aria-label\") : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \"second click hit: \" + label; })()"}, {"expect": "role:button:Confirm removing TEST-Doubler"}, {"expect": {"css": ".slack-card .connector", "hasText": "TEST-Doubler"}}, {"eval": "(async () => { const b = [...document.querySelectorAll(\"button\")].find((x) => x.getAttribute(\"aria-label\") === \"Disconnect your Slack\"); b.scrollIntoView({ block: \"center\" }); const r = b.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2; const click = (el, detail) => { for (const type of [\"mousedown\", \"mouseup\", \"click\"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0, clientX: x, clientY: y, detail })); }; click(b, 1); await new Promise((res) => setTimeout(res, 0)); const second = document.elementFromPoint(x, y).closest(\"button\"); const label = second ? second.getAttribute(\"aria-label\") : \"none\"; second && click(second, 2); await new Promise((res) => setTimeout(res, 1500)); return \"second click hit: \" + label; })()"}, {"expect": "role:button:Confirm disconnecting your Slack"}, {"expect": {"css": ".slack-card"}, "text": "As @test-owner in TEST-workspace"}, {"shot": "double-click-asks"}, {"click": "role:button:Confirm removing TEST-Doubler"}, {"expect": {"css": ".slack-card .connector", "hasText": "TEST-Doubler"}, "count": 0}, {"click": "role:button:Confirm disconnecting your Slack"}, {"expect": {"css": ".slack-card .connector-account-state"}, "text": "Not connected"}]'
+done
+```
+
 ## Gotchas
 
 - The land gate's secret check (`verify/src/land.ts`, `SECRET_TEXT`) blocks
