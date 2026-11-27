@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "route": "new",
+  "build": {
+    "sha": "af6e3e1bcbcaff8ae4df35caad096999d8bb8c87",
+    "short": "af6e3e1",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T19:34:05.072Z"
+  },
+  "dir": "/home/giovani/.yard/wt/better-than-claude-code/yard-how-do-i-login-with-0c17/.verify/drives/2026-11-27T19-34-06-200Z",
+  "runs": [
+    {
+      "viewport": "desktop",
+      "ms": 3447,
+      "steps": 12,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/.yard/wt/better-than-claude-code/yard-how-do-i-login-with-0c17/.verify/drives/2026-11-27T19-34-06-200Z/opencode-account-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": "/home/giovani/.yard/wt/better-than-claude-code/yard-how-do-i-login-with-0c17/.verify/drives/2026-11-27T19-34-06-200Z/opencode-go-selected-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

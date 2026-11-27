@@ -1,0 +1,1206 @@
+$ CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test) && (cd sidecar/yard-claude && bun test) && verify/yv selftest
+# exit 0 after 150028 ms at 482ad09ce9d3b07df5ed7db5b74e7180cb6d7ee4
+
+
+running 136 tests
+test accounts::tests::in_use_shortens_a_long_title ... ok
+test acp::tests::the_permission_mode_answers_what_it_covers ... ok
+test accounts::tests::in_use_names_three_sessions_then_counts_the_rest ... ok
+test acp::tests::a_patch_keeps_two_lines_of_context ... ok
+test agent_tools::tests::a_chunked_body_is_joined ... ok
+test acp::tests::answers_pick_the_offered_option_or_cancel ... ok
+test acp::tests::tool_calls_read_like_the_other_engines ... ok
+test agent_tools::tests::calls_read_as_steps ... ok
+test agent_tools::tests::the_hourly_cap_refuses_until_the_oldest_use_leaves ... ok
+test agent_tools::tests::one_key_per_conversation_and_none_after_it_goes ... ok
+test agents::tests::a_handle_reads_as_one_mention_made_from_the_name ... ok
+test agents::tests::agents_from_before_handles_keep_their_name_as_handle ... ok
+test agents::tests::a_refusal_keeps_its_code_through_context_and_a_plain_error_has_none ... ok
+test agents::tests::earlier_exchanges_leave_out_the_current_question_and_steered_text ... ok
+test agents::tests::names_are_display_text_trimmed_and_visible ... ok
+test agents::tests::the_preamble_carries_the_notes_then_the_message ... ok
+test attachments::tests::inline_image_types_must_match_the_bytes ... ok
+test agents::tests::unknown_fields_round_trip_and_known_ones_never_land_with_them ... ok
+test attachments::tests::the_prompt_lists_attachment_paths ... ok
+test attachments::tests::names_are_one_safe_path_component ... ok
+test automations::tests::a_codex_window_counts_by_its_length ... ok
+test automations::tests::a_manual_schedule_has_no_next_run ... ok
+test automations::tests::claude_limits_read_the_sidecars_windows ... ok
+test automations::tests::daily_is_the_next_time_strictly_after_now ... ok
+test automations::tests::engines_without_limits_never_skip_on_usage ... ok
+test automations::tests::intervals_count_from_the_given_moment ... ok
+test automations::tests::schedules_are_validated ... ok
+test automations::tests::grok_limits_read_its_credit_allowance ... ok
+test automations::tests::the_time_zone_decides_what_9_30_means ... ok
+test automations::tests::friday_owns_its_saturday_morning_and_ninety_minutes_stay_aligned ... ok
+test automations::tests::weekly_waits_for_its_day ... ok
+test automations::tests::a_backlog_fires_once_and_moves_past_now ... ok
+test automations::tests::usage_limits_read_each_engines_figures ... ok
+test automations::tests::windows_validate_times_days_and_schedule ... ok
+test engines::tests::every_engine_has_a_name ... ok
+test claude::tests::models_merge_every_accounts_list_and_name_the_accounts_of_one_not_all_have ... ok
+test codex::restricted_config_tests::optional_config_is_omitted_without_changing_values_or_enabling_tools ... ok
+test files::tests::positions_are_cut_only_from_the_end ... ok
+test git::tests::keeps_the_last_non_empty_lines ... ok
+test git::tests::numstat_names_a_rename_by_its_old_and_new_path ... ok
+test grok::tests::the_device_link_and_code_come_out_of_the_cli_output ... ok
+test grok::tests::the_login_line_says_who_is_signed_in ... ok
+test grok::tests::models_and_efforts_come_from_initialize ... ok
+test guard::tests::an_agent_shell_is_work_and_an_mcp_server_is_not ... ok
+test guard::tests::a_listed_process_is_signalled_alone_unless_its_tree_is_asked_for ... ok
+test guard::tests::refuses_what_is_not_the_sessions_to_kill ... ok
+test automations::tests::missed_window_runs_fire_once_inside_but_only_reschedule_outside ... ok
+test automations::tests::windows_align_slots_inside_and_outside_and_exclude_the_end ... ok
+test handoff::tests::handoff_brief_names_attached_files ... ok
+test import::tests::an_import_keeps_the_model_the_session_last_used ... ok
+test handoff::tests::handoff_brief_reports_pending_approval_and_short_log ... ok
+test import::tests::an_unknown_or_missing_model_falls_back_to_the_first ... ok
+test login::tests::finds_the_sign_in_link_in_the_cli_output ... ok
+test mcp::tests::only_loopback_redirects_are_replayed ... ok
+test mcp::tests::added_servers_are_a_plain_name_and_https_address ... ok
+test mobile::tests::only_https_addresses_a_phone_can_reach_are_offered ... ok
+test files::tests::every_dialect_finds_the_file ... ok
+test mobile::tests::the_public_beta_is_offered_unless_replaced_or_turned_off ... ok
+test files::tests::missing_files_folders_and_remote_urls_are_refused ... ok
+test mcp::tests::codex_statuses_map_to_the_shared_shape ... ok
+test naming::tests::luna_comes_first_then_haiku_when_listed ... ok
+test naming::tests::answers_become_plain_short_titles ... ok
+test opencode::tests::a_sign_in_works_from_the_app_when_its_prompts_have_defaults ... ok
+test opencode::tests::chunked_bodies_are_joined ... ok
+test opencode::tests::device_codes_are_found_in_instructions ... ok
+test opencode::tests::providers_are_offered_connected_and_popular_first ... ok
+test origins::tests::a_missing_answer_says_why ... ok
+test naming::tests::only_prompt_and_generated_titles_are_replaced ... ok
+test opencode::tests::verbose_models_become_picker_models ... ok
+test origins::tests::a_turn_owes_its_last_answer_or_its_error ... ok
+test origins::tests::hops_grow_from_the_longest_chain_answered ... ok
+test pr::tests::a_pr_link_is_reduced_to_its_canonical_url ... ok
+test origins::tests::a_watched_notice_is_data_and_makes_its_turn_read_only ... ok
+test origins::tests::the_engine_reads_who_a_message_is_from ... ok
+
+running 1 test
+test pressure::tests::what_counts_as_pressure ... ok
+test pr::tests::anything_else_is_refused ... ok
+test pr::tests::the_peek_counts_checks_and_names_the_failing_ones ... ok
+test pressure::tests::the_top_by_cpu_and_by_memory_once_each ... ok
+test opencode::tests::v2_approval_rules_append_to_inline_jsonc ... ok
+test remote::tests::a_hosts_agents_ops_go_there_with_its_own_ids_and_come_back_prefixed ... ok
+test remote::tests::a_hosts_pressure_episodes_name_its_sessions_with_the_prefix ... ok
+test remote::tests::a_snapshot_becomes_a_host_snapshot ... ok
+test naming::tests::the_transcript_keeps_the_task_and_the_latest_messages ... ok
+test remote::tests::an_op_taken_as_an_ssh_tunnel_drops_is_answered_without_waiting_for_it ... ok
+test remote::tests::an_op_a_pipe_still_holds_when_its_host_is_removed_gets_an_error ... ok
+test scope::tests::a_missing_list_denies_metabase_and_a_list_is_exact ... ok
+test remote::tests::destinations_that_look_like_options_are_refused ... ok
+test scope::tests::lists_are_cleaned ... ok
+test slack::inbox::tests::an_agents_handle_becomes_a_mention_only_as_a_word ... ok
+test remote::tests::terminal_ids_are_prefixed_inside_a_term_list ... ok
+test slack::inbox::tests::mentions_are_user_ids_only ... ok
+test remote::tests::ids_get_the_host_prefix_and_lose_it_on_the_way_back ... ok
+test scope::tests::firefighter_gets_an_explicit_list_with_metabase ... ok
+test slack::tests::a_bot_handle_is_the_name_as_slack_would_make_it ... ok
+test handoff::tests::handoff_brief_keeps_task_recent_turns_and_cap ... ok
+test scope::tests::firefighter_keeps_every_server_until_it_has_a_list ... ok
+test slack::inbox::tests::the_reply_box_and_yardd_agree_on_what_calls_an_agent ... ok
+test slack::tests::an_icon_is_a_png_slack_takes ... ok
+test slack::tests::an_agents_app_travels_whole_with_fields_this_build_does_not_know ... ok
+test slack::tests::a_hosts_apps_and_places_are_listed_under_its_prefixed_ids ... ok
+test slack::tests::markdown_becomes_slack_mrkdwn_safely ... ok
+test slack::tests::only_the_owners_chosen_people_can_be_mentioned ... ok
+test slack::tests::the_bots_mention_is_dropped_and_slack_markup_read_as_text ... ok
+test slack::tests::slack_signatures_are_checked_with_the_secret_within_five_minutes ... ok
+test slack::tests::the_install_comes_back_to_a_listed_https_address_only ... ok
+test slack::tests::tokens_show_only_their_kind_and_end ... ok
+test slack::tests::the_app_name_keeps_the_readable_name_within_35_characters ... ok
+test sweep::tests::only_the_pr_whose_head_is_the_worktree_counts ... ok
+test tests::bind_list ... ok
+test tests::the_page_is_rechecked_and_hashed_assets_are_kept ... ok
+test slack::tests::long_answers_are_split_between_lines_and_code_blocks_reopened ... ok
+test usage::tests::a_turn_keeps_the_windows_it_did_not_mention ... ok
+test usage::tests::codex_keeps_its_full_resets_and_other_limits ... ok
+test widgets::tests::a_codex_call_reports_its_text_and_failure ... ok
+test widgets::tests::ids_cannot_leave_the_folder ... ok
+test usage::tests::grok_billing_becomes_one_window_with_its_reset ... ok
+test widgets::tests::widget_visibility_defaults_to_both ... ok
+test ws::tests::allow_origin_is_a_trimmed_comma_list ... ok
+test automations::tests::window_dst_uses_local_gap_and_fold_policy ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 135 filtered out; finished in 0.00s
+
+test automations::tests::window_dst_uses_local_gap_and_fold_policy ... ok
+test slack::tests::a_watched_message_reads_its_alert_and_cannot_break_its_frame ... ok
+test slack::tests::slack_reply_posts_in_this_turns_thread_not_the_newest ... ok
+test remote::tests::an_op_the_host_took_gets_one_answer_when_its_pipe_is_dropped ... ok
+test pressure::tests::a_week_and_a_hundred_at_most_and_an_open_one_ends_at_its_last_sample ... ok
+test git::tests::non_ascii_paths_come_out_as_written ... ok
+test claude::tests::an_answer_is_logged_before_the_sidecar_reads_it ... ok
+test git::tests::new_files_show_their_lines_in_the_diff ... ok
+test git::tests::a_subfolder_session_lists_every_file_from_the_repository_root ... ok
+test slack::inbox::tests::messages_are_kept_edited_deleted_and_counted_in_threads ... ok
+test remote::tests::the_pipe_s_own_errors_name_their_host_and_come_after_it_went_down ... ok
+test remote::tests::a_host_that_resyncs_its_page_settles_what_its_news_would_have ... ok
+test remote::tests::a_host_from_before_v0_18_is_not_reported_lost_for_the_sessions_it_made ... ok
+test remote::tests::an_op_the_host_took_gets_one_answer_when_the_connection_drops_before_its_reply ... ok
+test remote::tests::ops_a_page_waits_on_without_a_ref_get_one_answer_too ... ok
+test remote::tests::an_op_being_written_when_its_pipe_is_dropped_gets_one_answer ... ok
+test remote::tests::every_op_a_failed_write_leaves_unsent_gets_an_error ... ok
+test remote::tests::a_healthy_host_answers_every_op_once_and_in_order ... ok
+
+test result: ok. 136 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.95s
+
+
+running 23 tests
+test opencode_thinking_streams_as_reasoning ... ok
+test an_opencode_turn_streams_then_completes_and_follows_up ... ok
+test opencode_lists_its_models_and_reports_its_providers ... ok
+test opencode_edits_show_their_diff_and_follow_the_permission_mode ... ok
+test gemini_discovers_models_streams_and_switches_models_without_config_options ... ok
+test messages_sent_during_an_opencode_turn_are_the_next_turn ... ok
+test opencode_asks_before_a_command_and_takes_the_answer ... ok
+test an_added_opencode_account_has_its_own_logins_and_sessions ... ok
+test an_opencode_agent_that_dies_fails_the_turn_and_the_next_one_resumes ... ok
+test opencode_takes_the_model_and_effort_from_the_session ... ok
+test gemini_accepts_edits_and_hands_off_with_the_conversation ... ok
+test an_opencode_session_resumes_after_a_restart ... ok
+test gemini_logged_out_offers_terminal_login_and_added_accounts_stay_separate ... ok
+test gemini_permissions_stop_and_reload_use_its_native_protocol ... ok
+test a_failed_grok_login_says_why ... ok
+test grok_follows_the_permission_mode_with_its_own_modes ... ok
+test grok_reports_its_credit_allowance_and_when_it_resets ... ok
+test an_added_grok_account_logs_in_on_its_own ... ok
+test grok_lists_models_logs_in_with_a_device_code_and_runs_a_turn ... ok
+test opencode_providers_log_in_from_the_app ... ok
+test text_of_a_turn_ended_after_stop_does_not_run_into_the_next_answer ... ok
+test stop_ends_an_opencode_turn_even_when_it_does_not_listen ... ok
+test output_of_a_turn_ended_after_stop_that_arrives_later_is_dropped ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.48s
+
+
+running 13 tests
+test the_tools_endpoint_answers_only_a_key_it_made ... ok
+test an_agent_reaches_the_owner_a_few_times_an_hour_and_is_marked_until_seen ... ok
+test an_opencode_agent_calls_its_tools_without_asking ... ok
+test an_agent_with_a_spaced_name_is_messaged_by_its_handle_or_its_name ... ok
+test a_claude_agent_edits_its_own_memory ... ok
+test the_owners_own_sessions_get_no_tools ... ok
+test a_kept_agents_tools_act_on_the_hub_while_its_host_is_older ... ok
+test a_failed_or_stopped_answer_still_reaches_the_sender ... ok
+test a_new_agent_sets_itself_up_with_its_tool ... ok
+test an_agent_on_a_host_uses_its_tools_there_and_agents_reach_each_other_across_hosts ... ok
+test a_message_to_another_agent_comes_back_as_its_answer ... ok
+test chains_stop_at_three_hops_and_an_agent_cannot_message_itself ... ok
+test a_hosted_agent_gets_tools_only_from_a_hub_that_answers_them ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.77s
+
+
+running 34 tests
+test a_hand_over_that_cannot_be_saved_says_so_and_keeps_nothing ... ok
+test a_host_takes_an_agent_with_its_slack_app_or_not_at_all ... ok
+test an_agent_leaving_by_one_hand_over_is_not_exported_by_another ... ok
+test a_host_does_not_let_go_mid_turn ... ok
+test a_new_account_in_edit_continues_the_conversation_in_a_fresh_context ... ok
+test a_display_name_gets_a_mention_handle_that_stays_while_it_fits ... ok
+test a_host_shows_connected_once_the_hub_knows_it_can_own_agents ... ok
+test a_message_to_a_kept_record_its_host_took_reaches_the_host_s_own ... ok
+test an_agents_first_turn_carries_its_preamble_and_every_message_goes_to_its_one_conversation ... ok
+test a_window_cannot_send_a_hand_over_to_a_host_through_the_hub ... ok
+test pressure_queues_a_new_chat_until_start_anyway ... ok
+test sending_an_agent_again_is_the_same_hand_over_or_refused ... ok
+test an_agents_slack_app_moves_between_hosts_whole_and_once ... ok
+test a_fresh_context_continues_the_same_conversation ... ok
+test an_agent_moves_between_hosts_and_its_next_conversation_starts_where_the_last_ended ... ok
+test a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely ... ok
+test a_second_hub_sees_the_hosts_agents_and_can_ask_edit_and_delete_them ... ok
+test the_retired_host_agent_leaves_with_its_conversation ... ok
+test an_agent_belongs_to_the_host_it_runs_on_and_the_hub_lists_it ... ok
+test fields_this_build_does_not_know_survive_saves_and_hand_overs ... ok
+test a_host_too_old_to_own_agents_keeps_running_the_hubs_copy ... ok
+test an_owed_release_from_another_hand_over_never_drops_an_agent ... ok
+test a_move_whose_export_answer_is_lost_leaves_nothing_leaving ... ok
+test an_edit_made_while_a_hand_over_succeeds_says_where_the_agent_went ... ok
+test an_edit_waits_for_a_hand_over_s_answer_not_for_the_steps_after_it ... ok
+test a_refusal_is_told_by_its_code_never_by_the_agents_name ... ok
+test an_agent_moved_back_before_its_old_host_let_go_is_never_lost ... ok
+test a_move_between_hosts_whose_adopt_answer_is_lost_still_has_one_owner ... ok
+test a_hand_over_tried_again_and_again_backs_up_once_and_is_listed_once ... ok
+test an_agent_deleted_on_its_host_after_a_lost_adopt_answer_stays_deleted ... ok
+test a_hidden_copy_another_mac_runs_is_left_alone_and_its_page_says_why ... ok
+test an_agent_deleted_on_its_host_mid_hand_over_stays_deleted ... ok
+test a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile ... ok
+test an_edit_made_while_a_refused_hand_over_is_tried_again_waits_for_the_answer ... ok
+
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.04s
+
+
+running 6 tests
+test every_claude_account_has_its_limits_without_running_a_turn ... ok
+test codex_servers_are_listed_and_a_pasted_redirect_signs_one_in ... ok
+test a_codex_chart_is_kept_served_and_can_load_more_after_a_restart ... ok
+test linear_is_added_to_each_engine_signed_in_and_removed ... ok
+test claude_connectors_sign_in_and_running_sessions_dial_again ... ok
+test a_claude_chart_calls_back_through_the_sidecar_even_after_a_restart ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.37s
+
+
+running 99 tests
+test a_claude_question_takes_the_owners_answers ... ok
+test a_file_change_carries_its_diff_with_relative_paths ... ok
+test a_failing_worktree_setup_makes_no_session ... ok
+test a_claude_turn_keeps_the_windows_it_did_not_report ... ok
+test a_missed_run_outside_the_window_creates_no_session_but_run_now_does ... ok
+test a_codex_question_takes_the_owners_answers ... ok
+test a_message_to_a_session_whose_folder_is_gone_says_so ... ok
+test a_session_says_when_and_how_its_last_turn_ended ... ok
+test a_queued_message_can_be_taken_back_to_edit ... ok
+test a_folder_outside_a_repository_runs_in_place ... ok
+test a_claude_session_whose_sidecar_died_takes_the_next_message ... ok
+test a_plain_turn_streams_then_completes ... ok
+test a_hub_runs_sessions_on_a_direct_host ... ok
+test a_long_first_line_is_titled_at_a_word_with_an_ellipsis ... ok
+test a_hub_routes_automations_to_the_host_that_runs_them ... ok
+test a_page_opened_while_a_host_is_down_still_lists_its_sessions ... ok
+test allow_origin_takes_a_list ... ok
+test a_claude_session_runs_under_its_accounts_config_dir ... ok
+test a_run_is_skipped_when_engine_usage_is_above_the_limit ... ok
+test a_session_whose_folder_is_gone_says_so ... ok
+test a_run_is_skipped_while_the_previous_one_is_still_going ... ok
+test a_window_cannot_ask_for_an_agents_hand_over ... ok
+test approval_deny_declines_the_command ... ok
+test an_error_turn_reports_and_fails ... ok
+test branches_of_a_missing_folder_say_it_is_missing ... ok
+test attachments_reach_codex_as_a_local_image_and_a_path ... ok
+test a_page_s_first_op_reaches_a_connected_host_while_its_own_connection_opens ... ok
+test a_new_client_gets_its_snapshot_before_any_broadcast ... ok
+test automations_are_saved_listed_edited_and_deleted ... ok
+test automation_window_survives_partial_edits_and_null_clears_it ... ok
+test a_run_can_carry_its_own_prompt_and_title ... ok
+test codex_reasoning_streams_as_thinking ... ok
+test codex_subagent_activity_keeps_one_agent_and_its_report ... ok
+test a_codex_session_runs_on_its_accounts_own_app_server ... ok
+test accounts_are_per_host_through_the_hub ... ok
+test codex_usage_keeps_the_full_resets_and_every_limit ... ok
+test a_manual_automation_never_fires_on_its_own ... ok
+test deleting_a_session_does_not_ask_its_terminal_pane_to_reload ... ok
+test foreign_origins_are_refused ... ok
+test claude_models_fall_back_to_a_built_in_list_with_fable ... ok
+test claude_usage_survives_a_restart ... ok
+test approval_allow_runs_the_command ... ok
+test handoff_to_the_same_target_or_mid_turn_is_refused ... ok
+test folders_are_listed_for_the_picker ... ok
+test claude_code_sessions_are_listed_and_imported_with_their_history ... ok
+test codex_speed_is_used_for_new_turns_and_survives_restarts ... ok
+test forced_pressure_queues_until_start_now ... ok
+test handoff_can_change_the_account_or_model_without_changing_engines ... ok
+test delete_removes_a_session_across_a_restart ... ok
+test handoff_keeps_the_sidebar_group ... ok
+test notify_reaches_every_connected_window ... ok
+test notify_needs_a_title_and_only_takes_web_links ... ok
+test one_writer_per_folder ... ok
+test a_background_subagent_keeps_its_session_marked_working ... ok
+test a_runs_finish_time_stays_put_when_it_is_pinned_later ... ok
+test claude_models_are_what_each_account_reports ... ok
+test messages_sent_in_a_row_reach_the_agent_in_the_order_sent ... ok
+test permission_modes_reach_codex_and_switch_mid_session ... ok
+test an_account_is_added_logged_in_and_removed_without_touching_default ... ok
+test removing_an_account_in_use_names_its_sessions ... ok
+test pr_get_says_when_the_folder_is_a_repository_it_cannot_read_a_pr_for ... ok
+test removing_a_dirty_worktree_is_refused ... ok
+test an_answered_approval_is_logged_before_the_engine_moves_on ... ok
+test session_settings_sent_in_a_row_apply_in_the_order_sent ... ok
+test removing_a_codex_account_stops_its_app_server ... ok
+test snapshot_has_its_shape_and_the_fake_models ... ok
+test resizing_an_exited_terminal_is_not_an_error ... ok
+test renaming_a_session_updates_other_clients_and_survives_restart ... ok
+test session_procs_for_an_unknown_session_is_an_error ... ok
+test an_abandoned_claude_login_is_stopped ... ok
+test resuming_a_thread_the_engine_lost_fails_the_turn ... ok
+test a_message_sent_mid_turn_is_steered_into_the_codex_turn ... ok
+test a_message_sent_mid_turn_is_folded_into_the_claude_turn ... ok
+test run_now_starts_a_worktree_session_that_is_archived_when_it_ends ... ok
+test engines_log_in_from_the_app ... ok
+test pr_get_names_a_local_base_for_a_review_in_a_repo_without_a_remote ... ok
+test sessions_are_pinned_and_archived_across_restarts ... ok
+test the_page_is_sent_so_a_web_view_rechecks_it ... ok
+test the_snapshot_names_this_machine_before_its_first_stats_sample ... ok
+test sessions_are_grouped_across_restarts ... ok
+test terminal_keystrokes_reach_the_shell_in_order ... ok
+test the_codex_sandbox_can_be_set ... ok
+test terminal_runs_commands_and_replays_its_scrollback ... ok
+test upload_names_are_sanitized ... ok
+test messages_after_the_last_step_go_together_as_the_next_turn ... ok
+test messages_queued_during_an_approval_reach_the_agent_after_it ... ok
+test two_imports_of_one_claude_code_session_at_once_make_one_session ... ok
+test worktree_branches_and_a_session_from_a_base ... ok
+test sessions_survive_a_restart_and_resume_their_thread ... ok
+test stop_hands_queued_messages_back ... ok
+test a_too_large_upload_is_refused_and_the_socket_survives ... ok
+test install_sets_up_yardd_on_an_ssh_host ... ok
+test the_scheduler_fires_a_missed_run_once_and_automations_survive_a_restart ... ok
+test the_local_host_carries_its_configured_name ... ok
+test stop_ends_a_codex_turn_that_ignores_the_interrupt ... ok
+test stop_kills_a_claude_sidecar_that_ignores_the_interrupt ... ok
+test session_procs_goes_through_the_hub ... ok
+test attachments_land_on_the_remote_host_through_the_hub ... ok
+test session_procs_lists_what_a_session_is_running ... ok
+
+test result: ok. 99 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.77s
+
+
+running 6 tests
+test stopping_with_children_ends_the_whole_subtree ... ok
+test stopping_a_command_in_the_sessions_terminal_ends_it ... ok
+test refuses_a_pid_that_is_not_the_sessions ... ok
+test the_agents_own_process_is_refused_and_its_commands_are_not ... ok
+test session_kill_goes_through_the_hub ... ok
+test a_process_that_ignores_sigterm_is_still_running_until_force_killed ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.64s
+
+
+running 1 test
+test a_phone_connection_updates_other_clients_and_survives_restart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+
+running 7 tests
+test a_session_is_named_from_its_task_while_its_first_turn_runs ... ok
+test with_no_naming_model_the_title_stays ... ok
+test codex_nullable_config_does_not_break_the_restricted_thread ... ok
+test haiku_names_the_session_when_codex_fails ... ok
+test a_session_is_named_again_after_its_first_and_third_turns ... ok
+test naming_can_be_turned_off ... ok
+test a_title_typed_by_the_user_is_never_replaced ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.25s
+
+
+running 2 tests
+test a_remote_session_peeks_with_its_own_hosts_gh ... ok
+test a_pr_link_peeks_once_per_url_and_refuses_anything_else ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.45s
+
+
+running 5 tests
+test forced_pressure_opens_an_episode ... ok
+test an_open_episode_is_closed_by_a_restart_rather_than_lost ... ok
+test a_running_turn_quiet_under_pressure_is_listed_as_stalled_until_it_moves ... ok
+test an_episode_records_the_top_session_and_a_stray_process_closes_and_survives_a_restart ... ok
+test full_swap_on_a_calm_host_opens_no_episode_and_holds_none_open ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.63s
+
+
+running 12 tests
+test existing_agents_keep_a_missing_list_but_firefighter_gets_metabase_by_name ... ok
+test a_dead_app_server_is_replaced_and_its_sessions_resume ... ok
+test claude_sessions_carry_their_connector_scope ... ok
+test a_turn_over_before_its_start_was_answered_still_lets_the_thread_go ... ok
+test agents_and_automations_get_only_their_connectors_on_codex ... ok
+test an_idle_codex_thread_is_released_and_resumed_by_the_next_turn ... ok
+test a_session_waiting_on_an_approval_keeps_its_thread ... ok
+test an_idle_claude_sidecar_is_stopped_and_the_next_message_resumes ... ok
+test a_model_picked_on_an_idle_claude_session_is_the_one_its_next_sidecar_runs ... ok
+test a_claude_session_with_subagents_at_work_keeps_its_sidecar ... ok
+test a_claude_session_with_a_process_left_running_keeps_its_sidecar ... ok
+test a_claude_session_waiting_on_a_wakeup_or_a_cron_job_keeps_its_sidecar ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.50s
+
+
+running 22 tests
+test without_an_https_address_the_owner_pastes_his_user_token ... ok
+test slack_places_are_distinct_and_history_is_framed_as_data ... ok
+test claude_guests_use_a_fresh_tool_less_sidecar_and_can_ask_for_access ... ok
+test an_app_being_handed_over_is_not_deleted_in_slack_until_its_old_host_let_go ... ok
+test an_agent_gets_a_slack_app_of_its_own_from_a_configuration_token ... ok
+test an_agents_own_slack_app_moves_with_it_and_answers_from_its_host_while_the_hub_sleeps ... ok
+test slack_reaches_an_agent_on_a_remote_host_and_its_answer_comes_back_to_the_thread ... ok
+test an_agent_posts_later_only_in_slack_threads_routed_to_it_as_its_own_app ... ok
+test a_moved_agents_slack_places_and_approvals_stay_on_the_host_they_were_made_on ... ok
+test an_agent_called_in_another_case_still_hears_it ... ok
+test the_owner_calls_an_agent_from_his_reply_box_with_a_real_mention ... ok
+test an_agents_slack_app_follows_its_name_and_icon_and_says_when_it_cannot ... ok
+test codex_guest_requests_wait_for_the_owner_and_each_decision_is_applied_once ... ok
+test the_owner_replies_reacts_and_reads_from_switchyard_as_himself ... ok
+test the_owner_calls_agents_here_and_on_a_remote_host_from_his_reply_box ... ok
+test the_owner_imports_the_channels_he_picks_and_only_those ... ok
+test with_a_public_address_an_agents_app_needs_only_the_configuration_token ... ok
+test a_watched_turn_cannot_change_the_agents_setup_or_pass_its_access_on ... ok
+test the_owners_direct_messages_come_into_switchyard_new_ones_too ... ok
+test the_owner_connects_his_own_slack_and_it_comes_back_after_a_disconnect_a_drop_or_a_restart ... ok
+test an_agents_app_takes_human_messages_and_answers_in_the_thread ... ok
+test a_watched_channel_reaches_its_agent_as_read_only_data_one_turn_per_batch ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.65s
+
+
+running 3 tests
+test an_archived_worktree_with_nothing_of_its_own_is_removed ... ok
+test a_merged_worktree_is_removed_and_nothing_else ... ok
+test a_worktree_with_a_running_session_or_process_stays ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.36s
+
+bun test v1.4.4 (38afee6c8)
+bun test v1.4.4 (38afee6c8)
+{
+  "command": "selftest",
+  "ok": true,
+  "unit": {
+    "exit": 0,
+    "pass": 55,
+    "fail": 0
+  },
+  "smoke": null,
+  "problems": []
+}
+
+   Compiling yardd v0.24.0 (/home/giovani/.yard/wt/better-than-claude-code/yard-how-do-i-login-with-0c17/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 20.84s
+     Running unittests src/main.rs (target/debug/build/yardd/bad991732e93c085/out/yardd-bad991732e93c085)
+     Running tests/acp.rs (target/debug/build/yardd/eedc7031d243a762/out/acp-eedc7031d243a762)
+     Running tests/agent_tools.rs (target/debug/build/yardd/186aa936a878f481/out/agent_tools-186aa936a878f481)
+     Running tests/agents.rs (target/debug/build/yardd/11712efbaa4b2a19/out/agents-11712efbaa4b2a19)
+     Running tests/connectors.rs (target/debug/build/yardd/49adc95f5fa392e9/out/connectors-49adc95f5fa392e9)
+     Running tests/daemon.rs (target/debug/build/yardd/83312cf2765bfef2/out/daemon-83312cf2765bfef2)
+     Running tests/kill.rs (target/debug/build/yardd/313f6e51402f4c75/out/kill-313f6e51402f4c75)
+     Running tests/mobile.rs (target/debug/build/yardd/2eaf9a1380d855f2/out/mobile-2eaf9a1380d855f2)
+     Running tests/naming.rs (target/debug/build/yardd/727f047312f0c4ef/out/naming-727f047312f0c4ef)
+     Running tests/pr_peek.rs (target/debug/build/yardd/fc58ccf0e77430ca/out/pr_peek-fc58ccf0e77430ca)
+     Running tests/pressure.rs (target/debug/build/yardd/04d5dbe0470a531f/out/pressure-04d5dbe0470a531f)
+     Running tests/release.rs (target/debug/build/yardd/c62eeb6c0e135613/out/release-c62eeb6c0e135613)
+     Running tests/slack.rs (target/debug/build/yardd/2cadc90a240f7b9e/out/slack-2cadc90a240f7b9e)
+     Running tests/sweep.rs (target/debug/build/yardd/dfa21bbe7c407824/out/sweep-dfa21bbe7c407824)
+
+src/attach.test.ts:
+(pass) attachments in the browser > sizes read like yardd's [0.19ms]
+(pass) attachments in the browser > the cap is checked before upload [0.13ms]
+(pass) attachments in the browser > the per-message file count is checked before Send, like yardd's [0.10ms]
+(pass) attachments in the browser > a paste attaches files, unless it is rich text with a picture of itself [1.19ms]
+(pass) attachments in the browser > only file drags count [0.12ms]
+(pass) attachments in the browser > base64 turns back into the same bytes [0.75ms]
+(pass) attachments in the browser > replies reach the request with their ref, and nothing else [0.95ms]
+(pass) attachments in the browser > a dropped socket or a silent yardd fails what is waiting [5.49ms]
+
+src/thread.test.ts:
+(pass) layout > a steered message splits its turn, and each part has its own duration [2.65ms]
+(pass) layout > time spent waiting for an approval is not counted as work [0.53ms]
+(pass) layout > two approvals waiting at the same time leave their shared wait out once [0.32ms]
+(pass) layout > a turn stopped while waiting for an approval counts the work before it only [0.39ms]
+(pass) layout > a live turn groups work between messages, the last group live [0.36ms]
+(pass) layout > a finished turn with messages between its steps keeps them in view, under a line that says how long [0.35ms]
+(pass) layout > a finished turn whose only message is its answer folds its work above it [0.33ms]
+(pass) layout > a widget shows under its call while live, and stays in view when the turn folds [0.44ms]
+(pass) layout > a stopped turn with only text is marked stopped under its text, with its duration [0.27ms]
+(pass) layout > a steered text-only turn that is stopped marks its last part, once [0.21ms]
+(pass) layout > a turn with no tools is left alone, and errors stay in view [0.22ms]
+(pass) labels > a thought's line is its heading or first sentence [0.28ms]
+(pass) labels > summaries count the two biggest kinds [0.24ms]
+(pass) labels > a subagent counts as a subagent, not as an other step [0.13ms]
+(pass) labels > durations [0.07ms]
+(pass) subagents > a subagent's steps nest under its Agent call, not in the work list [0.43ms]
+(pass) subagents > steps nest as deep as the subagents do [0.29ms]
+(pass) subagents > a step whose Agent call is not in the turn stays an ordinary entry [0.22ms]
+(pass) subagents > steps do not count as work in the summary [0.27ms]
+(pass) subagents > an agent still running when the turn ends stays out of the fold, running [0.18ms]
+(pass) subagents > agents still running stay apart from the commands around them, in a turn that wrote between its steps [0.37ms]
+(pass) handoffLinks > the source's note links to the session it handed off to, in order [0.27ms]
+(pass) handoffLinks > the new session's note links back to its source [0.06ms]
+(pass) handoffLinks > a note that names its session links there, even after an earlier child was deleted [0.10ms]
+(pass) handoffLinks > the new session's note links to the session it names [0.06ms]
+(pass) handoffLinks > no link to a session that is gone, and other notes stay plain [0.04ms]
+(pass) summarize, with calls that never ran > a denied command is not run and not failed [0.12ms]
+(pass) summarize, with calls that never ran > next to work that ran, the calls that did not are counted apart [0.12ms]
+(pass) summarize, with calls that never ran > a denied edit was not made: the file was not edited, not "not run" [0.08ms]
+(pass) summarize, with calls that never ran > each kind says what did not happen, in its own words [0.06ms]
+(pass) toolLabel > an edit is not "Edited" until it is allowed and done [0.15ms]
+(pass) toolLabel > a command keeps its words [0.05ms]
+(pass) toolLabel > other titles are the engine's own [0.02ms]
+(pass) stillPinned > a scroll the browser makes for growing content keeps the thread pinned [0.03ms]
+(pass) stillPinned > scrolling up unpins, and reaching the bottom pins again [0.02ms]
+(pass) stillPinned > a move up that stays near the bottom keeps it pinned [0.01ms]
+(pass) Copy on a step offers the command it ran, and only for commands [0.08ms]
+
+src/launchDefaults.test.ts:
+(pass) explicit session defaults survive different one-off host/model selections [0.98ms]
+(pass) invalid preferences and unavailable storage do not break launch [0.20ms]
+(pass) a removed default model falls back without overwriting the saved preference [0.20ms]
+(pass) a removed default host falls back without dropping the saved model [0.09ms]
+
+src/slackText.test.ts:
+(pass) Slack markup > reads bold, italics, strikes and code, not mid-word marks [0.81ms]
+(pass) Slack markup > keeps code blocks as they are [0.10ms]
+(pass) Slack markup > reads links, mentions and specials, and only safe links are links [0.31ms]
+(pass) Slack markup > decodes Slack's escapes as text, never as markup [0.09ms]
+(pass) Slack markup > reads quotes and emoji [0.16ms]
+(pass) Slack markup > reads as one line, with people's names [0.29ms]
+
+src/filePreview.test.ts:
+(pass) previewKind > by extension for text, by content for binary [1.76ms]
+(pass) previewKind > SVG is not shown as an image [0.05ms]
+(pass) previewKind > a byte-order mark is dropped [0.04ms]
+(pass) parseDelimited > quotes hold delimiters, quotes and line breaks; CRLF ends a row [0.14ms]
+(pass) parseDelimited > empty fields stay, a last line without a newline counts [0.04ms]
+(pass) parseDelimited > the delimiter: tab for .tsv, semicolon when the header has more of them [0.15ms]
+(pass) tableView > header, limited rows, full count and number columns [0.32ms]
+(pass) tableView > ragged rows widen the table; an empty file has no columns [0.08ms]
+(pass) paths > links in a Markdown file resolve from its folder [0.17ms]
+(pass) paths > the line a link points at [0.16ms]
+(pass) paths > home becomes ~ [0.09ms]
+(pass) describe > names the kind and its size in rows or lines [3.49ms]
+
+src/compose.test.ts:
+(pass) cleanQuote > keeps a selection's lines as they are [0.12ms]
+(pass) cleanQuote > keeps paragraph breaks, trims the ends [0.04ms]
+(pass) cleanQuote > normalises Windows line ends [0.02ms]
+(pass) cleanQuote > cuts a huge selection to the cap [0.05ms]
+(pass) cleanQuote > nothing selected quotes nothing [0.02ms]
+(pass) withQuotes > each quote becomes a Markdown blockquote before the reply, a blank line apart [0.16ms]
+(pass) withQuotes > a blank line inside a quote stays inside it [0.04ms]
+(pass) withQuotes > no quotes sends the text as typed [0.02ms]
+(pass) withQuotes > quotes alone are the whole message [0.02ms]
+(pass) splitQuotes > takes the leading blockquotes back out as quotes [0.36ms]
+(pass) splitQuotes > round-trips what withQuotes sends [0.09ms]
+(pass) splitQuotes > a quote with no space after > still counts [0.04ms]
+(pass) splitQuotes > quotes alone leave no text [0.04ms]
+(pass) splitQuotes > a quote that runs straight into text stays text [0.02ms]
+(pass) splitQuotes > a message without quotes is all text [0.02ms]
+(pass) comments on parts of an answer > each part and its own comment are one numbered item, after a header and before the text [0.17ms]
+(pass) comments on parts of an answer > without any comment, quotes go as before [0.04ms]
+(pass) comments on parts of an answer > round-trip: Edit and Stop give the parts back with their comments [0.24ms]
+(pass) comments on parts of an answer > a quote with blank lines and a comment that starts with > stay apart [0.08ms]
+(pass) comments on parts of an answer > only a message that starts with the header is read as comments [0.04ms]
+(pass) quoteSegments > splits a sent message into its quotes and its text [0.25ms]
+(pass) quoteSegments > a quote in the middle of a message [0.05ms]
+(pass) quoteSegments > plain text is one segment, untouched [0.04ms]
+(pass) quoteSegments > > inside a fenced block is not a quote [0.03ms]
+(pass) composer additions > a quoted selection arrives as a quote, not as text [0.28ms]
+(pass) composer additions > terminal text arrives as text [0.07ms]
+(pass) composer additions > a message given back for editing brings its quotes back as quotes [0.10ms]
+(pass) composer additions > a message given back for editing brings its files back too [0.11ms]
+(pass) composer additions > only the session's own composer hears it [0.04ms]
+(pass) drafts > a session's draft is kept until cleared, apart from others [0.09ms]
+(pass) terminal snippets > go after the quotes and before the text, as a labelled fenced block [0.13ms]
+(pass) terminal snippets > alone they still send [0.04ms]
+(pass) terminal snippets > backticks in the output get a longer fence [0.04ms]
+(pass) fenceSegments > a closed fenced block is code; the text around it stays text [0.26ms]
+(pass) fenceSegments > a longer fence holds shorter backtick runs [0.06ms]
+(pass) fenceSegments > an unclosed fence is plain text [0.04ms]
+(pass) fenceSegments > no fence: one text segment, untouched [0.03ms]
+
+src/markdown.test.ts:
+(pass) fencedBlocks > keeps surrounding prose and recognises a complete Mermaid fence [0.30ms]
+(pass) fencedBlocks > waits for the closing fence while streaming, including an empty block [0.11ms]
+(pass) fencedBlocks > supports tildes, case, CRLF and longer fences without parsing nested examples [0.10ms]
+(pass) fencedBlocks > leaves inline backticks alone and preserves code indentation and language [0.06ms]
+(pass) splitRow > drops the outer pipes and trims cells [0.13ms]
+(pass) splitRow > keeps escaped pipes and pipes in inline code [0.03ms]
+(pass) splitRow > keeps empty cells [0.02ms]
+(pass) blockSegments > a table with alignments, short and long rows [0.48ms]
+(pass) blockSegments > text right before and after a table stays text [0.12ms]
+(pass) blockSegments > a pipe in prose is not a table [0.07ms]
+(pass) blockSegments > a delimiter row with another number of cells is not a table [0.06ms]
+(pass) blockSegments > a header without body rows is still a table [0.04ms]
+(pass) blockSegments: headings and lists without a blank line > a heading over its text, a list under its lead-in [0.07ms]
+(pass) blockSegments: headings and lists without a blank line > a numbered list that continues after a code block keeps its number [0.04ms]
+(pass) blockSegments: headings and lists without a blank line > a whole-paragraph list stays one list [0.03ms]
+(pass) blockSegments: headings and lists without a blank line > a numbered list interrupting text must start at 1 [0.04ms]
+(pass) blockSegments: headings and lists without a blank line > an indented line continues its item; a bullet switch starts a new list [0.05ms]
+(pass) blockSegments: headings and lists without a blank line > not headings or lists [0.03ms]
+(pass) blockSegments: headings and lists without a blank line > a heading keeps its level [0.03ms]
+(pass) blockSegments: headings and lists without a blank line > lines starting with > are one quote; a > later in a line is text [0.04ms]
+(pass) blockSegments: headings and lists without a blank line > closing hashes are dropped from a heading [0.05ms]
+
+src/mobile.test.ts:
+(pass) phone setup accepts only private-network HTTPS page origins [0.34ms]
+(pass) only real TestFlight invitations become install links [0.11ms]
+(pass) setup state follows the hub, survives snapshots and ignores remote phones [1.36ms]
+(pass) the desktop app offers the hosts' own HTTPS addresses, not its loopback page [0.25ms]
+(pass) the web page offers its own address first, once [0.08ms]
+(pass) a host's phones read as connected now, last seen, or none yet [0.16ms]
+(pass) the QR code opens the host's page, which any iPhone Camera opens even without the app [1.12ms]
+
+src/slack.test.ts:
+(pass) the connection's status > is the owner's own Slack: its step, then who he is and where, or the error [0.27ms]
+(pass) the connection's status > numbers his steps [0.09ms]
+(pass) the connection's status > says whose requests can use tools [0.07ms]
+(pass) the connection's status > comes with the snapshot and every change, from the hub only [0.10ms]
+(pass) a message from Slack in the thread > keeps its origin and reads as channel and person [0.33ms]
+(pass) an agent's own Slack app > takes only the configuration token with a public address and an https page [0.08ms]
+(pass) an agent's own Slack app > numbers only the steps it still takes [0.11ms]
+(pass) an agent's own Slack app > wears the agent's face, drawn from the page's avatar, on its colour [0.29ms]
+(pass) an agent's own Slack app > is sent again only when its picture changed [0.59ms]
+(pass) an agent's own Slack app > has one key per picture, whichever window drew it [7.16ms]
+(pass) an agent's own Slack app > waits for an offline host instead of being refused on every page view [0.08ms]
+(pass) an agent's own app on its host > is made with that host's workspaces and addresses [0.11ms]
+
+src/sidebarDrop.test.ts:
+(pass) dropUpdate > an ungrouped session dropped on a group joins it [0.14ms]
+(pass) dropUpdate > a session moves from one group to another [0.04ms]
+(pass) dropUpdate > dropping on its own group sends nothing [0.03ms]
+(pass) dropUpdate > a pinned session dropped on a group is unpinned, so it shows in the group [0.06ms]
+(pass) dropUpdate > dropping on Sessions takes it out of its group [0.04ms]
+(pass) dropUpdate > dropping a pinned session on Sessions unpins it, and ungroups it if it had a group [0.04ms]
+(pass) dropUpdate > an ungrouped session dropped on Sessions sends nothing [0.03ms]
+(pass) dropUpdate > dropping on Pinned pins it and keeps its group [0.03ms]
+(pass) dropUpdate > archived sessions are not moved by a drop [0.04ms]
+(pass) dropUpdate > a group name is trimmed like the menu's; a blank one is no target [0.04ms]
+
+src/fileLinks.test.ts:
+(pass) fileTarget > every dialect agents use for a file is a file [0.24ms]
+(pass) fileTarget > other schemes, anchors and remote files are not [0.09ms]
+(pass) fileError > says what went wrong, and names an outdated host [0.13ms]
+
+src/addHost.test.ts:
+(pass) nameFromDestination > a host name gives its first label [0.12ms]
+(pass) nameFromDestination > an IPv4 address stays whole, so two tailnet hosts get different names [0.03ms]
+(pass) nameFromDestination > an IPv6 address stays whole, without brackets [0.06ms]
+(pass) nameFromDestination > nothing typed gives no name [0.03ms]
+
+src/hosts.test.ts:
+(pass) the card's sessions line > counts the sessions using the host, their cores and memory [0.33ms]
+(pass) the card's sessions line > leaves out a session the sample lists but the UI no longer has [0.06ms]
+(pass) the card's sessions line > says when nothing runs, and counts the queue [0.05ms]
+(pass) the card's engine marks > one per reported engine, in the page's order, ready ones without a note [0.26ms]
+(pass) the card's engine marks > a logged-out engine says so; one not installed is quiet [0.07ms]
+(pass) the card's engine marks > an added account that is logged out makes its engine amber [0.09ms]
+(pass) the card's engine marks > an unknown state is a warning, not ready [0.03ms]
+(pass) an engine's state in words > providers, account, logged out, error [0.05ms]
+
+src/engines.test.ts:
+(pass) engines > every engine has a name, a label, an install and a login hint [0.06ms]
+(pass) engines > a queued message says when the agent gets it: mid-turn on Claude and Codex, next turn on OpenCode and Grok [0.06ms]
+(pass) engines > Claude and Codex are always offered, the session's engine first [0.10ms]
+(pass) engines > OpenCode and Grok are offered only where their host lists models for them [0.07ms]
+(pass) engines > work on OpenCode or Grok is reviewed by Claude, else whoever has models [0.09ms]
+(pass) engines > Claude and Codex review each other [0.06ms]
+(pass) Gemini is offered on hosts that have it and queues messages for the next turn [0.05ms]
+(pass) shownEffort > a model without efforts shows none, whatever the choice still carries [0.07ms]
+(pass) shownEffort > a model with efforts shows the chosen one [0.03ms]
+(pass) an account is offered only the models its plan has; the one in use stays [0.12ms]
+
+src/usageMeters.test.ts:
+(pass) triggerMeter > shows the fullest meter of a signed-in account [1.22ms]
+(pass) triggerMeter > leaves out an account that needs sign-in, as the popover does [0.10ms]
+(pass) triggerMeter > a login state not read yet still shows the last report [0.07ms]
+(pass) leadRow > with nothing selected, leads with the account whose meter the trigger shows [0.23ms]
+(pass) leadRow > falls back to the first row when no account reports limits [0.08ms]
+(pass) leadRow > skips the stale report of an account that needs sign-in, as the trigger does [0.13ms]
+
+src/agents.test.ts:
+(pass) mentions > the @word under the caret, at the start or after a space [0.31ms]
+(pass) mentions > names that start with the query come first [0.47ms]
+(pass) mentions > picking one replaces the query and leaves the caret after a space [0.28ms]
+(pass) mentions > a message that starts with an agent's @Name goes to it, without the mention [0.32ms]
+(pass) mentions > a spaced name is offered for any of its words and inserted as its handle [0.25ms]
+(pass) mentions > a leading @handle goes to the agent; its name as typed does not [0.08ms]
+(pass) handles: one mentionable word made from the name, numbered when taken, kept while it fits [0.74ms]
+(pass) faces: its own, else a steady one from its id; each in parts that move [0.51ms]
+(pass) names: display text up to 40 characters, unique, the rule said before yardd refuses [0.33ms]
+(pass) an agent's conversation is the hub's, and stays out of the sidebar [0.23ms]
+(pass) an agent on a remote host: its conversation and the ones it left are found by id [0.13ms]
+(pass) where it works and what a move does, in words that name the host only when it is not this one [0.20ms]
+(pass) the card's status line reads from the one conversation [0.31ms]
+(pass) the Agents row shows the most pressing state of any conversation [0.29ms]
+(pass) an agent that asked for the user says so until they look, on its card and the row [0.20ms]
+(pass) a message from another agent is badged with who sent it [0.11ms]
+(pass) how it runs, in the pickers' words [0.25ms]
+(pass) the box's pickers show the agent's model, or the host's default, and a host change keeps what the new host has [0.27ms]
+(pass) routes and the agents broadcast [0.44ms]
+(pass) agents that live on their host > a host's agent's conversation is its own, by its prefixed id [0.08ms]
+(pass) agents that live on their host > names count per host [0.13ms]
+(pass) agents that live on their host > an agent's page follows it to its host, and back [0.24ms]
+(pass) agents that live on their host > an agent kept for an older host says to update it [0.18ms]
+
+src/appUpdate.test.ts:
+(pass) only the app's update state shows the notice [0.60ms]
+(pass) dismissing a found release does not hide it once it is installed [0.10ms]
+(pass) actions go to the app as a Tauri event, and nowhere in a browser [0.31ms]
+
+src/accounts.test.ts:
+(pass) account helpers > a session without an account runs on Default [0.05ms]
+(pass) account helpers > choices are Default first, then the engine's own accounts [0.12ms]
+(pass) account helpers > names fall back to Default, then to the id of a removed account [0.07ms]
+(pass) account helpers > a session names its account only where there is a choice [0.10ms]
+(pass) account helpers > usage is read per account [0.17ms]
+(pass) accounts in the store > a snapshot and a host snapshot keep each host's accounts apart [0.14ms]
+(pass) accounts in the store > an accounts message replaces one host's list [0.05ms]
+(pass) accounts in the store > engine status keeps its per-account states [0.05ms]
+(pass) accounts in the store > a login for an account does not overwrite Default's [0.11ms]
+(pass) choiceOnEngine > moves to the engine's default model and keeps an effort it has [0.08ms]
+(pass) choiceOnEngine > falls back to the model's default effort [0.03ms]
+(pass) choiceOnEngine > takes the first model when none is marked default [0.03ms]
+(pass) choiceOnEngine > stays put when the engine has no models [0.02ms]
+
+src/procs.test.ts:
+(pass) procTree > parents come before their children, children by pid, with their depth [0.30ms]
+(pass) procTree > a process whose parent is not listed is a root; separate trees follow each other [0.09ms]
+(pass) procTree > a parent loop cannot hang it [0.04ms]
+(pass) shortCommand > long absolute paths shrink to their last segment, the rest stays [0.12ms]
+(pass) shortCommand > whitespace collapses and a long line is cut with an ellipsis [0.05ms]
+(pass) procSummary > counts processes and adds up CPU and memory [0.16ms]
+(pass) rowActions > the engine's own processes offer nothing [0.20ms]
+(pass) rowActions > a process offers Stop, and Stop with children only when it has some [0.09ms]
+(pass) rowActions > while the request is out, nothing is offered [0.07ms]
+(pass) rowActions > still running after SIGTERM offers Force kill and nothing else [0.07ms]
+(pass) rowActions > a refusal or a failure says why and offers Stop again [0.13ms]
+(pass) rowActions > a stopped process says so until it leaves the list [0.07ms]
+(pass) rowActions > a kill of an earlier process with the same pid is not this row's [0.04ms]
+(pass) pruneKills > drops kills of processes that left the list, keeps one under way [0.17ms]
+(pass) procsBlank > the list, a wait, or nothing running, while the host is online [0.07ms]
+(pass) procsBlank > an offline host says so rather than a stale list, a wait that never ends, or nothing running [0.04ms]
+
+src/automations.test.ts:
+(pass) the schedule in words > intervals [0.14ms]
+(pass) the schedule in words > active windows name hours and start days compactly [0.22ms]
+(pass) the schedule in words > window validation agrees with the daemon [0.26ms]
+(pass) the schedule in words > daily and weekly name the time, and weekly the day [0.05ms]
+(pass) the schedule in words > a schedule that cannot run is explained [0.05ms]
+(pass) the schedule in words > a manual schedule runs only when started [0.02ms]
+(pass) next run > soon is relative [0.15ms]
+(pass) next run > later today, tomorrow and further out say when [0.14ms]
+(pass) next run > a late run and a disabled automation [0.04ms]
+(pass) last run > never, started, skipped [0.12ms]
+(pass) runs > an automation's runs are newest first and stay on their host [0.18ms]
+(pass) runs > runs stay out of the sidebar unless pinned [0.07ms]
+(pass) runs > the Automations button's dot: a run waiting for approval outranks a working one [0.12ms]
+(pass) automations in the store > each host keeps its own list [0.16ms]
+(pass) automations in the store > a host snapshot carries the host's list, and an old host has none [0.07ms]
+(pass) the card at a glance > a run is named by its time, with the day once it is not today, and the date after a week [0.13ms]
+(pass) the card at a glance > a run's outcome, from its status and how its turn ended [0.14ms]
+(pass) the card at a glance > a run's tooltip says when, how long and how it ended; a live one how long so far [0.18ms]
+(pass) the card at a glance > the strip holds the newest runs, oldest first so the newest is on the right [0.08ms]
+(pass) the card at a glance > the schedule line: when it runs and when next, or off [0.20ms]
+(pass) the card at a glance > a manual automation has no next run: it runs when started [0.11ms]
+(pass) the card at a glance > a run started for a pull request is labelled with it, a plain run by its time alone [0.19ms]
+(pass) the card at a glance > a working run is what the card says first, with how long it has run, and it opens that run [0.34ms]
+(pass) the card at a glance > the last run: how long it took and when, without the automation's name [0.21ms]
+(pass) the card at a glance > a skip or a failure to start says why on one line, the whole reason in the tooltip [0.23ms]
+(pass) the card at a glance > never run [0.04ms]
+(pass) usage limits name the engine's figures, or say they cannot apply > Claude and Codex: both limits apply to their plan usage [0.11ms]
+(pass) usage limits name the engine's figures, or say they cannot apply > not reported yet: they skip nothing until it is [0.02ms]
+(pass) usage limits name the engine's figures, or say they cannot apply > Grok: only its credit allowance, no 5-hour window [0.04ms]
+(pass) usage limits name the engine's figures, or say they cannot apply > OpenCode and Gemini report no limits: neither applies, and the form says so [0.08ms]
+
+src/usageResets.test.tsx:
+(pass) reset times at a glance > the sidebar's Usage row says when the window it shows resets [12.49ms]
+(pass) reset times at a glance > another account lists every window with its reset, not only the first one's percent [2.62ms]
+(pass) reset times at a glance > Subscriptions gives each reset as a time and as a countdown [2.99ms]
+(pass) Codex full resets and per-model limits > available full-reset credits are counted, with the soonest expiry [0.12ms]
+(pass) Codex full resets and per-model limits > Subscriptions shows them on the Codex account [1.54ms]
+(pass) Codex full resets and per-model limits > only the count known (no credit rows): the count, with no expiry [1.00ms]
+(pass) Codex full resets and per-model limits > a capped list: the count is availableCount, the expiry the soonest listed [0.09ms]
+(pass) Codex full resets and per-model limits > a listed credit that expired since the read is not counted [0.07ms]
+(pass) Codex full resets and per-model limits > none available, or an answer without the count [0.08ms]
+(pass) Codex full resets and per-model limits > a second Codex limit (another model's) is a meter of its own, the main one is not repeated [0.10ms]
+(pass) Claude windows beyond the known three > a labelled window from the usage report is shown under its label [0.11ms]
+(pass) Claude windows beyond the known three > an unlabelled window that is not a limit stays out [0.10ms]
+(pass) Grok and the engines without limits > Grok's credit allowance reads as a meter with its reset [0.10ms]
+(pass) Grok and the engines without limits > OpenCode and Gemini are named as not reporting limits [0.04ms]
+
+src/navigation.test.ts:
+(pass) navigationEntries > recent sessions come first, followed by every page and Import [0.45ms]
+(pass) navigationEntries > search includes archived sessions and runs, matching every word across metadata [0.34ms]
+(pass) navigationEntries > a session's detail names its repository and branch, not the worktree path under the data dir [0.22ms]
+(pass) navigationEntries > page searches put matching destinations ahead of similarly named sessions [0.15ms]
+(pass) navigationEntries > agents are destinations; their conversations are not listed apart [0.29ms]
+(pass) navigationEntries > every sidebar page is a destination; Switchy's old name finds the agents [0.06ms]
+(pass) navigationEntries > the recent list leaves out archived sessions and runs, as the sidebar does, but search finds them [0.49ms]
+(pass) navigationEntries > the recent list is bounded, but search finds older sessions [0.32ms]
+(pass) navigation shortcut preserves Mac Ctrl+K, modifiers, repeats and composition [0.13ms]
+(pass) the highlight follows its entry when the list re-sorts [0.12ms]
+(pass) a host's agents in Cmd-K > name their host and are found by it [0.22ms]
+
+src/voice.test.ts:
+(pass) speakable > plain prose stays as it is [0.46ms]
+(pass) speakable > a fenced code block is not read out [0.14ms]
+(pass) speakable > an unclosed fence (a cut-off answer) is omitted too [0.04ms]
+(pass) speakable > inline code keeps its words without backticks [0.03ms]
+(pass) speakable > links read their text, bare URLs are named, images are dropped [0.03ms]
+(pass) speakable > headings, emphasis, quotes and list markers go [0.08ms]
+(pass) speakable > a table is announced, not read cell by cell [0.09ms]
+(pass) speakable > HTML-ish tags are dropped, their text kept [0.03ms]
+(pass) speakable > a long answer is cut at a sentence and says the rest is on screen [0.37ms]
+(pass) speakable > nothing speakable gives an empty string [0.05ms]
+(pass) speechChunks > short text is one chunk [0.28ms]
+(pass) speechChunks > long text splits at sentence ends, each under the cap [0.08ms]
+(pass) speechChunks > a sentence longer than the cap splits at spaces [0.08ms]
+(pass) speechChunks > empty text has no chunks [0.02ms]
+(pass) dictation text > results join into one transcript, final and interim alike [0.13ms]
+(pass) dictation text > results already used are skipped [0.09ms]
+(pass) dictation text > WebKit's one growing result: words said after an echo still count [0.06ms]
+(pass) dictation text > a final result is used up whole [0.04ms]
+(pass) dictation text > dictation goes after what is in the box, a space apart [0.08ms]
+(pass) echo and stop words > hearing the answer being spoken is an echo [0.20ms]
+(pass) echo and stop words > the user's own words are not [0.03ms]
+(pass) echo and stop words > nothing heard is no barge-in either [0.02ms]
+(pass) echo and stop words > stop words end the speech instead of becoming a message [0.13ms]
+(pass) recognitionProblem > a blocked microphone says how to allow it [0.08ms]
+(pass) recognitionProblem > no microphone and no network are named [0.05ms]
+(pass) recognitionProblem > silence and our own abort are not problems [0.02ms]
+(pass) recognitionProblem > anything else still says something [0.04ms]
+(pass) voiceCue > a finished turn speaks its last answer [0.31ms]
+(pass) voiceCue > each ending is told apart by its turn [0.07ms]
+(pass) voiceCue > a turn with no answer just says done [0.04ms]
+(pass) voiceCue > a running turn, or a prompt not started yet, says nothing [0.07ms]
+(pass) voiceCue > an approval is announced with what it wants to run [0.19ms]
+(pass) voiceCue > a failed turn says why [0.11ms]
+(pass) voiceCue > a turn the user stopped is silent but hands back the mic [0.03ms]
+(pass) voiceStep > turning on says so while already listening for a barge-in [0.28ms]
+(pass) voiceStep > after the greeting it listens [0.08ms]
+(pass) voiceStep > speech arms the silence timer, every new word re-arms it [0.06ms]
+(pass) voiceStep > silence with words sends; without words it keeps listening [0.06ms]
+(pass) voiceStep > once sent it stops listening and waits for the agent [0.05ms]
+(pass) voiceStep > the answer is spoken, then it listens again [0.06ms]
+(pass) voiceStep > an approval is announced and then it waits: never listens for a yes [0.06ms]
+(pass) voiceStep > a stopped turn goes straight back to listening [0.07ms]
+(pass) voiceStep > the user talking over the answer silences it and is heard [0.07ms]
+(pass) voiceStep > Stop silences the answer and listens [0.05ms]
+(pass) voiceStep > sending by hand while it speaks silences it [0.04ms]
+(pass) voiceStep > turning off stops everything, from any phase [0.09ms]
+(pass) voiceStep > a recognition failure turns it off [0.04ms]
+(pass) voiceStep > while off, nothing reacts [0.10ms]
+(pass) voiceStep > the silence wait is about a second and a half [0.02ms]
+
+src/widget.test.ts:
+(pass) the frame's CSP > no network unless the server declared it [0.17ms]
+(pass) the frame's CSP > declared origins are allowed where they belong [0.17ms]
+(pass) the frame's CSP > a declared value cannot add a directive or a wildcard [0.06ms]
+(pass) the policy comes before anything the widget wrote [0.11ms]
+(pass) messages from the widget > initialize answers with the host and its context [0.54ms]
+(pass) messages from the widget > tool calls, links, sizes [0.19ms]
+(pass) messages from the widget > what the host does not do is refused, notifications ignored, junk ignored [0.06ms]
+(pass) heights stay within bounds [0.03ms]
+(pass) a stored result becomes the CallToolResult the widget expects [0.09ms]
+
+src/connectors.test.ts:
+(pass) names read as the service, with where it comes from [0.37ms]
+(pass) what needs the user comes first [0.34ms]
+(pass) each state offers what can fix it [0.12ms]
+(pass) Codex's transport noise is cut from errors [0.09ms]
+(pass) the catalog offers what the account lacks, Linear first [0.23ms]
+(pass) an added server is a plain name and https address [0.17ms]
+(pass) connected view hides unused connectors and setup failures [0.34ms]
+(pass) search matches readable service names and source, case insensitively [0.15ms]
+(pass) an agent's connectors: the default leaves Metabase out, a pick makes the list explicit [0.31ms]
+
+src/termRows.test.ts:
+(pass) joinRows > wrapped rows join their line; others start a new one [0.17ms]
+(pass) joinRows > trailing blank rows (the empty screen below a prompt) are dropped, inner ones kept [0.05ms]
+(pass) joinRows > trailing spaces on a row are trimmed [0.03ms]
+(pass) joinRows > nothing but blanks is empty [0.02ms]
+(pass) pickRows > the screen is the rows in view [0.05ms]
+(pass) pickRows > the last n lines end at the buffer's end, never before its start [0.04ms]
+
+src/prPeek.test.ts:
+(pass) prLink > a PR link, with a tab, anchor or query, is that PR [0.30ms]
+(pass) prLink > anything else is not [0.11ms]
+(pass) prLink > a bare URL in text stops before the sentence's punctuation [0.14ms]
+(pass) prLink > its short label is GitHub's [0.05ms]
+(pass) card wording > state [0.08ms]
+(pass) card wording > review decision [0.04ms]
+(pass) card wording > checks [0.17ms]
+(pass) card wording > updated ago [0.24ms]
+(pass) card wording > a reply, a refusal and an older host [0.12ms]
+(pass) PeekCache > asks once while an answer is on its way, and keeps it for a minute [0.47ms]
+(pass) PeekCache > a failure is asked again after 10 s, and a thrown load is a failure [0.23ms]
+(pass) PeekCache > keys are per host [0.06ms]
+
+src/rowState.test.ts:
+(pass) rowState > live states come from the status [0.13ms]
+(pass) rowState > a turn that ended after the user last looked is answered until opened [0.04ms]
+(pass) rowState > an unseen failed turn shows as failed; a stopped one does not stand out [0.03ms]
+(pass) rowState > a session from an older yardd has no turn end: idle [0.03ms]
+(pass) rowState > offline wins over everything [0.02ms]
+(pass) rowState > every state has a label [0.04ms]
+(pass) markSeen > records the turn end the user has seen, dropping sessions that are gone [0.11ms]
+(pass) markSeen > nothing to record leaves the map as it is [0.06ms]
+(pass) manual unread > marks stopped, failed and older chats unread independently of the turn end [0.06ms]
+(pass) manual unread > live states and offline status retain priority [0.05ms]
+(pass) manual unread > opening a manually unread chat clears the marker, even without a turn end [0.10ms]
+(pass) a session whose turn ended with a subagent still at work reads as working [0.06ms]
+
+src/protocol.test.ts:
+(pass) applyEvent > a command that started before a steered message still completes after it [0.18ms]
+(pass) applyEvent > a message's origin rides on its item; the owner's own carries none [0.10ms]
+(pass) applyEvent > an id reused in a later turn makes a new item under its own question [0.15ms]
+(pass) applyEvent > thinking streams into one item and settles with the turn [0.11ms]
+(pass) applyEvent > deltas accumulate on one item, then the final message settles it [0.14ms]
+(pass) applyEvent > a final message with no deltas is its own item [0.04ms]
+(pass) applyEvent > deltas of two items stay apart [0.07ms]
+(pass) applyEvent > does not mutate the list it was given [0.43ms]
+(pass) applyEvent > a tool starts running and completes ok or failed [0.09ms]
+(pass) applyEvent > an approval is asked, then resolved [0.09ms]
+(pass) applyEvent > a question keeps its questions, and its answers once given [0.11ms]
+(pass) applyEvent > turn end closes whatever is still live [0.15ms]
+(pass) applyEvent > file changes become a diff item, unless there are none [0.07ms]
+(pass) applyEvent > queued, note and error lines [0.07ms]
+(pass) applyEvent > a prompt keeps its attachments, and may have no text [0.08ms]
+(pass) applyEvent > a turn's span is kept; unknown events add nothing [0.06ms]
+(pass) applyEvent > a subagent's tool call carries its Agent call's id; its end carries a duration [0.12ms]
+(pass) applyEvent > a background subagent outlives a completed turn; Stop or a failure ends it [0.20ms]
+(pass) applyEvent > an agent's end is matched after a later prompt too: its notification can come late [0.11ms]
+(pass) a call that waits for an approval > is waiting, not running, until someone answers [0.16ms]
+(pass) a call that waits for an approval > denied, it did not run: denied, not failed [0.09ms]
+(pass) a call that waits for an approval > an approval that comes before its call still links to it [0.08ms]
+(pass) a call that waits for an approval > a turn that ends before anyone answers leaves it unanswered [0.08ms]
+(pass) a call that waits for an approval > a call the engine failed while it waited is still unanswered at turn end [0.07ms]
+(pass) a call that waits for an approval > an approval without an itemId changes no call [0.06ms]
+
+src/pressure.test.ts:
+(pass) the worst contributor > by CPU when load is the trouble, among sessions and stray processes alike [0.29ms]
+(pass) the worst contributor > by memory when memory is [0.05ms]
+(pass) the worst contributor > nobody when nothing was measured [0.04ms]
+(pass) the banner > names the host, the load and the worst session [0.24ms]
+(pass) the banner > memory and swap say how much is left; a stray process is named with its pid [0.12ms]
+(pass) the banner > quiet when there is no episode [0.04ms]
+(pass) the stalled note > for a session yardd lists as quiet while the host is overloaded [0.18ms]
+(pass) the history > how long an episode lasted, or has lasted so far [0.11ms]
+(pass) the history > its peaks [0.12ms]
+(pass) the history > older pages join the recent ones without repeats, newest first [0.15ms]
+
+src/Subscriptions.test.tsx:
+(pass) Subscriptions page > a signed-in account shows its usage [0.69ms]
+(pass) Subscriptions page > an account that needs sign-in offers Sign in, not its last usage, as the popover does [0.44ms]
+
+src/notify.test.ts:
+(pass) statusNotice > a session that now waits for an approval needs the user [0.05ms]
+(pass) statusNotice > a turn that ends is finished [0.02ms]
+(pass) statusNotice > a failure is reported once [0.02ms]
+(pass) statusNotice > nothing else is worth interrupting for [0.03ms]
+(pass) statusNotice > a session seen for the first time is not news [0.02ms]
+(pass) shouldNotify > off means never [0.04ms]
+(pass) shouldNotify > an unfocused window always gets it, even on that session [0.02ms]
+(pass) shouldNotify > a focused window showing that session does not [0.02ms]
+(pass) shouldNotify > a focused window on another page or session does [0.03ms]
+(pass) shouldNotify > a note that names no session is never hidden by the open one [0.02ms]
+(pass) StatusWatcher > a snapshot sets the baseline without notifying [0.26ms]
+(pass) StatusWatcher > each change is judged against the one before [0.07ms]
+(pass) StatusWatcher > a host reload replaces only that host's baseline [0.06ms]
+(pass) StatusWatcher > a failed turn ends idle but is reported as a failure [0.07ms]
+(pass) StatusWatcher > a turn the user stopped is not reported [0.03ms]
+(pass) StatusWatcher > a quick turn is not worth a banner; a long one is [0.26ms]
+(pass) StatusWatcher > approvals and failures are reported however quick [0.12ms]
+(pass) StatusWatcher > an automation's run reports a failure or an approval, not a finish [0.10ms]
+(pass) StatusWatcher > a deleted session is forgotten [0.06ms]
+(pass) noticeText > names the session and what it needs [0.20ms]
+(pass) noticeText > says what the turn did [0.07ms]
+(pass) noticeText > an untitled session still gets a title [0.03ms]
+(pass) plainLine > Markdown becomes one plain line [0.02ms]
+(pass) plainLine > long text is cut with an ellipsis [0.04ms]
+(pass) switchState > off when the user turned them off [0.06ms]
+(pass) switchState > on when turned on and the browser allows them [0.02ms]
+(pass) switchState > the desktop app answers asynchronously: trust the stored choice [0.02ms]
+(pass) switchState > permission revoked in the browser after turning them on: off, and says why [0.02ms]
+(pass) switchState > permission reset to ask: off, so a click asks again [0.04ms]
+(pass) switchState > a browser without notifications cannot be on [0.02ms]
+
+src/sessionDefaults.test.ts:
+(pass) session defaults > remembers a remote host, source repository, model and effort together [0.27ms]
+(pass) session defaults > switching hosts retains each host's own project and choice [0.11ms]
+(pass) session defaults > keeps saved choices while model catalogs are loading [0.06ms]
+(pass) session defaults > repairs removed models and unsupported efforts on the selected host [0.09ms]
+(pass) session defaults > migrates the older global choice and survives malformed storage [0.11ms]
+(pass) an agent's own folder is never a recent folder or the next session's [0.10ms]
+
+src/usage.test.ts:
+(pass) percentText > rounds and stays inside 0-100 [0.05ms]
+(pass) levelOf > amber above 70, red above 90, exactly on the line stays below it [0.04ms]
+(pass) formatReset > hours and minutes [0.04ms]
+(pass) formatReset > under an hour is minutes, under a minute says so [0.03ms]
+(pass) formatReset > a day or more is days and hours [0.03ms]
+(pass) formatReset > a reset time in the past, or none at all [0.02ms]
+(pass) metersFor > Codex: primary is the 5-hour window, secondary the week, with reset times [0.12ms]
+(pass) metersFor > a window whose reset time has passed reads as 0%, with no reset time [0.14ms]
+(pass) metersFor > Codex: a lone weekly window is labelled by its length, not by its slot [0.09ms]
+(pass) metersFor > Codex: nothing known gives no meters [0.07ms]
+(pass) metersFor > Claude: utilization is a fraction; windows come in a fixed order with per-model weeks last, by name [0.12ms]
+(pass) metersFor > Claude: a window with no utilization is not a meter; overage windows are not shown [0.07ms]
+(pass) metersFor > Claude: the older shape (fiveHour, sevenDay) still reads [0.07ms]
+(pass) metersFor > meters carry their threshold level [0.06ms]
+(pass) stripGroups > a host with no Claude data does not hide another's: the remote's Claude limits show [0.24ms]
+(pass) stripGroups > the same engine on two hosts shows once, from the one that reported last (later reset time) [0.29ms]
+(pass) stripGroups > same reset times: more used is the later report, since use only grows inside a window [0.08ms]
+(pass) stripGroups > no reset times to compare: the first host listed wins [0.09ms]
+(pass) stripGroups > added accounts get their own rows, labelled with their name, after Default [0.18ms]
+(pass) stripGroups > an account is matched across hosts by engine and name, not by its per-host id [0.11ms]
+(pass) stripGroups > an account the host no longer lists shows nothing; one with no data yet is listed as not reported [0.10ms]
+(pass) stripGroups > no hosts shown, no rows [0.03ms]
+(pass) OpenCode and Gemini accounts add no plan-usage rows; a Grok account is listed like Claude's [0.14ms]
+(pass) the Subscriptions note names every engine without plan limits, Gemini included [0.08ms]
+
+src/slackInbox.test.ts:
+(pass) the Slack inbox's pages > merge by ts, oldest first; Load older sets whether more is left [0.38ms]
+(pass) the Slack inbox's pages > take a new or changed message where it belongs [0.36ms]
+(pass) the Slack inbox's pages > the sidebar keeps unread and open conversations past its limit [0.15ms]
+(pass) the Slack inbox's pages > groups messages by author and time [0.25ms]
+(pass) calling an agent from the reply box > suggests while an @handle is typed at the caret [0.11ms]
+(pass) calling an agent from the reply box > calls each agent whose handle is written as a word [0.20ms]
+(pass) calling an agent from the reply box > offers agents whose app yardd can mention in this workspace, here or on a remote host [0.20ms]
+(pass) calling an agent from the reply box > offers the agent whose handle is typed first, then those it starts, then the rest [0.25ms]
+(pass) calling an agent from the reply box > keys work the list like Slack's own picker [0.28ms]
+(pass) calling an agent from the reply box > agrees with yardd on every case [0.16ms]
+(pass) the Slack inbox in the store > a conversation has its own address [0.06ms]
+(pass) the Slack inbox in the store > comes with the snapshot and every change, from the hub only [0.23ms]
+
+src/questions.test.ts:
+(pass) question answers > one choice: an option replaces the last, typed text replaces the option [0.19ms]
+(pass) question answers > several: labels toggle and join in the options' order, typed text last [0.10ms]
+(pass) question answers > answers only once every question has one [0.14ms]
+
+src/EngineIcon.test.tsx:
+(pass) EngineIcon > every engine has its own mark [0.10ms]
+(pass) EngineIcon > two Gemini marks on a page keep their own gradients [1.37ms]
+(pass) EngineIcon > decorative by default, an image when labelled; ink marks follow the text colour [0.55ms]
+
+src/faces.test.ts:
+(pass) avatarSvg is a standalone picture: its own colours, gradients and ids, nothing from the page [76.78ms]
+(pass) avatarSvg: steady for one agent, ids that do not clash between pictures [1.49ms]
+(pass) faces: the moving parts are there for every face, detail drops at small sizes [4.08ms]
+(pass) the face palette matches the --agent-* colour tokens in styles.css [1.02ms]
+
+src/sidebarHosts.test.ts:
+(pass) readHidden > a saved list of host ids [0.08ms]
+(pass) readHidden > nothing saved, or something unreadable, hides nothing [0.07ms]
+(pass) shownHosts > keeps the order and leaves out the hidden ones, This Mac included [0.06ms]
+(pass) shownHosts > an id of a host that is gone changes nothing [0.02ms]
+(pass) shownHosts > every host can be hidden [0.01ms]
+(pass) withHostShown > hiding adds the id once, showing removes it [0.08ms]
+
+src/store.test.ts:
+(pass) thread loading > history alone builds the thread [0.21ms]
+(pass) thread loading > events before the history wait, then only the new ones apply, in order [0.19ms]
+(pass) thread loading > an early event already covered by the history is not applied twice [0.06ms]
+(pass) thread loading > a thread holding only early events still needs its history [0.27ms]
+(pass) thread loading > live events apply once each; repeats and old seqs are dropped [0.11ms]
+(pass) thread loading > an event from the future is not applied out of order [0.04ms]
+(pass) thread loading > threads are per session [0.05ms]
+(pass) thread loading > losing the socket drops threads so they reload [0.07ms]
+(pass) sessions > snapshot, update and delete [0.19ms]
+(pass) sessions > a host snapshot replaces only that host's sessions and drops their threads [0.27ms]
+(pass) sessions > errors count up even when the message repeats [0.07ms]
+(pass) sessions > an op a host's older yardd does not know says to update that host [0.11ms]
+(pass) route in the URL > hash round trip [0.18ms]
+(pass) route in the URL > a reload opens the session the URL names once the snapshot lists it [0.17ms]
+(pass) route in the URL > a remote session opens when its host's snapshot arrives [0.13ms]
+(pass) route in the URL > going somewhere else first cancels the pending session [0.10ms]
+(pass) sidebar layout > pinned, then ungrouped, then one section per group [0.28ms]
+(pass) sidebar layout > a group's sessions are newest activity first and archived ones are left out [0.11ms]
+(pass) sidebar layout > a group with only archived members does not exist; groups sort by name [0.12ms]
+(pass) sidebar layout > a pinned grouped session shows under Pinned only [0.04ms]
+(pass) sidebar layout > group names are trimmed and capped [0.03ms]
+(pass) approval decisions > a sent decision holds the card until yardd resolves it [0.27ms]
+(pass) approval decisions > a refused decision gives the buttons back [0.21ms]
+(pass) session.procs > the latest list replaces the last, per session; the reply for an unknown op is no toast [0.07ms]
+(pass) session.procs > deleting a session forgets its list [0.06ms]
+(pass) session.procs > a remote yardd that does not know session.kill reads as a host to update [0.08ms]
+(pass) the local host's name > comes from the snapshot before the first stats sample [0.06ms]
+(pass) the local host's name > the stats sample's name still wins once it arrives [0.07ms]
+(pass) connectors > a listing replaces the loading mark; an older host's refusal ends it with what to do [0.44ms]
+(pass) connectors > a remote host's connector error frees its own cards; one that comes while it is down shows in the banner [0.30ms]
+(pass) connectors > sign-in states are kept per server and cleared on request [0.09ms]
+
+ 548 pass
+ 0 fail
+ 5167 expect() calls
+Ran 548 tests across 40 files. [391.00ms]
+
+src/scope.test.ts:
+(pass) no scope changes nothing [0.29ms]
+(pass) an `only` list is Claude Code's MCP allowlist, with Switchyard's own server [0.27ms]
+(pass) a claude.ai connector on the list keeps connectors fetched; the allowlist still picks [0.05ms]
+(pass) an `except` list is a denylist that never names Switchyard's server [0.07ms]
+(pass) names that are not text are dropped [0.03ms]
+(skip) Claude Code starts only the allowed servers, and none it denies
+
+src/restricted.test.ts:
+(pass) a restricted session has no tools, MCP or settings; any other keeps the SDK's [0.21ms]
+
+src/message.test.ts:
+(pass) userMessage > plain text stays a plain string [0.17ms]
+(pass) userMessage > an image goes inline as base64 and every file is named by path [0.29ms]
+(pass) userMessage > attachments alone still make a text block [0.06ms]
+(pass) userMessage > an image the API would refuse, or cannot read, is named by path only [0.12ms]
+(pass) userMessage > other image types, such as SVG, are not sent inline [0.07ms]
+
+src/permission.test.ts:
+(pass) each turn switches to the mode yardd names for it [0.09ms]
+
+src/main.test.ts:
+(pass) the sidecar's entry point bundles [103.72ms]
+
+src/tools.test.ts:
+(pass) calls that leave work in the process after the turn are flagged for yardd [0.63ms]
+
+src/agentTools.test.ts:
+(pass) an agent's conversation gets the server, allowed unasked [0.08ms]
+(pass) other sessions and restricted ones get nothing [0.05ms]
+(pass) calls read as what they did [0.25ms]
+
+src/models.test.ts:
+(pass) every model Claude reports, by its full id and name, the plan's default marked [0.56ms]
+(pass) a default row with no row of its own takes its name from the description [0.07ms]
+(pass) a Claude Code that says nothing about effort keeps the usual efforts on every model [0.06ms]
+(pass) rows without an id, and unknown effort levels, are left out [0.05ms]
+
+src/history.test.ts:
+(pass) sessionRow > prefers the custom title, then the summary, then the first prompt [0.18ms]
+(pass) historyEvents > turns prompts, answers and tool calls into yardd events, one turn per prompt [0.82ms]
+(pass) historyEvents > edits keep their diff [0.29ms]
+(pass) historyEvents > Claude Code's own bookkeeping and subagent chatter stay out [0.15ms]
+(pass) historyEvents > a failed tool result is not ok, and item ids never repeat [0.24ms]
+(pass) lastModel > the last main-thread answer's model, skipping synthetic answers and subagents [0.14ms]
+
+src/usage.test.ts:
+(pass) one rate_limit_event carries one window; later events add to it [0.33ms]
+(pass) a newer event for the same window replaces it [0.05ms]
+(pass) the per-model weekly windows are kept under their own names [0.03ms]
+(pass) unifiedWindows, when the CLI sends them, fill every window at once; reset times may be ISO strings [0.11ms]
+(pass) an event with no utilization updates the status and keeps what was known [0.05ms]
+(pass) an empty or odd event does not throw [0.03ms]
+(pass) the usage report's limits become the same windows as rate_limit_event [0.50ms]
+(pass) report rows beyond session and the weeks are kept, labelled, so a new limit shows without a release [0.14ms]
+
+src/mcp.test.ts:
+(pass) summarize > one row per server, with tool and widget counts and no URL path [0.46ms]
+(pass) tool names follow Claude Code's mcp__<server>__<tool> [0.09ms]
+(pass) a widget is a ui:// resource, under the current or the flat key [0.13ms]
+(pass) widgetResource takes the HTML item and its sandbox meta [0.32ms]
+(pass) widgetResult prefers the server's own result over the model's text [0.16ms]
+(pass) apps > an MCP call with a widget completes with the widget, its input and result [1.58ms]
+(pass) apps > a failed call or a tool without a widget has none [0.24ms]
+(pass) apps > a widget calls only its server's widget tools; side effects go through the permission check [0.58ms]
+
+src/questions.test.ts:
+(pass) AskUserQuestion > becomes a question request naming its call [0.28ms]
+(pass) AskUserQuestion > its step reads as the question, not as JSON [0.04ms]
+(pass) AskUserQuestion > malformed questions and options are left out [0.08ms]
+(pass) AskUserQuestion > answers go into the input, only for questions it asked, only as text [0.20ms]
+
+src/subagents.test.ts:
+(pass) the Agent call > carries its description and the subagent's type [0.05ms]
+(pass) the Agent call > the older Task name is the same call; an ordinary tool has no agent field [0.09ms]
+(pass) a subagent's own messages > a tool call becomes a tool_started under its Agent call [0.20ms]
+(pass) a subagent's own messages > a subagent's edit gives the tool line only, no diff for the thread [0.08ms]
+(pass) a subagent's own messages > a result completes its call [0.11ms]
+(pass) a subagent's own messages > thinking, text, the prompt and stream events add nothing [0.07ms]
+(pass) a subagent's own messages > a subagent that starts one of its own nests under it [0.07ms]
+(pass) the task's life > the Agent call ends with its notification: the subagent's last words, its duration [0.24ms]
+(pass) the task's life > without any words of its own, the summary stands in; a failure is not ok [0.07ms]
+(pass) the task's life > the call's own tool_result is left alone once the task runs it, foreground or background [0.09ms]
+(pass) the task's life > a background shell or monitor is no subagent: its result completes it as before [0.05ms]
+(pass) the task's life > a notification with no tool call, or for an unknown one, is dropped [0.03ms]
+
+1 tests skipped:
+(skip) Claude Code starts only the allowed servers, and none it denies
+
+ 59 pass
+ 1 skip
+ 0 fail
+ 151 expect() calls
+Ran 60 tests across 13 files. [141.00ms]

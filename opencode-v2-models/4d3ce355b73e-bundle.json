@@ -1,0 +1,164 @@
+{
+  "v": 1,
+  "claim": "OpenCode 2 rejects the legacy catalog flag, so its account and available Go models disappear from New session.",
+  "repo": "/home/giovani/.yard/wt/better-than-claude-code/yard-how-do-i-login-with-0c17",
+  "base": "9174371fec2871a0d7878091b7f8cf4910f87f1d",
+  "head": "af6e3e1bcbcaff8ae4df35caad096999d8bb8c87",
+  "changed": [
+    {
+      "status": "M",
+      "path": "Cargo.lock"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/Cargo.toml"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/acp.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/opencode.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/acp-agent.mjs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/fake-codex/opencode"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/models.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T19:24:58.856Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "2d5652fba91ffcbb511f58159d2fde39cd75d820",
+      "dirty": false,
+      "viewports": [
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "dc4de373a9973d154c963e09a8900baada9417a3b28497cda1889629f4616d5e"
+        },
+        {
+          "path": "p1-opencode-account-missing-desktop.png",
+          "sha256": "10ac2acf2e24c8e348ca0634cc43795e868601932b8f375ddc3f810793881026"
+        },
+        {
+          "path": "p1-opencode-models-missing-desktop.png",
+          "sha256": "676e78a65c5568c44d1240c2e9c5aad749db25be2f3eb207269b47cc6b3053ab"
+        }
+      ],
+      "addedAt": "2026-11-27T19:31:47.433Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "2d5652fba91ffcbb511f58159d2fde39cd75d820",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "e9a44e89e7358926376c8c304f5d3d30cbd2754ab05b2be713836f4a1d818ad1"
+        }
+      ],
+      "addedAt": "2026-11-27T19:31:50.587Z",
+      "cmd": "verify/yv map run models --recipe opencode-v2-models-in-new-session",
+      "exit": 1
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "af6e3e1bcbcaff8ae4df35caad096999d8bb8c87",
+      "dirty": false,
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "347332996ca624582f22b1b3223afaf314b7cc62e708be7b25a2cb6780e24d0c"
+        },
+        {
+          "path": "p3-opencode-account-desktop.png",
+          "sha256": "8be3410ae8b984b96c60abfc747e672ca6822bf56a55b5ed6f877714564fd611"
+        },
+        {
+          "path": "p3-opencode-go-selected-desktop.png",
+          "sha256": "2709dc91b205c2ca7efc2aa370834985fc9cb84431475e7aa1ebba57160cfd1b"
+        },
+        {
+          "path": "p3-2-drive.json",
+          "sha256": "e3e018d712515f35aaae83cf792a85546f6c998046474c4c1371c5fbd6d1f6ae"
+        },
+        {
+          "path": "p3-opencode-account-mobile.png",
+          "sha256": "a4128ca66861dbe6ed3fa2f64b7f02484f4d692b5df4393a54948b34d23b90cd"
+        },
+        {
+          "path": "p3-opencode-go-selected-mobile.png",
+          "sha256": "2ad5e691a5c72c7fc9bca922b0f9e04677815607b73bff2be27d835a9fd2076d"
+        }
+      ],
+      "addedAt": "2026-11-27T19:35:58.438Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "regression",
+      "at": "af6e3e1bcbcaff8ae4df35caad096999d8bb8c87",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-opencode-v2-map-final.json",
+          "sha256": "443224a9fadd579e676f36b415616e319ccff71c670f8ad64c6d07816f074878"
+        }
+      ],
+      "addedAt": "2026-11-27T19:35:58.488Z",
+      "failedApi": [],
+      "failingRecipes": [],
+      "passingRecipes": [
+        "models/opencode-v2-models-in-new-session"
+      ]
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "test",
+      "at": "af6e3e1bcbcaff8ae4df35caad096999d8bb8c87",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-cmd.log",
+          "sha256": "34c464ce9504556a8ea3541d48c024d38908971238b67b2f576f0c3e0c97ba20"
+        }
+      ],
+      "addedAt": "2026-11-27T19:35:58.529Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test acp && CARGO_BUILD_JOBS=2 cargo test -p yardd --bin yardd opencode::tests",
+      "exit": 0
+    }
+  ]
+}

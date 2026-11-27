@@ -1,0 +1,34 @@
+$ verify/yv map run models --recipe opencode-v2-models-in-new-session
+# exit 1 after 45315 ms at c76e04efd8612c4464966cc4d1c71258243552f1
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "models",
+      "at": "2026-11-27T19:25:44.208Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "opencode-v2-models-in-new-session",
+          "status": "fail",
+          "ms": 24018,
+          "problems": [],
+          "tail": " button \\\"New session\\\"\\n  - button \\\"Agents\\\"\\n  - button \\\"Automations\\\"\\n  - button \\\"Connectors\\\"\\n  - button \\\"Import\\\"\\n  - button \\\"Settings\\\"\\n  - text: No sessions yet.\\n  - button \\\"Subscription usage\\\": Usage 47% used 5-hour resets in 1 h 59 min\\n  - button \\\"iso-host 14% · 55%\\\"\\n- separator \\\"Resize the sessions sidebar\\\"\\n- banner:\\n  - button \\\"Set up iPhone app\\\"\\n- heading \\\"What should we work on?\\\" [level=1]\\n- textbox \\\"Message\\\":\\n  - /placeholder: Describe the task\\n- button \\\"Attach files\\\"\\n- button \\\"Dictate\\\"\\n- button \\\"Voice mode\\\"\\n- button \\\"Model Opus 5.5\\\": Opus 5.5\\n- 'button \\\"Account: Claude, Default\\\" [expanded]'\\n- button \\\"Effort High\\\": High\\n- button \\\"Ask first\\\"\\n- button \\\"Send\\\" [disabled]\\n- button \\\"iso-host\\\"\\n- button \\\"work\\\"\\n- text: Works in the folder itself\\n- dialog \\\"Engine account identity\\\":\\n  - strong: Choose an account\\n  - button \\\"Close account picker\\\": ×\\n  - menu \\\"Engine accounts\\\":\\n    - menuitemradio \\\"Claude · Default me@example.com\\\" [checked]:\\n      - strong: Claude · Default\\n      - text: me@example.com\\n    - menuitemradio \\\"Codex · Default me@example.com\\\":\\n      - strong: Codex · Default\\n      - text: me@example.com\\n    - menuitemradio \\\"Grok · Default default@grok.example\\\":\\n      - strong: Grok · Default\\n      - text: default@grok.example\\n    - menuitemradio \\\"Gemini · Default logged in\\\":\\n      - strong: Gemini · Default\\n      - text: logged in\\n  - text: iso-host\\n  - button \\\"Manage accounts →\\\"\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 0 {\\\"click\\\":\\\"css:.account-trigger\\\"}: click: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/better-than-claude-code/yard-how-do-i-login-with-0c17/.verify/drives/2026-11-27T19-25-20-538Z/fail-mobile-step0.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 1 {\\\"expect\\\":\\\"role:menuitemradio:OpenCode · Default\\\",\\\"enabled\\\":true}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/better-than-claude-code/yard-how-do-i-login-with-0c17/.verify/drives/2026-11-27T19-25-20-538Z/fail-desktop-step1.png and the aria snapshot\"\n    }\n  ]\n}\n{\n  \"command\": \"iso down\",\n  \"ok\": true,\n  \"stopped\": [\n    \"map-opencode-v2\"\n  ],\n  \"problems\": []\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "models/opencode-v2-models-in-new-session",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+
