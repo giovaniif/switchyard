@@ -1,0 +1,45 @@
+$ verify/yv map run hosts --recipe double-click-on-remove-host-only-asks
+# exit 1 after 27155 ms at a90428902357e38554d7c9c3845bce2a8442e75e
+
+{
+  "command": "map run",
+  "ok": false,
+  "records": [
+    {
+      "area": "hosts",
+      "at": "2026-11-27T04:14:41.320Z",
+      "counts": {
+        "fail": 1
+      },
+      "setupFailed": null,
+      "results": [
+        {
+          "label": "double-click-on-remove-host-only-asks",
+          "status": "fail",
+          "ms": 25891,
+          "problems": [
+            {
+              "code": "step-failed",
+              "msg": "mobile: step 4 {\"expect\":\"role:button:Select TEST-dbl-host\"}: for: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-9674/.verify/drives/2026-11-27T04-14-15-524Z/fail-mobile-step4.png and the aria snapshot"
+            },
+            {
+              "code": "step-failed",
+              "msg": "desktop: step 0 {\"click\":\"role:button:Select TEST-dbl-host\"}: click: Timeout 10000ms exceeded.",
+              "hint": "see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-9674/.verify/drives/2026-11-27T04-14-15-524Z/fail-desktop-step0.png and the aria snapshot"
+            }
+          ],
+          "tail": "l=2]\\n  - status: No phone connected yet\\n  - list:\\n    - listitem:\\n      - link \\\"Install with TestFlight\\\":\\n        - /url: https://testflight.apple.com/join/BygX29JY\\n    - listitem: Turn on Tailscale (or your private network) on the iPhone.\\n    - listitem: Enter the HTTPS address you open this host at on your phone.\\n  - text: Address the phone can reach\\n  - textbox \\\"Address the phone can reach\\\":\\n    - /placeholder: https://your-host.ts.net\\n  - paragraph:\\n    - text: None of your hosts lists one yet. It is the address in the host's\\n    - code: YARD_ALLOW_ORIGIN\\n    - text: \\\", such as its Tailscale name.\\\"\\n- button \\\"Select iso-host\\\" [pressed]:\\n  - strong: iso-host\\n  - text: This machine Healthy CPU\\n  - strong: 16%\\n  - text: Memory\\n  - strong: 14.2 GB\\n  - text: Disk\\n  - strong: 162 GB\\n- region \\\"iso-host details\\\":\\n  - heading \\\"iso-host\\\" [level=2]\\n  - text: Healthy\\n  - tablist \\\"Host details\\\":\\n    - tab \\\"Sessions · 2\\\" [selected]\\n    - tab \\\"Engine logins\\\"\\n    - tab \\\"System\\\"\\n  - tabpanel \\\"Sessions · 2\\\":\\n    - button \\\"[cmd] TEST-run the migration Codex · Default Needs approval —\\\":\\n      - strong: \\\"[cmd] TEST-run the migration\\\"\\n      - text: Codex · Default Needs approval —\\n    - button \\\"TEST-hello from Claude Claude · Default Idle 26 MB 0.0 cores\\\":\\n      - strong: TEST-hello from Claude\\n      - text: Claude · Default Idle 26 MB 0.0 cores\\n    - button \\\"View all sessions →\\\"\\n- button \\\"Run sessions on another machine Add a server or desktop you reach over SSH.\\\":\\n  - strong: Run sessions on another machine\\n  - text: Add a server or desktop you reach over SSH.\"\n      },\n      \"captures\": [],\n      \"notes\": [],\n      \"video\": null,\n      \"consoleErrors\": [],\n      \"pageErrors\": [],\n      \"failedApi\": [],\n      \"httpFailures\": []\n    }\n  ],\n  \"problems\": [\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"mobile: step 4 {\\\"expect\\\":\\\"role:button:Select TEST-dbl-host\\\"}: for: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-9674/.verify/drives/2026-11-27T04-14-15-524Z/fail-mobile-step4.png and the aria snapshot\"\n    },\n    {\n      \"code\": \"step-failed\",\n      \"msg\": \"desktop: step 0 {\\\"click\\\":\\\"role:button:Select TEST-dbl-host\\\"}: click: Timeout 10000ms exceeded.\",\n      \"hint\": \"see /home/giovani/.yard/wt/switchyard/yard-loop-patrol-2026-11-27-9674/.verify/drives/2026-11-27T04-14-15-524Z/fail-desktop-step0.png and the aria snapshot\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "code": "recipe-failed",
+      "msg": "hosts/double-click-on-remove-host-only-asks",
+      "hint": "map drift: fix the recipe to match the app; product bug: keep it failing, add a Gotcha, queue a finding"
+    }
+  ]
+}
+
