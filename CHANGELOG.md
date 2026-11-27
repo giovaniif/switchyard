@@ -2,6 +2,30 @@
 
 Each version is a [GitHub release](https://github.com/giovaniif/better-than-claude-code/releases) with the signed Mac app and the Linux packages. The section for a version becomes its release notes.
 
+## 0.24.0 (2026-11-27)
+
+- **Your Slack in Switchyard.** Connect your own Slack account from Connectors. Your direct messages show up in a Slack section of the sidebar, along with the channels you choose to import. Read them, react and reply as yourself, and type `@` in the reply box to call one of your agents. This replaces the old shared Switchyard bot.
+- **Agents in Slack do more.**
+  - Each DM or thread with an agent gets its own conversation, and anyone there can talk to it. When someone you haven't approved asks it to use a tool, it waits for you.
+  - Agents can watch channels you pick, such as an alerts channel, and act on new messages and alerts there.
+  - They can post later in a thread they were asked in, for example "tell us here when it's deployed".
+  - You choose which people an agent may mention.
+  - They no longer answer thread replies meant for someone else.
+- **Agents live on the host they run on.** Every Mac that adds the host lists its agents, and a server's agents keep answering in Slack while your Macs sleep. To move an agent, pick another host in Edit.
+- **The model picker shows the models your Claude plan has**, Fable included. The list comes from Claude Code for each account and refreshes daily.
+- **Overloads are recorded and named.** When a host runs out of memory or its load goes above its cores, a banner says which session or process is the main cause. A turn stalled by the overload says so, and Hosts keeps a 7-day history.
+- **Usage shows every limit and when it resets** for every engine and account, including Codex's full-reset credits and Grok's credit allowance.
+- **Questions from Claude and Codex show as a question card.** Your answers now reach the agent. Before, it was told you didn't answer.
+- **Copy buttons** on commands, code blocks and tool output.
+- **Finished sessions release their engine.** After 5 quiet minutes a session's engine stops and drops its connections, such as those to MCP servers. If Codex's app-server dies, Switchyard restarts it.
+- **Fixed:**
+  - Subagents still working after their turn stay in view, and the conversation says so.
+  - If the connection to a host drops before it answers, the window says so at once. Before, it waited forever or until a timeout.
+  - A double click on Delete, Remove, Disconnect, Stop or Force kill only asks for confirmation. Nothing is removed or stopped by accident.
+  - A Claude Code login left open in a closed tab ends after 15 minutes.
+  - On a phone: no keyboard hints in the drawer or the Go to palette, the "Delete session?" title stays readable, and a step's state stays on one line.
+  - Automations: a second click on Run now runs it again.
+
 ## 0.23.0 (2026-11-26)
 
 - **Install the iPhone app from a public TestFlight link.** The iPhone card on Hosts now has Install with TestFlight, so you no longer need an invitation. You can join once Apple approves the beta.
