@@ -1764,6 +1764,69 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn the_pipe_s_own_errors_name_their_host_and_come_after_it_went_down() {
+        // A page files an error under the host it names (`hostId`): a
+        // connector's row, for one. Without it the error was the hub's own.
+        let url = host_with(|mut ws| async move {
+            read_op(&mut ws).await;
+            read_op(&mut ws).await;
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(op("a")).unwrap();
+        pipe.send(json!({ "op": "mcp.remove", "host": "h", "engine": "claude", "server": "linear" })).unwrap();
+        let got = page_gets(&mut replies, |r| r["op"] == "error" && r["for"] == "mcp.remove", Duration::from_millis(500)).await;
+        let down = got.iter().position(|r| r["op"] == "host.down").expect("host.down");
+        let errors: Vec<(usize, &Value)> = got.iter().enumerate().filter(|(_, r)| r["op"] == "error").collect();
+        assert_eq!(errors.len(), 2, "{got:?}");
+        for (i, e) in errors {
+            assert_eq!(e["hostId"], "h", "{e}");
+            // The page knows the host is down when the error comes: its
+            // connectors are hidden then, so it says it where it shows.
+            assert!(i > down, "after host.down: {got:?}");
+        }
+        // Refused before it went: no url, and still held when the pipe goes.
+        let (_shown, pipe, mut replies) = test_pipe(connected(None));
+        pipe.send(op("b")).unwrap();
+        let got = errors_in(&page_gets(&mut replies, |r| r["op"] == "error", Duration::from_millis(100)).await).into_iter().cloned().collect::<Vec<_>>();
+        assert_eq!((got.len(), got[0]["hostId"].as_str()), (1, Some("h")), "{got:?}");
+        let url = silent_host().await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        pipe.send(op("c")).unwrap();
+        drop(pipe);
+        let got = errors_in(&page_gets(&mut replies, |r| r["op"] == "error", Duration::from_millis(100)).await).into_iter().cloned().collect::<Vec<_>>();
+        assert_eq!((got.len(), got[0]["hostId"].as_str()), (1, Some("h")), "{got:?}");
+    }
+
+    #[tokio::test]
+    async fn a_host_from_before_v0_18_is_not_reported_lost_for_the_sessions_it_made() {
+        // Before v0.18.0 a host answered `session.create` with `created`
+        // and no `ref` (and its snapshot had no `agents`). The sessions were
+        // made and announced: a later disconnect has nothing to report.
+        let url = host_with(|mut ws| async move {
+            say(&mut ws, json!({ "op": "snapshot", "sessions": [] })).await;
+            for sid in ["s8", "s9"] {
+                read_op(&mut ws).await;
+                say(&mut ws, json!({ "op": "created", "sessionId": sid })).await;
+            }
+            // Updated and restarted, say, a while later.
+            tokio::time::sleep(Duration::from_millis(300)).await;
+            let _ = ws.close(None).await;
+        })
+        .await;
+        let (_shown, pipe, mut replies) = test_pipe(connected(Some(url)));
+        let create = json!({ "op": "session.create", "host": "h", "engine": "codex", "model": "m", "effort": "low", "cwd": "/x", "text": "go" });
+        pipe.send(create.clone()).unwrap();
+        // The iOS app's, with a `ref` of its own.
+        let mut ios = create;
+        ios["ref"] = json!("m1");
+        pipe.send(ios).unwrap();
+        let got = page_gets(&mut replies, |r| r["op"] == "host.down", Duration::from_millis(1000)).await;
+        assert_eq!(got.iter().filter(|r| r["op"] == "created").count(), 2, "{got:?}");
+        assert!(errors_in(&got).is_empty(), "no error: {got:?}");
+    }
+
+    #[tokio::test]
     async fn a_healthy_host_answers_every_op_once_and_in_order() {
         // The healthy path: a big upload and many ops, each answered by the
         // host, then a clean end. No error, nothing twice, the same order.

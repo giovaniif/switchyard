@@ -363,6 +363,34 @@ describe("connectors", () => {
     expect(s.error).toBeNull();
   });
 
+  test("a remote host's connector error frees its own cards; one that comes while it is down shows in the banner", () => {
+    const up = (): State => {
+      let s = reduce(initial, { t: "socket", connected: true });
+      s = server(s, { op: "snapshot", sessions: [], hosts: [{ id: "h1", name: "box", kind: "direct", status: "connected" }] });
+      s = server(s, { op: "mcp.change", host: "h1", engine: "claude", account: "default", name: "linear", state: "removing" });
+      s = server(s, { op: "mcp.change", host: "h1", engine: "claude", account: "default", name: "notion", state: "adding" });
+      return server(s, { op: "mcp.change", host: "local", engine: "claude", account: "default", name: "linear", state: "removing" });
+    };
+    const removing = mcpAuthKey("h1", "claude", "default", "linear");
+    const adding = mcpAuthKey("h1", "claude", "default", "notion");
+    const local = mcpAuthKey("local", "claude", "default", "linear");
+    // The host shows: the row and the open Add dialog say it.
+    let s = server(up(), { op: "error", for: "mcp.remove", hostId: "h1", message: "this host is not connected" });
+    expect(s.mcpChange[removing]).toEqual({ state: "failed", error: "this host is not connected" });
+    expect(s.mcpChange[adding]).toEqual({ state: "failed", error: "this host is not connected" });
+    expect(s.mcpChange[local]).toEqual({ state: "removing" });
+    expect(s.error).toBeNull();
+    // The connection dropped: the cards are hidden and the Add dialog went
+    // with them, so the banner says it; the row still does once it is back.
+    const lost = "Lost the connection to box before it answered. This may have gone through; check once it's back.";
+    s = server(up(), { op: "host.down", hostId: "h1" });
+    s = server(s, { op: "error", for: "mcp.add", hostId: "h1", message: lost });
+    expect(s.error).toBe(lost);
+    expect(s.mcpChange[adding]).toBeUndefined();
+    expect(s.mcpChange[removing]).toEqual({ state: "failed", error: lost });
+    expect(s.mcpChange[local]).toEqual({ state: "removing" });
+  });
+
   test("sign-in states are kept per server and cleared on request", () => {
     let s = server(initial, { op: "mcp.auth", hostId: "h1", engine: "claude", account: "default", server: "claude.ai Datadog", state: "open", url: "https://claude.ai/x", paste: false });
     const key = mcpAuthKey("h1", "claude", "default", "claude.ai Datadog");
