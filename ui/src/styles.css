@@ -1309,6 +1309,26 @@ a.btn-primary.btn-small { color: var(--bg); justify-content: center; }
 .host-system > div { display: grid; grid-template-columns: minmax(100px, .6fr) minmax(0, 1fr); gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .host-system dt { color: var(--muted); }
 .host-system dd { margin: 0; overflow-wrap: anywhere; }
+/* Overload episodes (PressurePanel.tsx): the banner while one lasts, the
+   history on the System tab, the note under a stalled turn. */
+.pressure-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-size: 12px; color: var(--warn-ink); background: var(--warn-fill); }
+.pressure-side { margin: 8px 8px 0; padding: 6px 4px 6px 10px; border: 1px solid var(--warn-border); border-radius: 8px; }
+.pressure-main { padding: 6px 16px; border-bottom: 1px solid var(--warn-border); }
+.pressure-text { min-width: 0; flex: 1 1 160px; overflow-wrap: anywhere; }
+.pressure-actions { display: flex; flex-shrink: 0; gap: 2px; margin-left: auto; }
+.pressure-actions .btn-text { height: 24px; padding: 0 6px; font-size: 12px; color: var(--warn-ink); }
+.pressure-history { display: flex; flex-direction: column; gap: 8px; }
+.pressure-history h3 { font-size: 14px; font-weight: 600; }
+.pressure-history > .btn-text { align-self: flex-start; }
+.pressure-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.pressure-episode { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.pressure-episode-head { display: flex; align-items: baseline; gap: 8px; }
+.pressure-now { color: var(--warn-ink); }
+.pressure-tops { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 0; padding: 0; list-style: none; }
+.pressure-tops li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; min-width: 0; font-size: 12px; }
+.pressure-tops code { min-width: 0; max-width: 100%; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pressure-tops .pressure-session { margin-left: 0; padding: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stall-note { color: var(--warn-ink); }
 .host-inspector .engine-block { border-bottom: 1px solid var(--line); padding: 12px 0; }
 .host-inspector .engine-block:first-child { padding-top: 0; }
 .host-inspector :is(.engine-row, .account-row) { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 4px 12px; }

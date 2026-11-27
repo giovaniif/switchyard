@@ -280,6 +280,50 @@ export interface Host {
   /** Sessions waiting to start, oldest first. */
   queued?: { id: string; reason: string }[];
   limits?: { minFreeBytes: number; forced: boolean };
+  swapUsed?: number;
+  swapTotal?: number;
+  /** The overload episode going on now (yardd's pressure.rs); null when calm. */
+  episode?: PressureEpisode | null;
+  /** The latest closed episodes, newest first; `host.pressure` pages older ones. */
+  episodes?: PressureEpisode[];
+  /** Running turns with no event for 5 minutes while the host is overloaded. */
+  stalled?: { id: string; quietSecs: number }[];
+}
+
+export type PressureReason = "load" | "memory" | "swap" | "forced";
+
+/** A session among the top users at an episode's worst sample. */
+export interface PressureSession {
+  id: string;
+  title: string;
+  engine: Engine;
+  /** The automation's name, for one of its runs. */
+  automation?: string;
+  cpuCores: number;
+  memBytes: number;
+}
+
+/** A process that belongs to no session, among the top users. */
+export interface PressureProc {
+  pid: number;
+  name: string;
+  cmd: string;
+  cpuCores: number;
+  memBytes: number;
+}
+
+/** One stretch of time the host was overloaded. Times are the host's clock. */
+export interface PressureEpisode {
+  id: string;
+  start: number;
+  /** null while it lasts. */
+  end: number | null;
+  lastSeen: number;
+  reasons: PressureReason[];
+  /** Each one's highest value during the episode. */
+  peak: { load: number; cores: number; memUsed: number; memTotal: number; swapUsed: number; swapTotal: number };
+  /** Who used the most at its worst sample. */
+  top: { at: number; load: number; memUsed: number; swapUsed: number; sessions: PressureSession[]; procs: PressureProc[] };
 }
 
 /** A remote yardd this one reaches, as listed by the `hosts` message. */

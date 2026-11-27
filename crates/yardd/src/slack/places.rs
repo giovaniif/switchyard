@@ -305,6 +305,7 @@ async fn claude_answer(app: &Arc<App>, parent: &Meta, text: &str, origin: &Value
             backend: Backend::Pending,
             engine_ref: None,
             active_at: now_ms(),
+            event_at: now_ms(),
         },
     );
     let result = tokio::time::timeout(Duration::from_secs(90), async {

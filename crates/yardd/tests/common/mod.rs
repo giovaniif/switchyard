@@ -198,6 +198,10 @@ impl Daemon {
             // Nor model list reads: Claude keeps its built-in list.
             .env("YARD_CLAUDE_MODELS_EVERY_MS", "0")
             .env_remove("YARD_FORCE_PRESSURE")
+            .env_remove("YARD_TEST_READINGS")
+            .env_remove("YARD_TEST_STALL_SECS")
+            .env_remove("YARD_TEST_PRESSURE_CALM_SECS")
+            .env_remove("YARD_TEST_PRESSURE_NOTIFY_SECS")
             .env_remove("YARD_ALLOW_ORIGIN")
             .env_remove("YARD_HOST_NAME")
             .env_remove("YARD_BIND")

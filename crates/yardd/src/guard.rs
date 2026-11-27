@@ -283,11 +283,13 @@ struct SessionUse {
 }
 
 /// Called by the host sampler after it refreshed `sys` (memory and processes).
-/// Measures each session, enforces the cap, starts one queued session if the
-/// host has room, and returns the fields it adds to the `host` message.
-pub fn sample(app: &Arc<App>, sys: &System, load: f64, cores: usize, mem_free: u64) -> Value {
+/// Measures each session, starts one queued session if the host has room,
+/// records pressure episodes (`pressure`), and returns the fields it adds to
+/// the `host` message.
+pub fn sample(app: &Arc<App>, sys: &System, readings: &crate::pressure::Readings, injected: &crate::pressure::Injected) -> Value {
     let guard = &app.guard;
     let limits = &guard.limits;
+    let (load, cores, mem_free) = (readings.load, readings.cores, readings.mem_free);
 
     let mut reasons = Vec::new();
     if load > cores as f64 && !limits.ignore_load {
@@ -304,6 +306,12 @@ pub fn sample(app: &Arc<App>, sys: &System, load: f64, cores: usize, mem_free: u
     guard.inner.lock().unwrap().pressure = (!reasons.is_empty()).then(|| reasons.join("; "));
 
     let (listed, usage, _) = attribute(app, sys);
+    // The same load and memory rules as the queue's above, so an episode is
+    // open exactly while the host reads "under pressure"; swap is only noted.
+    let kinds = crate::pressure::reasons(readings, limits.forced, limits.ignore_load, limits.min_free);
+    let listed_pids: HashSet<u32> = listed.values().flatten().map(|r| r.pid).collect();
+    let used: HashMap<String, (f32, u64)> = usage.iter().map(|(sid, u)| (sid.clone(), (u.cpu, u.mem))).collect();
+    let episodes = crate::pressure::observe(app, sys, readings, kinds, &used, &listed_pids, injected);
     {
         let mut inner = guard.inner.lock().unwrap();
         inner.procs = listed;
@@ -337,7 +345,7 @@ pub fn sample(app: &Arc<App>, sys: &System, load: f64, cores: usize, mem_free: u
         .iter()
         .map(|(sid, reason)| json!({ "id": sid, "reason": reason }))
         .collect();
-    json!({
+    let mut out = json!({
         "sessions": rows,
         "queued": queued,
         "pressure": guard.pressure(&inner),
@@ -345,7 +353,11 @@ pub fn sample(app: &Arc<App>, sys: &System, load: f64, cores: usize, mem_free: u
             "minFreeBytes": limits.min_free,
             "forced": limits.forced,
         },
-    })
+    });
+    if let (Some(out), Some(extra)) = (out.as_object_mut(), episodes.as_object()) {
+        out.extend(extra.clone());
+    }
+    out
 }
 
 /// Each session's processes in `sys`, what they use, and the engines' own

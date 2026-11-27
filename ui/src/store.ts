@@ -20,6 +20,7 @@ import {
   type Models,
   type PrResult,
   type ProcRow,
+  type PressureEpisode,
   type KillReply,
   type SessionMeta,
   type Permission,
@@ -45,6 +46,7 @@ import { inMobileApp, type MobileStatus } from "./mobile";
 import { base64ToBlob, fileToBase64, Replies, tooLarge } from "./attach";
 import { fileError } from "./fileLinks";
 import { relocated } from "./agents";
+import { mergePages } from "./pressure";
 
 /** Where an upload goes: a host from the new-session page, or the host of a
  *  session from its reply box. Empty means this machine. */
@@ -176,6 +178,9 @@ export interface State {
   pr: Record<string, PrResult>;
   /** The Processes tab's list per session: the latest `session.procs` reply. */
   procs: Record<string, ProcRow[]>;
+  /** Older overload episodes than the host message carries, per host, as
+   *  `host.pressure` pages them in (System tab's Show older). */
+  pressureOlder: Record<string, { episodes: PressureEpisode[]; more: boolean; loading: boolean }>;
   /** Remote hosts and their connection state. This Mac is not in the list. */
   hosts: HostEntry[];
   /** Per host id; `local` is this machine. */
@@ -233,6 +238,7 @@ type Action =
   | { t: "dismiss" }
   /** A decision on an approval was sent; its card waits for `approval_resolved`. */
   | { t: "deciding"; sessionId: string; requestId: string }
+  | { t: "pressureLoading"; host: string }
   | { t: "server"; msg: any };
 
 const emptyThread = (): Thread => ({ next: -1, items: [], early: [] });
@@ -252,6 +258,7 @@ export const initial: State = {
   changes: {},
   pr: {},
   procs: {},
+  pressureOlder: {},
   hosts: [],
   models: {},
   usage: {},
@@ -287,6 +294,10 @@ export function reduce(state: State, action: Action): State {
       return go(state, action.route);
     case "dismiss":
       return { ...state, error: null, notice: null };
+    case "pressureLoading": {
+      const old = state.pressureOlder[action.host];
+      return { ...state, pressureOlder: { ...state.pressureOlder, [action.host]: { episodes: old?.episodes ?? [], more: old?.more ?? true, loading: true } } };
+    }
     case "deciding": {
       const thread = state.threads[action.sessionId];
       if (!thread) return state;
@@ -547,9 +558,19 @@ function reduceServer(state: State, msg: any): State {
       return { ...state, pr: { ...state.pr, [msg.sessionId]: msg.pr } };
     case "session.procs":
       return { ...state, procs: { ...state.procs, [msg.sessionId]: msg.procs } };
+    case "host.pressure": {
+      const id = msg.hostId ?? "local";
+      const old = state.pressureOlder[id]?.episodes ?? [];
+      return { ...state, pressureOlder: { ...state.pressureOlder, [id]: { episodes: mergePages(old, (msg.episodes as PressureEpisode[]) ?? []), more: !!msg.more, loading: false } } };
+    }
     case "error": {
       // A host on an older Switchyard has no engine status; its card offers Update.
       if (msg.for === "engines.status" || msg.for === "session.procs") return state;
+      // A host on an older Switchyard keeps no episodes: Show older just stops.
+      if (msg.for === "host.pressure") {
+        const id = msg.hostId ?? "local";
+        return { ...state, pressureOlder: { ...state.pressureOlder, [id]: { episodes: state.pressureOlder[id]?.episodes ?? [], more: false, loading: false } } };
+      }
       // The import dialog says why; no banner behind it.
       if (msg.for === "session.import") return { ...state, importError: msg.message };
       // The Connectors page shows it on the host's cards instead of waiting forever.
@@ -739,6 +760,9 @@ export interface Actions {
   /** Child session in the same folder, seeded with a brief. */
   handoff(sessionId: string, engine: Engine, model: string, effort: string, account?: string): void;
   interrupt(sessionId: string): void;
+  /** Ask for a host's overload episodes older than `before` (the host message
+   *  carries only the latest few). */
+  loadPressure(host: string, before: number): void;
   /** `answers`: a question's answers, question text to answer. */
   approve(sessionId: string, requestId: string, decision: Decision, answers?: Record<string, string>): void;
   loadChanges(sessionId: string): void;
@@ -1098,6 +1122,10 @@ export function useYard(): { state: State; actions: Actions } {
       setPermission: (sessionId, permission) => post({ op: "session.setPermission", sessionId, permission }),
       handoff: (sessionId, engine, model, effort, account) => post({ op: "session.handoff", sessionId, engine, model, effort, account }),
       interrupt: (sessionId) => post({ op: "session.interrupt", sessionId }),
+      loadPressure: (host, before) => {
+        dispatch({ t: "pressureLoading", host });
+        post({ op: "host.pressure", host, before });
+      },
       approve: (sessionId, requestId, decision, answers) => {
         // Until yardd resolves it, a second click (a double click) would send a second decision.
         dispatch({ t: "deciding", sessionId, requestId });

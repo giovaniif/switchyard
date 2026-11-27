@@ -25,6 +25,7 @@ import { SessionHandover } from "./SessionHandover";
 import { PeekScope, PrLink } from "./PrHoverCard";
 import { PR_URL_SOURCE, prLink, shortLabel } from "./prPeek";
 import { ProcPane } from "./ProcPane";
+import { PressureBanners, PressureHistory, StallNote } from "./PressurePanel";
 import { draftOf, fenceSegments, keepDraft, lineCount, onAppend, quoteInComposer, quoteSegments, type Quote, type Snippet, splitComments, splitQuotes, withQuotes } from "./compose";
 import { blockSegments, fencedBlocks, type MdTable } from "./markdown";
 import { fileTarget } from "./fileLinks";
@@ -413,6 +414,8 @@ export function App() {
               </span>
             </div>
           )}
+          {/* The sidebar says it where it is a column; a phone's drawer is closed. */}
+          {(narrow || sidebarHidden) && <PressureBanners state={state} actions={actions} place="main" />}
           {route.page === "new" && (
             <>
               {/* The page has no bar of its own; narrow windows need one for the menu button. */}
@@ -1281,6 +1284,7 @@ function Sidebar({ state, actions, shown, usage, open, hidden, nativeMenu, onImp
           {showArchived && <div className="archived-list">{roots(archived).map(tree)}</div>}
         </div>
       )}
+      <PressureBanners state={state} actions={actions} place="side" />
       {usage}
       {shown.length > 0 && (
         <div className="sidebar-bottom">
@@ -3298,6 +3302,7 @@ function SessionView({ meta, state, actions, before }: { meta: SessionMeta; stat
               <RowView key={row.key} row={row} render={renderItem} widget={(t) => t.app && <WidgetFrame sessionId={meta.id} app={t.app} actions={actions} />} />
             ))}
             {working && <Working since={turnStart} />}
+            {meta.status === "running" && <StallNote state={state} actions={actions} sessionId={meta.id} host={host} />}
             {/* The turn is over but subagents it started still work (yardd's
                 `background`): said here, not only on the sidebar row. */}
             {!busy && !!meta.background?.length && (
@@ -4975,6 +4980,14 @@ function HostInspector({
                   </dd>
                 </div>
               )}
+              {!!host?.swapTotal && (
+                <div>
+                  <dt>Swap</dt>
+                  <dd>
+                    {gb(host.swapUsed ?? 0)} of {gb(host.swapTotal)} GB used
+                  </dd>
+                </div>
+              )}
             </dl>
             {host && (
               <>
@@ -5001,6 +5014,7 @@ function HostInspector({
                 </div>
                 <Sparkline values={host.cpuHistory ?? []} />
                 <QueuePolicy host={host} />
+                <PressureHistory state={state} actions={actions} id={id} host={host} />
               </>
             )}
             {entry && (

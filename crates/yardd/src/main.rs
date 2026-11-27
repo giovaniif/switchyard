@@ -25,6 +25,7 @@ mod naming;
 mod origins;
 mod opencode;
 mod pr;
+mod pressure;
 mod private;
 mod pty;
 mod release;

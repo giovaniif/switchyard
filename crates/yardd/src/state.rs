@@ -176,6 +176,9 @@ pub struct Session {
     /// When the session last did anything (an event, an engine attached), in
     /// ms: an engine idle for long enough is let go (see `release`).
     pub active_at: u64,
+    /// When the session last emitted an event, in ms: a running turn quiet
+    /// for long on an overloaded host is reported as stalled (`pressure`).
+    pub event_at: u64,
 }
 
 /// When queued messages reach the agent.
@@ -209,6 +212,8 @@ pub struct App {
     pub cpu_history: Mutex<VecDeque<f32>>,
     pub terms: crate::pty::Terms,
     pub guard: crate::guard::Guard,
+    /// Overload episodes (see `pressure`).
+    pub pressure: crate::pressure::Pressure,
     pub store: crate::store::Store,
     /// Engine threads yardd runs for itself (see `private`).
     pub private: crate::private::Private,
@@ -284,6 +289,7 @@ impl App {
             cpu_history: Mutex::new(VecDeque::new()),
             terms: crate::pty::Terms::default(),
             guard: crate::guard::Guard::default(),
+            pressure: crate::pressure::Pressure::load(&crate::store::data_dir()),
             store,
             private: crate::private::Private::default(),
             agents: crate::agents::Agents::load(crate::store::data_dir()),
@@ -596,6 +602,7 @@ impl App {
                     backend: Backend::Pending,
                     engine_ref: None,
                     active_at: now,
+                    event_at: now,
                 },
             );
         }
@@ -686,6 +693,7 @@ impl App {
             s.events.push(event);
             s.meta.updated_at = now_ms();
             s.active_at = s.meta.updated_at;
+            s.event_at = s.meta.updated_at;
             if turn_completed {
                 s.meta.turn_ended_at = Some(s.meta.updated_at);
                 s.meta.last_turn = turn_end.clone();
@@ -810,6 +818,7 @@ impl App {
                         backend: Backend::Pending,
                         engine_ref: l.engine_ref,
                         active_at: now_ms(),
+                        event_at: now_ms(),
                     },
                 );
             }
