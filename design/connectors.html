@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Switchyard · Connectors redesign</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Tokens copied from ui/src/styles.css so the mockup reads as the app. */
+:root {
+  --bg: #ffffff; --side: #fafafa; --line: #ebebeb; --line-strong: #dcdcdc;
+  --fill: #f3f3f3; --fill-strong: #f0f0f0; --ink: #1a1a1a; --muted: #666666;
+  --ok: #1f9d55; --ok-ink: #17803d; --ok-fill: #edf7f0;
+  --warn: #d99a00; --warn-ink: #8a5a00; --warn-fill: #fff8ec; --warn-border: #e3b877;
+  --bad-ink: #b42318; --bad-fill: #fdf1f0; --off: #b8b8b8;
+  --brand-claude: #d97757;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --shadow-pop: 0 8px 28px rgba(0,0,0,.12);
+  --board: #f4f4f2;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--board); color: var(--ink); font: 13px/1.45 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3, p, ul, ol { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+code { font-family: var(--mono); font-size: 12px; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.spacer { flex: 1 1 0; }
+svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+svg.m { fill: currentColor; flex: none; }
+
+/* ---------- the board (not part of the app) ---------- */
+.board { max-width: 1320px; margin: 0 auto; padding: 56px 40px 120px; }
+.board-head { max-width: 760px; margin-bottom: 40px; }
+.board-head .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.board-head h1 { margin: 6px 0 12px; font-size: 34px; font-weight: 650; letter-spacing: -.025em; line-height: 1.15; }
+.board-head p { font-size: 15px; line-height: 1.6; color: #444; }
+.moves { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0 0 56px; }
+.move { padding: 18px 20px; border-radius: 14px; background: #fff; border: 1px solid var(--line); }
+.move b { display: block; margin-bottom: 4px; font-size: 14px; }
+.move p { color: var(--muted); line-height: 1.55; }
+.move .n { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-bottom: 10px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 11px; font-weight: 600; }
+.block { margin-bottom: 72px; }
+.block-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; }
+.block-head h2 { font-size: 18px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; }
+.block-head p { color: var(--muted); max-width: 780px; line-height: 1.55; }
+.frame { background: var(--bg); border: 1px solid var(--line-strong); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(0,0,0,.06); }
+.note { margin-top: 12px; color: var(--muted); max-width: 820px; line-height: 1.6; }
+.note b { color: var(--ink); font-weight: 600; }
+.caption { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+
+/* ---------- app chrome ---------- */
+.app { display: flex; min-height: 860px; }
+.sidebar { flex: none; width: 236px; display: flex; flex-direction: column; background: var(--side); border-right: 1px solid var(--line); }
+.brand { display: flex; align-items: center; padding: 18px 18px 12px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.brand kbd { margin-left: auto; font: 11px var(--mono); color: var(--muted); }
+.nav { display: grid; gap: 1px; padding: 0 8px 12px; }
+.nav a { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 8px; color: var(--ink); text-decoration: none; }
+.nav a[aria-current] { background: var(--fill-strong); font-weight: 500; }
+.nav .count { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--warn); color: #fff; font-size: 11px; font-weight: 600; line-height: 18px; text-align: center; }
+.sessions { display: grid; gap: 1px; padding: 8px; border-top: 1px solid var(--line); }
+.session { display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 10px; border-radius: 8px; }
+.session.on { background: var(--fill-strong); }
+.session .t { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.eng { position: relative; display: grid; place-items: center; flex: none; width: 16px; height: 16px; }
+.eng.claude { color: var(--brand-claude); }
+.eng .badge { position: absolute; right: -4px; bottom: -4px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--side); background: var(--warn); }
+.session.on .eng .badge { border-color: var(--fill-strong); }
+.side-foot { margin-top: auto; padding: 10px 18px 14px; border-top: 1px solid var(--line); display: grid; gap: 8px; color: var(--muted); font-size: 12px; }
+.side-foot div { display: flex; justify-content: space-between; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 7px; }
+.main { flex: 1 1 0; min-width: 0; }
+
+/* ---------- buttons, fields ---------- */
+.btn-primary, .btn, .btn-text { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; border-radius: 8px; white-space: nowrap; }
+.btn-primary { padding: 0 14px; border: 0; background: var(--ink); color: #fff; font-weight: 500; }
+.btn { padding: 0 12px; border: 1px solid var(--line-strong); background: var(--bg); }
+.btn-text { padding: 0 10px; border: 0; background: transparent; color: var(--muted); }
+.btn-text:hover { background: var(--fill); }
+.btn-small { height: 28px; padding: 0 10px; font-size: 12px; }
+.field { height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg); min-width: 0; }
+.field::placeholder { color: #999; }
+
+/* ---------- connectors page ---------- */
+.cx-page { padding: 36px 40px 56px; max-width: 1000px; }
+.cx-head { display: flex; align-items: flex-start; gap: 12px; }
+.cx-head h1 { font-size: 24px; font-weight: 650; letter-spacing: -.02em; }
+.cx-head p { margin-top: 4px; color: var(--muted); line-height: 1.55; max-width: 520px; }
+.cx-tools { display: flex; align-items: center; gap: 8px; margin: 22px 0 6px; }
+.search { position: relative; flex: 1 1 0; max-width: 300px; }
+.search svg { position: absolute; left: 10px; top: 9px; color: var(--muted); }
+.search .field { width: 100%; padding-left: 32px; }
+.scope { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--bg); white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.chip .claude { color: var(--brand-claude); }
+.host-pick { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg); }
+
+.cx-section { margin-top: 30px; }
+.cx-section-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+.cx-section-head h2 { font-size: 13px; font-weight: 600; }
+.cx-section-head .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.cx-section-head p { margin-left: auto; color: var(--muted); font-size: 12px; }
+.cx-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+
+/* The card. One per service, whatever account or source it comes from. */
+.cx-card { position: relative; display: flex; flex-direction: column; min-height: 156px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); transition: border-color .12s, box-shadow .12s, transform .12s; }
+.cx-card.link:hover { border-color: var(--line-strong); box-shadow: 0 4px 16px rgba(0,0,0,.06); transform: translateY(-1px); cursor: pointer; }
+.cx-card.attention { border-color: var(--warn-border); background: linear-gradient(var(--warn-fill), var(--bg) 64px); }
+.cx-card.broken { border-color: #ecc5c0; background: linear-gradient(var(--bad-fill), var(--bg) 64px); }
+.cx-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.tile { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 10px; color: var(--ink); background: color-mix(in srgb, currentColor 9%, #fff); }
+.tile svg { width: 22px; height: 22px; }
+.tile.sm { width: 28px; height: 28px; border-radius: 8px; } .tile.sm svg { width: 15px; height: 15px; }
+.tile.md { width: 36px; height: 36px; } .tile.md svg { width: 20px; height: 20px; }
+.tile.lg { width: 52px; height: 52px; border-radius: 13px; } .tile.lg svg { width: 28px; height: 28px; }
+.tile.letter { font-weight: 600; font-size: 16px; }
+.attention .tile, .broken .tile { background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.06); }
+.t-linear { color: #5e6ad2; } .t-sentry { color: #362d59; } .t-datadog { color: #632ca6; } .t-figma { color: #f24e1e; }
+.t-googledrive { color: #4285f4; } .t-gmail { color: #ea4335; } .t-atlassian { color: #0052cc; } .t-metabase { color: #509ee3; }
+.t-slack { color: #4a154b; } .t-stripe { color: #635bff; } .t-supabase { color: #2fb878; } .t-cloudflare { color: #f38020; }
+.t-teal { color: #0f8b8d; } .t-rose { color: #c2416b; }
+.state { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 11px; font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+.state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.state.ok { color: var(--ok-ink); background: var(--ok-fill); }
+.state.warn { color: var(--warn-ink); background: #fdeed0; }
+.state.bad { color: var(--bad-ink); background: #fbe1de; }
+.state.busy { color: var(--muted); background: var(--fill); }
+.state.busy::before { width: 9px; height: 9px; background: none; border: 1.5px solid var(--off); border-top-color: var(--ink); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.cx-name { margin-top: 12px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.cx-desc { margin-top: 2px; color: var(--muted); line-height: 1.45; }
+.cx-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 14px; min-height: 42px; }
+.who { display: flex; align-items: center; }
+.acct { position: relative; display: grid; place-items: center; width: 22px; height: 22px; margin-right: -4px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px var(--line-strong); color: var(--ink); }
+.acct.claude { color: var(--brand-claude); }
+.acct svg { width: 12px; height: 12px; }
+.acct.off { color: var(--off); box-shadow: none; outline: 1px dashed var(--off); outline-offset: -1px; background: var(--bg); }
+.acct.warn::after, .acct.bad::after { content: ""; position: absolute; right: -2px; top: -2px; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #fff; background: var(--warn); }
+.acct.bad::after { background: var(--bad-ink); }
+.who-text { margin-left: 10px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.cx-err { margin-top: 8px; padding: 6px 8px; border-radius: 6px; background: #fff; box-shadow: 0 0 0 1px #f1d3cf; color: var(--bad-ink); font-size: 12px; line-height: 1.4; }
+.chev { color: var(--off); }
+.tag { padding: 1px 6px; border-radius: 6px; background: var(--fill); color: var(--muted); font-size: 11px; }
+
+/* A sign-in running inside a card. */
+.cx-flow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--fill); font-size: 12px; line-height: 1.5; }
+.cx-flow .row { display: flex; align-items: center; gap: 8px; }
+.cx-flow .field { flex: 1 1 0; width: 0; height: 30px; font-size: 12px; }
+.cx-flow.done { background: var(--ok-fill); color: var(--ok-ink); }
+.spin { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--off); border-top-color: var(--ink); animation: spin .8s linear infinite; flex: none; }
+
+/* Available: quieter, smaller, one action. */
+.cx-avail { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.cx-avail .txt { min-width: 0; flex: 1 1 0; }
+.cx-avail b { display: block; font-weight: 600; }
+.cx-avail span.d { display: block; color: var(--muted); font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cx-avail.custom { border-style: dashed; border-color: var(--line-strong); }
+.cx-avail.custom .tile { background: none; outline: 1px dashed var(--line-strong); color: var(--muted); }
+
+.cx-wide { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; }
+.cx-wide .txt { flex: 1 1 0; min-width: 0; }
+.cx-wide b { font-size: 15px; font-weight: 600; }
+.cx-wide .facts { display: flex; gap: 18px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+/* ---------- card states strip ---------- */
+.states { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 14px; padding: 24px; }
+.states > div { display: flex; flex-direction: column; }
+.states .cx-card { flex: 1 1 auto; }
+
+/* ---------- detail sheet ---------- */
+.detail-stage { position: relative; display: flex; min-height: 700px; }
+.detail-stage .dim { flex: 1 1 0; min-width: 0; position: relative; overflow: hidden; }
+.detail-stage .dim::after { content: ""; position: absolute; inset: 0; background: rgba(0,0,0,.22); }
+.detail-stage .dim .cx-page { padding-top: 28px; }
+.sheet { flex: none; width: 440px; display: flex; flex-direction: column; background: var(--bg); border-left: 1px solid var(--line-strong); box-shadow: -12px 0 40px rgba(0,0,0,.10); }
+.sheet-head { display: flex; gap: 14px; padding: 22px 22px 18px; }
+.sheet-head h3 { font-size: 19px; font-weight: 650; letter-spacing: -.015em; }
+.sheet-head p { color: var(--muted); margin-top: 2px; line-height: 1.5; }
+.sheet-head .x { margin-left: auto; width: 28px; height: 28px; padding: 0; }
+.sheet-sec { padding: 16px 22px; border-top: 1px solid var(--line); }
+.sheet-sec h4 { margin: 0 0 4px; font-size: 12px; font-weight: 600; }
+.sheet-sec > p { color: var(--muted); font-size: 12px; margin-bottom: 10px; line-height: 1.5; }
+.acct-row { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 6px 0; border-top: 1px solid var(--line); }
+.acct-row:first-of-type { border-top: 0; }
+.acct-row .mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--fill-strong); }
+.acct-row .mark.claude { color: var(--brand-claude); }
+.acct-row .nm { min-width: 0; flex: 1 1 0; line-height: 1.35; }
+.acct-row .nm b { font-weight: 500; display: block; }
+.acct-row .st { font-size: 12px; white-space: nowrap; }
+.st.ok { color: var(--ok-ink); } .st.warn { color: var(--warn-ink); }
+.toggle { position: relative; flex: none; width: 30px; height: 18px; border-radius: 9px; background: var(--line-strong); }
+.toggle::after { content: ""; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .12s; }
+.toggle.on { background: var(--ink); } .toggle.on::after { left: 14px; }
+.face { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: #fff; font-size: 12px; font-weight: 600; }
+.toollist { display: flex; flex-wrap: wrap; gap: 6px; }
+.toollist code { padding: 2px 7px; border-radius: 6px; background: var(--fill); color: #444; font-size: 11.5px; }
+.sheet-foot { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--line); }
+.bad { color: var(--bad-ink); }
+
+/* ---------- thread ---------- */
+.thread-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; }
+.thread-main { display: flex; flex-direction: column; min-width: 0; flex: 1 1 0; }
+.bar { display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 22px; border-bottom: 1px solid var(--line); }
+.bar h1 { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .branch { font: 12px var(--mono); color: var(--muted); }
+.thread { display: flex; flex-direction: column; gap: 14px; padding: 26px 34px; flex: 1 1 0; font-size: 14px; line-height: 1.6; }
+.user { align-self: flex-end; max-width: 78%; padding: 10px 14px; border-radius: 16px; background: var(--fill); }
+.tool-line { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.tool-line code { color: #444; }
+.composer { margin: 0 34px 22px; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 14px; }
+.composer .ph { color: #999; font-size: 14px; margin-bottom: 14px; }
+.composer .row { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 13px; }
+.send { margin-left: auto; width: 30px; height: 30px; border-radius: 50%; background: var(--fill-strong); display: grid; place-items: center; color: #999; }
+
+/* The connect card: same family as the approval card, with the service's face. */
+.connect { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: 12px; font-size: 13px; line-height: 1.45; background: var(--bg); }
+.connect-head { display: flex; align-items: center; gap: 12px; }
+.connect-head .txt { min-width: 0; flex: 1 1 0; }
+.connect-head b { display: block; font-size: 14px; font-weight: 600; }
+.connect-head .sub { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12px; }
+.connect-head .sub .claude { color: var(--brand-claude); }
+.why { padding: 8px 12px; border-left: 2px solid var(--line-strong); color: #444; }
+.why small { display: block; color: var(--muted); font-size: 11px; margin-bottom: 1px; }
+.connect-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.connect-actions .hint { margin-left: auto; color: var(--muted); font-size: 12px; }
+.connect .cx-flow { margin-top: 0; }
+.connect-line { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 13px; }
+.connect-line .ok { color: var(--ok-ink); font-weight: 500; }
+.connect-multi { display: grid; }
+.connect-multi li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.connect-multi li:first-child { border-top: 0; padding-top: 0; }
+.connect-multi li:last-child { padding-bottom: 0; }
+.connect-multi .txt { flex: 1 1 0; min-width: 0; line-height: 1.35; }
+.connect-multi b { font-weight: 500; display: block; }
+.connect [data-when] { display: none; }
+.connect[data-state="ask"] [data-when~="ask"], .connect[data-state="wait"] [data-when~="wait"], .connect[data-state="done"] [data-when~="done"] { display: flex; }
+.connect[data-state="done"] { padding: 0; border: 0; }
+.connect[data-state="done"] .connect-head, .connect[data-state="done"] .why { display: none; }
+.after-connect { display: none; flex-direction: column; gap: 14px; }
+.connect[data-state="done"] ~ .after-connect { display: flex; }
+.variants { display: grid; gap: 22px; }
+
+/* ---------- phones ---------- */
+.phones { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+.phone { width: 390px; border-radius: 36px; border: 1px solid var(--line-strong); background: var(--bg); overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(0,0,0,.06); }
+.phone-bar { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+.phone-bar h1 { font-size: 15px; font-weight: 600; }
+.phone-body { padding: 16px; }
+.phone .scope { flex-wrap: nowrap; overflow: hidden; margin: 12px 0 0; }
+.phone .cx-section { margin-top: 22px; }
+.cx-rowcard { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.cx-rowcard + .cx-rowcard { margin-top: 8px; }
+.cx-rowcard .txt { flex: 1 1 0; min-width: 0; }
+.cx-rowcard b { display: block; font-weight: 600; font-size: 14px; }
+.cx-rowcard .d { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.cx-rowcard.attention { border-color: var(--warn-border); background: var(--warn-fill); }
+.cx-rowcard.attention .tile { background: #fff; }
+.sd { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; }
+.sd.warn { background: var(--warn); }
+.phone .thread { padding: 18px 16px; font-size: 15px; }
+.phone .composer { margin: 0 12px 16px; }
+.phone-sheet-stage { position: relative; }
+.phone-sheet-stage .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.28); }
+.bottom-sheet { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 18px 22px; border-radius: 20px 20px 0 0; background: var(--bg); display: grid; gap: 14px; font-size: 14px; }
+.grab { justify-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--line-strong); }
+.bottom-sheet .btn-primary, .bottom-sheet .btn { height: 44px; border-radius: 12px; font-size: 15px; }
+
+/* ---------- decisions ---------- */
+.decisions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.decision { padding: 18px 20px; border-radius: 14px; background: #fff; border: 1px solid var(--line); line-height: 1.6; }
+.decision b { display: block; margin-bottom: 4px; }
+.decision p { color: #444; }
+.decision p + p { margin-top: 6px; color: var(--muted); }
+
+@media (max-width: 1100px) {
+  .board { padding: 32px 16px 80px; }
+  .moves, .decisions { grid-template-columns: 1fr; }
+  .block-head { flex-direction: column; gap: 4px; }
+  .thread-wrap { grid-template-columns: 1fr; }
+  .frame { overflow-x: auto; }
+  .frame > .app, .frame > .detail-stage { min-width: 1100px; }
+  .states { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .states { grid-template-columns: 1fr; }
+  .phone { width: 100%; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<!--SPRITE:START-->
+<symbol id="b-linear" viewBox="0 0 24 24"><path d="M2.886 4.18A11.982 11.982 0 0 1 11.99 0C18.624 0 24 5.376 24 12.009c0 3.64-1.62 6.903-4.18 9.105L2.887 4.18ZM1.817 5.626l16.556 16.556c-.524.33-1.075.62-1.65.866L.951 7.277c.247-.575.537-1.126.866-1.65ZM.322 9.163l14.515 14.515c-.71.172-1.443.282-2.195.322L0 11.358a12 12 0 0 1 .322-2.195Zm-.17 4.862 9.823 9.824a12.02 12.02 0 0 1-9.824-9.824Z"/></symbol>
+<symbol id="b-sentry" viewBox="0 0 24 24"><path d="M13.91 2.505c-.873-1.448-2.972-1.448-3.844 0L6.904 7.92a15.478 15.478 0 0 1 8.53 12.811h-2.221A13.301 13.301 0 0 0 5.784 9.814l-2.926 5.06a7.65 7.65 0 0 1 4.435 5.848H2.194a.365.365 0 0 1-.298-.534l1.413-2.402a5.16 5.16 0 0 0-1.614-.913L.296 19.275a2.182 2.182 0 0 0 .812 2.999 2.24 2.24 0 0 0 1.086.288h6.983a9.322 9.322 0 0 0-3.845-8.318l1.11-1.922a11.47 11.47 0 0 1 4.95 10.24h5.915a17.242 17.242 0 0 0-7.885-15.28l2.244-3.845a.37.37 0 0 1 .504-.13c.255.14 9.75 16.708 9.928 16.9a.365.365 0 0 1-.327.543h-2.287c.029.612.029 1.223 0 1.831h2.297a2.206 2.206 0 0 0 1.922-3.31z"/></symbol>
+<symbol id="b-datadog" viewBox="0 0 24 24"><path d="M19.57 17.04l-1.997-1.316-1.665 2.782-1.937-.567-1.706 2.604.087.82 9.274-1.71-.538-5.794zm-8.649-2.498l1.488-.204c.241.108.409.15.697.223.45.117.97.23 1.741-.16.18-.088.553-.43.704-.625l6.096-1.106.622 7.527-10.444 1.882zm11.325-2.712l-.602.115L20.488 0 .789 2.285l2.427 19.693 2.306-.334c-.184-.263-.471-.581-.96-.989-.68-.564-.44-1.522-.039-2.127.53-1.022 3.26-2.322 3.106-3.956-.056-.594-.15-1.368-.702-1.898-.02.22.017.432.017.432s-.227-.289-.34-.683c-.112-.15-.2-.199-.319-.4-.085.233-.073.503-.073.503s-.186-.437-.216-.807c-.11.166-.137.48-.137.48s-.241-.69-.186-1.062c-.11-.323-.436-.965-.343-2.424.6.421 1.924.321 2.44-.439.171-.251.288-.939-.086-2.293-.24-.868-.835-2.16-1.066-2.651l-.028.02c.122.395.374 1.223.47 1.625.293 1.218.372 1.642.234 2.204-.116.488-.397.808-1.107 1.165-.71.358-1.653-.514-1.713-.562-.69-.55-1.224-1.447-1.284-1.883-.062-.477.275-.763.445-1.153-.243.07-.514.192-.514.192s.323-.334.722-.624c.165-.109.262-.178.436-.323a9.762 9.762 0 0 0-.456.003s.42-.227.855-.392c-.318-.014-.623-.003-.623-.003s.937-.419 1.678-.727c.509-.208 1.006-.147 1.286.257.367.53.752.817 1.569.996.501-.223.653-.337 1.284-.509.554-.61.99-.688.99-.688s-.216.198-.274.51c.314-.249.66-.455.66-.455s-.134.164-.259.426l.03.043c.366-.22.797-.394.797-.394s-.123.156-.268.358c.277-.002.838.012 1.056.037 1.285.028 1.552-1.374 2.045-1.55.618-.22.894-.353 1.947.68.903.888 1.609 2.477 1.259 2.833-.294.295-.874-.115-1.516-.916a3.466 3.466 0 0 1-.716-1.562 1.533 1.533 0 0 0-.497-.85s.23.51.23.96c0 .246.03 1.165.424 1.68-.039.076-.057.374-.1.43-.458-.554-1.443-.95-1.604-1.067.544.445 1.793 1.468 2.273 2.449.453.927.186 1.777.416 1.997.065.063.976 1.197 1.15 1.767.306.994.019 2.038-.381 2.685l-1.117.174c-.163-.045-.273-.068-.42-.153.08-.143.241-.5.243-.572l-.063-.111c-.348.492-.93.97-1.414 1.245-.633.359-1.363.304-1.838.156-1.348-.415-2.623-1.327-2.93-1.566 0 0-.01.191.048.234.34.383 1.119 1.077 1.872 1.56l-1.605.177.759 5.908c-.337.048-.39.071-.757.124-.325-1.147-.946-1.895-1.624-2.332-.599-.384-1.424-.47-2.214-.314l-.05.059a2.851 2.851 0 0 1 1.863.444c.654.413 1.181 1.481 1.375 2.124.248.822.42 1.7-.248 2.632-.476.662-1.864 1.028-2.986.237.3.481.705.876 1.25.95.809.11 1.577-.03 2.106-.574.452-.464.69-1.434.628-2.456l.714-.104.258 1.834 11.827-1.424zM15.05 6.848c-.034.075-.085.125-.007.37l.004.014.013.032.032.073c.14.287.295.558.552.696.067-.011.136-.019.207-.023.242-.01.395.028.492.08.009-.048.01-.119.005-.222-.018-.364.072-.982-.626-1.308-.264-.122-.634-.084-.757.068a.302.302 0 0 1 .058.013c.186.066.06.13.027.207m1.958 3.392c-.092-.05-.52-.03-.821.005-.574.068-1.193.267-1.328.372-.247.191-.135.523.047.66.511.382.96.638 1.432.575.29-.038.546-.497.728-.914.124-.288.124-.598-.058-.698m-5.077-2.942c.162-.154-.805-.355-1.556.156-.554.378-.571 1.187-.041 1.646.053.046.096.078.137.104a4.77 4.77 0 0 1 1.396-.412c.113-.125.243-.345.21-.745-.044-.542-.455-.456-.146-.749"/></symbol>
+<symbol id="b-posthog" viewBox="0 0 24 24"><path d="M9.854 14.5 5 9.647.854 5.5A.5.5 0 0 0 0 5.854V8.44a.5.5 0 0 0 .146.353L5 13.647l.147.146L9.854 18.5l.146.147v-.049c.065.03.134.049.207.049h2.586a.5.5 0 0 0 .353-.854L9.854 14.5zm0-5-4-4a.487.487 0 0 0-.409-.144.515.515 0 0 0-.356.21.493.493 0 0 0-.089.288V8.44a.5.5 0 0 0 .147.353l9 9a.5.5 0 0 0 .853-.354v-2.585a.5.5 0 0 0-.146-.354l-5-5zm1-4a.5.5 0 0 0-.854.354V8.44a.5.5 0 0 0 .147.353l4 4a.5.5 0 0 0 .853-.354V9.854a.5.5 0 0 0-.146-.354l-4-4zm12.647 11.515a3.863 3.863 0 0 1-2.232-1.1l-4.708-4.707a.5.5 0 0 0-.854.354v6.585a.5.5 0 0 0 .5.5H23.5a.5.5 0 0 0 .5-.5v-.6c0-.276-.225-.497-.499-.532zm-5.394.032a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6zM.854 15.5a.5.5 0 0 0-.854.354v2.293a.5.5 0 0 0 .5.5h2.293c.222 0 .39-.135.462-.309a.493.493 0 0 0-.109-.545L.854 15.501zM5 14.647.854 10.5a.5.5 0 0 0-.854.353v2.586a.5.5 0 0 0 .146.353L4.854 18.5l.146.147h2.793a.5.5 0 0 0 .353-.854L5 14.647z"/></symbol>
+<symbol id="b-notion" viewBox="0 0 24 24"><path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z"/></symbol>
+<symbol id="b-atlassian" viewBox="0 0 24 24"><path d="M7.12 11.084a.683.683 0 00-1.16.126L.075 22.974a.703.703 0 00.63 1.018h8.19a.678.678 0 00.63-.39c1.767-3.65.696-9.203-2.406-12.52zM11.434.386a15.515 15.515 0 00-.906 15.317l3.95 7.9a.703.703 0 00.628.388h8.19a.703.703 0 00.63-1.017L12.63.38a.664.664 0 00-1.196.006z"/></symbol>
+<symbol id="b-vercel" viewBox="0 0 24 24"><path d="m12 1.608 12 20.784H0Z"/></symbol>
+<symbol id="b-github" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></symbol>
+<symbol id="b-figma" viewBox="0 0 24 24"><path d="M15.852 8.981h-4.588V0h4.588c2.476 0 4.49 2.014 4.49 4.49s-2.014 4.491-4.49 4.491zM12.735 7.51h3.117c1.665 0 3.019-1.355 3.019-3.019s-1.355-3.019-3.019-3.019h-3.117V7.51zm0 1.471H8.148c-2.476 0-4.49-2.014-4.49-4.49S5.672 0 8.148 0h4.588v8.981zm-4.587-7.51c-1.665 0-3.019 1.355-3.019 3.019s1.354 3.02 3.019 3.02h3.117V1.471H8.148zm4.587 15.019H8.148c-2.476 0-4.49-2.014-4.49-4.49s2.014-4.49 4.49-4.49h4.588v8.98zM8.148 8.981c-1.665 0-3.019 1.355-3.019 3.019s1.355 3.019 3.019 3.019h3.117V8.981H8.148zM8.172 24c-2.489 0-4.515-2.014-4.515-4.49s2.014-4.49 4.49-4.49h4.588v4.441c0 2.503-2.047 4.539-4.563 4.539zm-.024-7.51a3.023 3.023 0 0 0-3.019 3.019c0 1.665 1.365 3.019 3.044 3.019 1.705 0 3.093-1.376 3.093-3.068v-2.97H8.148zm7.704 0h-.098c-2.476 0-4.49-2.014-4.49-4.49s2.014-4.49 4.49-4.49h.098c2.476 0 4.49 2.014 4.49 4.49s-2.014 4.49-4.49 4.49zm-.097-7.509c-1.665 0-3.019 1.355-3.019 3.019s1.355 3.019 3.019 3.019h.098c1.665 0 3.019-1.355 3.019-3.019s-1.355-3.019-3.019-3.019h-.098z"/></symbol>
+<symbol id="b-gmail" viewBox="0 0 24 24"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></symbol>
+<symbol id="b-googledrive" viewBox="0 0 24 24"><path d="M12.01 1.485c-2.082 0-3.754.02-3.743.047.01.02 1.708 3.001 3.774 6.62l3.76 6.574h3.76c2.081 0 3.753-.02 3.742-.047-.005-.02-1.708-3.001-3.775-6.62l-3.76-6.574zm-4.76 1.73a789.828 789.861 0 0 0-3.63 6.319L0 15.868l1.89 3.298 1.885 3.297 3.62-6.335 3.618-6.33-1.88-3.287C8.1 4.704 7.255 3.22 7.25 3.214zm2.259 12.653-.203.348c-.114.198-.96 1.672-1.88 3.287a423.93 423.948 0 0 1-1.698 2.97c-.01.026 3.24.042 7.222.042h7.244l1.796-3.157c.992-1.734 1.85-3.23 1.906-3.323l.104-.167h-7.249z"/></symbol>
+<symbol id="b-metabase" viewBox="0 0 24 24"><path d="M5.385 6.136c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461.644-1.461 1.438-1.461 1.438.654 1.438 1.461zm-1.438 2.63c-.794 0-1.438.654-1.438 1.461s.644 1.461 1.438 1.461 1.438-.654 1.438-1.461-.644-1.461-1.438-1.461zm5.465-2.63c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461.644-1.461 1.438-1.461 1.438.654 1.438 1.461zm-.35 0c0-.613-.488-1.111-1.088-1.111s-1.088.499-1.088 1.111.488 1.111 1.088 1.111 1.088-.498 1.088-1.111zm-1.088 5.592c.794 0 1.438-.654 1.438-1.461s-.644-1.461-1.438-1.461-1.438.654-1.438 1.461.643 1.461 1.438 1.461zm5.464-5.592c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461.644-1.461 1.438-1.461 1.438.654 1.438 1.461zm-.35 0c0-.613-.488-1.111-1.088-1.111s-1.088.498-1.088 1.111S11.4 7.247 12 7.247s1.088-.498 1.088-1.111zm.35-4.675c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461S11.206 0 12 0s1.438.654 1.438 1.461zm-.35 0C13.088.848 12.6.35 12 .35s-1.088.498-1.088 1.111S11.4 2.572 12 2.572s1.088-.498 1.088-1.111zm.35 8.806c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461.644-1.461 1.438-1.461 1.438.654 1.438 1.461zm-.35 0c0-.613-.488-1.111-1.088-1.111s-1.088.498-1.088 1.111.488 1.111 1.088 1.111 1.088-.499 1.088-1.111zm4.376-4.131c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461.644-1.461 1.438-1.461 1.438.654 1.438 1.461zm-.35 0c0-.613-.488-1.111-1.088-1.111s-1.088.498-1.088 1.111.488 1.111 1.088 1.111 1.088-.498 1.088-1.111zm2.939 1.461c.794 0 1.438-.654 1.438-1.461s-.644-1.461-1.438-1.461-1.438.654-1.438 1.461.644 1.461 1.438 1.461zm-4.027 1.209c-.794 0-1.438.654-1.438 1.461s.644 1.461 1.438 1.461 1.438-.654 1.438-1.461-.643-1.461-1.438-1.461zm4.027 0c-.794 0-1.438.654-1.438 1.461s.644 1.461 1.438 1.461 1.438-.654 1.438-1.461-.644-1.461-1.438-1.461zM3.947 12.857a1.45 1.45 0 0 0-1.438 1.461c0 .807.644 1.461 1.438 1.461s1.438-.654 1.438-1.461a1.45 1.45 0 0 0-1.438-1.461zm5.465 1.5c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461.644-1.461 1.438-1.461 1.438.655 1.438 1.461zm-.35 0c0-.613-.488-1.111-1.088-1.111s-1.088.498-1.088 1.111.488 1.111 1.088 1.111 1.088-.498 1.088-1.111zM12 12.896c-.794 0-1.438.654-1.438 1.461s.644 1.461 1.438 1.461 1.438-.654 1.438-1.461-.644-1.461-1.438-1.461zm5.464 1.461c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461.644-1.461 1.438-1.461 1.438.655 1.438 1.461zm-.35 0c0-.613-.488-1.111-1.088-1.111s-1.088.498-1.088 1.111.488 1.111 1.088 1.111 1.088-.498 1.088-1.111zm2.939-1.461c-.794 0-1.438.654-1.438 1.461s.644 1.461 1.438 1.461 1.438-.654 1.438-1.461-.644-1.461-1.438-1.461zM3.947 16.948c-.794 0-1.438.654-1.438 1.461s.644 1.461 1.438 1.461 1.438-.654 1.438-1.461-.644-1.461-1.438-1.461zm5.465 1.5c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461.644-1.461 1.438-1.461 1.438.654 1.438 1.461zm-.35 0c0-.613-.488-1.111-1.088-1.111s-1.088.498-1.088 1.111.488 1.111 1.088 1.111 1.088-.498 1.088-1.111zm4.376 0c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461.644-1.461 1.438-1.461 1.438.654 1.438 1.461zm-.35 0c0-.613-.488-1.111-1.088-1.111s-1.088.498-1.088 1.111.488 1.111 1.088 1.111 1.088-.498 1.088-1.111zm.35 4.091c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461.644-1.461 1.438-1.461 1.438.654 1.438 1.461zm-.35 0c0-.613-.488-1.111-1.088-1.111s-1.088.498-1.088 1.111S11.4 23.65 12 23.65s1.088-.498 1.088-1.111zm4.376-4.091c0 .807-.644 1.461-1.438 1.461s-1.438-.654-1.438-1.461.644-1.461 1.438-1.461 1.438.654 1.438 1.461zm-.35 0c0-.613-.488-1.111-1.088-1.111s-1.088.498-1.088 1.111.488 1.111 1.088 1.111 1.088-.498 1.088-1.111zm2.939-1.461c-.794 0-1.438.654-1.438 1.461s.644 1.461 1.438 1.461 1.438-.654 1.438-1.461-.644-1.461-1.438-1.461z"/></symbol>
+<symbol id="b-stripe" viewBox="0 0 24 24"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z"/></symbol>
+<symbol id="b-supabase" viewBox="0 0 24 24"><path d="M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C-.33 13.427.65 15.455 2.409 15.455h9.579l.113 7.51c.014.985 1.259 1.408 1.873.636l9.262-11.653c1.093-1.375.113-3.403-1.645-3.403h-9.642z"/></symbol>
+<symbol id="b-cloudflare" viewBox="0 0 24 24"><path d="M16.5088 16.8447c.1475-.5068.0908-.9707-.1553-1.3154-.2246-.3164-.6045-.499-1.0615-.5205l-8.6592-.1123a.1559.1559 0 0 1-.1333-.0713c-.0283-.042-.0351-.0986-.021-.1553.0278-.084.1123-.1484.2036-.1562l8.7359-.1123c1.0351-.0489 2.1601-.8868 2.5537-1.9136l.499-1.3013c.0215-.0561.0293-.1128.0147-.168-.5625-2.5463-2.835-4.4453-5.5499-4.4453-2.5039 0-4.6284 1.6177-5.3876 3.8614-.4927-.3658-1.1187-.5625-1.794-.499-1.2026.119-2.1665 1.083-2.2861 2.2856-.0283.31-.0069.6128.0635.894C1.5683 13.171 0 14.7754 0 16.752c0 .1748.0142.3515.0352.5273.0141.083.0844.1475.1689.1475h15.9814c.0909 0 .1758-.0645.2032-.1553l.12-.4268zm2.7568-5.5634c-.0771 0-.1611 0-.2383.0112-.0566 0-.1054.0415-.127.0976l-.3378 1.1744c-.1475.5068-.0918.9707.1543 1.3164.2256.3164.6055.498 1.0625.5195l1.8437.1133c.0557 0 .1055.0263.1329.0703.0283.043.0351.1074.0214.1562-.0283.084-.1132.1485-.204.1553l-1.921.1123c-1.041.0488-2.1582.8867-2.5527 1.914l-.1406.3585c-.0283.0713.0215.1416.0986.1416h6.5977c.0771 0 .1474-.0489.169-.126.1122-.4082.1757-.837.1757-1.2803 0-2.6025-2.125-4.727-4.7344-4.727"/></symbol>
+<symbol id="b-slack" viewBox="0 0 24 24"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></symbol>
+<symbol id="e-claude" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z"/></symbol>
+<symbol id="e-codex" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M8.086.457a6.105 6.105 0 013.046-.415c1.333.153 2.521.72 3.564 1.7a.117.117 0 00.107.029c1.408-.346 2.762-.224 4.061.366l.063.03.154.076c1.357.703 2.33 1.77 2.918 3.198.278.679.418 1.388.421 2.126a5.655 5.655 0 01-.18 1.631.167.167 0 00.04.155 5.982 5.982 0 011.578 2.891c.385 1.901-.01 3.615-1.183 5.14l-.182.22a6.063 6.063 0 01-2.934 1.851.162.162 0 00-.108.102c-.255.736-.511 1.364-.987 1.992-1.199 1.582-2.962 2.462-4.948 2.451-1.583-.008-2.986-.587-4.21-1.736a.145.145 0 00-.14-.032c-.518.167-1.04.191-1.604.185a5.924 5.924 0 01-2.595-.622 6.058 6.058 0 01-2.146-1.781c-.203-.269-.404-.522-.551-.821a7.74 7.74 0 01-.495-1.283 6.11 6.11 0 01-.017-3.064.166.166 0 00.008-.074.115.115 0 00-.037-.064 5.958 5.958 0 01-1.38-2.202 5.196 5.196 0 01-.333-1.589 6.915 6.915 0 01.188-2.132c.45-1.484 1.309-2.648 2.577-3.493.282-.188.55-.334.802-.438.286-.12.573-.22.861-.304a.129.129 0 00.087-.087A6.016 6.016 0 015.635 2.31C6.315 1.464 7.132.846 8.086.457zm-.804 7.85a.848.848 0 00-1.473.842l1.694 2.965-1.688 2.848a.849.849 0 001.46.864l1.94-3.272a.849.849 0 00.007-.854l-1.94-3.393zm5.446 6.24a.849.849 0 000 1.695h4.848a.849.849 0 000-1.696h-4.848z"/></symbol>
+<!--SPRITE:END-->
+<symbol id="u-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="u-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+<symbol id="u-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="u-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="u-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="u-out" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M11 6H6v12h12v-5"/></symbol>
+<symbol id="u-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="u-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M7 8h10v4a5 5 0 0 1-10 0V8ZM12 17v4"/></symbol>
+<symbol id="u-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="u-spark" viewBox="0 0 24 24"><path d="M12 4l1.8 5.2L19 11l-5.2 1.8L12 18l-1.8-5.2L5 11l5.2-1.8L12 4Z"/></symbol>
+<symbol id="u-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></symbol>
+<symbol id="u-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="u-clip" viewBox="0 0 24 24"><path d="m20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.4a1.7 1.7 0 0 1-2.4-2.4L14.500 7"/></symbol>
+<symbol id="u-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+</svg>
+
+<div class="board">
+
+<header class="board-head">
+  <div class="eyebrow">Switchyard · design proposal</div>
+  <h1>Connectors, rebuilt around the service</h1>
+  <p>Today the page is a list of engine accounts, each with a table of MCP server names inside. You have to know that “Linear for Codex” and “Linear for Claude” are separate rows in separate boxes, and a session that needs one just fails mid-turn. This proposal makes the service the unit: one card per connector, and the same card can appear in a conversation when an agent needs it.</p>
+</header>
+
+<div class="moves">
+  <div class="move"><span class="n">1</span><b>One card per service</b><p>Linear is one card, not a row per account and source. The card says where it works; the account detail is one click in.</p></div>
+  <div class="move"><span class="n">2</span><b>Sorted by what needs you</b><p>Needs you, then Connected, then Available. No filter drawer, no pagination: search covers the long tail.</p></div>
+  <div class="move"><span class="n">3</span><b>Connect from the conversation</b><p>An agent that needs a connector puts its card in the thread. You click, sign in, and the turn carries on.</p></div>
+</div>
+
+<!-- ============ 1. PAGE ============ -->
+<section class="block" id="page">
+  <div class="block-head"><h2>1 · The page</h2><p>Cards are grouped by state. Each shows the accounts it works on as engine marks: solid means connected, an amber dot means that account needs a sign-in, dashed means not added there.</p></div>
+  <div class="frame">
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">Switchyard</div>
+      <nav class="nav">
+        <a href="#"><svg class="i" width="15" height="15"><use href="#u-plus"/></svg>New session</a>
+        <a href="#"><svg class="i" width="15" height="15"><use href="#u-spark"/></svg>Switchy</a>
+        <a href="#"><svg class="i" width="15" height="15"><use href="#u-clock"/></svg>Automations</a>
+        <a href="#" aria-current="page"><svg class="i" width="15" height="15"><use href="#u-plug"/></svg>Connectors<span class="count">2</span></a>
+        <a href="#"><svg class="i" width="15" height="15"><use href="#u-gear"/></svg>Settings</a>
+      </nav>
+      <div class="sessions">
+        <div class="session"><span class="eng claude"><svg class="m" width="15" height="15"><use href="#e-claude"/></svg></span><span class="t">Fix ENG-412 retry backoff</span></div>
+        <div class="session"><span class="eng"><svg class="m" width="15" height="15"><use href="#e-codex"/></svg></span><span class="t">Profile the PDF export</span></div>
+        <div class="session"><span class="eng claude"><svg class="m" width="15" height="15"><use href="#e-claude"/></svg></span><span class="t">Rate limit the public API</span></div>
+      </div>
+      <div class="side-foot"><div><span>Usage</span><span>47% used</span></div><div><span><i class="dot"></i>giovani</span><span>18% · 50%</span></div></div>
+    </aside>
+    <div class="main">
+      <div class="cx-page">
+        <div class="cx-head">
+          <div>
+            <h1>Connectors</h1>
+            <p>The services your sessions and agents can use. Connect one once per account and every session on that account has it.</p>
+          </div>
+          <span class="spacer"></span>
+          <button class="host-pick"><i class="dot" style="margin:0"></i>giovani<svg class="i" width="12" height="12"><use href="#u-down"/></svg></button>
+        </div>
+        <div class="cx-tools">
+          <div class="scope" role="group" aria-label="Account">
+            <button class="chip" aria-pressed="true">All accounts</button>
+            <button class="chip" aria-pressed="false"><svg class="m claude" width="13" height="13"><use href="#e-claude"/></svg>Personal</button>
+            <button class="chip" aria-pressed="false"><svg class="m claude" width="13" height="13"><use href="#e-claude"/></svg>Work</button>
+            <button class="chip" aria-pressed="false"><svg class="m" width="13" height="13"><use href="#e-codex"/></svg>Codex</button>
+          </div>
+          <span class="spacer"></span>
+          <div class="search"><svg class="i" width="14" height="14"><use href="#u-search"/></svg><input class="field" placeholder="Search connectors" aria-label="Search connectors"></div>
+        </div>
+
+        <div class="cx-section">
+          <div class="cx-section-head"><h2>Needs you</h2><span class="n">2</span></div>
+          <div class="cx-grid">
+            <article class="cx-card attention">
+              <div class="cx-top"><span class="tile t-datadog"><svg class="m"><use href="#b-datadog"/></svg></span><span class="state warn">Needs sign-in</span></div>
+              <div class="cx-name">Datadog</div>
+              <div class="cx-desc">Logs, metrics, monitors and traces</div>
+              <div class="cx-foot">
+                <span class="who"><span class="acct claude warn" title="Claude · Personal: needs sign-in"><svg class="m"><use href="#e-claude"/></svg></span><span class="acct" title="Codex: connected"><svg class="m"><use href="#e-codex"/></svg></span></span>
+                <span class="who-text">1 of 2 signed in</span>
+                <span class="spacer"></span>
+                <button class="btn-primary btn-small">Connect</button>
+              </div>
+            </article>
+            <article class="cx-card broken">
+              <div class="cx-top"><span class="tile t-gmail"><svg class="m"><use href="#b-gmail"/></svg></span><span class="state bad">Not working</span></div>
+              <div class="cx-name">Gmail</div>
+              <div class="cx-err">No URL configured for this server</div>
+              <div class="cx-foot">
+                <span class="who"><span class="acct claude bad"><svg class="m"><use href="#e-claude"/></svg></span></span>
+                <span class="who-text">engineering plugin</span>
+                <span class="spacer"></span>
+                <button class="btn btn-small">Retry</button>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div class="cx-section">
+          <div class="cx-section-head"><h2>Connected</h2><span class="n">6</span></div>
+          <div class="cx-grid">
+            <article class="cx-card link">
+              <div class="cx-top"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span><span class="state ok">Connected</span></div>
+              <div class="cx-name">Linear</div>
+              <div class="cx-desc">Issues, projects and cycles</div>
+              <div class="cx-foot"><span class="who"><span class="acct claude"><svg class="m"><use href="#e-claude"/></svg></span><span class="acct claude"><svg class="m"><use href="#e-claude"/></svg></span><span class="acct"><svg class="m"><use href="#e-codex"/></svg></span></span><span class="who-text">All 3 accounts</span><span class="spacer"></span><svg class="i chev" width="14" height="14"><use href="#u-chev"/></svg></div>
+            </article>
+            <article class="cx-card link">
+              <div class="cx-top"><span class="tile t-sentry"><svg class="m"><use href="#b-sentry"/></svg></span><span class="state ok">Connected</span></div>
+              <div class="cx-name">Sentry</div>
+              <div class="cx-desc">Errors, releases and performance</div>
+              <div class="cx-foot"><span class="who"><span class="acct claude"><svg class="m"><use href="#e-claude"/></svg></span><span class="acct off"><svg class="m"><use href="#e-claude"/></svg></span><span class="acct off"><svg class="m"><use href="#e-codex"/></svg></span></span><span class="who-text">1 of 3 accounts</span><span class="spacer"></span><svg class="i chev" width="14" height="14"><use href="#u-chev"/></svg></div>
+            </article>
+            <article class="cx-card link">
+              <div class="cx-top"><span class="tile"><svg class="m"><use href="#b-notion"/></svg></span><span class="state ok">Connected</span></div>
+              <div class="cx-name">Notion</div>
+              <div class="cx-desc">Pages, databases and comments</div>
+              <div class="cx-foot"><span class="who"><span class="acct claude"><svg class="m"><use href="#e-claude"/></svg></span><span class="acct off"><svg class="m"><use href="#e-claude"/></svg></span><span class="acct"><svg class="m"><use href="#e-codex"/></svg></span></span><span class="who-text">2 of 3 accounts</span><span class="spacer"></span><svg class="i chev" width="14" height="14"><use href="#u-chev"/></svg></div>
+            </article>
+            <article class="cx-card link">
+              <div class="cx-top"><span class="tile t-figma"><svg class="m"><use href="#b-figma"/></svg></span><span class="state ok">Connected</span></div>
+              <div class="cx-name">Figma</div>
+              <div class="cx-desc">Files, frames and design tokens</div>
+              <div class="cx-foot"><span class="who"><span class="acct claude"><svg class="m"><use href="#e-claude"/></svg></span></span><span class="who-text">Personal · claude.ai</span><span class="spacer"></span><svg class="i chev" width="14" height="14"><use href="#u-chev"/></svg></div>
+            </article>
+            <article class="cx-card link">
+              <div class="cx-top"><span class="tile t-googledrive"><svg class="m"><use href="#b-googledrive"/></svg></span><span class="state ok">Connected</span></div>
+              <div class="cx-name">Google Drive</div>
+              <div class="cx-desc">Search and read your files</div>
+              <div class="cx-foot"><span class="who"><span class="acct claude"><svg class="m"><use href="#e-claude"/></svg></span></span><span class="who-text">Personal · claude.ai</span><span class="spacer"></span><svg class="i chev" width="14" height="14"><use href="#u-chev"/></svg></div>
+            </article>
+            <article class="cx-card link">
+              <div class="cx-top"><span class="tile letter t-teal">C</span><span class="state ok">Connected</span></div>
+              <div class="cx-name">chart <span class="tag">widgets</span></div>
+              <div class="cx-desc">Your own server · localhost</div>
+              <div class="cx-foot"><span class="who"><span class="acct claude"><svg class="m"><use href="#e-claude"/></svg></span><span class="acct"><svg class="m"><use href="#e-codex"/></svg></span></span><span class="who-text">2 accounts</span><span class="spacer"></span><svg class="i chev" width="14" height="14"><use href="#u-chev"/></svg></div>
+            </article>
+          </div>
+        </div>
+
+        <div class="cx-section">
+          <div class="cx-section-head"><h2>Available</h2><p>Signs in with the service’s own page. Nothing is stored in Switchyard.</p></div>
+          <div class="cx-grid">
+            <div class="cx-avail"><span class="tile md"><svg class="m"><use href="#b-posthog"/></svg></span><span class="txt"><b>PostHog</b><span class="d">Product analytics</span></span><button class="btn btn-small">Connect</button></div>
+            <div class="cx-avail"><span class="tile md t-atlassian"><svg class="m"><use href="#b-atlassian"/></svg></span><span class="txt"><b>Atlassian</b><span class="d">Jira and Confluence</span></span><button class="btn btn-small">Connect</button></div>
+            <div class="cx-avail"><span class="tile md"><svg class="m"><use href="#b-vercel"/></svg></span><span class="txt"><b>Vercel</b><span class="d">Deployments and logs</span></span><button class="btn btn-small">Connect</button></div>
+            <div class="cx-avail"><span class="tile md"><svg class="m"><use href="#b-github"/></svg></span><span class="txt"><b>GitHub</b><span class="d">Codex · ChatGPT app</span></span><button class="btn btn-small">Open<svg class="i" width="11" height="11"><use href="#u-out"/></svg></button></div>
+            <div class="cx-avail custom"><span class="tile md"><svg class="i" width="16" height="16"><use href="#u-plus"/></svg></span><span class="txt"><b>Your own server</b><span class="d">Any https MCP address</span></span><button class="btn btn-small">Add</button></div>
+          </div>
+        </div>
+
+        <div class="cx-section">
+          <div class="cx-section-head"><h2>Messaging</h2><p>Where people can reach your agents.</p></div>
+          <div class="cx-wide">
+            <span class="tile t-slack"><svg class="m"><use href="#b-slack"/></svg></span>
+            <span class="txt"><b>Slack</b><div class="facts"><span>Acme workspace</span><span>3 channels</span><span>4 trusted members</span></div></span>
+            <span class="state ok">Connected</span>
+            <button class="btn btn-small">Manage</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <p class="note"><b>What went away:</b> the account boxes, “Filter tools”, the Connected / Available / Not working / All tabs, pagination, and the “Manage” button that jumped to Hosts. <b>What stayed:</b> every action the page has today (Connect, Retry, Remove, Add, Check again moves into the host menu), the host picker, and the Slack card, now drawn as a connector like the rest.</p>
+</section>
+
+<!-- ============ 2. CARD STATES ============ -->
+<section class="block" id="states">
+  <div class="block-head"><h2>2 · A card through its sign-in</h2><p>The sign-in happens inside the card that started it. Nothing jumps, and a finished sign-in stays visible until you look away from it.</p></div>
+  <div class="frame">
+    <div class="states">
+      <div><p class="caption">Available, hovered</p>
+        <article class="cx-card" style="border-color:var(--line-strong);box-shadow:0 4px 16px rgba(0,0,0,.06)">
+          <div class="cx-top"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span></div>
+          <div class="cx-name">Linear</div><div class="cx-desc">Issues, projects and cycles</div>
+          <div class="cx-foot"><span class="who-text" style="margin:0">Not connected</span><span class="spacer"></span><button class="btn-primary btn-small">Connect</button></div>
+        </article></div>
+      <div><p class="caption">Choosing where</p>
+        <article class="cx-card">
+          <div class="cx-top"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span></div>
+          <div class="cx-name">Linear</div>
+          <div class="cx-flow" style="background:none;padding:0;gap:6px">
+            <span class="muted">Connect for</span>
+            <label class="row"><span class="toggle on"></span><svg class="m" width="13" height="13" style="color:var(--brand-claude)"><use href="#e-claude"/></svg>Personal</label>
+            <label class="row"><span class="toggle on"></span><svg class="m" width="13" height="13"><use href="#e-codex"/></svg>Codex</label>
+            <label class="row"><span class="toggle"></span><svg class="m" width="13" height="13" style="color:var(--brand-claude)"><use href="#e-claude"/></svg><span class="muted">Work</span></label>
+          </div>
+          <div class="cx-foot"><button class="btn-text btn-small" style="margin-left:-10px">Cancel</button><span class="spacer"></span><button class="btn-primary btn-small">Continue</button></div>
+        </article></div>
+      <div><p class="caption">Waiting for you</p>
+        <article class="cx-card">
+          <div class="cx-top"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span><span class="state busy">Signing in</span></div>
+          <div class="cx-name">Linear</div>
+          <div class="cx-flow"><span>Approve Switchyard on Linear’s page. This card updates by itself.</span>
+            <div class="row"><button class="btn-primary btn-small">Open sign-in page<svg class="i" width="11" height="11"><use href="#u-out"/></svg></button><button class="btn-text btn-small">Cancel</button></div>
+          </div>
+        </article></div>
+      <div><p class="caption">Page did not load (remote host)</p>
+        <article class="cx-card">
+          <div class="cx-top"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span><span class="state busy">One more step</span></div>
+          <div class="cx-name">Linear</div>
+          <div class="cx-flow"><span>Your browser ended on a page that will not load: it lives on <b>giovani</b>. Paste that page’s address.</span>
+            <div class="row"><input class="field" placeholder="http://localhost:…/callback?code=…"><button class="btn btn-small">Finish</button></div>
+          </div>
+        </article></div>
+      <div><p class="caption">Just connected</p>
+        <article class="cx-card">
+          <div class="cx-top"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span><span class="state ok">Connected</span></div>
+          <div class="cx-name">Linear</div>
+          <div class="cx-flow done"><div class="row"><svg class="i" width="13" height="13"><use href="#u-check"/></svg><span>24 tools. Running sessions have it now.</span></div></div>
+          <div class="cx-foot"><span class="who"><span class="acct claude"><svg class="m"><use href="#e-claude"/></svg></span><span class="acct"><svg class="m"><use href="#e-codex"/></svg></span></span><span class="who-text">2 of 3 accounts</span></div>
+        </article></div>
+      <div><p class="caption">Sign-in failed</p>
+        <article class="cx-card broken">
+          <div class="cx-top"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span><span class="state bad">Not connected</span></div>
+          <div class="cx-name">Linear</div>
+          <div class="cx-err">That address has no <code>code=</code> in it. Copy the whole address bar.</div>
+          <div class="cx-foot"><button class="btn-text btn-small" style="margin-left:-10px">Dismiss</button><span class="spacer"></span><button class="btn btn-small">Try again</button></div>
+        </article></div>
+      <div><p class="caption">Account itself is logged out</p>
+        <article class="cx-card attention">
+          <div class="cx-top"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span><span class="state warn">Needs sign-in</span></div>
+          <div class="cx-name">Linear</div>
+          <div class="cx-desc">Codex is logged out on giovani, so its connectors cannot be checked.</div>
+          <div class="cx-foot"><span class="spacer"></span><button class="btn-primary btn-small">Log in to Codex</button></div>
+        </article></div>
+      <div><p class="caption">A server with no known face</p>
+        <article class="cx-card">
+          <div class="cx-top"><span class="tile letter t-rose">M</span><span class="state ok">Connected</span></div>
+          <div class="cx-name">metabase-internal</div><div class="cx-desc">bi.acme.dev · your config</div>
+          <div class="cx-foot"><span class="who"><span class="acct claude"><svg class="m"><use href="#e-claude"/></svg></span></span><span class="who-text">Personal</span></div>
+        </article></div>
+    </div>
+  </div>
+  <p class="note"><b>“Choosing where”</b> only appears with more than one account, and starts with every logged-in account on. Sign-ins then run one after another in the same card: “Personal connected · now Codex”. With one account, Connect goes straight to the sign-in page.</p>
+</section>
+
+<!-- ============ 3. DETAIL ============ -->
+<section class="block" id="detail">
+  <div class="block-head"><h2>3 · Inside a card</h2><p>Clicking a connected card opens a side sheet (a bottom sheet on phones). This is where the per-account truth lives, and where you decide which agents may use it.</p></div>
+  <div class="frame">
+    <div class="detail-stage">
+      <div class="dim">
+        <div class="cx-page">
+          <div class="cx-head"><div><h1>Connectors</h1><p>The services your sessions and agents can use.</p></div></div>
+          <div class="cx-section"><div class="cx-section-head"><h2>Connected</h2><span class="n">6</span></div>
+            <div class="cx-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+              <article class="cx-card" style="border-color:var(--ink)"><div class="cx-top"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span><span class="state ok">Connected</span></div><div class="cx-name">Linear</div><div class="cx-desc">Issues, projects and cycles</div><div class="cx-foot"><span class="who-text" style="margin:0">2 of 3 accounts</span></div></article>
+              <article class="cx-card"><div class="cx-top"><span class="tile t-sentry"><svg class="m"><use href="#b-sentry"/></svg></span><span class="state ok">Connected</span></div><div class="cx-name">Sentry</div><div class="cx-desc">Errors, releases and performance</div><div class="cx-foot"><span class="who-text" style="margin:0">1 of 3 accounts</span></div></article>
+              <article class="cx-card"><div class="cx-top"><span class="tile"><svg class="m"><use href="#b-notion"/></svg></span><span class="state ok">Connected</span></div><div class="cx-name">Notion</div><div class="cx-desc">Pages, databases and comments</div><div class="cx-foot"><span class="who-text" style="margin:0">2 of 3 accounts</span></div></article>
+              <article class="cx-card"><div class="cx-top"><span class="tile t-figma"><svg class="m"><use href="#b-figma"/></svg></span><span class="state ok">Connected</span></div><div class="cx-name">Figma</div><div class="cx-desc">Files, frames and design tokens</div><div class="cx-foot"><span class="who-text" style="margin:0">Personal</span></div></article>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="sheet" aria-label="Linear">
+        <div class="sheet-head">
+          <span class="tile lg t-linear"><svg class="m"><use href="#b-linear"/></svg></span>
+          <div><h3>Linear</h3><p>Issues, projects and cycles<br><span class="small">mcp.linear.app · 24 tools</span></p></div>
+          <button class="btn-text x" aria-label="Close"><svg class="i" width="14" height="14"><use href="#u-x"/></svg></button>
+        </div>
+        <div class="sheet-sec">
+          <h4>Accounts on giovani</h4>
+          <p>Each account signs in on its own. Sessions use the account they run on.</p>
+          <div class="acct-row"><span class="mark claude"><svg class="m" width="15" height="15"><use href="#e-claude"/></svg></span><span class="nm"><b>Personal</b><span class="muted small">Claude · via claude.ai</span></span><span class="st ok">Connected</span></div>
+          <div class="acct-row"><span class="mark"><svg class="m" width="15" height="15"><use href="#e-codex"/></svg></span><span class="nm"><b>Codex</b><span class="muted small">Codex · config.toml</span></span><span class="st ok">Connected</span><button class="btn-text btn-small">Remove</button></div>
+          <div class="acct-row"><span class="mark claude"><svg class="m" width="15" height="15"><use href="#e-claude"/></svg></span><span class="nm"><b>Work</b><span class="muted small">Claude · not added</span></span><button class="btn btn-small">Connect</button></div>
+        </div>
+        <div class="sheet-sec">
+          <h4>Who may use it</h4>
+          <p>Your own sessions always can. Agents and automations only when switched on here.</p>
+          <div class="acct-row"><span class="face" style="background:#c2560c">F</span><span class="nm"><b>Firefighter</b><span class="muted small">Agent · Personal</span></span><span class="toggle on" role="switch" aria-checked="true"></span></div>
+          <div class="acct-row"><span class="face" style="background:#2f6fed">T</span><span class="nm"><b>Triage</b><span class="muted small">Agent · Personal</span></span><span class="toggle on" role="switch" aria-checked="true"></span></div>
+          <div class="acct-row"><span class="face" style="background:#556070"><svg class="i" width="13" height="13"><use href="#u-clock"/></svg></span><span class="nm"><b>Loop patrol</b><span class="muted small">Automation · hourly</span></span><span class="toggle" role="switch" aria-checked="false"></span></div>
+        </div>
+        <div class="sheet-sec">
+          <h4>Tools</h4>
+          <div class="toollist"><code>list_issues</code><code>get_issue</code><code>save_issue</code><code>list_comments</code><code>save_comment</code><code>list_projects</code><code>+18 more</code></div>
+        </div>
+        <div class="sheet-foot"><button class="btn-text btn-small">Check again</button><span class="spacer"></span><button class="btn-text btn-small bad">Remove everywhere</button></div>
+      </aside>
+    </div>
+  </div>
+  <p class="note"><b>“Who may use it”</b> is the same list the agent form and the automation editor already save (<code>mcp</code>), seen from the connector’s side. Both places stay in step. “via claude.ai” entries have no Remove here because they are managed on claude.ai; the row links there instead.</p>
+</section>
+
+<!-- ============ 4. THREAD ============ -->
+<section class="block" id="thread">
+  <div class="block-head"><h2>4 · The connect card in a conversation</h2><p>When a session needs a connector that is not signed in, its card appears in the thread, in the same slot as an approval. Try it: the card on the left is live.</p></div>
+  <div class="thread-wrap">
+    <div class="frame">
+      <div class="app" style="min-height:640px">
+        <aside class="sidebar" style="width:220px">
+          <div class="brand">Switchyard</div>
+          <div class="sessions" style="border-top:0">
+            <div class="session on"><span class="eng claude"><svg class="m" width="15" height="15"><use href="#e-claude"/></svg><i class="badge" id="live-badge"></i></span><span class="t">Fix ENG-412 retry backoff</span></div>
+            <div class="session"><span class="eng"><svg class="m" width="15" height="15"><use href="#e-codex"/></svg></span><span class="t">Profile the PDF export</span></div>
+            <div class="session"><span class="eng claude"><svg class="m" width="15" height="15"><use href="#e-claude"/></svg></span><span class="t">Rate limit the public API</span></div>
+          </div>
+        </aside>
+        <div class="thread-main">
+          <div class="bar"><h1>Fix ENG-412 retry backoff</h1><span class="branch">yard/fix-eng-412</span><span class="spacer"></span><span class="small" id="live-status" style="color:var(--warn-ink)">Needs connector</span></div>
+          <div class="thread">
+            <div class="user">Pick up ENG-412 from Linear and fix it.</div>
+            <div>I’ll start from the issue. Linear isn’t connected for this account yet, so I need you to sign in first.</div>
+            <div class="connect" id="live" data-state="ask">
+              <div class="connect-head">
+                <span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span>
+                <div class="txt"><b>Connect Linear</b><span class="sub"><svg class="m claude" width="11" height="11"><use href="#e-claude"/></svg>Claude · Personal on giovani</span></div>
+              </div>
+              <div class="why"><small>Why the agent wants it</small>To read ENG-412 and its comments.</div>
+              <div class="connect-actions" data-when="ask">
+                <button class="btn-primary" data-go="wait">Connect Linear<svg class="i" width="12" height="12"><use href="#u-out"/></svg></button>
+                <button class="btn-text" data-go="ask">Not now</button>
+                <span class="hint">Opens linear.app</span>
+              </div>
+              <div class="cx-flow" data-when="wait" style="flex-direction:column;align-items:stretch">
+                <div class="row"><span class="spin"></span><span>Waiting for you to approve on Linear’s page…</span></div>
+                <div class="row"><button class="btn btn-small" data-go="done">Open it again</button><button class="btn-text btn-small" data-go="ask">Cancel</button><span class="spacer"></span><span class="muted">(mock: “Open it again” finishes)</span></div>
+              </div>
+              <div class="connect-line" data-when="done"><span class="tile sm t-linear"><svg class="m"><use href="#b-linear"/></svg></span><span><span class="ok">Linear connected</span> · 24 tools</span><span class="spacer"></span><button class="btn-text btn-small" data-go="ask">Replay</button></div>
+            </div>
+            <div class="after-connect">
+              <div class="tool-line"><span class="tile sm t-linear"><svg class="m"><use href="#b-linear"/></svg></span>Linear <code>get_issue ENG-412</code></div>
+              <div>Got it. The retry loop doubles the delay but never caps it, so the fifth attempt waits 16 minutes. I’ll cap it at 30 seconds and add jitter.</div>
+            </div>
+          </div>
+          <div class="composer"><div class="ph">Reply</div><div class="row"><svg class="i" width="15" height="15"><use href="#u-clip"/></svg><span>Fable 5.2 · Medium</span><span>Ask first</span><span class="send"><svg class="i" width="14" height="14"><use href="#u-up"/></svg></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="variants">
+      <div><p class="caption">Several at once</p>
+        <div class="connect">
+          <div class="connect-head"><div class="txt"><b>Connect 3 services</b><span class="sub">To trace the checkout incident end to end.</span></div></div>
+          <ul class="connect-multi">
+            <li><span class="tile sm t-sentry"><svg class="m"><use href="#b-sentry"/></svg></span><span class="txt"><b>Sentry</b></span><span class="st ok small">Connected</span></li>
+            <li><span class="tile sm t-datadog"><svg class="m"><use href="#b-datadog"/></svg></span><span class="txt"><b>Datadog</b><span class="muted small">Waiting for you…</span></span><span class="spin"></span></li>
+            <li><span class="tile sm"><svg class="m"><use href="#b-vercel"/></svg></span><span class="txt"><b>Vercel</b></span><button class="btn btn-small">Connect</button></li>
+          </ul>
+          <div class="connect-actions"><button class="btn-text btn-small" style="margin-left:-10px">Continue without the rest</button></div>
+        </div></div>
+      <div><p class="caption">Asked by an agent that is not allowed yet</p>
+        <div class="connect">
+          <div class="connect-head"><span class="tile t-sentry"><svg class="m"><use href="#b-sentry"/></svg></span><div class="txt"><b>Let Firefighter use Sentry?</b><span class="sub">Connected on Personal · off for this agent</span></div></div>
+          <div class="why"><small>Why the agent wants it</small>To read the stack trace behind tonight’s alert.</div>
+          <div class="connect-actions"><button class="btn-primary">Allow</button><button class="btn">Just this conversation</button><button class="btn-text">Deny</button></div>
+        </div></div>
+      <div><p class="caption">Skipped</p>
+        <div class="connect-line"><span class="tile sm t-linear" style="filter:grayscale(1);opacity:.6"><svg class="m"><use href="#b-linear"/></svg></span><span>Linear not connected. The agent was told.</span><span class="spacer"></span><button class="btn-text btn-small">Connect</button></div></div>
+      <div><p class="caption">Nobody is watching (automation run)</p>
+        <div class="connect-line" style="padding:10px 12px;border-radius:10px;background:var(--warn-fill);color:var(--warn-ink)"><span class="tile sm t-datadog" style="background:#fff"><svg class="m"><use href="#b-datadog"/></svg></span><span>Loop patrol went on without Datadog.</span><span class="spacer"></span><button class="btn btn-small">Connect</button></div></div>
+    </div>
+  </div>
+  <p class="note"><b>Three ways a card gets there.</b> The agent asks for it (a new <code>request_connector</code> tool on Switchyard’s own MCP server, with a one-line reason). A tool call fails because its server needs sign-in, and yardd puts the card under the failed call. Or you type <code>/connect</code>, which opens the same cards in a picker, the way <code>/login</code> opens the engine login. While a card waits, the session row shows the amber badge and “Needs connector”, like “Needs approval”.</p>
+</section>
+
+<!-- ============ 5. PHONES ============ -->
+<section class="block" id="phone">
+  <div class="block-head"><h2>5 · On a phone</h2><p>Cards become rows with the same parts. The sign-in opens the service in the browser and the app picks the result up when you come back.</p></div>
+  <div class="phones">
+    <div class="phone">
+      <div class="phone-bar"><svg class="i" width="18" height="18"><use href="#u-menu"/></svg><h1>Connectors</h1><span class="spacer"></span><svg class="i" width="17" height="17"><use href="#u-search"/></svg></div>
+      <div class="phone-body">
+        <div class="scope"><button class="chip" aria-pressed="true">All accounts</button><button class="chip"><svg class="m claude" width="13" height="13"><use href="#e-claude"/></svg>Personal</button><button class="chip"><svg class="m claude" width="13" height="13"><use href="#e-claude"/></svg>Work</button><button class="chip"><svg class="m" width="13" height="13"><use href="#e-codex"/></svg>Codex</button></div>
+        <div class="cx-section"><div class="cx-section-head"><h2>Needs you</h2><span class="n">1</span></div>
+          <div class="cx-rowcard attention"><span class="tile t-datadog"><svg class="m"><use href="#b-datadog"/></svg></span><span class="txt"><b>Datadog</b><span class="d"><i class="sd warn"></i>Needs sign-in · Personal</span></span><button class="btn-primary btn-small">Connect</button></div>
+        </div>
+        <div class="cx-section"><div class="cx-section-head"><h2>Connected</h2><span class="n">6</span></div>
+          <div class="cx-rowcard"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span><span class="txt"><b>Linear</b><span class="d"><i class="sd"></i>All 3 accounts</span></span><svg class="i chev" width="14" height="14"><use href="#u-chev"/></svg></div>
+          <div class="cx-rowcard"><span class="tile t-sentry"><svg class="m"><use href="#b-sentry"/></svg></span><span class="txt"><b>Sentry</b><span class="d"><i class="sd"></i>1 of 3 accounts</span></span><svg class="i chev" width="14" height="14"><use href="#u-chev"/></svg></div>
+          <div class="cx-rowcard"><span class="tile"><svg class="m"><use href="#b-notion"/></svg></span><span class="txt"><b>Notion</b><span class="d"><i class="sd"></i>2 of 3 accounts</span></span><svg class="i chev" width="14" height="14"><use href="#u-chev"/></svg></div>
+          <div class="cx-rowcard"><span class="tile t-figma"><svg class="m"><use href="#b-figma"/></svg></span><span class="txt"><b>Figma</b><span class="d"><i class="sd"></i>Personal</span></span><svg class="i chev" width="14" height="14"><use href="#u-chev"/></svg></div>
+        </div>
+        <div class="cx-section"><div class="cx-section-head"><h2>Available</h2></div>
+          <div class="cx-rowcard"><span class="tile"><svg class="m"><use href="#b-posthog"/></svg></span><span class="txt"><b>PostHog</b><span class="d">Product analytics and flags</span></span><button class="btn btn-small">Connect</button></div>
+          <div class="cx-rowcard"><span class="tile t-atlassian"><svg class="m"><use href="#b-atlassian"/></svg></span><span class="txt"><b>Atlassian</b><span class="d">Jira and Confluence</span></span><button class="btn btn-small">Connect</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phone">
+      <div class="phone-bar"><svg class="i" width="18" height="18"><use href="#u-menu"/></svg><h1>Fix ENG-412 retry backoff</h1></div>
+      <div class="thread">
+        <div class="user">Pick up ENG-412 from Linear and fix it.</div>
+        <div>I’ll start from the issue. Linear isn’t connected for this account yet.</div>
+        <div class="connect">
+          <div class="connect-head"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span><div class="txt"><b>Connect Linear</b><span class="sub"><svg class="m claude" width="11" height="11"><use href="#e-claude"/></svg>Claude · Personal on giovani</span></div></div>
+          <div class="why"><small>Why the agent wants it</small>To read ENG-412 and its comments.</div>
+          <div class="connect-actions"><button class="btn-primary" style="flex:1 1 0;height:40px">Connect Linear</button><button class="btn" style="height:40px">Not now</button></div>
+        </div>
+      </div>
+      <div class="composer"><div class="ph">Reply</div><div class="row"><svg class="i" width="15" height="15"><use href="#u-clip"/></svg><span>Fable 5.2</span><span class="send"><svg class="i" width="14" height="14"><use href="#u-up"/></svg></span></div></div>
+    </div>
+
+    <div class="phone phone-sheet-stage" style="height:560px">
+      <div class="phone-bar"><svg class="i" width="18" height="18"><use href="#u-menu"/></svg><h1>Fix ENG-412 retry backoff</h1></div>
+      <div class="thread"><div class="user">Pick up ENG-412 from Linear and fix it.</div><div>I’ll start from the issue. Linear isn’t connected for this account yet.</div></div>
+      <div class="scrim"></div>
+      <div class="bottom-sheet">
+        <span class="grab"></span>
+        <div class="connect-head"><span class="tile t-linear"><svg class="m"><use href="#b-linear"/></svg></span><div class="txt"><b>Finish connecting Linear</b><span class="sub">Signed in, but the last page could not load.</span></div></div>
+        <p class="muted" style="line-height:1.55">That page lives on <b style="color:var(--ink)">giovani</b>, not on this phone. Copy its address from the browser and paste it here.</p>
+        <button class="btn-primary">Paste from clipboard</button>
+        <button class="btn">Open sign-in page again</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6. DECISIONS ============ -->
+<section class="block" id="decisions">
+  <div class="block-head"><h2>6 · What this asks of the build</h2><p>The design leans on what yardd already does. These are the parts that are new, and the calls I made that you may want to overrule.</p></div>
+  <div class="decisions">
+    <div class="decision"><b>Merging rows into one service</b><p>“claude.ai Linear”, “plugin:linear:linear” and a config entry named “linear” become one Linear card, matched by address first and by name second. Anything unmatched keeps its own card with a letter tile.</p><p>New: a small catalog of known services (name, mark, one-line description) in the UI. No daemon change.</p></div>
+    <div class="decision"><b>The agent’s request</b><p>A <code>request_connector</code> tool on Switchyard’s own MCP server, and a new thread item for the card. Claude sessions get it first; Codex gets the automatic card on a failed call.</p><p>New: one tool, one event, one item kind. The sign-in itself is today’s <code>mcp.auth</code>.</p></div>
+    <div class="decision"><b>An agent can ask, only you can allow</b><p>An agent’s connector list stays owner-only. Its request shows “Let Firefighter use Sentry?” with Allow, Just this conversation and Deny. Nothing is granted by the request alone.</p><p>Open question: whether “Just this conversation” is worth the extra state.</p></div>
+    <div class="decision"><b>Unattended runs do not block</b><p>An automation with nobody watching does not wait on a card. It goes on without the connector, says so in its run, and the Connectors nav item shows a count.</p><p>Open question: whether some automations should wait and notify instead.</p></div>
+  </div>
+</section>
+
+</div>
+<script>
+// The live card in section 4: ask -> wait -> done.
+const live = document.getElementById("live");
+const sync = () => {
+  const waiting = live.dataset.state !== "done";
+  document.getElementById("live-badge").style.display = waiting ? "" : "none";
+  const status = document.getElementById("live-status");
+  status.textContent = waiting ? "Needs connector" : "Working";
+  status.style.color = waiting ? "var(--warn-ink)" : "var(--muted)";
+};
+live.addEventListener("click", (event) => {
+  const go = event.target.closest("[data-go]");
+  if (!go) return;
+  live.dataset.state = go.dataset.go;
+  sync();
+});
+</script>
+</body>
+</html>
