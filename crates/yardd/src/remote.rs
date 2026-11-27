@@ -813,8 +813,8 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
     let flag = up.clone();
     let shown = conn.clone();
     // Built outside the task, so a pipe dropped before its task first runs
-    // still answers what it was sent.
-    let mut pending = Pending { held: VecDeque::new(), rx, direct: direct.clone() };
+    // (or while it writes) still answers what it was sent.
+    let mut pending = Pending { held: VecDeque::new(), rx, direct: direct.clone(), name: name.clone(), sent: HashMap::new(), writing: None, refs: 0, greeted: false };
     let task = tokio::spawn(async move {
         let mut backoff = Backoff::new(Duration::from_secs(10));
         loop {
@@ -823,13 +823,16 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
                 backoff.reset();
                 let (mut sink, mut stream) = ws.split();
                 flag.store(true, Ordering::Relaxed);
+                pending.greeted = false;
                 loop {
                     let op = match pending.held.pop_front() {
                         Some(op) => op,
                         None => tokio::select! {
                             incoming = stream.next() => match incoming {
                                 Some(Ok(Message::Text(text))) => {
-                                    if let Some(out) = rewrite(&host, &name, &text) {
+                                    let Ok(mut msg) = serde_json::from_str::<Value>(&text) else { continue };
+                                    pending.heard(&mut msg);
+                                    if let Some(out) = rewrite(&host, &name, msg) {
                                         remember(&last, &out);
                                         if direct.send(out.to_string()).is_err() { return; }
                                     }
@@ -847,15 +850,25 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
                     // Made now: the op goes out with the host's own ids, and
                     // its error must carry the page's.
                     let refused = refusal(&op, NOT_CONNECTED);
-                    if sink.send(Message::Text(outgoing(op).to_string())).await.is_err() {
+                    let awaited = pending.awaited(&op);
+                    let mut out = outgoing(op);
+                    if let Some((r, _)) = &awaited {
+                        out["ref"] = r.clone();
+                    }
+                    // Held where a pipe dropped mid-write still answers it.
+                    pending.writing = awaited;
+                    if sink.send(Message::Text(out.to_string())).await.is_err() {
+                        pending.writing = None;
                         if let Some(refused) = refused {
                             let _ = direct.send(refused);
                         }
                         break;
                     }
+                    pending.wrote();
                 }
                 flag.store(false, Ordering::Relaxed);
                 let _ = direct.send(json!({ "op": "host.down", "hostId": host }).to_string());
+                pending.lose_sent();
             }
             // Ops that waited for this try and still could not go: say so.
             pending.fail(NOT_CONNECTED);
@@ -873,16 +886,153 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
     Pipe { tx, up, conn: shown, task }
 }
 
-/// Ops a pipe took and has not written to the host. Each one gets an
-/// error if it cannot go, so a page never waits on a `ref` with no answer.
+/// Ops a pipe took and the page has no answer for yet: not written to the
+/// host, or written and waiting on its answer. Each one gets an error if
+/// it cannot go or its answer is lost, so a page never waits on a `ref`
+/// with no answer.
 struct Pending {
     /// Ops sent while it waited to try again: they go first once it opens.
     held: VecDeque<Value>,
     rx: mpsc::UnboundedReceiver<Value>,
     direct: mpsc::UnboundedSender<String>,
+    /// The host's name, for `lost`.
+    name: String,
+    /// Ops written on this connection that wait on the host's answer, by the
+    /// `ref` it will carry (as JSON text, so any `ref` a page sends matches).
+    sent: HashMap<String, Awaited>,
+    /// The op being written, if the page waits on its answer.
+    writing: Option<(Value, Awaited)>,
+    /// The last `ref` the pipe gave an op (`awaited`).
+    refs: u64,
+    /// The host sent this connection's first snapshot: another one is a
+    /// resync (`heard`).
+    greeted: bool,
+}
+
+/// An op the host took whose answer the page waits on.
+struct Awaited {
+    /// The op's name and the page's own ids, which its error carries
+    /// (`ws::error_reply`). Not the op itself: an upload is megabytes.
+    stub: Value,
+    /// Host news that answers it, for an op whose success has no `ref`.
+    news: Option<News>,
+}
+
+#[derive(PartialEq)]
+enum News {
+    /// The request's `approval_resolved` event (`session.approve`).
+    Approval { session: String, request: String },
+    /// `mcp.change` for the server (`mcp.add`, `mcp.remove`).
+    Connector { engine: String, name: String },
+}
+
+/// The `ref` prefix of the pipe's own refs (`Pending::awaited`).
+const OWN_REF: &str = "yardd-pipe~";
+
+/// Plenty for every op a page waits on at once. Past it an op is not
+/// tracked, and says so: some op is answered without its `ref`.
+const MAX_AWAITED: usize = 4096;
+
+/// What a page gets for an op the host took when the connection ends before
+/// its answer. The host may well have done it, so it claims neither way.
+fn lost(name: &str) -> String {
+    format!("Lost the connection to {name} before it answered. This may have gone through; check once it's back.")
 }
 
 impl Pending {
+    /// Whether the page waits on the host's answer to `op`, and the `ref`
+    /// that answer will carry.
+    /// - An op with the page's own `ref`: a page sends one only to wait on
+    ///   it, and the host answers with it, done or refused (every op the UI
+    ///   and the iOS app `ask` for).
+    /// - `session.create`, `session.approve`, `mcp.add` and `mcp.remove`,
+    ///   which a page sends without one and whose button waits for the
+    ///   host's answer or any error: the op goes out with a `ref` of the
+    ///   pipe's own, which the host's `created` or error carries. An
+    ///   approval's and a connector's success is news to every window
+    ///   instead (`News`).
+    ///
+    /// Anything else is fire-and-forget, with nothing to answer.
+    fn awaited(&mut self, op: &Value) -> Option<(Value, Awaited)> {
+        let kind = op["op"].as_str()?;
+        // Silent when refused, too (`refusal`).
+        if kind == "agent.seen" {
+            return None;
+        }
+        let text = |key: &str| op[key].as_str().unwrap_or_default().trim().to_string();
+        let news = match kind {
+            "session.approve" => Some(News::Approval { session: own_id(&text("sessionId")).to_string(), request: text("requestId") }),
+            "mcp.add" => Some(News::Connector { engine: text("engine"), name: text("name") }),
+            "mcp.remove" => Some(News::Connector { engine: text("engine"), name: text("server") }),
+            _ => None,
+        };
+        let r = match &op["ref"] {
+            Value::Null if news.is_some() || kind == "session.create" => {
+                self.refs += 1;
+                json!(format!("{OWN_REF}{}", self.refs))
+            }
+            Value::Null => return None,
+            r => r.clone(),
+        };
+        let stub = json!({ "op": kind, "ref": op["ref"], "sessionId": op["sessionId"] });
+        Some((r, Awaited { stub, news }))
+    }
+
+    /// The op being written went out whole: it waits for its answer now.
+    fn wrote(&mut self) {
+        let Some((r, awaited)) = self.writing.take() else { return };
+        if self.sent.len() >= MAX_AWAITED {
+            eprintln!("yardd: {} ops to {} wait on an answer; not tracking {}", self.sent.len(), self.name, awaited.stub["op"]);
+            return;
+        }
+        self.sent.insert(r.to_string(), awaited);
+    }
+
+    /// A message from the host, before it is rewritten (it may be dropped):
+    /// whatever it answers no longer waits. A `ref` of the pipe's own is
+    /// taken off, so the page sees the answer as it would without the pipe.
+    fn heard(&mut self, msg: &mut Value) {
+        if let Some(r) = msg.get("ref").filter(|r| !r.is_null()) {
+            self.sent.remove(&r.to_string());
+            if r.as_str().is_some_and(|r| r.starts_with(OWN_REF)) {
+                if let Some(o) = msg.as_object_mut() {
+                    o.remove("ref");
+                }
+            }
+        }
+        if self.sent.is_empty() && msg["op"] != "snapshot" {
+            return;
+        }
+        let news = match msg["op"].as_str() {
+            Some("event") if msg["event"]["type"] == "approval_resolved" => {
+                let text = |v: &Value| v.as_str().unwrap_or_default().to_string();
+                News::Approval { session: text(&msg["sessionId"]), request: text(&msg["event"]["requestId"]) }
+            }
+            Some("mcp.change") => News::Connector { engine: msg["engine"].as_str().unwrap_or_default().to_string(), name: msg["name"].as_str().unwrap_or_default().to_string() },
+            // A host whose broadcasts fell behind sends a snapshot instead of
+            // the news it skipped, and the page reloads from it: that news
+            // will not come, and the page needs no answer from this pipe.
+            Some("snapshot") => {
+                if self.greeted {
+                    self.sent.retain(|_, a| a.news.is_none());
+                }
+                self.greeted = true;
+                return;
+            }
+            _ => return,
+        };
+        self.sent.retain(|_, a| a.news.as_ref() != Some(&news));
+    }
+
+    /// The connection ended: every op the host took and has not answered
+    /// gets `lost`, once.
+    fn lose_sent(&mut self) {
+        let why = anyhow::Error::msg(lost(&self.name));
+        for awaited in self.writing.take().map(|(_, a)| a).into_iter().chain(self.sent.drain().map(|(_, a)| a)) {
+            let _ = self.direct.send(crate::ws::error_reply(&awaited.stub, &why));
+        }
+    }
+
     fn fail(&mut self, why: &str) {
         while let Ok(op) = self.rx.try_recv() {
             self.held.push_back(op);
@@ -899,6 +1049,7 @@ impl Drop for Pending {
     /// The pipe ended: its host was removed (the page drops the pipe, or the
     /// hub's connection closes), or the page is gone.
     fn drop(&mut self) {
+        self.lose_sent();
         self.fail("no such host");
     }
 }
@@ -970,6 +1121,11 @@ pub fn agent_ref(msg: &Value) -> Option<&str> {
         _ => return None,
     };
     slot.as_str()
+}
+
+/// A host's own id for an id the hub shows (`<hostId>~<id>`).
+fn own_id(id: &str) -> &str {
+    id.split_once(SEP).map_or(id, |(_, rest)| rest)
 }
 
 fn strip(slot: &mut Value) {
@@ -1089,11 +1245,10 @@ fn remember(last: &Mutex<Option<Value>>, msg: &Value) {
 /// `None` drops it.
 #[cfg(test)]
 fn rewrite_incoming(host: &str, name: &str, text: &str) -> Option<String> {
-    rewrite(host, name, text).map(|msg| msg.to_string())
+    rewrite(host, name, serde_json::from_str(text).ok()?).map(|msg| msg.to_string())
 }
 
-fn rewrite(host: &str, name: &str, text: &str) -> Option<Value> {
-    let mut msg: Value = serde_json::from_str(text).ok()?;
+fn rewrite(host: &str, name: &str, mut msg: Value) -> Option<Value> {
     let op = msg["op"].as_str().unwrap_or("").to_string();
     match op.as_str() {
         "snapshot" => {
