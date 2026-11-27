@@ -156,6 +156,20 @@ yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","eff
 yv drive 'session:{{skip_sid}}' --viewport desktop --steps '[{"click":{"role":"button","name":"Skip","exact":true}},{"expect":"css:.thread","text":"Skipped the questions."},{"click":"role:button:Worked for"},{"expect":"css:.question-card","text":"Skipped"}]'
 ```
 
+### tool-row-status-stays-on-one-line
+Viewports: both
+A step's state after its ellipsized text ("· waiting", "· not answered",
+"· denied", "· failed") stays on the row's one line; the text gives way, not
+the state. Until 2026-11-27, at 390 px a long question or command squeezed it
+into "· not" over "answered", beside the row.
+
+```sh
+for vp in desktop mobile; do
+  yv api '{"op":"session.create","engine":"claude","model":"claude-haiku-5-5","effort":"low","cwd":"{{repo}}","permission":"full","text":"[question] TEST-one line '$vp'"}' --wait '{"op":"event","event":{"type":"approval_request"}}' --save line_sid=sessionId
+  yv drive 'session:{{line_sid}}' --viewport $vp --steps '[{"expect":{"css":".tool-row","hasText":"Which database"},"text":"waiting"},{"eval":"[...document.querySelectorAll(\".thread .tool-row\")].every(r => { const h = r.children[1].getBoundingClientRect().height; return [...r.children].every(c => c.getBoundingClientRect().height < h * 1.5); })","equals":true},{"click":{"role":"button","name":"Stop","exact":true}},{"expect":{"role":"button","name":"Stop","exact":true},"visible":false,"timeout":15000},{"click":"role:button:1 step not run"},{"expect":{"css":".tool-row","hasText":"Which database"},"text":"not answered"},{"shot":"tool-row-not-answered-'$vp'"},{"eval":"[...document.querySelectorAll(\".thread .tool-row\")].every(r => { const h = r.children[1].getBoundingClientRect().height; return [...r.children].every(c => c.getBoundingClientRect().height < h * 1.5); })","equals":true}]'
+done
+```
+
 ### codex-question-answered
 Codex's request_user_input is the same card, titled "Codex has 2 questions",
 in Full access too. (Codex used to get "not supported", and outside Plan mode
