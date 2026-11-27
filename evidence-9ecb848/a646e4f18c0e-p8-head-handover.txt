@@ -1,0 +1,17 @@
+checkout 9ecb848, 28 cpus
+run 1: ok
+run 2: ok
+run 3: ok
+run 4: ok
+run 5: ok
+run 6: ok
+run 7: ok
+run 8: ok
+run 9: ok
+run 10: ok
+run 11: ok
+run 12: ok
+run 13: ok
+run 14: ok
+run 15: ok
+failures: 0/15 (busy=8, load 6.33 11.57 9.93)

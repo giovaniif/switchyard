@@ -1,0 +1,27 @@
+kept sandbox of the failed run of a_failed_or_stopped_answer_still_reaches_the_sender during PR #510 (base code), yard.db of /tmp/yardd-test-3385893-tools-fail-1/data/yard.db
+1 s1a21a5176373 {"text":"[[tool message_agent {\"text\":\"[fail] please\",\"to\":\"Bea\"}]]","type":"user_message"}
+2 s1a21a5176373 {"at":1795737876025,"type":"turn_started"}
+3 s1a21a5176373 {"detail":"[fail] please","itemId":"mcp-3386048-3","kind":"other","title":"Messaged @Bea","type":"tool_started"}
+4 s1a21a5176373 {"itemId":"mcp-3386048-3","ok":true,"output":"Sent to @Bea (hop 1 of 3). Its answer will arrive in this conversation as a new message when it is done; you do not need to wait for it.","type":"tool_completed"}
+5 s1a21a5176373 {"itemId":"msg-3386048-4","text":"Called message_agent: Sent to @Bea (hop 1 of 3). Its answer will arrive in this conversation as a new message when it is done; you do not need to wait for it.","type":"assistant_message"}
+6 s1a21a5176373 {"at":1795737876226,"status":"completed","type":"turn_completed"}
+7 s1a21a5176fa4 {"origin":{"agentId":"g1a21a5175dd1","handle":"Ada","hops":1,"kind":"agent","name":"Ada"},"text":"[fail] please","type":"user_message"}
+8 s1a21a5176fa4 {"at":1795737876233,"type":"turn_started"}
+9 s1a21a5176fa4 {"message":"fake failure: the model is unavailable","type":"error"}
+10 s1a21a5176fa4 {"at":1795737876236,"status":"failed","type":"turn_completed"}
+11 s1a21a5176373 {"origin":{"agentId":"g1a21a5176322","handle":"Bea","hops":1,"kind":"agentReply","name":"Bea"},"text":"Bea's turn failed before it answered: fake failure: the model is unavailable","type":"user_message"}
+12 s1a21a5176373 {"at":1795737876237,"type":"turn_started"}
+13 s1a21a5176fa4 {"text":"[slow] take your time","type":"user_message"}
+14 s1a21a5176373 {"itemId":"msg-3386048-8","text":"Echo: <reply from=\"@Bea\">\nBea's turn failed before it answered: fake failure: the model is unavailable\n</reply>\n(Bea's answer to the message you sent it with message_agent.)","type":"assistant_message"}
+15 s1a21a5176fa4 {"at":1795737876320,"type":"turn_started"}
+16 s1a21a5176373 {"at":1795737876320,"status":"completed","type":"turn_completed"}
+17 s1a21a5176373 {"text":"[[tool message_agent {\"text\":\"are you there?\",\"to\":\"Bea\"}]]","type":"user_message"}
+18 s1a21a5176373 {"at":1795737876361,"type":"turn_started"}
+19 s1a21a5176373 {"detail":"are you there?","itemId":"mcp-3386048-12","kind":"other","title":"Messaged @Bea","type":"tool_started"}
+20 s1a21a5176373 {"itemId":"mcp-3386048-12","ok":true,"output":"Sent to @Bea (hop 1 of 3). Its answer will arrive in this conversation as a new message when it is done; you do not need to wait for it.","type":"tool_completed"}
+21 s1a21a5176373 {"itemId":"msg-3386048-13","text":"Called message_agent: Sent to @Bea (hop 1 of 3). Its answer will arrive in this conversation as a new message when it is done; you do not need to wait for it.","type":"assistant_message"}
+22 s1a21a5176373 {"at":1795737876429,"status":"completed","type":"turn_completed"}
+23 s1a21a5176fa4 {"at":1795737876430,"status":"interrupted","type":"turn_completed"}
+--- session metadata (status, pending)
+s1a21a5176373 {"status": "idle", "pending": [{"at": 1795737876429, "attachments": [], "id": "q1a21a5177cd6", "origin": {"agentId": "g1a21a5176322", "handle": "Bea", "hops": 1, "kind": "agentReply", "name": "Bea"}, "text": "Bea was stopped before it read your message."}]}
+s1a21a5176fa4 {"status": "idle", "pending": []}

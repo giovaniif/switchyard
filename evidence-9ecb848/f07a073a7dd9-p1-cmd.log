@@ -1,0 +1,30 @@
+$ ~/.local/bin/heavy cargo test -p yardd --test agents an_edit_made_while_a_refused_hand_over_is_tried_again_waits_for_the_answer -- --exact
+# exit 101 after 18078 ms at 5e7455f8f4aca16b2576241d687a7be8cc8d7f11
+
+
+running 1 test
+test an_edit_made_while_a_refused_hand_over_is_tried_again_waits_for_the_answer ... FAILED
+
+failures:
+
+---- an_edit_made_while_a_refused_hand_over_is_tried_again_waits_for_the_answer stdout ----
+
+thread 'an_edit_made_while_a_refused_hand_over_is_tried_again_waits_for_the_answer' (780192) panicked at crates/yardd/tests/agents.rs:930:5:
+assertion `left == right` failed
+  left: Err("On-call is moving to another host. Change it once it gets there.")
+ right: Ok(String("TEST-mid-try"))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+kept /tmp/yardd-test-780191-agents-trying-hub-1 for inspection
+kept /tmp/yardd-test-780191-agents-trying-remote-0 for inspection
+
+
+failures:
+    an_edit_made_while_a_refused_hand_over_is_tried_again_waits_for_the_answer
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 30 filtered out; finished in 0.38s
+
+
+   Compiling yardd v0.23.0 (/home/giovani/www/better-than-claude-code/.claude/worktrees/flaky-tests-2/crates/yardd)
+    Finished `test` profile [unoptimized] target(s) in 17.58s
+     Running tests/agents.rs (target/debug/build/yardd/8f0810fc1bf31092/out/agents-8f0810fc1bf31092)
+error: test failed, to rerun pass `-p yardd --test agents`

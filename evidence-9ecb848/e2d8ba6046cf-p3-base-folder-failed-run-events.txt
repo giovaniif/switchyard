@@ -1,0 +1,22 @@
+events of the failed run (base 0dc6c28, 1 of 25 under 8 burners), yard.db of /tmp/yardd-test-516107-gonesend-0/data/yard.db
+1 s1a21ab524a21 {"text":"hi","type":"user_message"}
+2 s1a21ab524a21 {"at":1795744408753,"type":"turn_started"}
+3 s1a21ab524a21 {"itemId":"msg-516119-3","text":"Echo: hi","type":"assistant_message"}
+4 s1a21ab524a21 {"at":1795744408757,"status":"completed","type":"turn_completed"}
+5 s1a21ab524a21 {"text":"keep going","type":"user_message"}
+6 s1a21ab524a21 {"at":1795744408781,"type":"turn_started"}
+7 s1a21ab524a21 {"message":"This session's folder no longer exists: /tmp/yardd-test-516107-gonesend-0/work/proj-codex. Start a new session to keep working.","type":"error"}
+8 s1a21ab524a21 {"at":1795744408781,"status":"failed","type":"turn_completed"}
+9 s1a21ab524f72 {"text":"[die] hi","type":"user_message"}
+10 s1a21ab524f72 {"at":1795744408837,"type":"turn_started"}
+11 s1a21ab524f72 {"message":"the Claude sidecar is not running","type":"error"}
+12 s1a21ab524f72 {"at":1795744408838,"status":"failed","type":"turn_completed"}
+13 s1a21ab524f72 {"message":"The Claude sidecar exited. The next message starts it again.","type":"error"}
+14 s1a21ab524f72 {"at":1795744408838,"status":"failed","type":"turn_completed"}
+15 s1a21ab524f72 {"text":"keep going","type":"user_message"}
+16 s1a21ab524f72 {"at":1795744408880,"type":"turn_started"}
+17 s1a21ab524f72 {"message":"This session's folder no longer exists: /tmp/yardd-test-516107-gonesend-0/work/proj-claude. Start a new session to keep working.","type":"error"}
+18 s1a21ab524f72 {"at":1795744408880,"status":"failed","type":"turn_completed"}
+yardd: http://127.0.0.1:37351
+yardd: client connected, origin none, agent none
+fake claude: Claude turns are not allowed in tests

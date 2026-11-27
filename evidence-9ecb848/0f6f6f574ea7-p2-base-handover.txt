@@ -1,0 +1,31 @@
+checkout 5e7455f, 28 cpus
+run 1: FAILED
+thread 'a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile' (781200) panicked at crates/yardd/tests/agents.rs:898:80:
+called `Result::unwrap()` on an `Err` value: "On-call is moving to another host. Change it once it gets there."
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+run 2: FAILED
+thread 'a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile' (781965) panicked at crates/yardd/tests/agents.rs:898:80:
+called `Result::unwrap()` on an `Err` value: "On-call is moving to another host. Change it once it gets there."
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+run 3: ok
+run 4: FAILED
+thread 'a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile' (783492) panicked at crates/yardd/tests/agents.rs:898:80:
+called `Result::unwrap()` on an `Err` value: "On-call is moving to another host. Change it once it gets there."
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+run 5: FAILED
+thread 'a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile' (784676) panicked at crates/yardd/tests/agents.rs:898:80:
+called `Result::unwrap()` on an `Err` value: "On-call is moving to another host. Change it once it gets there."
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+run 6: FAILED
+thread 'a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile' (785904) panicked at crates/yardd/tests/agents.rs:898:80:
+called `Result::unwrap()` on an `Err` value: "On-call is moving to another host. Change it once it gets there."
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+run 7: FAILED
+thread 'a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile' (787068) panicked at crates/yardd/tests/agents.rs:898:80:
+called `Result::unwrap()` on an `Err` value: "On-call is moving to another host. Change it once it gets there."
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+run 8: FAILED
+thread 'a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile' (788594) panicked at crates/yardd/tests/agents.rs:898:80:
+called `Result::unwrap()` on an `Err` value: "On-call is moving to another host. Change it once it gets there."
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+failures: 7/8 (busy=8, load 5.52 6.88 6.20)

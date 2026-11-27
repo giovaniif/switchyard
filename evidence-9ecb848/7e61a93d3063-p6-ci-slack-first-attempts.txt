@@ -1,0 +1,10 @@
+run 45923780505: 2026-11-27T01:41:45.0489761Z test a_watched_channel_reaches_its_agent_as_read_only_data_one_turn_per_batch ... FAILED
+run 45923780505: 2026-11-27T01:41:45.0491533Z timed out after 20s waiting for event `turn_completed` (seq >= 0) in s1a21aaa19a12; last messages:
+run 45923780505: 2026-11-27T01:41:45.0504428Z {"event":{"origin":{"app":"g1a21aaa08fe1","channel":"C0INCIDENT","channelName":"#incidents","count":3,"kind":"slack","team":"T0TEST","threadTs":"1700000002.000100","ts":"1
+run 45923780505: 2026-11-27T01:41:45.0508783Z test result: FAILED. 21 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 24.41s
+run 45917043347: 2026-11-27T00:32:27.2772667Z test a_watched_channel_reaches_its_agent_as_read_only_data_one_turn_per_batch ... FAILED
+run 45917043347: 2026-11-27T00:32:27.2777069Z timed out after 20s waiting for event `turn_completed` (seq >= 0) in s1a21a6aa84b2; last messages:
+run 45917043347: 2026-11-27T00:32:27.2798314Z {"event":{"origin":{"app":"g1a21a6a97701","channel":"C0INCIDENT","channelName":"#incidents","count":3,"kind":"slack","team":"T0TEST","threadTs":"1700000002.000100","ts":"1
+run 45917043347: 2026-11-27T00:32:27.2802931Z test result: FAILED. 21 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 24.58s
+run 45923780505 queued event: "reason":"load 6.7 is above 4 cores"
+run 45917043347 queued event: "reason":"load 5.8 is above 4 cores"

@@ -1,0 +1,11 @@
+checkout 9ecb848, 28 cpus
+run 1: ok
+run 2: ok
+run 3: ok
+run 4: ok
+run 5: ok
+run 6: FAILED
+thread 'a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely' (1016466) panicked at crates/yardd/tests/agents.rs:656:74:
+called `Result::unwrap()` on an `Err` value: "this host is not connected"
+test result: FAILED. 30 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.17s
+failures: 1/6 (busy=8, RUST_TEST_THREADS=8, load 14.54 12.32 10.37)

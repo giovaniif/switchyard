@@ -1,0 +1,286 @@
+{
+  "v": 1,
+  "claim": "Under load, yardd failed four daemon tests for real reasons. An owner's edit or delete, or the agent's own memory write, that landed on a hand-over retry the owner cannot see was refused as 'moving to another host'. An agent's reply that arrived just as the turn ended stayed in an idle session's queue. A Claude sidecar that died while its message was being sent ended the turn twice, the second time where the next turn should be. Test daemons queued new sessions because of the machine's load.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/flaky-tests-2",
+  "base": "0dc6c28d2059b900bb7a8060c3347062891bc375",
+  "head": "9ecb8489f6fb4286538dbfde8158e79be861574e",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agent_tools.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/claude.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/guard.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/sessions.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/agents.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/common/mod.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    }
+  ],
+  "ui": false,
+  "createdAt": "2026-11-27T02:15:57.695Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "test",
+      "at": "5e7455f8f4aca16b2576241d687a7be8cc8d7f11",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p1-cmd.log",
+          "sha256": "f07a073a7dd93dbd1f9fdf62b8c74fa57ce2453066867f39f720b833bad00bb9"
+        }
+      ],
+      "addedAt": "2026-11-27T02:16:02.512Z",
+      "cmd": "~/.local/bin/heavy cargo test -p yardd --test agents an_edit_made_while_a_refused_hand_over_is_tried_again_waits_for_the_answer -- --exact",
+      "exit": 101
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "repro",
+      "at": "5e7455f8f4aca16b2576241d687a7be8cc8d7f11",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-base-handover.txt",
+          "sha256": "0f6f6f574ea7093f659556aaa777e1535a93c41308c5ffa0226c51cbb533fbb4"
+        }
+      ],
+      "addedAt": "2026-11-27T02:22:05.575Z",
+      "text": "agents.rs a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile under 8 CPU burners: 7/8 failed, each with the save refused as 'On-call is moving to another host'. Command: ~/.local/bin/heavy /tmp/ft2/ev/loop.sh agents a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile 8 8"
+    },
+    {
+      "id": 3,
+      "ref": "base",
+      "kind": "repro",
+      "at": "5e7455f8f4aca16b2576241d687a7be8cc8d7f11",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p3-base-folder-failed-run-events.txt",
+          "sha256": "e2d8ba6046cf0b4781099479cab86515d382ca0333353b30a64ffa7a73b671a5"
+        }
+      ],
+      "addedAt": "2026-11-27T02:22:05.625Z",
+      "text": "daemon.rs a_message_to_a_session_whose_folder_is_gone_says_so failed 1/25 under 8 burners on main's code (loop.sh daemon ... 25 8). The kept yard.db shows the cause: the [die] turn ended twice (events 11-12 from the failed send, 13-14 from the sidecar's reader), and the second error landed where the test expected the next turn's folder error."
+    },
+    {
+      "id": 4,
+      "ref": "base",
+      "kind": "repro",
+      "at": "5e7455f8f4aca16b2576241d687a7be8cc8d7f11",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-base-folder.txt",
+          "sha256": "97ae1950cb9c51feb5d340b63ef639bdd5f59f19d6a607031f1f0e466868242b"
+        },
+        {
+          "path": "p4-base-daemon-bin.txt",
+          "sha256": "81dc8cf57a190bc6146a6d59141c15c85e8ce0888c881e953413fd44e55036c2"
+        }
+      ],
+      "addedAt": "2026-11-27T02:22:05.674Z",
+      "text": "The same folder test passed 0/30 in a second base loop, and the whole daemon binary passed 0/6 (RUST_TEST_THREADS=8, 8 burners). The race needs the OS to preempt the turn's thread between spawning the sidecar and sending to it, so burners hit it only sometimes."
+    },
+    {
+      "id": 5,
+      "ref": "base",
+      "kind": "repro",
+      "at": "5e7455f8f4aca16b2576241d687a7be8cc8d7f11",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-base-tools-fail-failed-run.txt",
+          "sha256": "983e5a65609f2207f5062dfac68d54efcdd1930c379b38aa633f02c03765e197"
+        }
+      ],
+      "addedAt": "2026-11-27T02:22:05.723Z",
+      "text": "agent_tools.rs a_failed_or_stopped_answer_still_reaches_the_sender: the sandbox kept from the failed run during PR #510 (main's code). Ada's session ends idle with 'Bea was stopped before it read your message.' still in its pending queue. The reply was queued at the same ms Ada's turn completed (876429), so the completed turn found nothing to send on. I did not reproduce it again locally: 0/20 single-test runs and 0/12 whole-binary runs under 8 burners."
+    },
+    {
+      "id": 6,
+      "ref": "base",
+      "kind": "repro",
+      "at": "5e7455f8f4aca16b2576241d687a7be8cc8d7f11",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-ci-slack-first-attempts.txt",
+          "sha256": "7e61a93d3063e69d7285627fe918af5faddcb8bf0ce6dc44c49146d11fb3d3a6"
+        }
+      ],
+      "addedAt": "2026-11-27T02:22:24.720Z",
+      "text": "slack.rs a_watched_channel_reaches_its_agent_as_read_only_data_one_turn_per_batch on CI first attempts (runs 45923780505 and 45917043347, after #510): the watched channel's turn was queued by the resource guard ('load 6.7 is above 4 cores', 'load 5.8 is above 4 cores') and the test timed out. The harness meant test daemons never to queue on their own, but it only turned off the memory floor. Not reproducible here: this box has 28 cores, and the burners are CPU-capped inside heavy's scope."
+    },
+    {
+      "id": 7,
+      "ref": "base",
+      "kind": "note",
+      "at": "5e7455f8f4aca16b2576241d687a7be8cc8d7f11",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p7-loop.sh",
+          "sha256": "77f020677ca26d5f4f65480b81d3275df3cbe466b118229366be2a732daad7cc"
+        },
+        {
+          "path": "p7-loopbin.sh",
+          "sha256": "be87c3e152967a022e839ef6ed9aa98378d1e5383fb130a9962634b45d74f981"
+        }
+      ],
+      "addedAt": "2026-11-27T02:22:24.768Z",
+      "text": "Loop scripts behind every rate: loop.sh <target> <test> <runs> <burners> runs one test N times with B busy-loop CPU burners in the same heavy scope (capped at 6 CPUs); loopbin.sh does the same for a whole test binary. The load averages they print understate the burners, because cgroup throttling hides them."
+    },
+    {
+      "id": 8,
+      "ref": "head",
+      "kind": "fix",
+      "at": "9ecb8489f6fb4286538dbfde8158e79be861574e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p8-head-handover.txt",
+          "sha256": "a646e4f18c0ed5e720ee7e8de1cedd6dce3d6c3f38a9c3e4069cdd3fe7053b94"
+        }
+      ],
+      "addedAt": "2026-11-27T02:29:45.384Z",
+      "text": "a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile, 8 burners: 0/15 (base 7/8). Command: ~/.local/bin/heavy /tmp/ft2/ev/loop.sh agents a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_meanwhile 15 8"
+    },
+    {
+      "id": 9,
+      "ref": "head",
+      "kind": "fix",
+      "at": "9ecb8489f6fb4286538dbfde8158e79be861574e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p9-head-folder.txt",
+          "sha256": "e7ffdb924d49282bad43a37666354c0059af17f05c27268248aa9bb460397cd3"
+        }
+      ],
+      "addedAt": "2026-11-27T02:29:45.430Z",
+      "text": "a_message_to_a_session_whose_folder_is_gone_says_so, 8 burners: 0/30 (base 1/25, then 0/30). Command: ~/.local/bin/heavy /tmp/ft2/ev/loop.sh daemon a_message_to_a_session_whose_folder_is_gone_says_so 30 8"
+    },
+    {
+      "id": 10,
+      "ref": "head",
+      "kind": "fix",
+      "at": "9ecb8489f6fb4286538dbfde8158e79be861574e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p10-head-tools-fail.txt",
+          "sha256": "f7f51bad6b7dae2f19b82d6f055c44f58544baec310e103aab069ca314359f58"
+        }
+      ],
+      "addedAt": "2026-11-27T02:29:45.475Z",
+      "text": "a_failed_or_stopped_answer_still_reaches_the_sender, 8 burners: 0/30. Base was 0/20 here too, so this rate proves nothing alone. The proof is the base sandbox (proof 5) plus the fix: App::queue_while looks at the status and pushes under one lock. Command: ~/.local/bin/heavy /tmp/ft2/ev/loop.sh agent_tools a_failed_or_stopped_answer_still_reaches_the_sender 30 8"
+    },
+    {
+      "id": 11,
+      "ref": "head",
+      "kind": "fix",
+      "at": "9ecb8489f6fb4286538dbfde8158e79be861574e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p11-head-slack-bin.txt",
+          "sha256": "3b48b0dd65079250fccadc1aea9480473b95143faaa36a5e67331fe67b6d7fc6"
+        },
+        {
+          "path": "p11-head-agents-bin.txt",
+          "sha256": "ad7868d9286c7ded3c77ec689345779e0fb025399a85822e91b689640e362c3b"
+        }
+      ],
+      "addedAt": "2026-11-27T02:29:45.521Z",
+      "text": "Whole binaries at head, RUST_TEST_THREADS=8 with 8 burners: slack 0/6. agents 1/6: the one failure is a_hub_hands_the_agents_it_kept_to_their_host_once_and_safely with 'this host is not connected'. That is the pipe race #510 could not pin to a test (a client's pipe to the host is not up yet). It is not in this PR's scope and these changes do not touch it."
+    },
+    {
+      "id": 12,
+      "ref": "head",
+      "kind": "test",
+      "at": "9ecb8489f6fb4286538dbfde8158e79be861574e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p12-cmd.log",
+          "sha256": "467b86d01b71631aae76109ac33ed73b24707a384d64f65210231cb2b0ae70c4"
+        }
+      ],
+      "addedAt": "2026-11-27T02:29:50.283Z",
+      "cmd": "~/.local/bin/heavy cargo test -p yardd",
+      "exit": 0
+    },
+    {
+      "id": 13,
+      "ref": "head",
+      "kind": "note",
+      "at": "9ecb8489f6fb4286538dbfde8158e79be861574e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p13-head-await-probe.txt",
+          "sha256": "a048417488b3d3365084f2eaece8efeab77fb7ced00fccbb0a8679a16f17e502"
+        }
+      ],
+      "addedAt": "2026-11-27T02:33:44.608Z",
+      "text": "#510 verifier note 1: the eight ordered per-window ops now run in ws::in_order, a plain fn. The probe added one await to an arm, and cargo check refused it with E0728. The probe was reverted and is not committed."
+    },
+    {
+      "id": 14,
+      "ref": "head",
+      "kind": "note",
+      "at": "9ecb8489f6fb4286538dbfde8158e79be861574e",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [],
+      "addedAt": "2026-11-27T02:33:44.655Z",
+      "text": "no-failing-test: for the queue race (a_failed_or_stopped_answer_still_reaches_the_sender) and the double turn end (a_message_to_a_session_whose_folder_is_gone_says_so) I found no deterministic test. Each needs another thread to run between two statements that have no await between them (status read and queue push; sidecar spawn and the first send). With one worker thread they never interleave. The base sandboxes (proofs 3 and 5) show both races. The load-guard fix (Slack test) needs a load above the core count, which this 28-core box under heavy's 6-CPU cap does not reach: CI log proof 6. The deterministic regression test of this PR is proof 1 (the hand-over edit)."
+    }
+  ]
+}

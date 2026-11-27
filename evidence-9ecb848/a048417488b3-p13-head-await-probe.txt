@@ -1,0 +1,13 @@
+Probe: one await added to the session.steer arm of in_order, then cargo check:
++            tokio::task::yield_now().await;
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+   --> crates/yardd/src/ws.rs:801:38
+    |
+784 | fn in_order(app: &Arc<App>, direct: &mpsc::UnboundedSender<String>, msg: &Value) -> Result<()> {
+    | ---------------------------------------------------------------------------------------------- this is not `async`
+...
+801 |             tokio::task::yield_now().await;
+    |                                      ^^^^^ only allowed inside `async` functions and blocks
+
+--
+error: could not compile `yardd` (bin "yardd") due to 1 previous error
