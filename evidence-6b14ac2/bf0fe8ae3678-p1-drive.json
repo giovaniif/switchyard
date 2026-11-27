@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "route": "hosts",
+  "build": {
+    "sha": "b4b9b1318bd3232d228f4ad259b2d5f86475afb5",
+    "short": "b4b9b13",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T14:44:34.730Z"
+  },
+  "dir": ".verify/evidence/pressure-history-base",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 6151,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/pressure-history-base/no-banner-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/pressure-history-base/no-history-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 7,
+          "eval": "(() => { const p = document.querySelector(\".host-inspector-panel\"); p.lastElementChild.scrollIntoView({ block: \"end\" }); return true; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 6441,
+      "steps": 9,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/pressure-history-base/no-banner-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/pressure-history-base/no-history-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 7,
+          "eval": "(() => { const p = document.querySelector(\".host-inspector-panel\"); p.lastElementChild.scrollIntoView({ block: \"end\" }); return true; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}

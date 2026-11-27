@@ -1,0 +1,249 @@
+{
+  "v": 1,
+  "claim": "When the host is overloaded nothing records it or tells the owner: the load hit ~140 on 28 threads with swap full for over an hour, nobody could say afterwards what caused it, and a session's turn sat silent for 49 minutes. Under pressure there is no banner, no stalled-turn note and no history of episodes.",
+  "repo": "/home/giovani/www/better-than-claude-code/.claude/worktrees/pressure-history",
+  "base": "dd8cbb5b1c4e15c9e3108680c4297f3789f2e5b2",
+  "head": "6b14ac268c794ab4081280582128685a67d5f921",
+  "changed": [
+    {
+      "status": "M",
+      "path": "crates/yardd/src/guard.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/hosts.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/main.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/naming.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/yardd/src/pressure.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/remote.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/slack/places.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/state.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/src/ws.rs"
+    },
+    {
+      "status": "M",
+      "path": "crates/yardd/tests/common/mod.rs"
+    },
+    {
+      "status": "A",
+      "path": "crates/yardd/tests/pressure.rs"
+    },
+    {
+      "status": "M",
+      "path": "docs/ARCHITECTURE.md"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/App.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/PressurePanel.tsx"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/pressure.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "ui/src/pressure.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/store.ts"
+    },
+    {
+      "status": "M",
+      "path": "ui/src/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "verify/features/README.md"
+    },
+    {
+      "status": "A",
+      "path": "verify/features/pressure.md"
+    },
+    {
+      "status": "M",
+      "path": "verify/src/iso.ts"
+    }
+  ],
+  "ui": true,
+  "createdAt": "2026-11-27T14:44:00.488Z",
+  "proofs": [
+    {
+      "id": 1,
+      "ref": "base",
+      "kind": "repro",
+      "at": "b4b9b1318bd3232d228f4ad259b2d5f86475afb5",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p1-drive.json",
+          "sha256": "bf0fe8ae367841effc2ce6d474fb81baa3cffa9a4a3e4977193a946458efc475"
+        },
+        {
+          "path": "p1-no-banner-mobile.png",
+          "sha256": "b95b8b66870bf885595c287b05a304439ec2a8b16a7e4a892cab17e4c73ca1e2"
+        },
+        {
+          "path": "p1-no-history-mobile.png",
+          "sha256": "c450a51240084f2e37f6c039a865df6acc2df0999a8e40cedfc5331ec26cfe60"
+        },
+        {
+          "path": "p1-no-banner-desktop.png",
+          "sha256": "fbc49c1d8c440434ad90f7c7d5c3372b2511cccd344f64cde03ae78cee425e92"
+        },
+        {
+          "path": "p1-no-history-desktop.png",
+          "sha256": "d17aa78b675d5fd683e5366e95bde7d3822d283a98d6ee1614c4039f5d5a5701"
+        }
+      ],
+      "addedAt": "2026-11-27T14:48:44.928Z",
+      "failedApi": []
+    },
+    {
+      "id": 2,
+      "ref": "base",
+      "kind": "test",
+      "at": "b4b9b1318bd3232d228f4ad259b2d5f86475afb5",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p2-cmd.log",
+          "sha256": "a3366a81c08bbd4c5f0225b835a909889a326c65c1d702fbb7ff433cf0c9b3b2"
+        }
+      ],
+      "addedAt": "2026-11-27T14:51:07.589Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd --test pressure && (cd ui && bun test src/pressure.test.ts)",
+      "exit": 101
+    },
+    {
+      "id": 3,
+      "ref": "head",
+      "kind": "fix",
+      "at": "6b14ac268c794ab4081280582128685a67d5f921",
+      "dirty": false,
+      "viewports": [
+        "mobile",
+        "desktop"
+      ],
+      "artifacts": [
+        {
+          "path": "p3-drive.json",
+          "sha256": "5c90df267fffd855eb34238750dfdd11c109703770d998843755795d147ef6c1"
+        },
+        {
+          "path": "p3-banner-and-stalled-mobile.png",
+          "sha256": "17b72f482c69def06bc141303ce449568781adc8b9864a1a58cb2dc27eb996ea"
+        },
+        {
+          "path": "p3-history-mobile.png",
+          "sha256": "e7754cdd338263cc9ca4e867553082150099fd1800422df2591e32f7a33d2088"
+        },
+        {
+          "path": "p3-banner-and-stalled-desktop.png",
+          "sha256": "3ac647d5b2dbfe5e94b3b0566c7ff1e0b547c6166e3e8d30b84dfebdd5ebc1ca"
+        },
+        {
+          "path": "p3-history-desktop.png",
+          "sha256": "a1f6f9326b66c5211ee6df05b1368a26441234ebf29d61ea3bb62f45028b53cf"
+        }
+      ],
+      "addedAt": "2026-11-27T14:55:40.158Z",
+      "failedApi": []
+    },
+    {
+      "id": 4,
+      "ref": "head",
+      "kind": "test",
+      "at": "6b14ac268c794ab4081280582128685a67d5f921",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p4-cmd.log",
+          "sha256": "378cb41ab2738840a1f29b33e50c009d1fee32a3963c95eaa0d065a365ebe3b4"
+        }
+      ],
+      "addedAt": "2026-11-27T14:55:40.241Z",
+      "cmd": "CARGO_BUILD_JOBS=2 cargo test -p yardd && (cd ui && bun test)",
+      "exit": 0
+    },
+    {
+      "id": 5,
+      "ref": "head",
+      "kind": "design",
+      "at": "6b14ac268c794ab4081280582128685a67d5f921",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p5-design.json",
+          "sha256": "2883a04c9b3bbfae6409f2d3b20c90f5172d141d1a8e84de06cd4552e6303692"
+        }
+      ],
+      "addedAt": "2026-11-27T14:59:09.676Z",
+      "cmd": "verify/yv design-check --base dd8cbb5b1c4e",
+      "exit": 0
+    },
+    {
+      "id": 6,
+      "ref": "head",
+      "kind": "regression",
+      "at": "6b14ac268c794ab4081280582128685a67d5f921",
+      "dirty": false,
+      "viewports": [],
+      "artifacts": [
+        {
+          "path": "p6-map-pressure.json",
+          "sha256": "d7b39e637903bdcacca3fde4dd6ffc64d8922fcc3f99a55e9488a7f2345eaf97"
+        }
+      ],
+      "addedAt": "2026-11-27T14:59:10.809Z",
+      "cmd": "verify/yv map run pressure",
+      "exit": 0,
+      "failingRecipes": [],
+      "passingRecipes": [
+        "pressure/quiet-when-calm",
+        "pressure/banner-names-the-worst-session",
+        "pressure/stalled-turn-note",
+        "pressure/stop-from-the-banner",
+        "pressure/history-on-the-system-tab",
+        "pressure/a-stray-process-is-named",
+        "pressure/a-remote-hosts-own-episodes"
+      ]
+    }
+  ]
+}

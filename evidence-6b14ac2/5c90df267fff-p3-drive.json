@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "route": "session:s1a21d80cf8cd",
+  "build": {
+    "sha": "6b14ac268c794ab4081280582128685a67d5f921",
+    "short": "6b14ac2",
+    "dirty": false,
+    "diffHash": null,
+    "at": "2026-11-27T14:52:02.318Z"
+  },
+  "dir": ".verify/evidence/pressure-history-head",
+  "runs": [
+    {
+      "viewport": "mobile",
+      "ms": 2896,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/pressure-history-head/banner-and-stalled-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        },
+        {
+          "viewport": "mobile",
+          "file": ".verify/evidence/pressure-history-head/history-mobile.png",
+          "size": {
+            "width": 780,
+            "height": 1688
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 8,
+          "eval": "(() => { document.querySelector(\".pressure-history\").scrollIntoView({ block: \"start\" }); return true; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    },
+    {
+      "viewport": "desktop",
+      "ms": 3329,
+      "steps": 10,
+      "failed": null,
+      "captures": [
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/pressure-history-head/banner-and-stalled-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        },
+        {
+          "viewport": "desktop",
+          "file": ".verify/evidence/pressure-history-head/history-desktop.png",
+          "size": {
+            "width": 2880,
+            "height": 1800
+          }
+        }
+      ],
+      "notes": [
+        {
+          "step": 8,
+          "eval": "(() => { document.querySelector(\".pressure-history\").scrollIntoView({ block: \"start\" }); return true; })()",
+          "value": true
+        }
+      ],
+      "video": null,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedApi": [],
+      "httpFailures": []
+    }
+  ],
+  "problems": []
+}
