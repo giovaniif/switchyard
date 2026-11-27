@@ -12,7 +12,7 @@
 //! `Origin`.
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -808,27 +808,24 @@ pub fn pipe(app: &Arc<App>, host_id: &str, direct: mpsc::UnboundedSender<String>
 /// The connection itself, given the hub's own connection to the host
 /// (`conn`), which the tests stand in for.
 fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<Mutex<Option<Value>>>, direct: mpsc::UnboundedSender<String>) -> Pipe {
-    let (tx, mut rx) = mpsc::unbounded_channel::<Value>();
+    let (tx, rx) = mpsc::unbounded_channel::<Value>();
     let up = Arc::new(AtomicBool::new(false));
     let flag = up.clone();
     let shown = conn.clone();
+    // Built outside the task, so a pipe dropped before its task first runs
+    // still answers what it was sent.
+    let mut pending = Pending { held: VecDeque::new(), rx, direct: direct.clone() };
     let task = tokio::spawn(async move {
         let mut backoff = Backoff::new(Duration::from_secs(10));
-        // Ops sent while it waited to try again: they go first once it opens.
-        let mut held: Vec<Value> = Vec::new();
         loop {
-            let url = match conn.wait_for(|c| c.url.is_some()).await {
-                Ok(c) => c.url.clone().unwrap_or_default(),
-                Err(_) => return,
-            };
+            let Some(url) = url_for(&mut conn, &mut pending).await else { return };
             if let Ok(ws) = connect(&url).await {
                 backoff.reset();
                 let (mut sink, mut stream) = ws.split();
                 flag.store(true, Ordering::Relaxed);
-                let mut first = std::mem::take(&mut held).into_iter();
                 loop {
-                    let op = match first.next() {
-                        Some(op) => Some(op),
+                    let op = match pending.held.pop_front() {
+                        Some(op) => op,
                         None => tokio::select! {
                             incoming = stream.next() => match incoming {
                                 Some(Ok(Message::Text(text))) => {
@@ -841,40 +838,93 @@ fn open(mut conn: watch::Receiver<Conn>, host: String, name: String, last: Arc<M
                                 Some(Ok(_)) => continue,
                                 _ => break,
                             },
-                            op = rx.recv() => match op {
-                                Some(op) => Some(op),
+                            op = pending.rx.recv() => match op {
+                                Some(op) => op,
                                 None => return,
                             },
                         },
                     };
-                    if let Some(op) = op {
-                        if sink.send(Message::Text(outgoing(op).to_string())).await.is_err() { break; }
+                    // Made now: the op goes out with the host's own ids, and
+                    // its error must carry the page's.
+                    let refused = refusal(&op, NOT_CONNECTED);
+                    if sink.send(Message::Text(outgoing(op).to_string())).await.is_err() {
+                        if let Some(refused) = refused {
+                            let _ = direct.send(refused);
+                        }
+                        break;
                     }
                 }
                 flag.store(false, Ordering::Relaxed);
                 let _ = direct.send(json!({ "op": "host.down", "hostId": host }).to_string());
             }
             // Ops that waited for this try and still could not go: say so.
-            while let Ok(op) = rx.try_recv() {
-                held.push(op);
-            }
-            for op in held.drain(..) {
-                if op["op"] != "agent.seen" {
-                    let _ = direct.send(crate::ws::error_reply(&op, &anyhow::anyhow!(NOT_CONNECTED)));
-                }
-            }
+            pending.fail(NOT_CONNECTED);
             // An op sent meanwhile means the host shows connected (`Pipe::
             // send`): try again now rather than after the backoff.
             tokio::select! {
                 _ = backoff.wait() => {}
-                op = rx.recv() => match op {
-                    Some(op) => held.push(op),
+                op = pending.rx.recv() => match op {
+                    Some(op) => pending.held.push_back(op),
                     None => return,
                 },
             }
         }
     });
     Pipe { tx, up, conn: shown, task }
+}
+
+/// Ops a pipe took and has not written to the host. Each one gets an
+/// error if it cannot go, so a page never waits on a `ref` with no answer.
+struct Pending {
+    /// Ops sent while it waited to try again: they go first once it opens.
+    held: VecDeque<Value>,
+    rx: mpsc::UnboundedReceiver<Value>,
+    direct: mpsc::UnboundedSender<String>,
+}
+
+impl Pending {
+    fn fail(&mut self, why: &str) {
+        while let Ok(op) = self.rx.try_recv() {
+            self.held.push_back(op);
+        }
+        for op in self.held.drain(..) {
+            if let Some(refused) = refusal(&op, why) {
+                let _ = self.direct.send(refused);
+            }
+        }
+    }
+}
+
+impl Drop for Pending {
+    /// The pipe ended: its host was removed (the page drops the pipe, or the
+    /// hub's connection closes), or the page is gone.
+    fn drop(&mut self) {
+        self.fail("no such host");
+    }
+}
+
+/// The error a page gets for an op that did not reach the host. A window
+/// opening an agent's conversation has nothing to clear: `agent.seen` stays
+/// silent, as when `Pipe::send` refuses it (ws.rs).
+fn refusal(op: &Value, why: &str) -> Option<String> {
+    (op["op"] != "agent.seen").then(|| crate::ws::error_reply(op, &anyhow::Error::msg(why.to_string())))
+}
+
+/// The host's url to connect to. Ops cannot wait while there is none (an
+/// ssh host's tunnel is down): they went in while the host showed connected
+/// (`Pipe::send`), and the tunnel may take any time to come back.
+async fn url_for(conn: &mut watch::Receiver<Conn>, pending: &mut Pending) -> Option<String> {
+    loop {
+        let url = conn.borrow_and_update().url.clone();
+        if url.is_some() {
+            return url;
+        }
+        pending.fail(NOT_CONNECTED);
+        tokio::select! {
+            changed = conn.changed() => changed.ok()?,
+            op = pending.rx.recv() => pending.held.push_back(op?),
+        }
+    }
 }
 
 /// Which host an op is for, when it is not for this yardd.
