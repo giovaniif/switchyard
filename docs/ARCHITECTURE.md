@@ -182,7 +182,7 @@ Claude switches at once with `setPermissionMode` (the sidecar always passes `all
 - **Per session:** the same sample sums CPU and memory over each session's processes: the Claude sidecar tree, the terminal shell tree, and for Codex the app-server's children matched by command folder and start time. Codex runs one app-server per account, so two Codex sessions of one account running commands in the same folder at the same moment can be mixed up.
 - **No memory cap.** yardd never stops a running session for its size. A per-session cap (`YARD_SESSION_MEM_CAP_GB`) existed until 0.2.1 and was removed on 2026-11-15: a polling soft cap killed real work, and the queue below already keeps new sessions off a busy host.
 - Threads are not processes: on Linux `sysinfo` lists each thread with its process as parent and the process's memory as its own. They are skipped; counting them made a Claude CLI look 8.7 GB (2026-11-14).
-- **Queue:** a new session waits (status `queued`) while 1-minute load is above the core count or free memory is under `YARD_MIN_FREE_GB` (default 2). One queued session starts per sample once there is room. "Start anyway" skips the wait. Queued sessions survive a restart.
+- **Queue:** a new session waits (status `queued`) while 1-minute load is above the core count or free memory is under `YARD_MIN_FREE_GB` (default 2). The daemon tests turn the load check off (`YARD_TEST_IGNORE_LOAD=1`) and force pressure where they test the queue. One queued session starts per sample once there is room. "Start anyway" skips the wait. Queued sessions survive a restart.
 - **Processes tab:** `session.procs { sessionId }` answers `session.procs { sessionId, procs }`, the session's processes from the same sample (so up to 3 s old): `pid`, `ppid`, `name`, `cmd` (at most 400 characters), `cpu` (percent of one core), `memBytes`, `ageSecs`, `start` (seconds since the epoch), `origin` (`agent` for the sidecar tree or a Codex command, `terminal` for a shell) and `engine` (the engine's own process: a Claude sidecar, or the sidecar's child whose name or command line says `claude`, which is the CLI the SDK starts). It is asked for, not broadcast, and routes through the hub like any session op. The tab (`ProcPane`, next to Changes, Terminal and Pull request, so hidden below 1100 px) asks when opened and every 3 s while visible, and draws the tree with each command line shortened. An older remote yardd answers "unknown op": the tab stays on "Loading…".
 - **Stopping a process:** `session.kill { sessionId, pid, start?, signal: "term"|"kill", tree? }` answers `session.killed { sessionId, pid, signal, tree, result, reason?, running }` (and the request's `ref`). yardd does not trust the pid: it reads the process table again at that moment, works out every session's tree from it the same way as the sample, and refuses (`result: "refused"` with a `reason`, not an error) pid 0 or 1, its own pid, any engine process (a Claude sidecar or its CLI, a Codex app-server or ACP agent, which other sessions may share; these are never in the tab's reach, the session's Stop and Delete end them), a pid that is not in this session's tree now, a pid another session lists too, and a `start` that differs from the listed one (the pid was reused). It signals from that same read, then checks every 100 ms whether the processes are gone (a zombie counts as gone) for up to 3 s after SIGTERM or 2 s after SIGKILL: `killed`, or `running` with the pids still alive. Killed pids are dropped from the cached list so the next `session.procs` leaves them out. `tree: true` signals the process and everything below it in the session's list, children before parents in one pass with no pause between, so a parent waiting on a child has no time to start a replacement. Not by process group: a command that did not start its own group shares the one of whatever started it, which can be the engine, and the list is what was checked. Only `term` and `kill` exist; anything else, a missing pid or an unknown session is an error. It routes through the hub like any session op; an older remote answers `unknown op`, which the row shows as that host needing Update Switchyard. The tab offers each row a Stop (×, shown on hover, always on touch) that asks for a second click, with "Stop with children" when the row has children; a row still running after SIGTERM offers "Force kill", also confirmed. The engine's rows offer nothing. The tab refreshes the list after each answer. Known limit: a Codex or ACP child is matched to a session by folder and start time (above), so a helper the shared agent starts in that folder while a command runs there would look like the session's.
 - Not built: worktree disk sizes. Merged and spent worktrees are swept (see Worktrees).
@@ -712,7 +712,12 @@ the composer and session view in `App.tsx`.
     takes no edit, memory write, delete or other move ("… is moving to
     another host"): the change would be lost with the copy that goes, or
     would leave a copy the user thought gone. A record leaving for a host
-    since removed from this yardd is exempt (`moving_now`). An
+    since removed from this yardd is exempt (`moving_now`). A try of
+    `migrate` (below) marks the record only while it waits for the host's
+    answer, and the owner never sees those tries: an edit, delete or memory
+    write that comes meanwhile waits for that answer instead of being
+    refused (a refusal leaves the record the hub's), and no try starts while
+    an edit is under way (`Agents::edit`, `Agents::try_now`). An
     `agent.export` by another transfer waits until the first is released or
     abandoned.
   - **A deleted agent stays deleted.** A yardd that deletes an agent
@@ -936,7 +941,10 @@ the composer and session view in `App.tsx`.
   in="#general">…</slack>` with names flattened to one line without quotes or
   angle brackets, so a Slack display name cannot break the frame); the thread shows only
   the text. Queued messages from several origins become one turn but stay
-  separate `user_message`s, each with its badge. `Meta.answering` keeps the
+  separate `user_message`s, each with its badge. A message is queued only if
+  the turn is still running when it is pushed (`App::queue_while`, one lock
+  for both): looked at and pushed apart, an answer that arrived as the turn
+  ended waited in an idle conversation until something else came. `Meta.answering` keeps the
   origins of the messages the running turn answers: set when it starts, grown
   by steered messages (before the engine reads them, so a turn that ends at
   once still owes them). When the turn ends, `App::emit` hands them with its

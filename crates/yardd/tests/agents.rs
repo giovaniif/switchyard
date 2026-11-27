@@ -906,6 +906,39 @@ async fn a_hand_over_waits_for_the_turn_running_on_its_host_and_leaves_no_trace_
 }
 
 #[tokio::test]
+async fn an_edit_made_while_a_refused_hand_over_is_tried_again_waits_for_the_answer() {
+    // The host is mid-turn, so every try is refused, but each one marks the
+    // record leaving while it waits for the answer. The owner cannot see
+    // those tries: an edit that lands on one must wait for its refusal, not
+    // be refused as "moving to another host".
+    let remote_sb = Sandbox::new("agents-trying-remote");
+    let remote = remote_sb.start_with(&[("YARD_TEST_SLOW_OP", "agent.adopt:1500")]);
+    let mut r = remote.client().await;
+    ready(&mut r).await;
+    let hub_id = "0123456789abcdef0123456789abcdef";
+    save_hosted(&mut r, json!({ "id": "g-oncall", "name": "On-call", "handle": "On-call", "engine": "codex", "model": MODEL, "effort": EFFORT, "createdAt": 1, "updatedAt": 1, "hub": hub_id })).await;
+    let chat = ask_hosted(&mut r, "g-oncall", "[slow] TEST-a long answer").await;
+    r.wait_event(&chat, "assistant_delta", 0).await;
+
+    let host = "hTEST4t";
+    let hub_sb = Sandbox::new("agents-trying-hub");
+    seed_old_hub(&hub_sb, &remote, host, &chat);
+    let hub = hub_sb.start_with(&[("YARD_SLACK_API", "http://127.0.0.1:9/api/"), ("YARD_SETTLE_MS", "200")]);
+    let mut c = hub.client().await;
+    eventually("a try waiting for the host's answer", || saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-oncall" && a["leaving"].as_str().is_some_and(|l| !l.is_empty()))).await;
+    let saved = save(&mut c, json!({ "id": "g-oncall", "memory": "TEST-mid-try" })).await;
+    assert_eq!(saved.map(|a| a["memory"].clone()), Ok(json!("TEST-mid-try")));
+    assert!(saved_agents(&hub_sb).iter().any(|a| a["id"] == "g-oncall" && a["memory"] == "TEST-mid-try"));
+    // Once the turn ends, it moves, with the edit.
+    let seq = r.next_seq(&chat);
+    r.send(json!({ "op": "session.interrupt", "sessionId": chat })).await;
+    r.wait_turn_done(&chat, seq.saturating_sub(1)).await;
+    eventually("the host owns it", || saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-oncall" && a["hosted"].is_null())).await;
+    eventually("the Mac let go", || saved_agents(&hub_sb).is_empty()).await;
+    assert!(saved_agents(&remote_sb).iter().any(|a| a["id"] == "g-oncall" && a["memory"] == "TEST-mid-try"));
+}
+
+#[tokio::test]
 async fn a_refusal_is_told_by_its_code_never_by_the_agents_name() {
     // An agent whose name reads like another refusal ("… was deleted on …"),
     // refused because its host's copy is mid-turn.
