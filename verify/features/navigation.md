@@ -78,6 +78,18 @@ for vp in desktop:sid_fail mobile:sid_think; do
 done
 ```
 
+### shortcut-hint-only-with-a-keyboard
+Viewports: both
+The sidebar's "Switchyard" row names the palette's shortcut (⌘K, or Ctrl K off
+Apple platforms) where there is a mouse and keyboard. On a touch phone there is
+no key to press, so the drawer shows no hint, and tapping the row still opens
+the palette. (Patrol finding #536: the phone drawer read "Switchyard Ctrl K".)
+
+```sh
+yv drive new --viewport desktop --steps '[{"expect":"role:button:Go to session or page","text":"K"},{"expect":"css:.sidebar-heading .brand kbd"},{"shot":"hint-desktop"}]'
+yv drive new --viewport mobile --steps '[{"click":"role:button:Open sessions"},{"expect":"role:button:Go to session or page"},{"expect":"css:.sidebar-heading .brand kbd","visible":false},{"shot":"no-hint-mobile"},{"click":"role:button:Go to session or page"},{"expect":"role:dialog:Go to session or page"}]'
+```
+
 ### native-app-menu
 Viewports: both
 Model the Mac shell capability and its DOM events. The Settings and Import
